@@ -147,6 +147,29 @@ The terminal shows a summary; `run.log` keeps everything, so a failure buried
 above the fold can be read back without re-running. `*.log` is gitignored. This
 is a convenience, not a rule — skip it for a quick `test:unit` loop.
 
+## Response headers
+
+**Every response carries `X-Clacks-Overhead: GNU Terry Pratchett`** — success,
+error, static asset, 404, all of it. The constants live in `src/server/app.ts`
+and are exported so tests assert the same strings the implementation uses.
+
+The header is set in a single `app.use('*', …)` registered in `buildApp` before
+the routes. One registration is enough: it covers routes added later in
+`createApp`, sub-apps mounted with `app.route()`, and static-asset 404s.
+
+**It must be set _after_ `next()`, inside a `finally`.** Setting it before
+`next()` looks equivalent and is not:
+
+| Placement                      | 200 | 500 | HTTPException | 404 |
+| ------------------------------ | --- | --- | ------------- | --- |
+| after `next()`, in a `finally` | ✅  | ✅  | ✅            | ✅  |
+| before `next()`                | ✅  | ✅  | ❌            | ✅  |
+
+`HTTPException.getResponse()` builds a fresh `Response` that never sees headers
+buffered earlier in the request — and that is the path a malformed JSON body
+takes, so the gap is reachable from any client. `test/server/clacks.test.ts`
+covers that case specifically.
+
 ## Logging
 
 **Nothing writes to `stdout` or `stderr` directly.** No `console.*` in shipped

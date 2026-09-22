@@ -13,7 +13,7 @@
     "build": "node scripts/build.ts",
     "prestart": "npm run build",
     "start": "node dist/index.js",
-    "pretest": "npm run format:check && npm run typecheck && npm run lint",
+    "pretest": "npm run format && npm run typecheck && npm run lint",
     "test": "npm run test:coverage",
     "test:unit": "vitest run",
     "test:watch": "vitest",

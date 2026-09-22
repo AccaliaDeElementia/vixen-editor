@@ -9,6 +9,19 @@ test('the built entry point boots and answers its health check', async ({ reques
   expect(await res.json()).toStrictEqual({ status: 'ok' })
 })
 
+test('every response from the real process carries the clacks header', async ({ request }) => {
+  const paths = ['/api/health', '/', '/assets/main.js', '/api/documents/missing.md', '/api/documents/bad.txt']
+
+  const overheads = await Promise.all(
+    paths.map(async (path) => {
+      const res = await request.get(path)
+      return `${path} -> ${res.headers()['x-clacks-overhead'] ?? 'MISSING'}`
+    }),
+  )
+
+  expect(overheads).toStrictEqual(paths.map((path) => `${path} -> GNU Terry Pratchett`))
+})
+
 test('serves the editor page from the static mount', async ({ request }) => {
   const res = await request.get('/')
 
