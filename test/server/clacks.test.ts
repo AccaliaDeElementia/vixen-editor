@@ -10,6 +10,7 @@ import { buildApp, CLACKS_HEADER, CLACKS_VALUE } from '../../src/server/app.ts'
 import { createApp } from '../../src/server/main.ts'
 import type { Config } from '../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
+import { failingStore } from './failing-store.ts'
 
 let workspace: string
 let publicDir: string
@@ -35,15 +36,6 @@ afterEach(async () => {
 
 function configFor(): Config {
   return { port: 3000, host: '0.0.0.0', docsRoot, templatesDir, logLevel: 'info', nodeEnv: 'test' }
-}
-
-function failingStore(): DocumentStore {
-  return {
-    list: () => Promise.reject(new Error('disk on fire')),
-    read: () => Promise.reject(new Error('disk on fire')),
-    write: () => Promise.reject(new Error('disk on fire')),
-    remove: () => Promise.reject(new Error('disk on fire')),
-  }
 }
 
 function clacksOf(res: Response): string | null {

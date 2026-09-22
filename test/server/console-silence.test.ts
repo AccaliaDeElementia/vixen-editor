@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildApp } from '../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
+import { failingStore } from './failing-store.ts'
 
 const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as const
 
@@ -33,15 +34,6 @@ afterEach(async () => {
   vi.restoreAllMocks()
   await fs.rm(root, { recursive: true, force: true })
 })
-
-function failingStore(): DocumentStore {
-  return {
-    list: () => Promise.reject(new Error('disk on fire')),
-    read: () => Promise.reject(new Error('disk on fire')),
-    write: () => Promise.reject(new Error('disk on fire')),
-    remove: () => Promise.reject(new Error('disk on fire')),
-  }
-}
 
 describe('the application never writes to the console', () => {
   it('stays silent while serving a document', async () => {
@@ -85,7 +77,7 @@ describe('the application never writes to the console', () => {
   it('still reports the fault as a 500 with a json body', async () => {
     const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
 
-    await expect(res.json()).resolves.toStrictEqual({ error: 'Internal server error' })
+    await expect(res.json()).resolves.toStrictEqual({ error: 'Internal server error', code: 'INTERNAL' })
   })
 
   it('does not leak the underlying error message to the client', async () => {

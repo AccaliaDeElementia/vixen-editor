@@ -9,6 +9,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   createFsDocumentStore,
   DocumentNotFoundError,
+  EntryExistsError,
+  FOLDER_INDEX_NAME,
   type DocumentStore,
 } from '../../../src/server/storage/fs-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
@@ -218,5 +220,139 @@ describe('remove', () => {
     await store.remove('a.md')
 
     await expect(store.list()).resolves.toStrictEqual(['b.md'])
+  })
+})
+
+describe('createDocument', () => {
+  it('creates a document with the content it was given', async () => {
+    await store.createDocument('notes.md', '# seeded')
+
+    await expect(store.read('notes.md')).resolves.toBe('# seeded')
+  })
+
+  it('creates missing parent directories', async () => {
+    await store.createDocument('journal/2026/september.md', 'entry')
+
+    await expect(store.read('journal/2026/september.md')).resolves.toBe('entry')
+  })
+
+  it('refuses to replace an existing document', async () => {
+    await store.write('notes.md', 'original')
+
+    await expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError)
+  })
+
+  it('leaves the existing content untouched when it refuses', async () => {
+    await store.write('notes.md', 'original')
+
+    await expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError)
+    await expect(store.read('notes.md')).resolves.toBe('original')
+  })
+
+  it('names the taken path in the error', async () => {
+    await store.write('notes.md', 'original')
+
+    await expect(store.createDocument('notes.md', 'x')).rejects.toThrow(/notes\.md/)
+  })
+
+  it('refuses a path occupied by a directory', async () => {
+    await fs.mkdir(path.join(root, 'notes.md'), { recursive: true })
+
+    await expect(store.createDocument('notes.md', 'x')).rejects.toThrow(EntryExistsError)
+  })
+
+  it('rejects an invalid id', async () => {
+    await expect(store.createDocument('../escape.md', 'x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('rejects a hidden id', async () => {
+    await expect(store.createDocument('.hidden.md', 'x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('refuses to create through a symlinked directory that escapes the root', async () => {
+    await fs.symlink(outside, path.join(root, 'link'))
+
+    await expect(store.createDocument('link/planted.md', 'x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
+    // NAME_MAX is 255, so a longer filename yields ENAMETOOLONG rather than EEXIST.
+    await expect(store.createDocument(`${'a'.repeat(300)}.md`, 'x')).rejects.toThrow(
+      expect.objectContaining({ code: 'ENAMETOOLONG' }),
+    )
+  })
+})
+
+describe('createFolder', () => {
+  it('creates the directory', async () => {
+    await store.createFolder('journal', '# journal')
+
+    await expect(fs.stat(path.join(root, 'journal')).then((s) => s.isDirectory())).resolves.toBe(true)
+  })
+
+  it('seeds the folder with an index document, so it opens to something', async () => {
+    await store.createFolder('journal', '# journal')
+
+    await expect(store.read(`journal/${FOLDER_INDEX_NAME}`)).resolves.toBe('# journal')
+  })
+
+  it('creates missing parent directories', async () => {
+    await store.createFolder('journal/2026/september', '# september')
+
+    await expect(store.read(`journal/2026/september/${FOLDER_INDEX_NAME}`)).resolves.toBe('# september')
+  })
+
+  it('refuses a folder that already exists, rather than overwriting its index', async () => {
+    await store.createFolder('journal', '# journal')
+
+    await expect(store.createFolder('journal', '# again')).rejects.toThrow(EntryExistsError)
+  })
+
+  it('leaves the existing index untouched when it refuses', async () => {
+    await store.createFolder('journal', '# journal')
+
+    await expect(store.createFolder('journal', '# again')).rejects.toThrow(EntryExistsError)
+    await expect(store.read(`journal/${FOLDER_INDEX_NAME}`)).resolves.toBe('# journal')
+  })
+
+  it('refuses a path already occupied by a file', async () => {
+    await store.write('journal.md', 'x')
+
+    await expect(store.createFolder('journal.md', '# journal')).rejects.toThrow(EntryExistsError)
+  })
+
+  it('rejects an invalid path', async () => {
+    await expect(store.createFolder('../escape', '# x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('rejects a hidden path, which is how the trash stays unreachable', async () => {
+    await expect(store.createFolder('.trash', '# x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('refuses to create through a symlinked directory that escapes the root', async () => {
+    await fs.symlink(outside, path.join(root, 'link'))
+
+    await expect(store.createFolder('link/planted', '# x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
+    // NAME_MAX is 255, so a longer directory name yields ENAMETOOLONG rather than EEXIST.
+    await expect(store.createFolder('b'.repeat(300), '# x')).rejects.toThrow(
+      expect.objectContaining({ code: 'ENAMETOOLONG' }),
+    )
+  })
+})
+
+describe('tree', () => {
+  it('reports the document tree', async () => {
+    await store.write('journal/september.md', '')
+
+    await expect(store.tree()).resolves.toMatchObject([
+      { name: 'journal', kind: 'folder', children: [{ name: 'september.md', kind: 'document' }] },
+    ])
+  })
+
+  it('reports an empty tree for an empty root', async () => {
+    await expect(store.tree()).resolves.toStrictEqual([])
   })
 })

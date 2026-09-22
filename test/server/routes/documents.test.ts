@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { failingStore } from '../failing-store.ts'
 
 let root: string
 let store: DocumentStore
@@ -83,7 +84,7 @@ describe('GET /api/documents/:id', () => {
     const res = await app.request('/api/documents/missing.md')
 
     expect(res.status).toBe(404)
-    await expect(res.json()).resolves.toStrictEqual({ error: 'Document not found' })
+    await expect(res.json()).resolves.toStrictEqual({ error: 'Document not found', code: 'NOT_FOUND' })
   })
 
   it('returns 400 for an invalid id', async () => {
@@ -218,23 +219,14 @@ describe('unknown routes', () => {
 })
 
 describe('unexpected storage faults', () => {
-  function brokenStore(): DocumentStore {
-    return {
-      list: () => Promise.reject(new Error('disk on fire')),
-      read: () => Promise.reject(new Error('disk on fire')),
-      write: () => Promise.reject(new Error('disk on fire')),
-      remove: () => Promise.reject(new Error('disk on fire')),
-    }
-  }
-
   it('surfaces an unrecognised storage error as 500, not as 400 or 404', async () => {
-    const res = await buildApp({ store: brokenStore() }).request('/api/documents/notes.md')
+    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
 
     expect(res.status).toBe(500)
   })
 
   it('propagates an unrecognised error from a write', async () => {
-    const res = await buildApp({ store: brokenStore() }).request('/api/documents/notes.md', {
+    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ content: 'x' }),

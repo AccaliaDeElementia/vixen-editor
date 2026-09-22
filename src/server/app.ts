@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception'
 
 import { createLogger } from './logging.ts'
 import { documentRoutes } from './routes/documents.ts'
+import { fileRoutes } from './routes/files.ts'
 import type { DocumentStore } from './storage/fs-store.ts'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
@@ -33,11 +34,12 @@ export function buildApp({ store }: AppDependencies): Hono {
     if (error instanceof HTTPException) return error.getResponse()
 
     logError('%s %s failed: %O', c.req.method, c.req.path, error)
-    return c.json({ error: 'Internal server error' }, HTTP_INTERNAL_SERVER_ERROR)
+    return c.json({ error: 'Internal server error', code: 'INTERNAL' }, HTTP_INTERNAL_SERVER_ERROR)
   })
 
   app.get('/api/health', (c) => c.json({ status: 'ok' }))
   app.route('/api/documents', documentRoutes(store))
+  app.route('/api/files', fileRoutes(store))
 
   return app
 }
