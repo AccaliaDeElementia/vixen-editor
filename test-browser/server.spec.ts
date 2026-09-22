@@ -29,6 +29,17 @@ test('serves the editor page from the static mount', async ({ request }) => {
   expect(await res.text()).toContain('id="editor"')
 })
 
+test('serves the compiled stylesheet at the path the page asks for', async ({ request }) => {
+  const page = await (await request.get('/')).text()
+  const href = /<link[^>]+rel="stylesheet"[^>]+href="(?<href>\/assets[^"]+)"/u.exec(page)?.groups?.href
+
+  expect(href).toBe('/assets/main.css')
+
+  const stylesheet = await request.get(href ?? '')
+  expect(stylesheet.status()).toBe(200)
+  expect(await stylesheet.text()).toContain('#222222')
+})
+
 test('serves the built client bundle at the path index.html asks for', async ({ request }) => {
   const page = await (await request.get('/')).text()
   const src = /<script[^>]+src="(?<src>[^"]+)"/u.exec(page)?.groups?.src

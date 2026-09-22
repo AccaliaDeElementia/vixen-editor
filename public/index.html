@@ -3,120 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
     <title>Vixen Editor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@700&family=Poppins:wght@300;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --midnight: #050830;
-        --cobalt: #3043b4;
-        --white: #ffffff;
-        --dove: #f7f8f9;
-        --sea-foam: #2797aa;
-        --gray: #888ca8;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        background: var(--white);
-        color: var(--midnight);
-        font-family: 'Poppins', Arial, sans-serif;
-        font-weight: 300;
-      }
-
-      header {
-        display: flex;
-        align-items: baseline;
-        gap: 1rem;
-        padding: 1rem 1.5rem;
-        background: var(--midnight);
-        color: var(--white);
-      }
-
-      h1 {
-        margin: 0;
-        font-family: 'IBM Plex Sans', Arial, sans-serif;
-        font-weight: 700;
-        text-transform: uppercase;
-        font-size: 1.125rem;
-        letter-spacing: 0.04em;
-      }
-
-      #status {
-        font-size: 0.8125rem;
-        color: var(--dove);
-      }
-
-      main {
-        flex: 1;
-        display: flex;
-        padding: 1.5rem;
-        background: var(--dove);
-      }
-
-      #editor {
-        flex: 1;
-        background: var(--white);
-        border: 1px solid #e2e5ea;
-        border-radius: 4px;
-        overflow: auto;
-      }
-
-      .cm-editor {
-        height: 100%;
-        font-size: 0.9375rem;
-      }
-
-      .cm-editor.cm-focused {
-        outline: 2px solid var(--cobalt);
-      }
-
-      /* Custom vixen decorations */
-      .cm-vixen-heading {
-        font-family: 'IBM Plex Sans', Arial, sans-serif;
-        font-weight: 700;
-        color: var(--midnight);
-        background: rgba(48, 67, 180, 0.05);
-      }
-
-      .cm-vixen-heading-1 {
-        font-size: 1.35em;
-      }
-      .cm-vixen-heading-2 {
-        font-size: 1.2em;
-      }
-      .cm-vixen-heading-3 {
-        font-size: 1.1em;
-      }
-
-      .cm-vixen-marker {
-        font-weight: 700;
-        border-radius: 3px;
-        padding: 0 3px;
-        color: var(--white);
-      }
-
-      .cm-vixen-marker-todo {
-        background: var(--cobalt);
-      }
-      .cm-vixen-marker-fixme {
-        background: var(--midnight);
-      }
-      .cm-vixen-marker-note {
-        background: var(--sea-foam);
-      }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/main.css" />
   </head>
   <body>
     <header>

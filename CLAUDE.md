@@ -111,9 +111,13 @@ coverage would make "tests pass" mean less than it says.
 It is wired through npm's `pretest` hook, so the order is:
 
 ```
-pretest:  format:check  →  typecheck  →  lint
+pretest:  format  →  typecheck  →  lint
 test:     test:coverage
 ```
+
+Note `pretest` runs `format`, not `format:check` — the gate **rewrites** files to
+Prettier style rather than failing on drift, so there is never a formatting
+failure to fix by hand.
 
 That hook fires only for the exact script name `test`. **`npm run test:unit`
 and `npm run test:coverage` bypass the static checks** — which is the point of
@@ -324,6 +328,19 @@ if any does not.
   API _and_ a typescript-eslint release supports it.
 - **Imports carry the `.ts` extension.** Node's type stripping and esbuild both
   resolve the real on-disk path, which is why `allowImportingTsExtensions` is on.
+- **Styles are SCSS**, authored in `src/styles/` and compiled by `sass` to
+  `public/assets/main.css` in `scripts/build.ts`. The theme is Bootswatch
+  Darkly; `_tokens.scss` keeps the upstream variable names so it can be diffed
+  against the original. The `cm-vixen-*` decoration class names are produced by
+  `src/client/editor/decorations.ts` and asserted by tests — restyle them, do
+  not rename them.
+- **Syntax colours are not CSS.** CodeMirror's `basicSetup` bundles
+  `defaultHighlightStyle`, which is built for light backgrounds and renders
+  markdown markers like `#` near-black — invisible on a dark surface, and not
+  reliably overridable from a stylesheet because the generated class names
+  (`ͼ5`) are unstable. `src/client/editor/highlight.ts` supplies a
+  `HighlightStyle` on the Darkly ramp instead. Theme changes touching token
+  colours belong there, not in SCSS.
 - **The server is bundled, not just the client.** esbuild inlines every
   dependency so the runtime Docker stage ships `dist/` and `public/` with no
   `node_modules`. Adding a native dependency breaks this and it must then move

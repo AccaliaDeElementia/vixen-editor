@@ -1,0 +1,86 @@
+@use 'sass:color';
+@use 'tokens' as *;
+
+// The cm-vixen-* class names are produced by src/client/editor/decorations.ts
+// and asserted by test/client/decorations.test.ts and test-browser/editor.spec.ts.
+// Restyle them freely; do not rename them.
+
+#editor {
+  flex: 1;
+  overflow: auto;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius;
+}
+
+.cm-editor {
+  height: 100%;
+  font-size: $font-size-base;
+  color: $body-color;
+  background: $surface;
+
+  &.cm-focused {
+    outline: 2px solid $primary;
+  }
+
+  .cm-content {
+    caret-color: $body-color;
+  }
+
+  .cm-cursor {
+    border-left-color: $body-color;
+  }
+
+  .cm-gutters {
+    color: $muted;
+    background: $gray-900;
+    border-right: 1px solid $border;
+  }
+
+  .cm-activeLine {
+    background: color.adjust($surface, $lightness: 4%);
+  }
+
+  .cm-activeLineGutter {
+    background: color.adjust($gray-900, $lightness: 4%);
+  }
+
+  .cm-selectionBackground,
+  ::selection {
+    background: color.adjust($primary, $lightness: -10%);
+  }
+}
+
+.cm-vixen-heading {
+  font-weight: 700;
+  color: $white;
+  background: rgba($primary, 0.28);
+}
+
+.cm-vixen-heading-1 {
+  font-size: 1.35em;
+}
+.cm-vixen-heading-2 {
+  font-size: 1.2em;
+}
+.cm-vixen-heading-3 {
+  font-size: 1.1em;
+}
+
+.cm-vixen-marker {
+  padding: 0 3px;
+  border-radius: 3px;
+  font-weight: 700;
+  color: $gray-900;
+}
+
+.cm-vixen-marker-todo {
+  background: $info;
+}
+.cm-vixen-marker-fixme {
+  background: $danger;
+  color: $white;
+}
+.cm-vixen-marker-note {
+  background: $success;
+}

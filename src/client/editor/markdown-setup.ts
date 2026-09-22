@@ -4,6 +4,7 @@ import { markdown } from '@codemirror/lang-markdown'
 import { EditorState, type Extension } from '@codemirror/state'
 
 import { vixenDecorations } from './decorations.ts'
+import { vixenHighlighting } from './highlight.ts'
 
 export interface CreateEditorStateOptions {
   doc?: string
@@ -13,6 +14,6 @@ export interface CreateEditorStateOptions {
 export function createEditorState(options: CreateEditorStateOptions = {}): EditorState {
   return EditorState.create({
     doc: options.doc ?? '',
-    extensions: [markdown(), vixenDecorations, ...(options.extensions ?? [])],
+    extensions: [markdown(), vixenHighlighting, vixenDecorations, ...(options.extensions ?? [])],
   })
 }

@@ -1,8 +1,15 @@
 'use sanity'
 
+import { mkdir, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+
 import { build } from 'esbuild'
+import { compileAsync } from 'sass'
 
 const production = process.env.NODE_ENV === 'production'
+
+const STYLE_ENTRY = 'src/styles/main.scss'
+const STYLE_OUTPUT = 'public/assets/main.css'
 
 const cjsInteropBanner = [
   "import { createRequire as __vixenCreateRequire } from 'node:module'",
@@ -40,12 +47,25 @@ export async function buildServer(): Promise<void> {
   })
 }
 
+export async function buildStyles(): Promise<void> {
+  const compiled = await compileAsync(STYLE_ENTRY, {
+    style: production ? 'compressed' : 'expanded',
+    sourceMap: true,
+  })
+
+  await mkdir(path.dirname(STYLE_OUTPUT), { recursive: true })
+  await Promise.all([
+    writeFile(STYLE_OUTPUT, `${compiled.css}\n/*# sourceMappingURL=main.css.map */\n`),
+    writeFile(`${STYLE_OUTPUT}.map`, JSON.stringify(compiled.sourceMap)),
+  ])
+}
+
 export async function buildDevAssets(): Promise<void> {
-  await Promise.all([buildClient()])
+  await Promise.all([buildClient(), buildStyles()])
 }
 
 export async function buildAll(): Promise<void> {
-  await Promise.all([buildClient(), buildServer()])
+  await Promise.all([buildClient(), buildStyles(), buildServer()])
 }
 
 /* v8 ignore next 3 -- runs only when this file is the process entry point; the
