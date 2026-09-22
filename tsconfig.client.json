@@ -7,5 +7,5 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": []
   },
-  "include": ["client/**/*.ts", "test/client/**/*.ts"]
+  "include": ["src/client/**/*.ts", "test/client/**/*.ts"]
 }

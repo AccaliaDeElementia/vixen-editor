@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { ConfigError, loadConfig } from '../../server/config.ts'
+import { ConfigError, loadConfig } from '../../src/server/config.ts'
 
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {

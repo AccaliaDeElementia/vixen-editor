@@ -44,7 +44,7 @@ nothing ever imports it at runtime because `import type` is erased — so it
 reports 0% coverage of that one line and breaks the coverage gate.
 
 Declare an interface in the module that owns its primary implementation and
-export it from there (`DocumentStore` lives in `storage/fs-store.ts`). A shared
+export it from there (`DocumentStore` lives in `src/server/storage/fs-store.ts`). A shared
 contract that genuinely spans client and server should be defined by zod
 schemas, which are runtime values, so it will not be type-only either. Adding a
 coverage exclusion to work around this is the wrong fix — it carves a permanent
@@ -128,7 +128,7 @@ them, but it means a green `test:coverage` is not a green gate.
 | `npm run test:coverage` | Vitest with the 100% threshold enforced                        |
 | `npm run test:browser`  | Playwright, real Chromium, against built artifacts             |
 | `npm run build`         | esbuild: server to `dist/`, client to `public/assets/`         |
-| `npm run dev`           | Build, then run `index.ts` under Node type-stripping and watch |
+| `npm run dev`           | Watch every source dir; rebuild and restart on change          |
 | `npm run format`        | Rewrite files to Prettier style (the fix for a format failure) |
 | `npm run lint:fix`      | Apply ESLint autofixes                                         |
 
@@ -153,7 +153,7 @@ is a convenience, not a rule — skip it for a quick `test:unit` loop.
 code — `no-console` is on, and there are no suppressions for it.
 
 Server-side errors and diagnostics go through the [`debug`](https://www.npmjs.com/package/debug)
-package, via `createLogger` in `server/logging.ts`:
+package, via `createLogger` in `src/server/logging.ts`:
 
 ```ts
 import { createLogger } from '../logging.ts'
@@ -163,7 +163,7 @@ log('wrote %s (%d bytes)', id, content.length)
 ```
 
 Namespaces are `vixen-editor:MODULE[:FUNCTION]`, where MODULE is the module's
-path under `server/`. That makes `DEBUG` a precise filter:
+path under `src/server/`. That makes `DEBUG` a precise filter:
 
 | `DEBUG` value              | Shows                           |
 | -------------------------- | ------------------------------- |
@@ -183,20 +183,38 @@ underlying message to the client.
 
 ## Layout
 
-Source is rooted at the repository root; there is no `src/`.
+**All authored source lives under `src/`.** New source directories go there and
+nowhere else.
 
 ```
-index.ts          process entry point; guarded one-liner, no wiring
-server/           Hono app, config, filesystem-backed document store
-  main.ts         composition root: createApp / startServer
-client/           CodeMirror 6 editor and API client
-  main.ts         browser entry point; one line, no wiring
-  editor/         decorations, api client, session, bootstrap
+src/
+  index.ts        process entry point; guarded one-liner, no wiring
+  server/         Hono app, config, filesystem-backed document store
+    main.ts       composition root: createApp / startServer
+  client/         CodeMirror 6 editor and API client
+    main.ts       browser entry point; one line, no wiring
+    editor/       decorations, api client, session, bootstrap
+scripts/          build and dev entry points — tooling, not shipped app code
 public/           static page; client bundle is emitted to public/assets/
 test/             Vitest: server (node), client (happy-dom), conventions (node)
 test-browser/     Playwright: real-browser rendering, and the built server
-scripts/          esbuild build script
 ```
+
+### Why `src/` exists
+
+Five separate config files used to enumerate where source lived, and four of the
+five failed **silently** when a new root directory was not registered: coverage
+`include` (escapes the 100% gate), the conventions `SOURCE_DIRECTORIES` (escapes
+rules 2/3/5), the two typecheck projects (tsc just skips the files), and the dev
+watch paths (stops rebuilding). Only the root `tsconfig.json` failed loudly.
+
+Consolidating under `src/` collapses three of those into a single glob that picks
+up new subdirectories automatically. The residual — a new `src/shared/` matching
+neither typecheck project — is caught by a conventions test rather than left to
+memory, because `tsc` exits 0 while silently ignoring such a directory.
+
+`scripts/` is deliberately outside `src/`: it is build tooling, never shipped,
+and never imported by the app.
 
 ## Testing
 
@@ -218,8 +236,9 @@ gate on:
 - a `.ts` or `.js` file that does not open with `'use sanity'` (rule 2)
 - a default export outside the three tooling configs (rule 3)
 - an `eslint-disable` or `v8 ignore` with no ` -- rationale` (rule 5)
+- a file under `src/` matched by neither or both typecheck projects
 
-This exists because a rule that lives only in prose rots. `client/main.ts` grew
+This exists because a rule that lives only in prose rots. `src/client/main.ts` grew
 to ~35 lines of untested logic inside a coverage exclusion while this file
 claimed entry points were logic-free, and the "exactly one `v8 ignore`" line
 here was stale within a day of being written.
@@ -234,30 +253,30 @@ patterns it searches for; everything else is checked.
 All four v8 metrics are held at 100%. A partial gate leaves the uncovered
 remainder unidentified, and the hardest-to-test code is usually the riskiest.
 
-**One exclusion, and no others: `client/main.ts`.**
+**One exclusion, and no others: `src/client/main.ts`.**
 
 Entry points are the awkward case, because a module that starts a server or
 mounts an editor at import time cannot be imported by a test. The wiring in them
 is real — static mount paths, which config field reaches which consumer, the
 order `.env` loads in — and all of it used to sit outside the gate. A whole-file
-exclusion is a standing invitation, and `client/main.ts` accepted it once
+exclusion is a standing invitation, and `src/client/main.ts` accepted it once
 already: it grew to ~35 lines of status handling, query parsing and error
 formatting that nothing verified.
 
 The resolution is a composition root plus a guard:
 
-- **All wiring lives in a tested module** — `server/main.ts` (`createApp`,
-  `startServer`) and `client/editor/bootstrap.ts` (`bootstrap`). Effects are
+- **All wiring lives in a tested module** — `src/server/main.ts` (`createApp`,
+  `startServer`) and `src/client/editor/bootstrap.ts` (`bootstrap`). Effects are
   injected: `startServer` takes a `Runtime` carrying `serve`, `loadEnvFile`,
   `env` and `publicDir`, so a test asserts what `serve` was handed without
   binding a socket. `bootstrap` takes `root`, `search` and `session`, so a test
   drives it against a detached DOM.
-- **`index.ts` is inside the gate.** It is three lines guarded by
+- **`src/index.ts` is inside the gate.** It is three lines guarded by
   `import.meta.main`, which is false under the runner, so a test can import it
   inertly. Node 26 honours it and esbuild preserves it through bundling. One
   `v8 ignore` covers the guarded call. Add logic here and coverage will demand a
   test for it.
-- **`client/main.ts` stays excluded**, at one line. A browser bundle has no
+- **`src/client/main.ts` stays excluded**, at one line. A browser bundle has no
   `import.meta.main`, and the only way to make it inertly importable would be a
   guard that changes behaviour — silently doing nothing when `#editor` is absent
   instead of reporting it. That is a coverage trick, not a design improvement,

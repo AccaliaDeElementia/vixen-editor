@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { InvalidDocumentIdError, resolveDocumentPath } from '../../../server/storage/safe-path.ts'
+import { InvalidDocumentIdError, resolveDocumentPath } from '../../../src/server/storage/safe-path.ts'
 
 const ROOT = '/srv/vixen/docs'
 

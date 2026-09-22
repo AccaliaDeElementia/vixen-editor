@@ -7,8 +7,8 @@ import { inspect } from 'node:util'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { buildApp } from '../../server/app.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../server/storage/fs-store.ts'
+import { buildApp } from '../../src/server/app.ts'
+import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
 
 const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as const
 

@@ -6,8 +6,12 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFsDocumentStore, DocumentNotFoundError, type DocumentStore } from '../../../server/storage/fs-store.ts'
-import { InvalidDocumentIdError } from '../../../server/storage/safe-path.ts'
+import {
+  createFsDocumentStore,
+  DocumentNotFoundError,
+  type DocumentStore,
+} from '../../../src/server/storage/fs-store.ts'
+import { InvalidDocumentIdError } from '../../../src/server/storage/safe-path.ts'
 
 let root: string
 let outside: string

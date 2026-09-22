@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { createLogger, loggerNamespace } from '../../server/logging.ts'
+import { createLogger, loggerNamespace } from '../../src/server/logging.ts'
 
 describe('loggerNamespace', () => {
   it('scopes a module under the project root', () => {

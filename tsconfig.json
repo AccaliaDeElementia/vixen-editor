@@ -13,13 +13,5 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": [
-    "index.ts",
-    "vitest.config.ts",
-    "server/**/*.ts",
-    "client/**/*.ts",
-    "test/**/*.ts",
-    "test-browser/**/*.ts",
-    "scripts/**/*.ts"
-  ]
+  "include": ["src/**/*.ts", "test/**/*.ts", "test-browser/**/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
 }

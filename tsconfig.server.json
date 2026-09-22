@@ -7,5 +7,11 @@
     "lib": ["ES2023"],
     "types": ["node"]
   },
-  "include": ["index.ts", "server/**/*.ts", "test/server/**/*.ts", "test/conventions/**/*.ts", "scripts/**/*.ts"]
+  "include": [
+    "src/index.ts",
+    "src/server/**/*.ts",
+    "test/server/**/*.ts",
+    "test/conventions/**/*.ts",
+    "scripts/**/*.ts"
+  ]
 }

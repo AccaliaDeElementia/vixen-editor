@@ -1,5 +1,6 @@
 'use sanity'
 
+import { readFileSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,8 +9,10 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
-const SOURCE_DIRECTORIES = ['server', 'client', 'scripts', 'test', 'test-browser']
-const ROOT_SOURCE_FILES = ['index.ts', 'vitest.config.ts', 'eslint.config.js']
+const SOURCE_DIRECTORIES = ['src', 'scripts', 'test', 'test-browser']
+const ROOT_SOURCE_FILES = ['vitest.config.ts', 'eslint.config.js']
+
+const TYPECHECK_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json']
 const SOURCE_EXTENSION = /\.(?:ts|js)$/u
 
 const DIRECTIVE = "'use sanity'"
@@ -66,8 +69,8 @@ describe('the source tree', () => {
   it('includes both entry points', () => {
     const found = sources.map((source) => source.relativePath)
 
-    expect(found).toContain('index.ts')
-    expect(found).toContain('client/main.ts')
+    expect(found).toContain('src/index.ts')
+    expect(found).toContain('src/client/main.ts')
   })
 
   it('includes this scanner, which the content scans then skip to avoid matching their own patterns', () => {
@@ -101,6 +104,38 @@ describe('rule 3: default exports are confined to tooling configuration', () => 
       .map((source) => source.relativePath)
 
     expect(offenders).toStrictEqual(DEFAULT_EXPORT_ALLOWLIST)
+  })
+})
+
+describe('every source file belongs to exactly one typecheck project', () => {
+  function includesOf(configPath: string): string[] {
+    const withoutLineComments = readFileSync(path.join(REPO_ROOT, configPath), 'utf8').replace(/^\s*\/\/.*$/gmu, '')
+    const parsed: unknown = JSON.parse(withoutLineComments)
+    if (typeof parsed !== 'object' || parsed === null) return []
+    const { include } = parsed as { include?: unknown }
+    return Array.isArray(include) ? include.filter((entry): entry is string => typeof entry === 'string') : []
+  }
+
+  function matches(pattern: string, filePath: string): boolean {
+    if (!pattern.includes('*')) return pattern === filePath
+    const prefix = pattern.replace(/\*\*\/\*\.ts$/u, '')
+    return filePath.startsWith(prefix) && filePath.endsWith('.ts')
+  }
+
+  it('leaves no src file unchecked and none checked twice', () => {
+    const projects = TYPECHECK_PROJECTS.map((configPath) => ({ configPath, includes: includesOf(configPath) }))
+
+    const misfiled = sources
+      .filter((source) => source.relativePath.startsWith('src/'))
+      .map((source) => ({
+        path: source.relativePath,
+        projects: projects
+          .filter(({ includes }) => includes.some((pattern) => matches(pattern, source.relativePath)))
+          .map(({ configPath }) => configPath),
+      }))
+      .filter(({ projects: matched }) => matched.length !== 1)
+
+    expect(misfiled).toStrictEqual([])
   })
 })
 

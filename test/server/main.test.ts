@@ -7,8 +7,8 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { ConfigError, type Config } from '../../server/config.ts'
-import { createApp, defaultRuntime, DEFAULT_PUBLIC_DIR, startServer, type Runtime } from '../../server/main.ts'
+import { ConfigError, type Config } from '../../src/server/config.ts'
+import { createApp, defaultRuntime, DEFAULT_PUBLIC_DIR, startServer, type Runtime } from '../../src/server/main.ts'
 
 let workspace: string
 let publicDir: string

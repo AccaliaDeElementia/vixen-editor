@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { toError } from '../../server/errors.ts'
+import { toError } from '../../src/server/errors.ts'
 
 describe('toError', () => {
   it('passes an Error through unchanged, preserving its stack', () => {

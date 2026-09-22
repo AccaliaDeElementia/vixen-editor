@@ -10,8 +10,8 @@ import {
   describeError,
   documentIdFromSearch,
   MissingMountError,
-} from '../../client/editor/bootstrap.ts'
-import type { Session } from '../../client/editor/session.ts'
+} from '../../src/client/editor/bootstrap.ts'
+import type { Session } from '../../src/client/editor/session.ts'
 
 let root: HTMLElement
 let saved: Array<{ id: string; content: string }>

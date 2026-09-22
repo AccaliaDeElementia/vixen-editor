@@ -4,7 +4,7 @@ import { EditorState } from '@codemirror/state'
 import type { DecorationSet } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
 
-import { computeDecorations, vixenDecorationField, vixenDecorations } from '../../client/editor/decorations.ts'
+import { computeDecorations, vixenDecorationField, vixenDecorations } from '../../src/client/editor/decorations.ts'
 
 interface FlatDecoration {
   from: number

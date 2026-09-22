@@ -9,9 +9,9 @@ const cjsInteropBanner = [
   'const require = __vixenCreateRequire(import.meta.url)',
 ].join('\n')
 
-async function buildClient(): Promise<void> {
+export async function buildClient(): Promise<void> {
   await build({
-    entryPoints: ['client/main.ts'],
+    entryPoints: ['src/client/main.ts'],
     outfile: 'public/assets/main.js',
     bundle: true,
     format: 'esm',
@@ -23,9 +23,9 @@ async function buildClient(): Promise<void> {
   })
 }
 
-async function buildServer(): Promise<void> {
+export async function buildServer(): Promise<void> {
   await build({
-    entryPoints: ['index.ts'],
+    entryPoints: ['src/index.ts'],
     outfile: 'dist/index.js',
     bundle: true,
     format: 'esm',
@@ -40,4 +40,17 @@ async function buildServer(): Promise<void> {
   })
 }
 
-await Promise.all([buildClient(), buildServer()])
+export async function buildDevAssets(): Promise<void> {
+  await Promise.all([buildClient()])
+}
+
+export async function buildAll(): Promise<void> {
+  await Promise.all([buildClient(), buildServer()])
+}
+
+/* v8 ignore next 3 -- runs only when this file is the process entry point; the
+   exported functions above are what everything else calls, and scripts/ sits
+   outside the coverage gate */
+if (import.meta.main) {
+  await buildAll()
+}

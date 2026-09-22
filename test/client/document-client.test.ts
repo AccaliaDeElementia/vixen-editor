@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createDocumentClient, DocumentRequestError } from '../../client/editor/document-client.ts'
+import { createDocumentClient, DocumentRequestError } from '../../src/client/editor/document-client.ts'
 
 let fetchMock: ReturnType<typeof vi.fn>
 

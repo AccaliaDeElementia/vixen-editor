@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { DocumentRequestError } from '../../client/editor/document-client.ts'
-import type { DocumentClient } from '../../client/editor/document-client.ts'
-import { createSession, defaultTemplate } from '../../client/editor/session.ts'
+import { DocumentRequestError } from '../../src/client/editor/document-client.ts'
+import type { DocumentClient } from '../../src/client/editor/document-client.ts'
+import { createSession, defaultTemplate } from '../../src/client/editor/session.ts'
 
 let client: {
   list: ReturnType<typeof vi.fn>

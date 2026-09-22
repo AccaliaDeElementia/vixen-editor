@@ -9,7 +9,7 @@
     "node": ">=26"
   },
   "scripts": {
-    "dev": "npm run build && node --watch index.ts",
+    "dev": "node --watch --watch-path=src --watch-path=scripts scripts/dev.ts",
     "build": "node scripts/build.ts",
     "prestart": "npm run build",
     "start": "node dist/index.js",
@@ -27,22 +27,22 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@codemirror/lang-markdown": "^6.5.2",
-    "@codemirror/state": "^6.7.5",
-    "@codemirror/view": "^6.43.12",
     "@hono/node-server": "^2.1.1",
     "@hono/zod-validator": "^0.9.1",
-    "codemirror": "^6.0.2",
     "debug": "^4.4.3",
     "dotenv": "^18.0.2",
     "hono": "^4.13.8",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/state": "^6.7.5",
+    "@codemirror/view": "^6.43.12",
     "@playwright/test": "^1.63.0",
     "@types/debug": "^4.1.13",
     "@types/node": "^26.6.2",
     "@vitest/coverage-v8": "^5.0.1",
+    "codemirror": "^6.0.2",
     "esbuild": "^0.28.2",
     "eslint": "^10.11.0",
     "eslint-config-love": "^157.0.0",
