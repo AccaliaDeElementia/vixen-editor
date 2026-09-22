@@ -1,0 +1,15 @@
+.git/
+.gitignore
+node_modules/
+dist/
+coverage/
+deploy/
+data/
+test-results/
+playwright-report/
+public/assets/
+.env
+.env.local
+*.log
+.DS_Store
+README.md

@@ -1,0 +1,54 @@
+{
+  "name": "vixen-editor",
+  "version": "0.1.0",
+  "description": "A markdown editor built on Hono and CodeMirror 6",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "dev": "npm run build && node --watch index.ts",
+    "build": "node scripts/build.ts",
+    "prestart": "npm run build",
+    "start": "node dist/index.js",
+    "pretest": "npm run format:check && npm run typecheck && npm run lint",
+    "test": "npm run test:coverage",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:browser": "playwright test -c test-browser/playwright.config.ts",
+    "test:all": "npm test && npm run test:browser",
+    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.client.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/state": "^6.7.5",
+    "@codemirror/view": "^6.43.12",
+    "@hono/node-server": "^2.1.1",
+    "@hono/zod-validator": "^0.9.1",
+    "codemirror": "^6.0.2",
+    "debug": "^4.4.3",
+    "dotenv": "^18.0.2",
+    "hono": "^4.13.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/debug": "^4.1.13",
+    "@types/node": "^26.6.2",
+    "@vitest/coverage-v8": "^5.0.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.11.0",
+    "eslint-config-love": "^157.0.0",
+    "happy-dom": "^20.14.5",
+    "prettier": "^3.9.8",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
+  }
+}

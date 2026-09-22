@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "comment": [
+    "Editor + ESLint project. Deliberately the permissive superset of the server and",
+    "client projects: it carries both DOM and node types so every source file resolves.",
+    "The client/server boundary is enforced by `npm run typecheck`, which builds",
+    "tsconfig.server.json and tsconfig.client.json separately."
+  ],
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": [
+    "index.ts",
+    "vitest.config.ts",
+    "server/**/*.ts",
+    "client/**/*.ts",
+    "test/**/*.ts",
+    "test-browser/**/*.ts",
+    "scripts/**/*.ts"
+  ]
+}
