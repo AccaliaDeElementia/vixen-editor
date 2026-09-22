@@ -22,11 +22,17 @@ test('every response from the real process carries the clacks header', async ({ 
   expect(overheads).toStrictEqual(paths.map((path) => `${path} -> GNU Terry Pratchett`))
 })
 
-test('serves the editor page from the static mount', async ({ request }) => {
+test('renders the editor page from the pug template', async ({ request }) => {
   const res = await request.get('/')
+  const html = await res.text()
 
   expect(res.status()).toBe(200)
-  expect(await res.text()).toContain('id="editor"')
+  expect(res.headers()['content-type']).toContain('text/html')
+  expect(html).toContain('id="editor"')
+  // Rendered, not served from disk: the title comes from a template local, and
+  // pug emits a minified doctype that the old static file did not.
+  expect(html).toContain('<h1>Vixen Editor</h1>')
+  expect(html.startsWith('<!DOCTYPE html>')).toBe(true)
 })
 
 test('serves the compiled stylesheet at the path the page asks for', async ({ request }) => {
@@ -40,7 +46,7 @@ test('serves the compiled stylesheet at the path the page asks for', async ({ re
   expect(await stylesheet.text()).toContain('#222222')
 })
 
-test('serves the built client bundle at the path index.html asks for', async ({ request }) => {
+test('serves the built client bundle at the path the page asks for', async ({ request }) => {
   const page = await (await request.get('/')).text()
   const src = /<script[^>]+src="(?<src>[^"]+)"/u.exec(page)?.groups?.src
 

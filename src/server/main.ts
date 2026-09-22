@@ -9,18 +9,21 @@ import { buildApp } from './app.ts'
 import { loadConfig, type Config } from './config.ts'
 import { createLogger } from './logging.ts'
 import { createFsDocumentStore } from './storage/fs-store.ts'
+import { createTemplateRenderer } from './templates.ts'
 
 const logStartup = createLogger('main', 'startServer')
 
 export const DEFAULT_PUBLIC_DIR = './public'
 export const CLIENT_BUNDLE_ROUTE = '/assets/*'
-export const INDEX_HTML = 'index.html'
+export const EDITOR_TEMPLATE = 'editor'
+export const APP_TITLE = 'Vixen Editor'
 
 export function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono {
   const app = buildApp({ store: createFsDocumentStore(config.docsRoot) })
+  const templates = createTemplateRenderer(config.templatesDir, config.nodeEnv === 'production')
 
   app.use(CLIENT_BUNDLE_ROUTE, serveStatic({ root: publicDir }))
-  app.get('/', serveStatic({ path: `${publicDir}/${INDEX_HTML}` }))
+  app.get('/', (c) => c.html(templates.render(EDITOR_TEMPLATE, { title: APP_TITLE })))
 
   return app
 }

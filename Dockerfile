@@ -29,10 +29,12 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
     DOCS_ROOT=/data/docs \
+    TEMPLATES_DIR=./templates \
     DEBUG=vixen-editor:*
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
+COPY --from=build /app/src/templates ./templates
 
 # The `node` user ships with the official image; create the document root with
 # its ownership so a bind mount is writable without running as root.

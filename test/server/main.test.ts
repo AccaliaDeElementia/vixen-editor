@@ -8,19 +8,29 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { ConfigError, type Config } from '../../src/server/config.ts'
-import { createApp, defaultRuntime, DEFAULT_PUBLIC_DIR, startServer, type Runtime } from '../../src/server/main.ts'
+import {
+  APP_TITLE,
+  createApp,
+  defaultRuntime,
+  DEFAULT_PUBLIC_DIR,
+  startServer,
+  type Runtime,
+} from '../../src/server/main.ts'
 
 let workspace: string
 let publicDir: string
 let docsRoot: string
+let templatesDir: string
 
 beforeEach(async () => {
   workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-main-'))
   publicDir = path.join(workspace, 'public')
   docsRoot = path.join(workspace, 'docs')
+  templatesDir = path.join(workspace, 'templates')
   await fs.mkdir(path.join(publicDir, 'assets'), { recursive: true })
-  await fs.writeFile(path.join(publicDir, 'index.html'), '<!doctype html><title>vixen</title>')
+  await fs.mkdir(templatesDir, { recursive: true })
   await fs.writeFile(path.join(publicDir, 'assets', 'main.js'), 'export const built = true')
+  await fs.writeFile(path.join(templatesDir, 'editor.pug'), "h1= title\n#editor\nscript(src='/assets/main.js')")
 })
 
 afterEach(async () => {
@@ -28,7 +38,15 @@ afterEach(async () => {
 })
 
 function configFor(overrides: Partial<Config> = {}): Config {
-  return { port: 3000, host: '0.0.0.0', docsRoot, logLevel: 'info', nodeEnv: 'test', ...overrides }
+  return {
+    port: 3000,
+    host: '0.0.0.0',
+    docsRoot,
+    templatesDir,
+    logLevel: 'info',
+    nodeEnv: 'test',
+    ...overrides,
+  }
 }
 
 interface RecordedServe {
@@ -64,11 +82,46 @@ function recordingRuntime(overrides: Partial<Runtime> = {}): {
 }
 
 describe('createApp', () => {
-  it('serves index.html at the root', async () => {
+  it('renders the editor template at the root', async () => {
     const res = await createApp(configFor(), publicDir).request('/')
 
     expect(res.status).toBe(200)
-    await expect(res.text()).resolves.toContain('<title>vixen</title>')
+    expect(res.headers.get('content-type')).toContain('text/html')
+    await expect(res.text()).resolves.toContain('<div id="editor">')
+  })
+
+  it('passes the application title into the template', async () => {
+    const res = await createApp(configFor(), publicDir).request('/')
+
+    await expect(res.text()).resolves.toContain(`<h1>${APP_TITLE}</h1>`)
+  })
+
+  it('renders from the templates directory named by the config', async () => {
+    await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'p from-the-configured-dir')
+
+    const res = await createApp(configFor(), publicDir).request('/')
+
+    await expect(res.text()).resolves.toContain('from-the-configured-dir')
+  })
+
+  it('recompiles templates outside production, so edits need no restart', async () => {
+    const app = createApp(configFor({ nodeEnv: 'development' }), publicDir)
+    await app.request('/')
+
+    await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'p edited-while-running')
+    const res = await app.request('/')
+
+    await expect(res.text()).resolves.toContain('edited-while-running')
+  })
+
+  it('caches templates in production', async () => {
+    const app = createApp(configFor({ nodeEnv: 'production' }), publicDir)
+    await app.request('/')
+
+    await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'p edited-while-running')
+    const res = await app.request('/')
+
+    await expect(res.text()).resolves.not.toContain('edited-while-running')
   })
 
   it('serves the client bundle from the assets route', async () => {
@@ -102,8 +155,10 @@ describe('createApp', () => {
     await expect(fs.readFile(path.join(docsRoot, 'wired.md'), 'utf8')).resolves.toBe('# wired')
   })
 
-  it('defaults the public directory when none is given', async () => {
-    const res = await createApp(configFor()).request('/')
+  it('builds a working app when the public directory is left to its default', async () => {
+    // Asserting on a file under ./public would couple this to whether the repo
+    // has been built, so this only exercises the default-argument path.
+    const res = await createApp(configFor()).request('/api/health')
 
     expect(res.status).toBe(200)
   })

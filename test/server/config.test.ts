@@ -12,6 +12,7 @@ describe('loadConfig', () => {
       port: 3000,
       host: '0.0.0.0',
       docsRoot: './data/docs',
+      templatesDir: './src/templates',
       logLevel: 'info',
       nodeEnv: 'development',
     })
@@ -22,6 +23,7 @@ describe('loadConfig', () => {
       PORT: '8080',
       HOST: '127.0.0.1',
       DOCS_ROOT: '/data/docs',
+      TEMPLATES_DIR: '/srv/templates',
       LOG_LEVEL: 'debug',
       NODE_ENV: 'production',
     })
@@ -30,6 +32,7 @@ describe('loadConfig', () => {
       port: 8080,
       host: '127.0.0.1',
       docsRoot: '/data/docs',
+      templatesDir: '/srv/templates',
       logLevel: 'debug',
       nodeEnv: 'production',
     })

@@ -14,15 +14,18 @@ import { createFsDocumentStore, type DocumentStore } from '../../src/server/stor
 let workspace: string
 let publicDir: string
 let docsRoot: string
+let templatesDir: string
 let store: DocumentStore
 
 beforeEach(async () => {
   workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-clacks-'))
   publicDir = path.join(workspace, 'public')
   docsRoot = path.join(workspace, 'docs')
+  templatesDir = path.join(workspace, 'templates')
   await fs.mkdir(path.join(publicDir, 'assets'), { recursive: true })
-  await fs.writeFile(path.join(publicDir, 'index.html'), '<!doctype html><title>vixen</title>')
+  await fs.mkdir(templatesDir, { recursive: true })
   await fs.writeFile(path.join(publicDir, 'assets', 'main.js'), 'export const built = true')
+  await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'h1= title')
   store = createFsDocumentStore(docsRoot)
 })
 
@@ -31,7 +34,7 @@ afterEach(async () => {
 })
 
 function configFor(): Config {
-  return { port: 3000, host: '0.0.0.0', docsRoot, logLevel: 'info', nodeEnv: 'test' }
+  return { port: 3000, host: '0.0.0.0', docsRoot, templatesDir, logLevel: 'info', nodeEnv: 'test' }
 }
 
 function failingStore(): DocumentStore {

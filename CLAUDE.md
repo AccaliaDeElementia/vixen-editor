@@ -220,9 +220,11 @@ src/
     main.ts       composition root: createApp / startServer
   client/         CodeMirror 6 editor and API client
     main.ts       browser entry point; one line, no wiring
-    editor/       decorations, api client, session, bootstrap
+    editor/       decorations, api client, session, bootstrap, highlight
+  styles/         SCSS; compiled to public/assets/main.css
+  templates/      Pug; rendered by the server at request time
 scripts/          build and dev entry points — tooling, not shipped app code
-public/           static page; client bundle is emitted to public/assets/
+public/           assets/ only — the client bundle and stylesheet, both built
 test/             Vitest: server (node), client (happy-dom), conventions (node)
 test-browser/     Playwright: real-browser rendering, and the built server
 ```
@@ -328,6 +330,14 @@ if any does not.
   API _and_ a typescript-eslint release supports it.
 - **Imports carry the `.ts` extension.** Node's type stripping and esbuild both
   resolve the real on-disk path, which is why `allowImportingTsExtensions` is on.
+- **Markup is Pug**, in `src/templates/`, rendered by the server at request time
+  through `createTemplateRenderer` in `src/server/templates.ts`. Templates are
+  compiled on demand and **cached only in production**, so an edit shows up on
+  the next request without a restart. The directory is `TEMPLATES_DIR`; the
+  Docker image copies the templates to `./templates` and sets it, so the code
+  never carries two defaults. Rendering at request time is deliberate — it is
+  what will let a future SPA merge these same templates with data on the client
+  rather than round-tripping for markup.
 - **Styles are SCSS**, authored in `src/styles/` and compiled by `sass` to
   `public/assets/main.css` in `scripts/build.ts`. The theme is Bootswatch
   Darkly; `_tokens.scss` keeps the upstream variable names so it can be diffed
@@ -342,9 +352,12 @@ if any does not.
   `HighlightStyle` on the Darkly ramp instead. Theme changes touching token
   colours belong there, not in SCSS.
 - **The server is bundled, not just the client.** esbuild inlines every
-  dependency so the runtime Docker stage ships `dist/` and `public/` with no
-  `node_modules`. Adding a native dependency breaks this and it must then move
-  to `external`.
+  dependency so the runtime Docker stage ships `dist/`, `public/` and
+  `templates/` with no `node_modules`. Adding a native dependency breaks this
+  and it must then move to `external`. `pug` was checked against this: it
+  bundles cleanly and renders with no `node_modules` present, because nothing
+  here uses `:filter` syntax — that is the only path reaching `jstransformer`'s
+  dynamic `require`.
 - **`eslint-config-love` is strict by design** and expects local relaxation.
   Three rules are relaxed project-wide, each justified in `eslint.config.js`.
   Prefer fixing the code over adding a fourth.

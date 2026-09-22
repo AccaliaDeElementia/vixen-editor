@@ -16,6 +16,7 @@ export interface Config {
   port: number
   host: string
   docsRoot: string
+  templatesDir: string
   logLevel: LogLevel
   nodeEnv: NodeEnv
 }
@@ -28,6 +29,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(MIN_PORT).max(MAX_PORT).default(DEFAULT_PORT),
   HOST: z.string().min(1).default('0.0.0.0'),
   DOCS_ROOT: z.string().min(1).default('./data/docs'),
+  TEMPLATES_DIR: z.string().min(1).default('./src/templates'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   NODE_ENV: z.enum(NODE_ENVS).default('development'),
 })
@@ -47,6 +49,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     port: result.data.PORT,
     host: result.data.HOST,
     docsRoot: result.data.DOCS_ROOT,
+    templatesDir: result.data.TEMPLATES_DIR,
     logLevel: result.data.LOG_LEVEL,
     nodeEnv: result.data.NODE_ENV,
   }
