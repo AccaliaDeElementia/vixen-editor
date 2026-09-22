@@ -174,6 +174,36 @@ buffered earlier in the request — and that is the path a malformed JSON body
 takes, so the gap is reachable from any client. `test/server/clacks.test.ts`
 covers that case specifically.
 
+## UI state
+
+Explorer width and open/closed state persist in **`localStorage`** under
+`vixen-editor:explorer`, via `src/client/layout/preferences.ts`.
+
+`localStorage`, not `sessionStorage`: sessionStorage is cleared when the tab
+closes, so a width would survive a reload but not a browser relaunch — losing
+it on relaunch is the behaviour this exists to avoid.
+
+**Stored widths are clamped on _read_, not only on write.** Storage outlives
+the window it was written in: a width saved on a wide monitor can exceed 80% of
+a laptop viewport on the next load and would push the editor off-screen. The
+same clamp handles a corrupted oversized value, so the two cases need no
+separate handling.
+
+`readPreferences` and `writePreferences` are **total** — merely reaching for
+`localStorage` throws when site data is blocked, so even the property access is
+guarded. Malformed JSON, the wrong shape, and negative / `NaN` / infinite
+widths all fall back to the defaults. A blocked or full quota costs a
+remembered width, never a working editor.
+
+On load the page paints at the `20em` CSS default and snaps to the stored width
+once the bundle runs. That flicker is accepted: removing it needs an inline
+`<head>` script, which would put layout logic outside eslint, tsc and the
+coverage gate.
+
+**Grid columns are placed explicitly** (`grid-column: 1/2/3`). When the
+explorer is hidden it leaves the grid flow entirely, and with auto-placement
+the workspace slides into the collapsed `0`-width track and the editor vanishes.
+
 ## Logging
 
 **Nothing writes to `stdout` or `stderr` directly.** No `console.*` in shipped

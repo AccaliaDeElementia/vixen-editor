@@ -13,6 +13,9 @@
 }
 
 .ribbon {
+  // Explicit placement: when the explorer is hidden it leaves the grid flow,
+  // and auto-placement would slide the workspace into the collapsed track.
+  grid-column: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -59,6 +62,7 @@
 }
 
 .explorer {
+  grid-column: 2;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -108,6 +112,7 @@
 }
 
 .workspace {
+  grid-column: 3;
   display: flex;
   flex-direction: column;
   min-width: 0;
