@@ -8,12 +8,12 @@ html(lang='en')
     link(rel='preconnect' href='https://fonts.googleapis.com')
     link(rel='preconnect' href='https://fonts.gstatic.com' crossorigin)
     link(rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap')
+    link(rel='preload' href='/assets/material-symbols-outlined.woff2' as='font' type='font/woff2' crossorigin)
     link(rel='stylesheet' href='/assets/main.css')
     block head
   body
-    header
-      h1= title
-      span#status Loading…
-    main
+    .app#app(data-explorer='open')
+      include _ribbon.pug
+      include _explorer.pug
       block content
     script(type='module' src='/assets/main.js')

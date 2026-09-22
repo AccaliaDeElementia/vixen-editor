@@ -1,6 +1,6 @@
 'use sanity'
 
-import { mkdir, writeFile } from 'node:fs/promises'
+import { cp, mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { build } from 'esbuild'
@@ -10,6 +10,9 @@ const production = process.env.NODE_ENV === 'production'
 
 const STYLE_ENTRY = 'src/styles/main.scss'
 const STYLE_OUTPUT = 'public/assets/main.css'
+
+const ASSET_SOURCE = 'src/assets'
+const ASSET_OUTPUT = 'public/assets'
 
 const cjsInteropBanner = [
   "import { createRequire as __vixenCreateRequire } from 'node:module'",
@@ -60,12 +63,17 @@ export async function buildStyles(): Promise<void> {
   ])
 }
 
+export async function buildAssets(): Promise<void> {
+  await mkdir(ASSET_OUTPUT, { recursive: true })
+  await cp(ASSET_SOURCE, ASSET_OUTPUT, { recursive: true })
+}
+
 export async function buildDevAssets(): Promise<void> {
-  await Promise.all([buildClient(), buildStyles()])
+  await Promise.all([buildClient(), buildStyles(), buildAssets()])
 }
 
 export async function buildAll(): Promise<void> {
-  await Promise.all([buildClient(), buildStyles(), buildServer()])
+  await Promise.all([buildClient(), buildStyles(), buildAssets(), buildServer()])
 }
 
 /* v8 ignore next 3 -- runs only when this file is the process entry point; the

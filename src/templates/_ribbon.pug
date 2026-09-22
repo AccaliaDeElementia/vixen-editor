@@ -1,0 +1,13 @@
+nav.ribbon(aria-label='Primary')
+  button.ribbon__button#nav-back(type='button' aria-label='Back' disabled aria-disabled='true')
+    span.icon(aria-hidden='true') arrow_back
+  button.ribbon__button#nav-forward(type='button' aria-label='Forward' disabled aria-disabled='true')
+    span.icon(aria-hidden='true') arrow_forward
+  button.ribbon__button#toggle-explorer(
+    type='button'
+    aria-label='Toggle file browser'
+    aria-controls='explorer'
+    aria-expanded='true'
+    aria-pressed='true'
+  )
+    span.icon(aria-hidden='true') library_books

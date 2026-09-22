@@ -230,8 +230,10 @@ src/
   client/         CodeMirror 6 editor and API client
     main.ts       browser entry point; one line, no wiring
     editor/       decorations, api client, session, bootstrap, highlight
+    layout/       three-column shell: toast, explorer, ribbon wiring
   styles/         SCSS; compiled to public/assets/main.css
-  templates/      Pug; rendered by the server at request time
+  templates/      Pug; layout.pug plus _ribbon/_explorer partials
+  assets/         binary source assets, copied verbatim to public/assets/
 scripts/          build and dev entry points — tooling, not shipped app code
 public/           assets/ only — the client bundle and stylesheet, both built
 test/             Vitest: server (node), client (happy-dom), conventions (node)
@@ -339,6 +341,16 @@ if any does not.
   API _and_ a typescript-eslint release supports it.
 - **Imports carry the `.ts` extension.** Node's type stripping and esbuild both
   resolve the real on-disk path, which is why `allowImportingTsExtensions` is on.
+- **Icons are a self-hosted Material Symbols font**, `src/assets/` copied to
+  `public/assets/` by `buildAssets()`. It ships **unsubsetted (316 KB) on
+  purpose**: a subset is 1.6 KB but must be regenerated whenever an icon is
+  added, and forgetting renders a blank glyph with no error. Do not "optimise"
+  it into that footgun. `test-browser/layout.spec.ts` asserts the font actually
+  loads, because a broken `@font-face` path renders the literal ligature text
+  (`library_books`) instead of a glyph.
+- **`public/` is entirely generated.** Source assets belong in `src/assets/`;
+  anything written directly into `public/assets/` is lost on the next build and
+  cannot be committed, since that directory is gitignored.
 - **Markup is Pug**, in `src/templates/`, rendered by the server at request time
   through `createTemplateRenderer` in `src/server/templates.ts`. Templates are
   compiled on demand and **cached only in production**, so an edit shows up on

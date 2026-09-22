@@ -1,4 +1,6 @@
 extends layout
 
 block content
-  #editor
+  section.workspace(aria-label='Editor')
+    #editor
+    output.toast#status(role='status' aria-live='polite' data-visible='false')

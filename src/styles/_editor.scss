@@ -7,17 +7,16 @@
 
 #editor {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius;
+  background: $body-bg;
 }
 
 .cm-editor {
   height: 100%;
   font-size: $font-size-base;
   color: $body-color;
-  background: $surface;
+  background: $body-bg;
 
   &.cm-focused {
     outline: 2px solid $primary;

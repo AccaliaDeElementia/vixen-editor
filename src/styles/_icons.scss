@@ -1,0 +1,27 @@
+// Self-hosted so icons work offline and in a disconnected container. The full
+// font ships unsubsetted on purpose: a subset would need regenerating whenever
+// an icon is added, and forgetting renders a blank glyph with no error.
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/assets/material-symbols-outlined.woff2') format('woff2');
+}
+
+.icon {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}

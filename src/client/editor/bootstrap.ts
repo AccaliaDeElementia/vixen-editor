@@ -5,11 +5,13 @@ import { basicSetup } from 'codemirror'
 
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
+import { createToast } from '../layout/toast.ts'
+
 import { createSession, type Session } from './session.ts'
 
 export const DEFAULT_DOCUMENT = 'welcome.md'
 export const MOUNT_SELECTOR = '#editor'
-export const STATUS_SELECTOR = '#status'
+export { TOAST_SELECTOR as STATUS_SELECTOR } from '../layout/toast.ts'
 export const DOCUMENT_QUERY_PARAM = 'doc'
 export const SAVE_KEY = 'Mod-s'
 
@@ -40,9 +42,9 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<EditorV
   const search = options.search ?? window.location.search
   const session = options.session ?? createSession(createDocumentClient())
 
-  const statusElement = root.querySelector(STATUS_SELECTOR)
+  const toast = createToast(root)
   const setStatus = (text: string): void => {
-    if (statusElement !== null) statusElement.textContent = text
+    toast.show(text)
   }
 
   const mount = root.querySelector(MOUNT_SELECTOR)
@@ -79,8 +81,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<EditorV
 
 export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise<EditorView | null> {
   return await bootstrap(options).catch((error: unknown) => {
-    const statusElement = (options.root ?? document).querySelector(STATUS_SELECTOR)
-    if (statusElement !== null) statusElement.textContent = `Failed to start: ${describeError(error)}`
+    createToast(options.root ?? document).show(`Failed to start: ${describeError(error)}`)
     return null
   })
 }

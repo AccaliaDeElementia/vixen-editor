@@ -31,8 +31,25 @@ test('renders the editor page from the pug template', async ({ request }) => {
   expect(html).toContain('id="editor"')
   // Rendered, not served from disk: the title comes from a template local, and
   // pug emits a minified doctype that the old static file did not.
-  expect(html).toContain('<h1>Vixen Editor</h1>')
+  expect(html).toContain('<title>Vixen Editor</title>')
   expect(html.startsWith('<!DOCTYPE html>')).toBe(true)
+})
+
+test('renders all three columns and no header or footer', async ({ request }) => {
+  const html = await (await request.get('/')).text()
+
+  expect(html).toContain('class="ribbon"')
+  expect(html).toContain('id="explorer"')
+  expect(html).toContain('class="workspace"')
+  expect(html).not.toContain('<header')
+  expect(html).not.toContain('<footer')
+})
+
+test('serves the self-hosted icon font', async ({ request }) => {
+  const res = await request.get('/assets/material-symbols-outlined.woff2')
+
+  expect(res.status()).toBe(200)
+  expect((await res.body()).subarray(0, 4).toString('latin1')).toBe('wOF2')
 })
 
 test('serves the compiled stylesheet at the path the page asks for', async ({ request }) => {
