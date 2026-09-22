@@ -87,7 +87,7 @@ describe('GET /api/documents/:id', () => {
   })
 
   it('returns 400 for an invalid id', async () => {
-    const res = await app.request('/api/documents/notes.txt')
+    const res = await app.request('/api/documents/notes.zip')
 
     expect(res.status).toBe(400)
   })
@@ -99,7 +99,7 @@ describe('GET /api/documents/:id', () => {
   })
 
   it('does not disclose the document root in an error response', async () => {
-    const res = await app.request('/api/documents/notes.txt')
+    const res = await app.request('/api/documents/notes.zip')
 
     await expect(res.text()).resolves.not.toContain(root)
   })
@@ -136,7 +136,7 @@ describe('PUT /api/documents/:id', () => {
   })
 
   it('returns 400 for an invalid id', async () => {
-    expect((await put('notes.txt', 'x')).status).toBe(400)
+    expect((await put('notes.zip', 'x')).status).toBe(400)
   })
 
   it('returns 400 for an encoded traversal attempt', async () => {
@@ -197,7 +197,7 @@ describe('DELETE /api/documents/:id', () => {
   })
 
   it('returns 400 for an invalid id', async () => {
-    const res = await app.request('/api/documents/notes.txt', { method: 'DELETE' })
+    const res = await app.request('/api/documents/notes.zip', { method: 'DELETE' })
 
     expect(res.status).toBe(400)
   })

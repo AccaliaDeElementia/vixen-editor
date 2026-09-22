@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { compileFile, type compileTemplate } from 'pug'
 
-import { hasErrorCode } from './storage/fs-store.ts'
+import { hasErrorCode } from './errors.ts'
 
 const TEMPLATE_EXTENSION = '.pug'
 const ABSENT_CODES = ['ENOENT', 'ENOTDIR'] as const

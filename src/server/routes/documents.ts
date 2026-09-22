@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 import { toError } from '../errors.ts'
 import { DocumentNotFoundError, type DocumentStore } from '../storage/fs-store.ts'
-import { InvalidDocumentIdError } from '../storage/safe-path.ts'
+import { InvalidPathError } from '../storage/safe-path.ts'
 
 const HTTP_OK = 200
 const HTTP_NO_CONTENT = 204
@@ -19,7 +19,7 @@ const MARKDOWN_CONTENT_TYPE = 'text/markdown; charset=utf-8'
 const writeBodySchema = z.object({ content: z.string() })
 
 function toErrorResponse(c: Context, error: unknown): Response {
-  if (error instanceof InvalidDocumentIdError) {
+  if (error instanceof InvalidPathError) {
     return c.json({ error: 'Invalid document id' }, HTTP_BAD_REQUEST)
   }
   if (error instanceof DocumentNotFoundError) {

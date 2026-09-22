@@ -88,7 +88,7 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 400 for a rejected document id', async () => {
-    const res = await buildApp({ store }).request('/api/documents/evil.txt')
+    const res = await buildApp({ store }).request('/api/documents/evil.zip')
 
     expect(res.status).toBe(400)
     expect(clacksOf(res)).toBe(CLACKS_VALUE)

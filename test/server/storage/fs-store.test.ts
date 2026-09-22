@@ -11,7 +11,7 @@ import {
   DocumentNotFoundError,
   type DocumentStore,
 } from '../../../src/server/storage/fs-store.ts'
-import { InvalidDocumentIdError } from '../../../src/server/storage/safe-path.ts'
+import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 
 let root: string
 let outside: string
@@ -70,7 +70,21 @@ describe('write', () => {
   })
 
   it('rejects an invalid id', async () => {
-    await expect(store.write('../escape.md', 'x')).rejects.toThrow(InvalidDocumentIdError)
+    await expect(store.write('../escape.md', 'x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('stores a plain text document', async () => {
+    await store.write('notes.txt', 'plain')
+
+    await expect(store.read('notes.txt')).resolves.toBe('plain')
+  })
+
+  it('refuses to create a hidden document the listing would then never show', async () => {
+    await expect(store.write('.hidden.md', 'x')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('refuses to write into the trash, which is not addressable through the document API', async () => {
+    await expect(store.write('.trash/evil.md', 'x')).rejects.toThrow(InvalidPathError)
   })
 })
 
@@ -96,7 +110,7 @@ describe('read', () => {
   })
 
   it('rejects an invalid id', async () => {
-    await expect(store.read('../../etc/passwd.md')).rejects.toThrow(InvalidDocumentIdError)
+    await expect(store.read('../../etc/passwd.md')).rejects.toThrow(InvalidPathError)
   })
 
   it('surfaces a genuine filesystem fault rather than reporting it as missing', async () => {
@@ -108,14 +122,14 @@ describe('read', () => {
     await fs.writeFile(path.join(outside, 'secret.md'), 'classified')
     await fs.symlink(path.join(outside, 'secret.md'), path.join(root, 'innocent.md'))
 
-    await expect(store.read('innocent.md')).rejects.toThrow(InvalidDocumentIdError)
+    await expect(store.read('innocent.md')).rejects.toThrow(InvalidPathError)
   })
 
   it('refuses to read through a symlinked directory that escapes the root', async () => {
     await fs.writeFile(path.join(outside, 'secret.md'), 'classified')
     await fs.symlink(outside, path.join(root, 'link'))
 
-    await expect(store.read('link/secret.md')).rejects.toThrow(InvalidDocumentIdError)
+    await expect(store.read('link/secret.md')).rejects.toThrow(InvalidPathError)
   })
 
   it('allows a symlink that stays inside the root', async () => {
@@ -157,7 +171,14 @@ describe('list', () => {
     await expect(store.list()).resolves.toStrictEqual(['journal/2026/september.md'])
   })
 
-  it('ignores files that are not markdown', async () => {
+  it('lists plain text alongside markdown, because both are documents', async () => {
+    await store.write('notes.md', '')
+    await store.write('notes.txt', '')
+
+    await expect(store.list()).resolves.toStrictEqual(['notes.md', 'notes.txt'])
+  })
+
+  it('ignores files that are not documents', async () => {
     await store.write('notes.md', '')
     await fs.writeFile(path.join(root, 'image.png'), '')
     await fs.writeFile(path.join(root, 'README'), '')
@@ -188,7 +209,7 @@ describe('remove', () => {
   })
 
   it('rejects an invalid id', async () => {
-    await expect(store.remove('../escape.md')).rejects.toThrow(InvalidDocumentIdError)
+    await expect(store.remove('../escape.md')).rejects.toThrow(InvalidPathError)
   })
 
   it('leaves other documents untouched', async () => {
