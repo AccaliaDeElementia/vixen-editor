@@ -7,7 +7,7 @@ import type { Hono } from 'hono'
 
 import { buildApp } from './app.ts'
 import { loadConfig, type Config } from './config.ts'
-import { createLogger } from './logging.ts'
+import { applyDebugFilter, createLogger } from './logging.ts'
 import { createFsDocumentStore } from './storage/fs-store.ts'
 import { createTemplateRenderer } from './templates.ts'
 
@@ -46,6 +46,7 @@ export const defaultRuntime: Runtime = {
 
 export function startServer(runtime: Runtime = defaultRuntime): ReturnType<typeof serve> {
   runtime.loadEnvFile()
+  applyDebugFilter(runtime.env)
 
   const config = loadConfig(runtime.env)
   const app = createApp(config, runtime.publicDir)

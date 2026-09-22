@@ -2,7 +2,13 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { createLogger, loggerNamespace } from '../../src/server/logging.ts'
+import { afterEach } from 'vitest'
+
+import { applyDebugFilter, createLogger, loggerNamespace } from '../../src/server/logging.ts'
+
+afterEach(() => {
+  applyDebugFilter({})
+})
 
 describe('loggerNamespace', () => {
   it('scopes a module under the project root', () => {
@@ -36,5 +42,50 @@ describe('createLogger', () => {
     log('this must not reach any stream %o', { secret: 'value' })
 
     expect(log.enabled).toBe(false)
+  })
+})
+
+describe('applyDebugFilter', () => {
+  it('enables a logger that already existed before DEBUG was known', () => {
+    const existing = createLogger('main', 'startServer')
+    expect(existing.enabled).toBeFalsy()
+
+    applyDebugFilter({ DEBUG: 'vixen-editor:*' })
+
+    expect(existing.enabled).toBe(true)
+  })
+
+  it('honours a narrow filter across loggers created earlier', () => {
+    const store = createLogger('storage/fs-store')
+    const startup = createLogger('main', 'startServer')
+
+    applyDebugFilter({ DEBUG: 'vixen-editor:storage/*' })
+
+    expect(store.enabled).toBe(true)
+    expect(startup.enabled).toBe(false)
+  })
+
+  it('silences everything when DEBUG is absent', () => {
+    const logger = createLogger('app', 'onError')
+    applyDebugFilter({ DEBUG: 'vixen-editor:*' })
+
+    applyDebugFilter({})
+
+    expect(logger.enabled).toBe(false)
+  })
+
+  it('silences everything when DEBUG is empty', () => {
+    const logger = createLogger('app', 'onError')
+    applyDebugFilter({ DEBUG: 'vixen-editor:*' })
+
+    applyDebugFilter({ DEBUG: '' })
+
+    expect(logger.enabled).toBe(false)
+  })
+
+  it('reads process.env when given no argument', () => {
+    expect(() => {
+      applyDebugFilter()
+    }).not.toThrow()
   })
 })

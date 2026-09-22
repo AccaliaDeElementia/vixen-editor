@@ -199,6 +199,15 @@ path under `src/server/`. That makes `DEBUG` a precise filter:
 | `vixen-editor:storage/*`   | the document store only         |
 | `vixen-editor:app:onError` | unhandled request failures only |
 
+**`DEBUG` has to be re-applied after `.env` loads.** `debug` decides whether a
+namespace is on at the moment each logger is created, and every logger here is
+created at module-import time — long before `startServer` calls
+`loadEnvFile()`. Without a refresh, a `DEBUG` set in `.env` arrives too late and
+is silently ignored, while the same value exported in the shell works fine.
+`startServer` calls `applyDebugFilter(runtime.env)` immediately after loading
+the env file; `debug.enable()` retroactively updates loggers that already exist.
+Anything else that mutates `DEBUG` at runtime must do the same.
+
 **The test suite must be completely silent.** `test/server/console-silence.test.ts`
 spies on every `console` method and asserts zero calls, and `vitest.config.ts`
 forces `DEBUG=''` so silence does not depend on the developer's shell.

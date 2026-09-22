@@ -8,6 +8,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { ConfigError, type Config } from '../../src/server/config.ts'
+import { applyDebugFilter, createLogger } from '../../src/server/logging.ts'
 import {
   APP_TITLE,
   createApp,
@@ -176,6 +177,30 @@ describe('startServer', () => {
 
     expect(order).toStrictEqual(['loadEnvFile', 'serve'])
     expect(recorded[0]?.options.port).toBe(4321)
+  })
+
+  it('applies DEBUG from the env file, so a .env value reaches loggers made at import time', () => {
+    const { runtime, order } = recordingRuntime()
+    const alreadyCreated = createLogger('main', 'startServer')
+    runtime.loadEnvFile = () => {
+      order.push('loadEnvFile')
+      runtime.env.DEBUG = 'vixen-editor:*'
+    }
+    expect(alreadyCreated.enabled).toBeFalsy()
+
+    startServer(runtime)
+
+    expect(alreadyCreated.enabled).toBe(true)
+    applyDebugFilter({})
+  })
+
+  it('leaves loggers silent when the env file sets no DEBUG', () => {
+    const { runtime } = recordingRuntime()
+    const alreadyCreated = createLogger('main', 'startServer')
+
+    startServer(runtime)
+
+    expect(alreadyCreated.enabled).toBe(false)
   })
 
   it('passes the configured port and hostname to serve', () => {
