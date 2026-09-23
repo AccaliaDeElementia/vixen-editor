@@ -286,6 +286,42 @@ mirroring store paths so the transform stays a prefix.
 **Known consequence:** a rename does not update the documents that link to the
 renamed file. Those links break. That is a live defect, not a design choice.
 
+### Every write lands whole
+
+Nothing in `src/` calls `writeFile` on a store path. Writes go through
+`replaceFileAtomic` or `createFileAtomic` in `src/server/storage/atomic-write.ts`,
+which write a sibling temporary, `fsync` it, then put it in place with
+`rename` (replace) or `link` (create only, `EEXIST` when the name is taken).
+`link` is not interchangeable with `rename` here: `rename` would silently
+clobber. `test/conventions/project-rules.test.ts` fails the gate on a direct
+write anywhere else.
+
+The point is the failure mode, not the happy path. A truncating in-place write
+that is interrupted leaves **half a document** — the editor's own content,
+destroyed by the editor. Through a temporary, the previous version survives
+every failure, and the caller is told the write failed.
+
+**Cleanup covers filling the temporary, not just putting it in place.** The
+file exists from the moment it is opened, so a failure part way through
+writing it is a different case from a failure to create it — and `ENOSPC` is
+that case. A temporary leaked there consumes the very space whose exhaustion
+caused the failure, so each failed save would make the next one likelier.
+
+That leaves a killed process as the **only** way a `.vixen-*.tmp` outlives its
+write: every error path removes its own. Nothing collects those orphans yet —
+a recorded follow-up, and a startup sweep is the only thing that can, since a
+crashed instance is not around to tidy up after itself.
+
+Which makes the name load-bearing. `isAllowedName` refuses a leading dot, so
+an orphan is invisible to the tree, the document list and the archive rather
+than appearing as a mystery document. It carries **no part of the target's
+name**, because a name of exactly `NAME_MAX` bytes is legal here and anything
+derived from it would exceed the limit and fail a write the validator had
+accepted.
+
+Both helpers are on one filesystem by construction — the temporary is a
+sibling — since `rename` and `link` both require that.
+
 ### Deleting goes to the trash
 
 `.trash/<uuid>/` holds `meta.json` and a payload under the fixed name

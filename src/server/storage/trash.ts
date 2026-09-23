@@ -6,6 +6,7 @@ import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
 
+import { createFileAtomic } from './atomic-write.ts'
 import { nullWhenAbsent } from './containment.ts'
 import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { asDocumentError, DocumentNotFoundError, EntryExistsError } from './store-errors.ts'
@@ -104,7 +105,7 @@ export async function moveToTrash(root: string, entryPath: string): Promise<stri
   await fs.mkdir(directory, { recursive: true })
 
   const meta = { originalPath: entryPath, deletedAt: new Date().toISOString(), kind }
-  await fs.writeFile(path.join(directory, TRASH_META_NAME), JSON.stringify(meta), 'utf8')
+  await createFileAtomic(path.join(directory, TRASH_META_NAME), JSON.stringify(meta))
   await fs.rename(target, path.join(directory, TRASH_PAYLOAD_NAME))
 
   logTrash('trashed %s as %s', entryPath, id)

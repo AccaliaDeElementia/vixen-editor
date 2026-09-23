@@ -7,6 +7,7 @@ import path from 'node:path'
 import { createLogger } from '../logging.ts'
 
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
+import { createFileAtomic, replaceFileAtomic } from './atomic-write.ts'
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
 import { etagOf } from './etag.ts'
 import { createWriteLock, type WriteLock } from './lock.ts'
@@ -147,7 +148,7 @@ export function createFsDocumentStore(
         const current = await readDocument(id, target)
         if (etagOf(current) !== expectedEtag) throw new ConcurrentModificationError(id)
 
-        await fs.writeFile(target, content, 'utf8')
+        await replaceFileAtomic(target, content)
         logStore('updated %s (%d bytes)', id, content.length)
         return etagOf(content)
       })
@@ -164,7 +165,7 @@ export function createFsDocumentStore(
         await assertResolvesInsideRoot(root, id, parent)
 
         try {
-          await fs.writeFile(target, content, { encoding: 'utf8', flag: 'wx' })
+          await createFileAtomic(target, content)
         } catch (error) {
           throw asExistsError(id, error)
         }
@@ -188,7 +189,7 @@ export function createFsDocumentStore(
         } catch (error) {
           throw asExistsError(folderPath, error)
         }
-        await fs.writeFile(path.join(target, FOLDER_INDEX_NAME), indexContent, { encoding: 'utf8', flag: 'wx' })
+        await createFileAtomic(path.join(target, FOLDER_INDEX_NAME), indexContent)
         logStore('created folder %s', folderPath)
         return etagOf(indexContent)
       })
@@ -208,7 +209,7 @@ export function createFsDocumentStore(
         await assertResolvesInsideRoot(root, entryPath, parent)
 
         try {
-          await fs.writeFile(target, bytes, { flag: 'wx' })
+          await createFileAtomic(target, bytes)
         } catch (error) {
           throw asExistsError(entryPath, error)
         }

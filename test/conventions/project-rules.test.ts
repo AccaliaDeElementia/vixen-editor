@@ -20,6 +20,9 @@ const DEFAULT_EXPORT_ALLOWLIST = ['eslint.config.js', 'test-browser/playwright.c
 
 const SCANNER = 'test/conventions/project-rules.test.ts'
 
+const ATOMIC_WRITE = 'src/server/storage/atomic-write.ts'
+const DIRECT_WRITE = /\bwriteFile\(/u
+
 const SUPPRESSION = /eslint-disable|v8 ignore/u
 const CLOSES_COVERAGE_REGION = /v8 ignore (?:stop|end)/u
 const RATIONALE = /--\s*\S/u
@@ -156,6 +159,23 @@ describe('rule 5: every tooling suppression carries a rationale', () => {
     const found = scannable().filter((source) => SUPPRESSION.test(source.contents))
 
     expect(found.length).toBeGreaterThan(0)
+  })
+})
+
+describe('every store write goes through the atomic helpers', () => {
+  it('leaves no direct write to a document, image or metadata file', () => {
+    const offenders = scannable()
+      .filter((source) => source.relativePath.startsWith('src/') && source.relativePath !== ATOMIC_WRITE)
+      .filter((source) => DIRECT_WRITE.test(source.contents))
+      .map((source) => source.relativePath)
+
+    expect(offenders).toStrictEqual([])
+  })
+
+  it('matches the writes the helpers themselves perform, so the scan is not looking for nothing', () => {
+    const helpers = sources.find((source) => source.relativePath === ATOMIC_WRITE)
+
+    expect(helpers?.contents).toMatch(DIRECT_WRITE)
   })
 })
 
