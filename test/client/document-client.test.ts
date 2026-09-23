@@ -242,7 +242,7 @@ describe('remove', () => {
 
     await client().remove('notes.md')
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/documents/notes.md', expect.objectContaining({ method: 'DELETE' }))
+    expect(fetchMock).toHaveBeenCalledWith('/api/files/entries/notes.md', expect.objectContaining({ method: 'DELETE' }))
   })
 
   it('throws on a rejected delete', async () => {

@@ -90,7 +90,11 @@ test('round-trips a document through the real process', async ({ request }) => {
   expect(read.status()).toBe(200)
   expect(await read.text()).toBe('# edited')
 
-  expect((await request.delete(`/api/documents/${id}`)).status()).toBe(204)
+  const trashed = await request.delete(`/api/files/entries/${id}`)
+  expect(trashed.status()).toBe(200)
+
+  const { trashId } = (await trashed.json()) as { trashId: string }
+  expect((await request.delete(`/api/trash/${trashId}`)).status()).toBe(204)
 })
 
 test('rejects a stale save against the real process', async ({ request }) => {
@@ -107,7 +111,7 @@ test('rejects a stale save against the real process', async ({ request }) => {
 
   expect(stale.status()).toBe(412)
   expect(await request.get(`/api/documents/${id}`).then(async (r) => await r.text())).toBe('# theirs')
-  await request.delete(`/api/documents/${id}`)
+  await request.delete(`/api/files/entries/${id}`)
 })
 
 test('rejects a traversal attempt against the real process', async ({ request }) => {

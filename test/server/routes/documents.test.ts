@@ -254,35 +254,6 @@ describe('PUT /api/documents/:id', () => {
   })
 })
 
-describe('DELETE /api/documents/:id', () => {
-  it('deletes a document and returns 204', async () => {
-    await store.createDocument('notes.md', 'x')
-
-    const res = await app.request('/api/documents/notes.md', { method: 'DELETE' })
-
-    expect(res.status).toBe(204)
-    await expect(store.list()).resolves.toStrictEqual([])
-  })
-
-  it('returns 404 for a missing document', async () => {
-    const res = await app.request('/api/documents/missing.md', { method: 'DELETE' })
-
-    expect(res.status).toBe(404)
-  })
-
-  it('returns 400 for an invalid id', async () => {
-    const res = await app.request('/api/documents/notes.zip', { method: 'DELETE' })
-
-    expect(res.status).toBe(400)
-  })
-
-  it('returns 400 for an encoded traversal attempt', async () => {
-    const res = await app.request('/api/documents/..%2F..%2Fescape.md', { method: 'DELETE' })
-
-    expect(res.status).toBe(400)
-  })
-})
-
 describe('unknown routes', () => {
   it('returns 404 for an unknown api route', async () => {
     const res = await app.request('/api/nope')

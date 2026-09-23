@@ -22,7 +22,7 @@ export interface DocumentClient {
   read: (id: string) => Promise<LoadedDocument>
   create: (id: string, content: string) => Promise<string>
   save: (id: string, content: string, etag: string) => Promise<string>
-  remove: (id: string) => Promise<void>
+  remove: (entryPath: string) => Promise<void>
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -108,8 +108,10 @@ export function createDocumentClient(fetchImpl: typeof fetch = globalThis.fetch,
       return etagOf(response)
     },
 
-    async remove(id: string): Promise<void> {
-      const response = await retrying(`${documentsUrl}/${encodeDocumentId(id)}`, { method: 'DELETE' })
+    // Deleting goes to the trash rather than removing bytes, so it is the file
+    // API that owns it; the document API has no delete at all.
+    async remove(entryPath: string): Promise<void> {
+      const response = await retrying(`${baseUrl}/files/entries/${encodeDocumentId(entryPath)}`, { method: 'DELETE' })
       if (!response.ok) await throwRequestError(response)
     },
   }

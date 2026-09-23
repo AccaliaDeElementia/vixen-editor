@@ -6,16 +6,14 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { createFsDocumentStore, FOLDER_INDEX_NAME, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import {
   ConcurrentModificationError,
   ContentMismatchError,
-  createFsDocumentStore,
   DocumentNotFoundError,
   EmptyContentError,
   EntryExistsError,
-  FOLDER_INDEX_NAME,
-  type DocumentStore,
-} from '../../../src/server/storage/fs-store.ts'
+} from '../../../src/server/storage/store-errors.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 
 let root: string
@@ -140,31 +138,6 @@ describe('list', () => {
     await fs.writeFile(path.join(root, '.git', 'config.md'), '')
 
     await expect(store.list()).resolves.toStrictEqual(['notes.md'])
-  })
-})
-
-describe('remove', () => {
-  it('deletes a document', async () => {
-    await store.createDocument('notes.md', 'x')
-    await store.remove('notes.md')
-
-    await expect(store.read('notes.md')).rejects.toThrow(DocumentNotFoundError)
-  })
-
-  it('throws DocumentNotFoundError for a missing document', async () => {
-    await expect(store.remove('missing.md')).rejects.toThrow(DocumentNotFoundError)
-  })
-
-  it('rejects an invalid id', async () => {
-    await expect(store.remove('../escape.md')).rejects.toThrow(InvalidPathError)
-  })
-
-  it('leaves other documents untouched', async () => {
-    await store.createDocument('a.md', 'a')
-    await store.createDocument('b.md', 'b')
-    await store.remove('a.md')
-
-    await expect(store.list()).resolves.toStrictEqual(['b.md'])
   })
 })
 

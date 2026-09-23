@@ -4,7 +4,6 @@ import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { hasErrorCode, toError } from '../errors.ts'
 import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
@@ -19,7 +18,16 @@ import {
   UPLOAD_EXTENSIONS,
 } from './safe-path.ts'
 import { contentMatchesExtension } from './signatures.ts'
+import {
+  ABSENT_ON_READ_CODES,
+  asDocumentError,
+  asExistsError,
+  ConcurrentModificationError,
+  ContentMismatchError,
+  EmptyContentError,
+} from './store-errors.ts'
 import { classifyFile, readTree, type TreeEntry } from './tree.ts'
+import { moveToTrash, purgeFromTrash, readTrash, restoreFromTrash, type TrashEntry } from './trash.ts'
 
 const logStore = createLogger('storage/fs-store')
 const logEscape = createLogger('storage/fs-store', 'symlinkEscape')
@@ -33,7 +41,10 @@ export interface DocumentStore {
   createUpload: (directory: string, filename: string, bytes: Uint8Array) => Promise<string>
   readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
   updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
-  remove: (id: string) => Promise<void>
+  trash: (entryPath: string) => Promise<string>
+  listTrash: () => Promise<TrashEntry[]>
+  restore: (entryId: string) => Promise<string>
+  purge: (entryId: string) => Promise<void>
 }
 
 export const FOLDER_INDEX_NAME = 'index.md'
@@ -41,58 +52,6 @@ export const FOLDER_INDEX_NAME = 'index.md'
 // Long enough that ordinary contention resolves as latency, short enough that a
 // genuinely stuck write reports rather than leaving the session looking wedged.
 export const WRITE_LOCK_TIMEOUT_MS = 5000
-
-const ABSENT_ON_READ_CODES = ['ENOENT', 'ENOTDIR', 'EISDIR'] as const
-const OCCUPIED_CODES = ['EEXIST', 'ENOTDIR', 'EISDIR'] as const
-const ABSENT_ON_REMOVE_CODES = ['ENOENT', 'ENOTDIR', 'EISDIR', 'EPERM'] as const
-
-export class DocumentNotFoundError extends Error {
-  override readonly name = 'DocumentNotFoundError'
-
-  constructor(id: string) {
-    super(`Document not found: ${id}`)
-  }
-}
-
-export class ConcurrentModificationError extends Error {
-  override readonly name = 'ConcurrentModificationError'
-
-  constructor(id: string) {
-    super(`Document changed since it was loaded: ${id}`)
-  }
-}
-
-export class ContentMismatchError extends Error {
-  override readonly name = 'ContentMismatchError'
-
-  constructor(entryPath: string) {
-    super(`Content does not match the extension: ${entryPath}`)
-  }
-}
-
-export class EmptyContentError extends Error {
-  override readonly name = 'EmptyContentError'
-
-  constructor(id: string) {
-    super(`Refusing to store empty content: ${id}`)
-  }
-}
-
-export class EntryExistsError extends Error {
-  override readonly name = 'EntryExistsError'
-
-  constructor(entryPath: string) {
-    super(`Already exists: ${entryPath}`)
-  }
-}
-
-export function asDocumentError(id: string, error: unknown, codes: readonly string[]): Error {
-  return hasErrorCode(error, codes) ? new DocumentNotFoundError(id) : toError(error)
-}
-
-function asExistsError(entryPath: string, error: unknown): Error {
-  return hasErrorCode(error, OCCUPIED_CODES) ? new EntryExistsError(entryPath) : toError(error)
-}
 
 function assertNotBlank(id: string, content: string): void {
   if (content.trim() === '') throw new EmptyContentError(id)
@@ -266,18 +225,21 @@ export function createFsDocumentStore(
       }
     },
 
-    async remove(id: string): Promise<void> {
-      const target = resolveDocumentPath(root, id)
+    async trash(entryPath: string): Promise<string> {
+      return await lock.run(async () => await moveToTrash(root, entryPath))
+    },
 
+    async listTrash(): Promise<TrashEntry[]> {
+      return await readTrash(root)
+    },
+
+    async restore(entryId: string): Promise<string> {
+      return await lock.run(async () => await restoreFromTrash(root, entryId))
+    },
+
+    async purge(entryId: string): Promise<void> {
       await lock.run(async () => {
-        await assertResolvesInsideRoot(root, id, target)
-
-        try {
-          await fs.unlink(target)
-        } catch (error) {
-          throw asDocumentError(id, error, ABSENT_ON_REMOVE_CODES)
-        }
-        logStore('removed %s', id)
+        await purgeFromTrash(root, entryId)
       })
     },
   }

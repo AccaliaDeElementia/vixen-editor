@@ -48,15 +48,5 @@ export function documentRoutes(store: DocumentStore): Hono {
     },
   )
 
-  routes.delete('/:id{.+}', async (c) => {
-    const id = c.req.param('id')
-    try {
-      await store.remove(id)
-      return c.body(null, HTTP_NO_CONTENT)
-    } catch (error) {
-      return toErrorResponse(c, error)
-    }
-  })
-
   return routes
 }

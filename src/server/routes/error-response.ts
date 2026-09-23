@@ -3,15 +3,15 @@
 import type { Context } from 'hono'
 
 import { toError } from '../errors.ts'
+import { LockTimeoutError } from '../storage/lock.ts'
+import { InvalidPathError } from '../storage/safe-path.ts'
 import {
   ConcurrentModificationError,
   ContentMismatchError,
   DocumentNotFoundError,
   EmptyContentError,
   EntryExistsError,
-} from '../storage/fs-store.ts'
-import { LockTimeoutError } from '../storage/lock.ts'
-import { InvalidPathError } from '../storage/safe-path.ts'
+} from '../storage/store-errors.ts'
 
 const HTTP_BAD_REQUEST = 400
 const HTTP_NOT_FOUND = 404

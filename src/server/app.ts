@@ -7,6 +7,7 @@ import { DEFAULT_UPLOAD_MAX_BYTES } from './config.ts'
 import { createLogger } from './logging.ts'
 import { documentRoutes } from './routes/documents.ts'
 import { fileRoutes } from './routes/files.ts'
+import { trashRoutes } from './routes/trash.ts'
 import type { DocumentStore } from './storage/fs-store.ts'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
@@ -42,6 +43,7 @@ export function buildApp({ store, uploadMaxBytes = DEFAULT_UPLOAD_MAX_BYTES }: A
   app.get('/api/health', (c) => c.json({ status: 'ok' }))
   app.route('/api/documents', documentRoutes(store))
   app.route('/api/files', fileRoutes(store, uploadMaxBytes))
+  app.route('/api/trash', trashRoutes(store))
 
   return app
 }

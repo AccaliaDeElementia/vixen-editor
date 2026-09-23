@@ -112,9 +112,10 @@ describe('every api response carries the clacks header', () => {
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
-  it('on a 204 from a delete', async () => {
+  it('on a 204 from a trash purge', async () => {
     await store.createDocument('notes.md', 'x')
-    const res = await buildApp({ store }).request('/api/documents/notes.md', { method: 'DELETE' })
+    const id = await store.trash('notes.md')
+    const res = await buildApp({ store }).request(`/api/trash/${id}`, { method: 'DELETE' })
 
     expect(res.status).toBe(204)
     expect(clacksOf(res)).toBe(CLACKS_VALUE)

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { asDocumentError, DocumentNotFoundError } from '../../../src/server/storage/fs-store.ts'
+import { asDocumentError, DocumentNotFoundError } from '../../../src/server/storage/store-errors.ts'
 
 function errnoError(code: string): Error {
   return Object.assign(new Error(code), { code })

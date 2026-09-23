@@ -54,6 +54,15 @@ export function fileRoutes(store: DocumentStore, uploadMaxBytes: number): Hono {
     }
   })
 
+  routes.delete('/entries/:entryPath{.+}', async (c) => {
+    try {
+      const id = await store.trash(c.req.param('entryPath'))
+      return c.json({ trashId: id })
+    } catch (error) {
+      return toErrorResponse(c, error)
+    }
+  })
+
   routes.post('/uploads', async (c) => {
     const declared = Number(c.req.header('content-length') ?? 0)
     if (declared > uploadMaxBytes) return payloadTooLarge(c, uploadMaxBytes)
