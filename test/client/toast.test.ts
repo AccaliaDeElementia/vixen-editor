@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createToast, TOAST_VISIBLE_MS } from '../../src/client/layout/toast.ts'
+import { createToast, TOAST_ERROR_MS, TOAST_VISIBLE_MS } from '../../src/client/layout/toast.ts'
 
 let root: HTMLElement
 
@@ -89,5 +89,68 @@ describe('createToast', () => {
     createToast().show('from the document')
 
     expect(statusElement(document)?.textContent).toBe('from the document')
+  })
+})
+
+describe('errors', () => {
+  it('marks a failure so it is distinguishable from a confirmation', () => {
+    createToast(root).error('Upload refused')
+
+    expect(statusElement(root)?.dataset.severity).toBe('error')
+  })
+
+  it('marks an ordinary message as information', () => {
+    createToast(root).show('Saved notes.md')
+
+    expect(statusElement(root)?.dataset.severity).toBe('info')
+  })
+
+  it('keeps a failure on screen for longer than a confirmation', () => {
+    expect(TOAST_ERROR_MS).toBeGreaterThan(TOAST_VISIBLE_MS)
+  })
+
+  it('hides a failure only after the longer delay', () => {
+    createToast(root).error('Upload refused')
+
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS + 1)
+    expect(statusElement(root)?.dataset.visible).toBe('true')
+
+    vi.advanceTimersByTime(TOAST_ERROR_MS)
+    expect(statusElement(root)?.dataset.visible).toBe('false')
+  })
+
+  it('does nothing when the page has no status element', () => {
+    expect(() => {
+      createToast(page({ withStatus: false })).error('boom')
+    }).not.toThrow()
+  })
+})
+
+// Two parts of the app each hold their own handle to the single status
+// element. An error written through one was being hidden early — and in one
+// observed case overwritten outright — by the other's timer.
+describe('two handles to the same element', () => {
+  it('does not let one handle hide a message written through another', () => {
+    const editor = createToast(root)
+    const explorer = createToast(root)
+
+    editor.show('Editing notes.md')
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS - 100)
+    explorer.error('Upload refused')
+    vi.advanceTimersByTime(200)
+
+    expect(statusElement(root)?.dataset.visible).toBe('true')
+    expect(statusElement(root)?.textContent).toBe('Upload refused')
+  })
+
+  it('lets a later message through either handle replace an earlier one', () => {
+    const editor = createToast(root)
+    const explorer = createToast(root)
+
+    explorer.error('Upload refused')
+    editor.show('Saved notes.md')
+
+    expect(statusElement(root)?.textContent).toBe('Saved notes.md')
+    expect(statusElement(root)?.dataset.severity).toBe('info')
   })
 })

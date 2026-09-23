@@ -7,16 +7,17 @@ import { createDialogs } from '../../src/client/files/dialogs.ts'
 function page(): void {
   document.body.innerHTML = `
     <dialog id="file-dialog">
-      <form method="dialog">
+      <div>
         <h2 id="file-dialog-title"></h2>
         <p id="file-dialog-message"></p>
         <p id="file-dialog-field">
-          <input id="file-dialog-input" type="text">
+          <label id="file-dialog-label" for="file-dialog-entry">Name</label>
+          <input id="file-dialog-entry" type="text">
         </p>
         <p id="file-dialog-error"></p>
-        <button id="file-dialog-cancel" type="submit" value="cancel">Cancel</button>
-        <button id="file-dialog-confirm" type="submit" value="confirm"></button>
-      </form>
+        <button id="file-dialog-cancel" type="button">Cancel</button>
+        <button id="file-dialog-confirm" type="button"></button>
+      </div>
     </dialog>`
 }
 
@@ -27,7 +28,7 @@ function dialog(): HTMLDialogElement {
 }
 
 function type(value: string): void {
-  const input = document.querySelector<HTMLInputElement>('#file-dialog-input')
+  const input = document.querySelector<HTMLInputElement>('#file-dialog-entry')
   if (input === null) throw new Error('missing input')
   input.value = value
 }
@@ -146,6 +147,18 @@ describe('prompt', () => {
     expect(errorText()).toBe('')
   })
 
+  it('labels the field with what it is asking for, not a bare "Name"', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.prompt({
+      title: 'New folder',
+      label: 'Folder name',
+      confirmLabel: 'Create',
+      submit: () => Promise.resolve(null),
+    })
+
+    expect(document.querySelector('#file-dialog-label')?.textContent).toBe('Folder name')
+  })
+
   it('shows the name field', () => {
     const dialogs = createDialogs(document)
     void dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', submit: () => Promise.resolve(null) })
@@ -163,7 +176,7 @@ describe('prompt', () => {
       submit: () => Promise.resolve(null),
     })
 
-    expect(document.querySelector<HTMLInputElement>('#file-dialog-input')?.value).toBe('old.md')
+    expect(document.querySelector<HTMLInputElement>('#file-dialog-entry')?.value).toBe('old.md')
   })
 })
 
@@ -229,6 +242,54 @@ describe('a page without the dialog markup', () => {
 
   it('declines a confirm rather than throwing', async () => {
     document.body.innerHTML = '<p>nothing here</p>'
+
+    await expect(createDialogs(document).confirm({ title: 'x', message: 'y', confirmLabel: 'z' })).resolves.toBe(false)
+  })
+})
+
+describe('closing without a form', () => {
+  // A form wrapping a lone text field is what makes a password manager offer
+  // to fill it, so the dialog closes itself rather than being submitted.
+  it('has no form for a password manager to recognise', () => {
+    expect(document.querySelectorAll('#file-dialog form')).toHaveLength(0)
+  })
+
+  it('confirms when Enter is pressed in the field', async () => {
+    const dialogs = createDialogs(document)
+    const pending = dialogs.prompt({
+      title: 'New',
+      label: 'Name',
+      confirmLabel: 'Create',
+      submit: () => Promise.resolve(null),
+    })
+
+    type('notes.md')
+    document
+      .querySelector('#file-dialog-entry')
+      ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+
+    await expect(pending).resolves.toBe(true)
+  })
+
+  it('ignores other keys in the field', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', submit: () => Promise.resolve(null) })
+
+    document
+      .querySelector('#file-dialog-entry')
+      ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }))
+
+    expect(dialog().open).toBe(true)
+  })
+
+  it('declines when the markup has buttons missing', async () => {
+    document.body.innerHTML = `
+      <dialog id="file-dialog">
+        <h2 id="file-dialog-title"></h2>
+        <p id="file-dialog-message"></p>
+        <p id="file-dialog-field"><label id="file-dialog-label"></label><input id="file-dialog-entry"></p>
+        <p id="file-dialog-error"></p>
+      </dialog>`
 
     await expect(createDialogs(document).confirm({ title: 'x', message: 'y', confirmLabel: 'z' })).resolves.toBe(false)
   })

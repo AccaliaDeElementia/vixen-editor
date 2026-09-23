@@ -385,3 +385,17 @@
     outline-offset: 2px;
   }
 }
+
+// Shown only where a drop is actually legal, so the absence of it is the
+// feedback for an illegal one.
+.tree__row--drop {
+  outline: 2px dashed $info;
+  outline-offset: -2px;
+}
+
+// A failure has to be distinguishable from a confirmation at a glance, because
+// both land in the same corner of the screen.
+.toast[data-severity='error'] {
+  border-color: $danger;
+  color: $danger;
+}

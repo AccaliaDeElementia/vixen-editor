@@ -61,7 +61,7 @@ function runnerFor(context: ActionContext): (work: () => Promise<void>) => void 
         await work()
         await context.refresh()
       } catch (error) {
-        context.toast.show(describe(error))
+        context.toast.error(describe(error))
       }
     })()
   }
@@ -82,7 +82,7 @@ function bindUpload(context: ActionContext, run: (work: () => Promise<void>) => 
            a rejected file does not discard the rest; the server's write lock
            serialises them regardless of what the client does */
         await context.client.upload(context.targetDirectory(), file).catch((error: unknown) => {
-          context.toast.show(`${file.name}: ${describe(error)}`)
+          context.toast.error(`${file.name}: ${describe(error)}`)
         })
       }
     })
@@ -97,13 +97,13 @@ export function bindActions(context: ActionContext): void {
     root.querySelector(selector)?.addEventListener('click', handler)
   }
 
-  function promptCreate(title: string, create: (entryPath: string) => Promise<void>): void {
+  function promptCreate(title: string, label: string, create: (entryPath: string) => Promise<void>): void {
     const directory = context.targetDirectory()
 
     run(async () => {
       await dialogs.prompt({
         title,
-        label: 'Name',
+        label,
         confirmLabel: 'Create',
         submit: async (name) => await createVia(create, joinPath(directory, name)),
       })
@@ -111,13 +111,13 @@ export function bindActions(context: ActionContext): void {
   }
 
   on(ACTION_SELECTORS.newDocument, () => {
-    promptCreate('New document', async (entryPath) => {
+    promptCreate('New document', 'Document name', async (entryPath) => {
       await client.createDocument(entryPath)
     })
   })
 
   on(ACTION_SELECTORS.newFolder, () => {
-    promptCreate('New folder', async (folderPath) => {
+    promptCreate('New folder', 'Folder name', async (folderPath) => {
       await client.createFolder(folderPath)
     })
   })

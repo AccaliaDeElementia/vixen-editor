@@ -31,8 +31,10 @@ interface Parts {
   title: HTMLElement
   message: HTMLElement
   field: HTMLElement
+  label: HTMLElement
   input: HTMLInputElement
   error: HTMLElement
+  cancel: HTMLElement
   confirm: HTMLElement
 }
 
@@ -41,14 +43,35 @@ function partsOf(root: ParentNode): Parts | null {
   const title = root.querySelector<HTMLElement>('#file-dialog-title')
   const message = root.querySelector<HTMLElement>('#file-dialog-message')
   const field = root.querySelector<HTMLElement>('#file-dialog-field')
-  const input = root.querySelector<HTMLInputElement>('#file-dialog-input')
+  const label = root.querySelector<HTMLElement>('#file-dialog-label')
+  const input = root.querySelector<HTMLInputElement>('#file-dialog-entry')
   const error = root.querySelector<HTMLElement>('#file-dialog-error')
+  const cancel = root.querySelector<HTMLElement>('#file-dialog-cancel')
   const confirm = root.querySelector<HTMLElement>('#file-dialog-confirm')
 
   if (dialog === null || title === null || message === null || field === null) return null
-  if (input === null || error === null || confirm === null) return null
+  if (label === null || input === null || error === null) return null
+  if (cancel === null || confirm === null) return null
 
-  return { dialog, title, message, field, input, error, confirm }
+  return { dialog, title, message, field, label, input, error, cancel, confirm }
+}
+
+// A form with method="dialog" would close the dialog for free, but a form
+// wrapping a lone text field is what makes a password manager offer to fill
+// it. Closing by hand costs two listeners and removes the signal entirely.
+function bindClosing(parts: Parts): void {
+  parts.cancel.addEventListener('click', () => {
+    parts.dialog.close('cancel')
+  })
+  parts.confirm.addEventListener('click', () => {
+    parts.dialog.close(CONFIRM_VALUE)
+  })
+  parts.input.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return
+
+    event.preventDefault()
+    parts.dialog.close(CONFIRM_VALUE)
+  })
 }
 
 async function settled(dialog: HTMLDialogElement): Promise<string> {
@@ -75,10 +98,11 @@ function reset(parts: Parts, heading: string, confirmLabel: string): void {
 }
 
 async function promptWith(parts: Parts, request: PromptRequest): Promise<boolean> {
-  const { dialog, message, field, input, error } = parts
+  const { dialog, message, field, label, input, error } = parts
 
   reset(parts, request.title, request.confirmLabel)
   message.textContent = ''
+  label.textContent = request.label
   field.hidden = false
   input.value = request.value ?? ''
   dialog.showModal()
@@ -112,6 +136,7 @@ async function confirmWith(parts: Parts, request: ConfirmRequest): Promise<boole
 
 export function createDialogs(root: ParentNode = document): Dialogs {
   const parts = partsOf(root)
+  if (parts !== null) bindClosing(parts)
 
   return {
     async prompt(request: PromptRequest): Promise<boolean> {

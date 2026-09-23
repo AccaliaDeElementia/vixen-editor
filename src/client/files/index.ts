@@ -5,6 +5,7 @@ import { createToast } from '../layout/toast.ts'
 
 import { bindActions, bindTrashActions, updateArchiveLink, type ActionContext } from './actions.ts'
 import { createDialogs, type Dialogs } from './dialogs.ts'
+import { bindDragAndDrop } from './drag.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
@@ -155,12 +156,16 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
     if (handleKey(event.key, current, index)) event.preventDefault()
   })
 
-  function reveal(): void {
-    openFolders(ancestorsOf(openDocument))
-    selected = openDocument
+  function revealPath(entryPath: string): void {
+    openFolders(ancestorsOf(entryPath))
+    selected = entryPath
     draw(readOpenFolders())
-    rows()[indexOfPath(openDocument)]?.scrollIntoView({ block: 'nearest' })
-    focusAt(indexOfPath(openDocument))
+    rows()[indexOfPath(entryPath)]?.scrollIntoView({ block: 'nearest' })
+    focusAt(indexOfPath(entryPath))
+  }
+
+  function reveal(): void {
+    revealPath(openDocument)
   }
 
   async function load(): Promise<void> {
@@ -186,10 +191,11 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   }
   bindActions(context)
   bindTrashActions(context, tree)
+  bindDragAndDrop({ client, dialogs, toast, rowAt: (index) => visible[index], refresh: load, revealPath }, tree)
 
   try {
     await load()
   } catch (error) {
-    toast.show(`Could not load the file browser: ${describe(error)}`)
+    toast.error(`Could not load the file browser: ${describe(error)}`)
   }
 }

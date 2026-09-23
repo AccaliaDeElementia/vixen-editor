@@ -20,7 +20,13 @@ const ENTRY_ICONS: Readonly<Record<EntryKind, string>> = {
 export interface VisibleRow {
   path: string
   expandable: boolean
+  kind: RowKind
 }
+
+// 'trash' is the pseudo-folder itself and 'trashed' one of its entries. Both
+// look like rows and neither is a place in the store, so the distinction has
+// to survive into what the controller works from.
+export type RowKind = EntryKind | 'trash' | 'trashed'
 
 export interface TreeViewModel {
   nodes: readonly TreeNode[]
@@ -58,6 +64,7 @@ function label(text: string): HTMLElement {
 interface RowOptions {
   path: string
   kind: EntryKind | 'trash'
+  draggable?: boolean
   name: string
   depth: number
   expanded: boolean | null
@@ -76,6 +83,7 @@ function row(options: RowOptions): HTMLElement {
   element.style.setProperty('--depth', String(options.depth))
   element.dataset.path = options.path
   element.dataset.kind = options.kind
+  if (options.draggable === true) element.draggable = true
 
   if (options.expanded !== null) element.setAttribute('aria-expanded', String(options.expanded))
 
@@ -162,17 +170,18 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
 
     if (node.kind !== 'folder') {
       const href = docUrlFor(node.path)
-      items.push(
-        item(row({ path: node.path, kind: node.kind, name: node.name, depth, expanded: null, selected, href })),
-      )
-      visible.push({ path: node.path, expandable: false })
+      const options = { path: node.path, kind: node.kind, name: node.name, depth, expanded: null, selected, href }
+      items.push(item(row({ ...options, draggable: true })))
+      visible.push({ path: node.path, expandable: false, kind: node.kind })
       continue
     }
 
     const expanded = model.open.has(node.path)
-    const element = item(row({ path: node.path, kind: 'folder', name: node.name, depth, expanded, selected }))
+    const element = item(
+      row({ path: node.path, kind: 'folder', name: node.name, depth, expanded, selected, draggable: true }),
+    )
     items.push(element)
-    visible.push({ path: node.path, expandable: true })
+    visible.push({ path: node.path, expandable: true, kind: 'folder' })
 
     if (!expanded) continue
 
@@ -190,7 +199,7 @@ function renderTrash(model: TreeViewModel): Rendered {
   const expanded = model.open.has(TRASH_PATH)
   const name = `Trash (${String(model.trash.length)})`
   const element = item(row({ path: TRASH_PATH, kind: 'trash', name, depth: 0, expanded, selected: false }))
-  const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true }]
+  const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash' }]
 
   if (!expanded) return { items: [element], visible }
 
@@ -208,7 +217,7 @@ function renderTrash(model: TreeViewModel): Rendered {
     deleted.title = `Deleted ${entry.deletedAt}`
     deleted.append(trashActions(entry))
     children.append(item(deleted))
-    visible.push({ path: entry.originalPath, expandable: false })
+    visible.push({ path: entry.originalPath, expandable: false, kind: 'trashed' })
   }
   element.append(children)
 

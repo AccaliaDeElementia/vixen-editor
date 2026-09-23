@@ -8,6 +8,7 @@ export interface FilesClient {
   createDocument: (entryPath: string) => Promise<void>
   createFolder: (folderPath: string) => Promise<void>
   upload: (directory: string, file: File) => Promise<string>
+  move: (from: string, to: string, allowOverwrite: boolean) => Promise<void>
   remove: (entryPath: string) => Promise<void>
   restore: (entryId: string) => Promise<void>
   purge: (entryId: string) => Promise<void>
@@ -102,6 +103,10 @@ export function createFilesClient(fetchImpl: typeof fetch = globalThis.fetch, ba
       )
 
       return isRecord(created) && typeof created.path === 'string' ? created.path : ''
+    },
+
+    async move(from: string, to: string, allowOverwrite: boolean): Promise<void> {
+      await postJson(`${baseUrl}/files/moves`, { from, to, allowOverwrite })
     },
 
     async remove(entryPath: string): Promise<void> {

@@ -4,6 +4,7 @@ import type { Context } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { toError } from '../errors.ts'
+import { createLogger } from '../logging.ts'
 import { LockTimeoutError } from '../storage/lock.ts'
 import { InvalidPathError } from '../storage/safe-path.ts'
 import {
@@ -28,16 +29,26 @@ const HTTP_SERVICE_UNAVAILABLE = 503
 
 export const RETRY_AFTER_SECONDS = '1'
 
+// Every refusal funnels through here. Without it a rejected upload leaves no
+// trace at all on the server, and "why did that fail" has nowhere to look.
+const logRefused = createLogger('routes', 'refused')
+
+function refuse(c: Context, status: ContentfulStatusCode, code: string, body: Record<string, unknown>): Response {
+  logRefused('%s %s -> %d %s', c.req.method, c.req.path, status, code)
+
+  return c.json({ ...body, code }, status)
+}
+
 export function invalidBody(c: Context): Response {
-  return c.json({ error: 'Invalid request body', code: 'BAD_REQUEST' }, HTTP_BAD_REQUEST)
+  return refuse(c, HTTP_BAD_REQUEST, 'BAD_REQUEST', { error: 'Invalid request body' })
 }
 
 export function preconditionRequired(c: Context): Response {
-  return c.json({ error: 'If-Match is required', code: 'PRECONDITION_REQUIRED' }, HTTP_PRECONDITION_REQUIRED)
+  return refuse(c, HTTP_PRECONDITION_REQUIRED, 'PRECONDITION_REQUIRED', { error: 'If-Match is required' })
 }
 
 export function payloadTooLarge(c: Context, limitBytes: number): Response {
-  return c.json({ error: `Upload exceeds ${String(limitBytes)} bytes`, code: 'TOO_LARGE' }, HTTP_CONTENT_TOO_LARGE)
+  return refuse(c, HTTP_CONTENT_TOO_LARGE, 'TOO_LARGE', { error: `Upload exceeds ${String(limitBytes)} bytes` })
 }
 
 interface SimpleMapping {
@@ -75,24 +86,28 @@ const SIMPLE_ERRORS: readonly SimpleMapping[] = [
 
 export function toErrorResponse(c: Context, error: unknown): Response {
   const simple = SIMPLE_ERRORS.find(({ type }) => error instanceof type)
-  if (simple !== undefined) return c.json({ error: simple.message, code: simple.code }, simple.status)
+  if (simple !== undefined) return refuse(c, simple.status, simple.code, { error: simple.message })
 
   if (error instanceof InvalidMoveError) {
-    return c.json({ error: error.message, code: 'INVALID_MOVE' }, HTTP_CONFLICT)
+    return refuse(c, HTTP_CONFLICT, 'INVALID_MOVE', { error: error.message })
   }
   if (error instanceof WouldOverwriteError) {
-    return c.json(
-      { error: 'Would overwrite existing files', code: 'WOULD_OVERWRITE', paths: error.paths },
-      HTTP_CONFLICT,
-    )
+    return refuse(c, HTTP_CONFLICT, 'WOULD_OVERWRITE', {
+      error: 'Would overwrite existing files',
+      paths: error.paths,
+    })
   }
   if (error instanceof ArchiveTooLargeError) {
-    return c.json(
-      { error: error.message, code: 'TOO_LARGE', unit: error.unit, limit: error.limit, measured: error.measured },
-      HTTP_CONTENT_TOO_LARGE,
-    )
+    return refuse(c, HTTP_CONTENT_TOO_LARGE, 'TOO_LARGE', {
+      error: error.message,
+      unit: error.unit,
+      limit: error.limit,
+      measured: error.measured,
+    })
   }
   if (error instanceof LockTimeoutError) {
+    logRefused('%s %s -> %d %s', c.req.method, c.req.path, HTTP_SERVICE_UNAVAILABLE, 'BUSY')
+
     return c.json({ error: 'Busy, try again', code: 'BUSY' }, HTTP_SERVICE_UNAVAILABLE, {
       'retry-after': RETRY_AFTER_SECONDS,
     })

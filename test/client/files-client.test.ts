@@ -214,3 +214,39 @@ describe('archiveUrlFor', () => {
     expect(archiveUrlFor('my folder/2026')).toBe('/api/files/archive?path=my%20folder%2F2026')
   })
 })
+
+describe('move', () => {
+  it('posts the source, the destination and the overwrite flag', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+    await client().move('notes.md', 'archive/notes.md', false)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/files/moves', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from: 'notes.md', to: 'archive/notes.md', allowOverwrite: false }),
+    })
+  })
+
+  it('carries the overwrite flag when the caller has confirmed', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+    await client().move('a.md', 'b/a.md', true)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/files/moves',
+      expect.objectContaining({ body: JSON.stringify({ from: 'a.md', to: 'b/a.md', allowOverwrite: true }) }),
+    )
+  })
+
+  it('surfaces the colliding paths of a refused overwrite', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: 'Would overwrite', code: 'WOULD_OVERWRITE', paths: ['b/a.md'] }, 409),
+    )
+
+    await expect(client().move('a.md', 'b/a.md', false)).rejects.toMatchObject({
+      code: 'WOULD_OVERWRITE',
+      paths: ['b/a.md'],
+    })
+  })
+})

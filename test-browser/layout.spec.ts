@@ -254,7 +254,7 @@ test('the toolbar creates a folder through a real modal dialog', async ({ page, 
 
   await page.locator('#new-folder').click()
   await expect(page.locator('#file-dialog')).toBeVisible()
-  await page.locator('#file-dialog-input').fill(name)
+  await page.locator('#file-dialog-entry').fill(name)
   await page.locator('#file-dialog-confirm').click()
 
   await expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible()
@@ -268,7 +268,7 @@ test('a rejected name stays in the dialog to be corrected', async ({ page, reque
   await page.goto('/doc/')
 
   await page.locator('#new-folder').click()
-  await page.locator('#file-dialog-input').fill(name)
+  await page.locator('#file-dialog-entry').fill(name)
   await page.locator('#file-dialog-confirm').click()
 
   await expect(page.locator('#file-dialog-error')).toHaveText(/exists/i)
@@ -365,4 +365,144 @@ test('an unselected sibling is painted differently from the selected row', async
 
   await request.delete(`/api/files/entries/pick-${stamp}.md`)
   await request.delete(`/api/files/entries/other-${stamp}.md`)
+})
+
+test('a real drag moves a document into a folder', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const folder = `dragdest-${stamp}`
+  const doc = `dragged-${stamp}.md`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: doc } })
+
+  await page.goto('/doc/')
+  const source = page.locator(`.tree__row[data-path="${doc}"]`)
+  const target = page.locator(`.tree__row[data-path="${folder}"]`)
+
+  await expect(source).toHaveAttribute('draggable', 'true')
+  await source.dragTo(target)
+
+  // The move reveals the destination, so no click is needed to open it.
+  await expect(page.locator(`.tree__row[data-path="${folder}/${doc}"]`)).toBeVisible()
+  await expect(page.locator(`.tree__row[data-path="${doc}"]`)).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a real drag shows the drop affordance only where a drop is legal', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const folder = `affordance-${stamp}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+
+  await page.goto('/doc/')
+  const source = page.locator(`.tree__row[data-path="${folder}"]`)
+  const trash = page.locator('.tree__row[data-kind="trash"]')
+
+  await source.hover()
+  await page.mouse.down()
+  await trash.hover()
+
+  // The trash is a row but not a place in the store, so it must not light up.
+  await expect(trash).not.toHaveClass(/tree__row--drop/)
+  await page.mouse.up()
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('the name field does not look like a login to a password manager', async ({ page }) => {
+  await page.goto('/doc/')
+  await page.locator('#new-folder').click()
+
+  const input = page.locator('#file-dialog-entry')
+  await expect(input).toHaveAttribute('name', 'vixen-entry')
+  await expect(input).toHaveAttribute('autocomplete', 'off')
+  await expect(input).toHaveAttribute('data-lpignore', 'true')
+  await expect(input).toHaveAttribute('data-form-type', 'other')
+  await expect(page.locator('#file-dialog input[type="password"]')).toHaveCount(0)
+
+  // The real cause: a manager strips separators and substring-matches, so
+  // "file-dialog-input" became "filedialoginput" and read as a login field.
+  // Scanned across the whole live page, which covers markup built in script
+  // as well as markup from the template.
+  const offenders = await page.evaluate(() => {
+    const tokens = ['login', 'username', 'user', 'email', 'mail', 'password', 'passwd', 'account', 'signin']
+    const found: string[] = []
+    for (const element of document.querySelectorAll('*')) {
+      for (const attribute of ['id', 'name', 'class', 'for', 'placeholder', 'aria-label']) {
+        const value = element.getAttribute(attribute)
+        if (value === null) continue
+        const squashed = value.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const hit = tokens.filter((token) => squashed.includes(token))
+        if (hit.length > 0) found.push(`${attribute}="${value}" -> ${hit.join(',')}`)
+      }
+    }
+    return found
+  })
+  expect(offenders).toEqual([])
+
+  // The label says what is being asked for rather than a bare "Name".
+  await expect(page.locator('#file-dialog-label')).toHaveText('Folder name')
+
+  await page.locator('#file-dialog-cancel').click()
+})
+
+test('a real drag reveals the moved document at its new location', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const folder = `reveal-${stamp}`
+  const doc = `moving-${stamp}.md`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: doc } })
+
+  await page.goto('/doc/')
+  await page.locator(`.tree__row[data-path="${doc}"]`).dragTo(page.locator(`.tree__row[data-path="${folder}"]`))
+
+  // Without the reveal the entry is inside a folder that is still collapsed.
+  const moved = page.locator(`.tree__row[data-path="${folder}/${doc}"]`)
+  await expect(moved).toBeVisible()
+  await expect(moved).toHaveAttribute('aria-selected', 'true')
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a rejected upload tells the user why', async ({ page }) => {
+  await page.goto('/doc/')
+
+  await page.locator('#upload-input').setInputFiles({
+    name: 'payload.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from('not a document'),
+  })
+
+  await expect(page.locator('#status')).toBeVisible()
+  await expect(page.locator('#status')).toContainText('payload.zip')
+  await expect(page.locator('#status')).toHaveAttribute('data-severity', 'error')
+})
+
+test('a rejected drop reports, and the report is not overwritten', async ({ page }) => {
+  await page.goto('/doc/')
+  // Wait for the editor to have written its own status, or the race that hid
+  // the failure originally would not be reproduced.
+  await expect(page.locator('#status')).toContainText('Editing')
+
+  await page.evaluate(() => {
+    const transfer = new DataTransfer()
+    transfer.items.add(new File(['not a document'], 'payload.zip', { type: 'application/zip' }))
+    document
+      .querySelector('#file-tree')
+      ?.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+  })
+
+  await expect(page.locator('#status')).toContainText('payload.zip')
+  await expect(page.locator('#status')).toHaveAttribute('data-visible', 'true')
+})
+
+test('an upload whose bytes contradict its extension tells the user why', async ({ page }) => {
+  await page.goto('/doc/')
+
+  await page.locator('#upload-input').setInputFiles({
+    name: 'liar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('RIFF____WEBPVP8 '),
+  })
+
+  await expect(page.locator('#status')).toContainText('liar.png')
 })

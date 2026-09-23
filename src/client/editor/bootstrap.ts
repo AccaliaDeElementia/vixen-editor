@@ -58,7 +58,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<EditorV
         setStatus(`Saved ${documentId}`)
       })
       .catch((error: unknown) => {
-        setStatus(`Save failed: ${describeError(error)}`)
+        toast.error(`Save failed: ${describeError(error)}`)
       })
     return true
   }
