@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { ConfigError, DEFAULT_UPLOAD_MAX_BYTES, loadConfig } from '../../src/server/config.ts'
+import { ConfigError, DEFAULT_LIMITS, loadConfig } from '../../src/server/config.ts'
 
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {
@@ -15,7 +15,7 @@ describe('loadConfig', () => {
       templatesDir: './src/templates',
       logLevel: 'info',
       nodeEnv: 'development',
-      uploadMaxBytes: DEFAULT_UPLOAD_MAX_BYTES,
+      limits: DEFAULT_LIMITS,
     })
   })
 
@@ -28,6 +28,8 @@ describe('loadConfig', () => {
       LOG_LEVEL: 'debug',
       NODE_ENV: 'production',
       UPLOAD_MAX_BYTES: '1048576',
+      ARCHIVE_MAX_BYTES: '2097152',
+      ARCHIVE_MAX_ENTRIES: '7',
     })
 
     expect(config).toStrictEqual({
@@ -37,7 +39,7 @@ describe('loadConfig', () => {
       templatesDir: '/srv/templates',
       logLevel: 'debug',
       nodeEnv: 'production',
-      uploadMaxBytes: 1048576,
+      limits: { uploadMaxBytes: 1048576, archiveMaxBytes: 2097152, archiveMaxEntries: 7 },
     })
   })
 
@@ -46,8 +48,10 @@ describe('loadConfig', () => {
     ['negative', '-1'],
     ['fractional', '1.5'],
     ['not a number', 'plenty'],
-  ])('rejects a %s upload limit rather than silently disabling the cap', (_label, value) => {
+  ])('rejects a %s limit rather than silently disabling the cap', (_label, value) => {
     expect(() => loadConfig({ UPLOAD_MAX_BYTES: value })).toThrow(ConfigError)
+    expect(() => loadConfig({ ARCHIVE_MAX_BYTES: value })).toThrow(ConfigError)
+    expect(() => loadConfig({ ARCHIVE_MAX_ENTRIES: value })).toThrow(ConfigError)
   })
 
   it('coerces PORT to a number', () => {

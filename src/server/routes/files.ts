@@ -1,9 +1,12 @@
 'use sanity'
 
+import path from 'node:path'
+
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
+import type { Limits } from '../config.ts'
 import { FOLDER_INDEX_NAME, type DocumentStore } from '../storage/fs-store.ts'
 import { mediaTypeOf } from '../storage/media-type.ts'
 import { joinEntryPath } from '../storage/safe-path.ts'
@@ -32,6 +35,14 @@ const moveBodySchema = z.object({
 })
 const documentBodySchema = z.object({ path: z.string().min(1), content: z.string().optional() })
 
+// Store paths are restricted to letters, digits, dot, underscore and hyphen,
+// so a basename needs no further escaping inside a quoted filename.
+function archiveName(subtree: string): string {
+  const leaf = path.posix.basename(subtree)
+
+  return `vixen-${leaf === '' ? 'documents' : leaf}.zip`
+}
+
 function uploadedFile(body: Record<string, unknown>): File | null {
   const file = body.file
 
@@ -45,7 +56,7 @@ function targetDirectory(body: Record<string, unknown>): string | null {
   return typeof directory === 'string' ? directory : null
 }
 
-export function fileRoutes(store: DocumentStore, uploadMaxBytes: number): Hono {
+export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
   const routes = new Hono()
 
   routes.get('/', async (c) => c.json({ tree: await store.tree() }))
@@ -55,6 +66,23 @@ export function fileRoutes(store: DocumentStore, uploadMaxBytes: number): Hono {
     try {
       const bytes = await store.readBytes(entryPath)
       return c.body(bytes, HTTP_OK, { ...UNTRUSTED_CONTENT_HEADERS, 'content-type': mediaTypeOf(entryPath) })
+    } catch (error) {
+      return toErrorResponse(c, error)
+    }
+  })
+
+  routes.get('/archive', async (c) => {
+    const subtree = c.req.query('path') ?? ''
+    try {
+      const stream = await store.archive(subtree, {
+        maxBytes: limits.archiveMaxBytes,
+        maxEntries: limits.archiveMaxEntries,
+      })
+
+      return c.body(stream, HTTP_OK, {
+        'content-type': 'application/zip',
+        'content-disposition': `attachment; filename="${archiveName(subtree)}"`,
+      })
     } catch (error) {
       return toErrorResponse(c, error)
     }
@@ -85,7 +113,7 @@ export function fileRoutes(store: DocumentStore, uploadMaxBytes: number): Hono {
 
   routes.post('/uploads', async (c) => {
     const declared = Number(c.req.header('content-length') ?? 0)
-    if (declared > uploadMaxBytes) return payloadTooLarge(c, uploadMaxBytes)
+    if (declared > limits.uploadMaxBytes) return payloadTooLarge(c, limits.uploadMaxBytes)
 
     const body = await c.req.parseBody()
     const file = uploadedFile(body)
@@ -93,7 +121,7 @@ export function fileRoutes(store: DocumentStore, uploadMaxBytes: number): Hono {
     if (file === null || directory === null) return invalidBody(c)
 
     const bytes = new Uint8Array(await file.arrayBuffer())
-    if (bytes.length > uploadMaxBytes) return payloadTooLarge(c, uploadMaxBytes)
+    if (bytes.length > limits.uploadMaxBytes) return payloadTooLarge(c, limits.uploadMaxBytes)
 
     try {
       const stored = await store.createUpload(directory, file.name, bytes)

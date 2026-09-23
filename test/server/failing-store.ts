@@ -18,6 +18,7 @@ export function failingStore(): DocumentStore {
     createFolder: fail,
     createUpload: fail,
     readBytes: fail,
+    archive: fail,
     move: fail,
     trash: fail,
     listTrash: fail,

@@ -8,6 +8,7 @@ import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { buildApp } from '../../../src/server/app.ts'
+import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
 import { createFsDocumentStore, FOLDER_INDEX_NAME, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 
 let root: string
@@ -317,7 +318,7 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('rejects an upload larger than the configured limit', async () => {
-    const tiny = buildApp({ store, uploadMaxBytes: 4 })
+    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 4 } })
 
     const res = await upload('photo.png', PNG_BYTES, '', tiny)
 
@@ -326,7 +327,7 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('does not store an upload it rejected as too large', async () => {
-    const tiny = buildApp({ store, uploadMaxBytes: 4 })
+    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 4 } })
 
     await upload('photo.png', PNG_BYTES, '', tiny)
 
@@ -334,7 +335,7 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('rejects a declared content-length over the limit before reading the body', async () => {
-    const tiny = buildApp({ store, uploadMaxBytes: 4 })
+    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 4 } })
 
     const res = await tiny.request('/api/files/uploads', {
       method: 'POST',

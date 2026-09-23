@@ -3,7 +3,7 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
-import { DEFAULT_UPLOAD_MAX_BYTES } from './config.ts'
+import { DEFAULT_LIMITS, type Limits } from './config.ts'
 import { createLogger } from './logging.ts'
 import { documentRoutes } from './routes/documents.ts'
 import { fileRoutes } from './routes/files.ts'
@@ -19,10 +19,10 @@ const logError = createLogger('app', 'onError')
 
 export interface AppDependencies {
   store: DocumentStore
-  uploadMaxBytes?: number
+  limits?: Limits
 }
 
-export function buildApp({ store, uploadMaxBytes = DEFAULT_UPLOAD_MAX_BYTES }: AppDependencies): Hono {
+export function buildApp({ store, limits = DEFAULT_LIMITS }: AppDependencies): Hono {
   const app = new Hono()
 
   app.use('*', async (c, next) => {
@@ -42,7 +42,7 @@ export function buildApp({ store, uploadMaxBytes = DEFAULT_UPLOAD_MAX_BYTES }: A
 
   app.get('/api/health', (c) => c.json({ status: 'ok' }))
   app.route('/api/documents', documentRoutes(store))
-  app.route('/api/files', fileRoutes(store, uploadMaxBytes))
+  app.route('/api/files', fileRoutes(store, limits))
   app.route('/api/trash', trashRoutes(store))
 
   return app

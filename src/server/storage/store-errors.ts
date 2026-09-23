@@ -70,3 +70,17 @@ export class WouldOverwriteError extends Error {
     this.paths = paths
   }
 }
+
+export class ArchiveTooLargeError extends Error {
+  override readonly name = 'ArchiveTooLargeError'
+  readonly unit: string
+  readonly limit: number
+  readonly measured: number
+
+  constructor(unit: string, limit: number, measured: number) {
+    super(`Archive of ${String(measured)} ${unit} exceeds the limit of ${String(limit)}`)
+    this.unit = unit
+    this.limit = limit
+    this.measured = measured
+  }
+}

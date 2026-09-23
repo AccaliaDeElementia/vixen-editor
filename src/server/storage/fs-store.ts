@@ -6,6 +6,7 @@ import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
 
+import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
 import { etagOf } from './etag.ts'
 import { createWriteLock, type WriteLock } from './lock.ts'
@@ -42,6 +43,7 @@ export interface DocumentStore {
   createUpload: (directory: string, filename: string, bytes: Uint8Array) => Promise<string>
   readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
   updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
+  archive: (subtree: string, limits: ArchiveLimits) => Promise<ReadableStream>
   move: (request: MoveRequest) => Promise<void>
   trash: (entryPath: string) => Promise<string>
   listTrash: () => Promise<TrashEntry[]>
@@ -225,6 +227,12 @@ export function createFsDocumentStore(
       } catch (error) {
         throw asDocumentError(entryPath, error, ABSENT_ON_READ_CODES)
       }
+    },
+
+    // Deliberately outside the write lock: a slow client dragging a large
+    // download over minutes would otherwise block every save.
+    async archive(subtree: string, limits: ArchiveLimits): Promise<ReadableStream> {
+      return archiveStream(await planArchive(root, subtree, limits))
     },
 
     async move(request: MoveRequest): Promise<void> {

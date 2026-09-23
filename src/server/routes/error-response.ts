@@ -1,11 +1,13 @@
 'use sanity'
 
 import type { Context } from 'hono'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { toError } from '../errors.ts'
 import { LockTimeoutError } from '../storage/lock.ts'
 import { InvalidPathError } from '../storage/safe-path.ts'
 import {
+  ArchiveTooLargeError,
   ConcurrentModificationError,
   ContentMismatchError,
   DocumentNotFoundError,
@@ -38,16 +40,43 @@ export function payloadTooLarge(c: Context, limitBytes: number): Response {
   return c.json({ error: `Upload exceeds ${String(limitBytes)} bytes`, code: 'TOO_LARGE' }, HTTP_CONTENT_TOO_LARGE)
 }
 
+interface SimpleMapping {
+  type: abstract new (...args: never[]) => Error
+  status: ContentfulStatusCode
+  code: string
+  message: string
+}
+
+// Errors whose response is nothing but a status and a code. The few that carry
+// extra fields stay spelled out below, where their shape is visible.
+const SIMPLE_ERRORS: readonly SimpleMapping[] = [
+  { type: InvalidPathError, status: HTTP_BAD_REQUEST, code: 'INVALID_PATH', message: 'Invalid path' },
+  { type: DocumentNotFoundError, status: HTTP_NOT_FOUND, code: 'NOT_FOUND', message: 'Document not found' },
+  { type: EntryExistsError, status: HTTP_CONFLICT, code: 'ALREADY_EXISTS', message: 'Already exists' },
+  {
+    type: ConcurrentModificationError,
+    status: HTTP_PRECONDITION_FAILED,
+    code: 'CONFLICT',
+    message: 'Document changed since it was loaded',
+  },
+  {
+    type: ContentMismatchError,
+    status: HTTP_BAD_REQUEST,
+    code: 'CONTENT_MISMATCH',
+    message: 'Content does not match the file extension',
+  },
+  {
+    type: EmptyContentError,
+    status: HTTP_UNPROCESSABLE_CONTENT,
+    code: 'EMPTY_CONTENT',
+    message: 'Content must not be empty',
+  },
+]
+
 export function toErrorResponse(c: Context, error: unknown): Response {
-  if (error instanceof InvalidPathError) {
-    return c.json({ error: 'Invalid path', code: 'INVALID_PATH' }, HTTP_BAD_REQUEST)
-  }
-  if (error instanceof DocumentNotFoundError) {
-    return c.json({ error: 'Document not found', code: 'NOT_FOUND' }, HTTP_NOT_FOUND)
-  }
-  if (error instanceof EntryExistsError) {
-    return c.json({ error: 'Already exists', code: 'ALREADY_EXISTS' }, HTTP_CONFLICT)
-  }
+  const simple = SIMPLE_ERRORS.find(({ type }) => error instanceof type)
+  if (simple !== undefined) return c.json({ error: simple.message, code: simple.code }, simple.status)
+
   if (error instanceof InvalidMoveError) {
     return c.json({ error: error.message, code: 'INVALID_MOVE' }, HTTP_CONFLICT)
   }
@@ -57,14 +86,11 @@ export function toErrorResponse(c: Context, error: unknown): Response {
       HTTP_CONFLICT,
     )
   }
-  if (error instanceof ConcurrentModificationError) {
-    return c.json({ error: 'Document changed since it was loaded', code: 'CONFLICT' }, HTTP_PRECONDITION_FAILED)
-  }
-  if (error instanceof ContentMismatchError) {
-    return c.json({ error: 'Content does not match the file extension', code: 'CONTENT_MISMATCH' }, HTTP_BAD_REQUEST)
-  }
-  if (error instanceof EmptyContentError) {
-    return c.json({ error: 'Content must not be empty', code: 'EMPTY_CONTENT' }, HTTP_UNPROCESSABLE_CONTENT)
+  if (error instanceof ArchiveTooLargeError) {
+    return c.json(
+      { error: error.message, code: 'TOO_LARGE', unit: error.unit, limit: error.limit, measured: error.measured },
+      HTTP_CONTENT_TOO_LARGE,
+    )
   }
   if (error instanceof LockTimeoutError) {
     return c.json({ error: 'Busy, try again', code: 'BUSY' }, HTTP_SERVICE_UNAVAILABLE, {
