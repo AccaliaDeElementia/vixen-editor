@@ -5,9 +5,10 @@ export const PREFERENCES_KEY = 'vixen-editor:explorer'
 export interface ExplorerPreferences {
   widthPx: number | null
   open: boolean
+  openFolders: string[]
 }
 
-export const DEFAULT_PREFERENCES: ExplorerPreferences = { widthPx: null, open: true }
+export const DEFAULT_PREFERENCES: ExplorerPreferences = { widthPx: null, open: true, openFolders: [] }
 
 // Touching localStorage throws outright when site data is blocked, so even
 // reaching for it has to be guarded.
@@ -27,11 +28,15 @@ function widthFrom(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
 }
 
+function pathsFrom(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []
+}
+
 function parse(raw: string): ExplorerPreferences {
   const value: unknown = JSON.parse(raw)
   if (!isRecord(value) || typeof value.open !== 'boolean') return DEFAULT_PREFERENCES
 
-  return { widthPx: widthFrom(value.widthPx), open: value.open }
+  return { widthPx: widthFrom(value.widthPx), open: value.open, openFolders: pathsFrom(value.openFolders) }
 }
 
 export function readPreferences(storage: Storage | null = defaultStorage()): ExplorerPreferences {

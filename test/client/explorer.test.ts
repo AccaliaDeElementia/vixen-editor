@@ -67,31 +67,35 @@ describe('clampExplorerWidth', () => {
 
 describe('readExplorerState', () => {
   it('returns the default when nothing is stored', () => {
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: null, open: true })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: null, open: true, openFolders: [] })
   })
 
   it('returns a stored width that fits', () => {
-    writePreferences({ widthPx: 400, open: true })
+    writePreferences({ widthPx: 400, open: true, openFolders: [] })
 
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 400, open: true })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 400, open: true, openFolders: [] })
   })
 
   it('clamps a stored width wider than the current viewport allows', () => {
     // Saved on a wide monitor, reopened on a laptop. localStorage outlives the
     // window it was written in, so the cap has to apply on read.
-    writePreferences({ widthPx: 1800, open: true })
+    writePreferences({ widthPx: 1800, open: true, openFolders: [] })
 
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: VIEWPORT * MAX_EXPLORER_FRACTION, open: true })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({
+      widthPx: VIEWPORT * MAX_EXPLORER_FRACTION,
+      open: true,
+      openFolders: [],
+    })
   })
 
   it('clamps a stored width below the minimum', () => {
-    writePreferences({ widthPx: 10, open: true })
+    writePreferences({ widthPx: 10, open: true, openFolders: [] })
 
     expect(readExplorerState(VIEWPORT).widthPx).toBe(MIN_EXPLORER_PX)
   })
 
   it('restores a stored closed state', () => {
-    writePreferences({ widthPx: null, open: false })
+    writePreferences({ widthPx: null, open: false, openFolders: [] })
 
     expect(readExplorerState(VIEWPORT).open).toBe(false)
   })
@@ -108,7 +112,7 @@ describe('setExplorerWidth', () => {
     setExplorerOpen(false)
     setExplorerWidth(300, VIEWPORT)
 
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 300, open: false })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 300, open: false, openFolders: [] })
   })
 })
 
@@ -129,7 +133,7 @@ describe('toggleExplorer', () => {
     toggleExplorer()
     toggleExplorer()
 
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 420, open: true })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 420, open: true, openFolders: [] })
   })
 })
 

@@ -90,12 +90,51 @@ test('the navigation arrows are present but disabled until SPA navigation exists
   await expect(page.locator('#toggle-explorer')).toBeEnabled()
 })
 
-test('the file browser placeholder is listed', async ({ page }) => {
+test('the file browser lists what the store holds', async ({ page, request }) => {
+  const folder = `tree-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+
   await page.goto('/doc/')
 
-  const items = page.locator('.explorer__list li')
-  expect(await items.count()).toBeGreaterThan(1)
-  await expect(items.first()).toHaveText('TODO: Implement File Browser')
+  const row = page.locator(`.tree__row[data-path="${folder}"]`)
+  await expect(row).toBeVisible()
+  await expect(row).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.locator('.tree__row[data-kind="trash"]')).toBeVisible()
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a folder opens on click and its contents appear below it', async ({ page, request }) => {
+  const folder = `open-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+
+  await page.goto('/doc/')
+  await page.locator(`.tree__row[data-path="${folder}"]`).click()
+
+  const child = page.locator(`.tree__row[data-path="${folder}/index.md"]`)
+  await expect(child).toBeVisible()
+
+  // The label has to sit further right, or the nesting is invisible to a
+  // reader. The rows themselves share an x: depth is padding, so the hover
+  // highlight still spans the full width of the panel.
+  const parentLabel = await page.locator(`.tree__row[data-path="${folder}"] .tree__name`).boundingBox()
+  const childLabel = await child.locator('.tree__name').boundingBox()
+  expect(childLabel?.x ?? 0).toBeGreaterThan(parentLabel?.x ?? 0)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a document row is a real link to its document view', async ({ page, request }) => {
+  const name = `link-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name } })
+
+  await page.goto('/doc/')
+  await page.locator(`.tree__row[data-path="${name}"]`).click()
+
+  await expect(page).toHaveURL(`/doc/${name}`)
+  await expect(page.locator('#status')).toContainText(name)
+
+  await request.delete(`/api/files/entries/${name}`)
 })
 
 test('saving surfaces a toast that then fades', async ({ page }) => {

@@ -19,17 +19,15 @@ export function readExplorerState(viewportPx: number): ExplorerPreferences {
   const stored = readPreferences()
   if (stored.widthPx === null) return stored
 
-  return { widthPx: clampExplorerWidth(stored.widthPx, viewportPx), open: stored.open }
+  return { ...stored, widthPx: clampExplorerWidth(stored.widthPx, viewportPx) }
 }
 
 export function setExplorerWidth(px: number, viewportPx: number): void {
-  const current = readPreferences()
-  writePreferences({ widthPx: clampExplorerWidth(px, viewportPx), open: current.open })
+  writePreferences({ ...readPreferences(), widthPx: clampExplorerWidth(px, viewportPx) })
 }
 
 export function setExplorerOpen(open: boolean): void {
-  const current = readPreferences()
-  writePreferences({ widthPx: current.widthPx, open })
+  writePreferences({ ...readPreferences(), open })
 }
 
 export function toggleExplorer(): boolean {

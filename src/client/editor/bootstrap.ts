@@ -3,6 +3,8 @@
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
+import { documentIdFromPath } from '../doc-path.ts'
+
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
 import { createToast } from '../layout/toast.ts'
@@ -11,24 +13,7 @@ import { createSession, type Session } from './session.ts'
 
 export const MOUNT_SELECTOR = '#editor'
 export { TOAST_SELECTOR as STATUS_SELECTOR } from '../layout/toast.ts'
-export const DOC_PREFIX = '/doc/'
-export const FOLDER_INDEX = 'index.md'
 export const SAVE_KEY = 'Mod-s'
-
-function decodeSegment(segment: string): string {
-  try {
-    return decodeURIComponent(segment)
-  } catch {
-    return segment
-  }
-}
-
-export function documentIdFromPath(pathname: string): string {
-  const rest = pathname.startsWith(DOC_PREFIX) ? pathname.slice(DOC_PREFIX.length) : ''
-  const decoded = rest.split('/').map(decodeSegment).join('/')
-
-  return decoded === '' || decoded.endsWith('/') ? `${decoded}${FOLDER_INDEX}` : decoded
-}
 
 export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown error'

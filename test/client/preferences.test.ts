@@ -34,13 +34,13 @@ describe('readPreferences', () => {
   })
 
   it('defaults to open with no custom width', () => {
-    expect(DEFAULT_PREFERENCES).toStrictEqual({ widthPx: null, open: true })
+    expect(DEFAULT_PREFERENCES).toStrictEqual({ widthPx: null, open: true, openFolders: [] })
   })
 
   it('round-trips a stored value', () => {
-    writePreferences({ widthPx: 420, open: false })
+    writePreferences({ widthPx: 420, open: false, openFolders: ['journal'] })
 
-    expect(readPreferences()).toStrictEqual({ widthPx: 420, open: false })
+    expect(readPreferences()).toStrictEqual({ widthPx: 420, open: false, openFolders: ['journal'] })
   })
 
   it('survives storage that throws on read, as in private browsing', () => {
@@ -64,7 +64,7 @@ describe('readPreferences', () => {
     try {
       expect(readPreferences()).toStrictEqual(DEFAULT_PREFERENCES)
       expect(() => {
-        writePreferences({ widthPx: 300, open: true })
+        writePreferences({ widthPx: 300, open: true, openFolders: [] })
       }).not.toThrow()
     } finally {
       if (original !== undefined) Object.defineProperty(globalThis, 'localStorage', original)
@@ -92,7 +92,19 @@ describe('readPreferences', () => {
   ])('rejects a %s width and keeps the rest of the record', (_label, widthPx) => {
     const raw = JSON.stringify({ widthPx, open: false })
 
-    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: null, open: false })
+    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: null, open: false, openFolders: [] })
+  })
+
+  it('defaults a wrong-typed folder list without discarding the rest of the record', () => {
+    const raw = '{"widthPx":300,"open":true,"openFolders":"journal"}'
+
+    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: 300, open: true, openFolders: [] })
+  })
+
+  it('keeps only the strings from a folder list holding junk', () => {
+    const raw = JSON.stringify({ widthPx: null, open: true, openFolders: ['journal', 42, null, 'archive'] })
+
+    expect(readPreferences(storageHolding(raw)).openFolders).toStrictEqual(['journal', 'archive'])
   })
 
   it('keeps an implausibly large width for the caller to clamp', () => {
@@ -100,33 +112,33 @@ describe('readPreferences', () => {
     // indistinguishable from a bogus one, and both want clamping to the viewport.
     const raw = JSON.stringify({ widthPx: 99999, open: true })
 
-    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: 99999, open: true })
+    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: 99999, open: true, openFolders: [] })
   })
 })
 
 describe('writePreferences', () => {
   it('stores under the agreed key', () => {
-    writePreferences({ widthPx: 300, open: true })
+    writePreferences({ widthPx: 300, open: true, openFolders: [] })
 
-    expect(localStorage.getItem(PREFERENCES_KEY)).toBe(JSON.stringify({ widthPx: 300, open: true }))
+    expect(localStorage.getItem(PREFERENCES_KEY)).toBe(JSON.stringify({ widthPx: 300, open: true, openFolders: [] }))
   })
 
   it('survives storage that throws, so a full quota costs a preference and not the app', () => {
     expect(() => {
-      writePreferences({ widthPx: 300, open: true }, throwingStorage())
+      writePreferences({ widthPx: 300, open: true, openFolders: [] }, throwingStorage())
     }).not.toThrow()
   })
 
   it('survives storage being unavailable entirely', () => {
     expect(() => {
-      writePreferences({ widthPx: 300, open: true }, null)
+      writePreferences({ widthPx: 300, open: true, openFolders: [] }, null)
     }).not.toThrow()
   })
 
   it('defaults to localStorage and not sessionStorage, so preferences outlive the tab', () => {
     sessionStorage.clear()
 
-    writePreferences({ widthPx: 256, open: true })
+    writePreferences({ widthPx: 256, open: true, openFolders: [] })
 
     expect(localStorage.getItem(PREFERENCES_KEY)).not.toBeNull()
     expect(sessionStorage.getItem(PREFERENCES_KEY)).toBeNull()

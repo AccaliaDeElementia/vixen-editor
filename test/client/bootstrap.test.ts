@@ -3,13 +3,7 @@
 import type { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  bootstrap,
-  bootstrapOrReport,
-  describeError,
-  documentIdFromPath,
-  MissingMountError,
-} from '../../src/client/editor/bootstrap.ts'
+import { bootstrap, bootstrapOrReport, describeError, MissingMountError } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 
 let root: HTMLElement
@@ -55,36 +49,6 @@ beforeEach(() => {
 afterEach(() => {
   document.body.innerHTML = ''
   vi.restoreAllMocks()
-})
-
-describe('documentIdFromPath', () => {
-  it('reads the document from the path', () => {
-    expect(documentIdFromPath('/doc/journal/2026.md')).toBe('journal/2026.md')
-  })
-
-  it('reads a flat document', () => {
-    expect(documentIdFromPath('/doc/notes.md')).toBe('notes.md')
-  })
-
-  it('falls back to the folder index at the doc root', () => {
-    expect(documentIdFromPath('/doc/')).toBe('index.md')
-  })
-
-  it('falls back to the folder index inside a folder', () => {
-    expect(documentIdFromPath('/doc/journal/')).toBe('journal/index.md')
-  })
-
-  it('decodes a percent-encoded segment', () => {
-    expect(documentIdFromPath('/doc/journal/a%2Db.md')).toBe('journal/a-b.md')
-  })
-
-  it('keeps a malformed escape rather than throwing on a hand-typed url', () => {
-    expect(documentIdFromPath('/doc/a%zz.md')).toBe('a%zz.md')
-  })
-
-  it('treats a path outside the doc prefix as the root', () => {
-    expect(documentIdFromPath('/elsewhere')).toBe('index.md')
-  })
 })
 
 describe('describeError', () => {

@@ -139,3 +139,79 @@
     opacity: 1;
   }
 }
+
+.tree {
+  flex: 1;
+  margin: 0;
+  padding: $space-xs 0;
+  overflow: auto;
+  list-style: none;
+  font-size: $font-size-sm;
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+.tree__row {
+  // Depth is carried as a custom property so nesting is expressed once here
+  // rather than as an inline pixel value on every row.
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.15em $space-sm 0.15em calc(#{$space-sm} + (var(--depth, 0) * 1.1em));
+  color: $body-color;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+
+  &:hover {
+    background: $gray-900;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
+  }
+
+  &[aria-selected='true'] {
+    background: $surface;
+    color: $body-color;
+  }
+}
+
+.tree__twisty {
+  flex: none;
+  width: 1em;
+  font-size: 1.1em;
+  color: $muted;
+}
+
+.tree__icon {
+  flex: none;
+  font-size: 1.15em;
+
+  &--folder {
+    color: $muted;
+  }
+
+  &--document {
+    color: $info;
+  }
+
+  &--image {
+    color: $success;
+  }
+
+  &--trash {
+    color: $muted;
+  }
+}
+
+.tree__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

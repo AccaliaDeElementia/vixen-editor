@@ -1,7 +1,5 @@
 aside.explorer#explorer(aria-label='File browser')
-  ul.explorer__list
-    each _item in [1, 2, 3, 4, 5, 6, 7, 8]
-      li TODO: Implement File Browser
+  ul.tree#file-tree(role='tree' aria-label='Documents')
   button.explorer__resizer#explorer-resizer(
     type='button'
     role='separator'
