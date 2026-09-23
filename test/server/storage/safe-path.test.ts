@@ -8,7 +8,9 @@ import {
   DOCUMENT_EXTENSIONS,
   extensionOf,
   IMAGE_EXTENSIONS,
+  assertNormalisedName,
   InvalidPathError,
+  isAllowedName,
   joinEntryPath,
   resolveDocumentPath,
   resolveEntryPath,
@@ -30,13 +32,10 @@ const REJECTED_FOLDER_PATHS: ReadonlyArray<readonly [string, string]> = [
   ['a backslash separator', 'notes\\..\\..\\secrets'],
   ['a leading slash', '/notes'],
   ['a double slash', 'notes//secrets'],
-  ['a home-relative path', '~/secrets'],
   ['whitespace only', '   '],
   ['a null byte', 'notes\u0000'],
   ['a null byte before a separator', 'notes\u0000/evil'],
   ['a newline', 'notes\n'],
-  ['a URL-encoded traversal', '%2e%2e/secrets'],
-  ['a space in the name', 'my notes'],
   ['a trailing slash', 'notes/'],
   ['a control character', 'notes\u0007'],
 ]
@@ -64,6 +63,19 @@ describe('resolveDocumentPath', () => {
       ['a dot inside the name', 'release.notes.md'],
       ['a plain text document', 'notes.txt'],
       ['an uppercase extension', 'NOTES.MD'],
+      ['a space in the name', 'Finding Toy.md'],
+      ['an apostrophe', "Rachel's notes.md"],
+      ['an ampersand', 'Q&A.md'],
+      ['brackets and parentheses', 'notes (draft) [1].md'],
+      ['an accented letter', 'caf\u00e9.md'],
+      ['CJK characters', '\u65e5\u672c\u8a9e.md'],
+      ['an emoji', 'party \u{1F389}.md'],
+      ['a joined emoji sequence', 'family \u{1F468}\u200D\u{1F469}\u200D\u{1F467}.md'],
+      ['an emoji with a skin tone and a joiner', '\u{1F469}\u{1F3FD}\u200D\u{1F4BB}.md'],
+      ['an emoji with a variation selector and a joiner', '\u2764\uFE0F\u200D\u{1F525}.md'],
+      ['a folder named like a home directory', '~/notes.md'],
+      ['a name that merely looks encoded', '%2e%2e/notes.md'],
+      ['other punctuation', 'a+b,c#d!e.md'],
     ])('%s', (_label, id) => {
       expect(resolveDocumentPath(ROOT, id)).toBe(path.join(ROOT, id))
     })
@@ -92,14 +104,11 @@ describe('resolveDocumentPath', () => {
       ['a backslash separator', 'notes\\..\\..\\secrets.md'],
       ['a leading slash', '/notes.md'],
       ['a double slash', 'notes//secrets.md'],
-      ['a home-relative path', '~/secrets.md'],
       ['an empty id', ''],
       ['whitespace only', '   '],
       ['a null byte', 'notes\u0000.md'],
       ['a null byte before the extension', 'notes\u0000/evil.md'],
       ['a newline', 'notes\n.md'],
-      ['a URL-encoded traversal', '%2e%2e/secrets.md'],
-      ['a space in the name', 'my notes.md'],
       ['a trailing slash', 'notes/'],
       ['a control character', 'notes\u0007.md'],
       ['a missing extension', 'notes'],
@@ -218,5 +227,145 @@ describe('joinEntryPath', () => {
 
   it('rejects a name that escapes with a separator, before path rules ever see it', () => {
     expect(() => joinEntryPath('journal', '../notes.md')).toThrow(InvalidPathError)
+  })
+})
+
+describe('names the validator refuses', () => {
+  it.each([
+    ['a backslash, which is a separator elsewhere', 'a\\b.md'],
+    ['a tab', 'a\tb.md'],
+    ['a newline', 'a\nb.md'],
+    ['a null byte', 'a\u0000b.md'],
+    ['a delete character', 'a\u007Fb.md'],
+    ['a right-to-left override, which reverses how the name reads', 'photo\u202Egnp.md'],
+    ['a left-to-right mark', 'a\u200Eb.md'],
+    ['a zero-width space, which hides a difference between two names', 'no​tes.md'],
+    ['a byte order mark', 'a﻿b.md'],
+    ['a word joiner', 'a⁠b.md'],
+    ['only whitespace', '   .md'],
+    ['a leading space', ' notes.md'],
+    ['a folder segment ending in a space', 'journal /notes.md'],
+    ['a non-breaking space at the edge', ' notes.md'],
+  ])('rejects %s', (_label, id) => {
+    expect(() => resolveDocumentPath(ROOT, id)).toThrow(InvalidPathError)
+  })
+
+  describe('zero-width joiners outside an emoji sequence', () => {
+    it.each([
+      ['hidden inside ordinary text', 'no‍tes.md'],
+      ['between a letter and an emoji', 'a‍\u{1F389}.md'],
+      ['trailing after an emoji', '\u{1F389}‍.md'],
+      ['leading before an emoji', '‍\u{1F389}.md'],
+      ['hidden in text that also carries an emoji', 'no‍tes \u{1F389}.md'],
+    ])('rejects one %s', (_label, id) => {
+      expect(() => resolveDocumentPath(ROOT, id)).toThrow(InvalidPathError)
+    })
+  })
+
+  describe('length, which the filesystem counts in bytes', () => {
+    it('accepts a name of exactly the byte limit', () => {
+      expect(() => resolveDocumentPath(ROOT, `${'a'.repeat(252)}.md`)).not.toThrow()
+    })
+
+    it('rejects a name one byte over', () => {
+      expect(() => resolveDocumentPath(ROOT, `${'a'.repeat(253)}.md`)).toThrow(InvalidPathError)
+    })
+
+    it('accepts sixty-three emoji, which is exactly the limit at four bytes each', () => {
+      expect(() => resolveDocumentPath(ROOT, `${'\u{1F389}'.repeat(63)}.md`)).not.toThrow()
+    })
+
+    it('counts an emoji as its four bytes, not as one character', () => {
+      expect(() => resolveDocumentPath(ROOT, `${'\u{1F389}'.repeat(64)}.md`)).toThrow(InvalidPathError)
+    })
+
+    it('counts a CJK character as its three bytes', () => {
+      expect(() => resolveDocumentPath(ROOT, `${'日'.repeat(85)}.md`)).toThrow(InvalidPathError)
+    })
+
+    it('measures each segment separately, not the whole path', () => {
+      const segment = 'a'.repeat(200)
+
+      expect(() => resolveDocumentPath(ROOT, `${segment}/${segment}/notes.md`)).not.toThrow()
+    })
+  })
+})
+
+describe('isAllowedName', () => {
+  it.each([
+    ['a plain name', 'notes.md'],
+    ['a space', 'Finding Toy.md'],
+    ['an emoji sequence', 'family \u{1F468}‍\u{1F469}.md'],
+    ['a folder name', 'journal'],
+  ])('accepts %s', (_label, name) => {
+    expect(isAllowedName(name)).toBe(true)
+  })
+
+  it.each([
+    ['a hidden name', '.hidden.md'],
+    ['the trash', '.trash'],
+    ['a stray joiner', 'no‍tes.md'],
+    ['a bidi override', 'photo\u202Egnp.md'],
+    ['whitespace padding', ' notes.md'],
+  ])('refuses %s', (_label, name) => {
+    expect(isAllowedName(name)).toBe(false)
+  })
+
+  // The bug this predicate exists to prevent: the explorer listing a document
+  // that the path validator then refuses to open.
+  it('agrees with the path validator on every name, so nothing is listed that cannot be opened', () => {
+    const names = [
+      'notes.md',
+      'Finding Toy.md',
+      "Rachel's notes.md",
+      'Q&A.md',
+      'café.md',
+      '日本語.md',
+      'party \u{1F389}.md',
+      'family \u{1F468}‍\u{1F469}.md',
+      '.hidden.md',
+      'no‍tes.md',
+      'photo\u202Egnp.md',
+      '   .md',
+      ' padded.md',
+      'a\\b.md',
+      `${'a'.repeat(300)}.md`,
+    ]
+
+    const disagreements = names.filter((name) => {
+      const listed = isAllowedName(name)
+      const openable = ((): boolean => {
+        try {
+          resolveDocumentPath(ROOT, name)
+          return true
+        } catch {
+          return false
+        }
+      })()
+
+      return listed !== openable
+    })
+
+    expect(disagreements).toStrictEqual([])
+  })
+})
+
+describe('assertNormalisedName', () => {
+  it('accepts a composed name', () => {
+    expect(() => {
+      assertNormalisedName('café.md')
+    }).not.toThrow()
+  })
+
+  it('refuses a decomposed name, so new files are unambiguous', () => {
+    expect(() => {
+      assertNormalisedName('café.md')
+    }).toThrow(InvalidPathError)
+  })
+
+  it('accepts a plain ascii name', () => {
+    expect(() => {
+      assertNormalisedName('notes.md')
+    }).not.toThrow()
   })
 })

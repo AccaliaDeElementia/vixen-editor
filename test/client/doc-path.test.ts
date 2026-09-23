@@ -47,6 +47,17 @@ describe('docUrlFor', () => {
     expect(docUrlFor('my folder/a b.md')).toBe('/doc/my%20folder/a%20b.md')
   })
 
+  it.each([
+    ['a space', 'Finding Toy.md'],
+    ['a hash, which would otherwise start a fragment', 'a#b.md'],
+    ['a question mark, which would otherwise start a query', 'Q?A.md'],
+    ['an accented letter', 'caf\u00e9.md'],
+    ['an emoji', 'party \u{1F389}.md'],
+    ['something that merely looks encoded', '%2e%2e.md'],
+  ])('round-trips a name with %s', (_label, name) => {
+    expect(documentIdFromPath(docUrlFor(name))).toBe(name)
+  })
+
   it('round-trips through documentIdFromPath', () => {
     expect(documentIdFromPath(docUrlFor('journal/2026/september.md'))).toBe('journal/2026/september.md')
   })

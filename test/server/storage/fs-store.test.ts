@@ -16,6 +16,16 @@ import {
 } from '../../../src/server/storage/store-errors.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 
+// Every segment is inside NAME_MAX, but the whole path exceeds PATH_MAX (4096),
+// so the filesystem refuses it with ENAMETOOLONG rather than reporting absence.
+const DEEP_FOLDER = Array.from({ length: 25 }, () => 'd'.repeat(200)).join('/')
+const DEEP_DOCUMENT = `${DEEP_FOLDER}/notes.md`
+
+// Shallow enough that the parent directory is creatable, so the failure lands
+// on the leaf itself rather than on the walk down to it.
+const CREATABLE_PARENT = Array.from({ length: 20 }, () => 'd'.repeat(200)).join('/')
+const OVERLONG_LEAF = `${'l'.repeat(200)}.md`
+
 let root: string
 let outside: string
 let store: DocumentStore
@@ -59,8 +69,7 @@ describe('read', () => {
   })
 
   it('surfaces a genuine filesystem fault rather than reporting it as missing', async () => {
-    // NAME_MAX is 255, so a longer filename yields ENAMETOOLONG rather than ENOENT.
-    await expect(store.read(`${'a'.repeat(300)}.md`)).rejects.toThrow(expect.objectContaining({ code: 'ENAMETOOLONG' }))
+    await expect(store.read(DEEP_DOCUMENT)).rejects.toThrow(expect.objectContaining({ code: 'ENAMETOOLONG' }))
   })
 
   it('refuses to follow a well-formed id whose symlink escapes the root', async () => {
@@ -194,8 +203,13 @@ describe('createDocument', () => {
   })
 
   it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
-    // NAME_MAX is 255, so a longer filename yields ENAMETOOLONG rather than EEXIST.
-    await expect(store.createDocument(`${'a'.repeat(300)}.md`, 'x')).rejects.toThrow(
+    await expect(store.createDocument(`${CREATABLE_PARENT}/${OVERLONG_LEAF}`, 'x')).rejects.toThrow(
+      expect.objectContaining({ code: 'ENAMETOOLONG' }),
+    )
+  })
+
+  it('surfaces a fault from the walk down to the parent too', async () => {
+    await expect(store.createDocument(DEEP_DOCUMENT, 'x')).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
@@ -388,8 +402,7 @@ describe('createFolder', () => {
   })
 
   it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
-    // NAME_MAX is 255, so a longer directory name yields ENAMETOOLONG rather than EEXIST.
-    await expect(store.createFolder('b'.repeat(300), '# x')).rejects.toThrow(
+    await expect(store.createFolder(`${CREATABLE_PARENT}/${'d'.repeat(200)}`, '# x')).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
@@ -484,8 +497,7 @@ describe('createUpload', () => {
   })
 
   it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
-    // NAME_MAX is 255, so a longer filename yields ENAMETOOLONG rather than EEXIST.
-    await expect(store.createUpload('', `${'a'.repeat(300)}.png`, PNG)).rejects.toThrow(
+    await expect(store.createUpload(CREATABLE_PARENT, `${'p'.repeat(200)}.png`, PNG)).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })

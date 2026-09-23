@@ -7,7 +7,7 @@ import path from 'node:path'
 import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
-import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
+import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { InvalidMoveError, WouldOverwriteError } from './store-errors.ts'
 import { classifyFile } from './tree.ts'
 import { entryKindOf, moveToTrash, type TrashKind } from './trash.ts'
@@ -93,6 +93,10 @@ function assertKindSurvives(from: string, to: string, fromKind: TrashKind): void
 export async function moveEntry(root: string, request: MoveRequest): Promise<void> {
   const { from, to, allowOverwrite } = request
   if (from === '' || to === '') throw new InvalidPathError('', 'must not be the document root')
+
+  // Only the destination is a name the client chose; the source has to match
+  // whatever is already on disk, decomposed or not.
+  assertNormalisedName(to)
 
   const fromTarget = resolveFolderPath(root, from)
   const toTarget = resolveFolderPath(root, to)

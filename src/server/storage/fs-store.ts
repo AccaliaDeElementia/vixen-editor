@@ -12,7 +12,9 @@ import { etagOf } from './etag.ts'
 import { createWriteLock, type WriteLock } from './lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
 import {
+  assertNormalisedName,
   InvalidPathError,
+  isAllowedName,
   joinEntryPath,
   resolveDocumentPath,
   resolveEntryPath,
@@ -87,10 +89,6 @@ async function readdirOrNull(dir: string): Promise<Dirent[] | null> {
   return await nullWhenAbsent(async () => await fs.readdir(dir, { withFileTypes: true }))
 }
 
-function isHidden(entry: Dirent): boolean {
-  return entry.name.startsWith('.')
-}
-
 function isDocumentFile(entry: Dirent): boolean {
   return entry.isFile() && classifyFile(entry.name) === 'document'
 }
@@ -100,7 +98,7 @@ async function collectDocumentIds(dir: string, prefix: string, found: string[]):
   if (entries === null) return
 
   for (const entry of entries) {
-    if (isHidden(entry)) continue
+    if (!isAllowedName(entry.name)) continue
 
     const id = prefix === '' ? entry.name : `${prefix}/${entry.name}`
 
@@ -156,6 +154,7 @@ export function createFsDocumentStore(
     },
 
     async createDocument(id: string, content: string): Promise<string> {
+      assertNormalisedName(id)
       const target = resolveDocumentPath(root, id)
       assertNotBlank(id, content)
 
@@ -175,6 +174,7 @@ export function createFsDocumentStore(
     },
 
     async createFolder(folderPath: string, indexContent: string): Promise<string> {
+      assertNormalisedName(folderPath)
       const target = resolveFolderPath(root, folderPath)
       assertNotBlank(folderPath, indexContent)
 
@@ -196,6 +196,7 @@ export function createFsDocumentStore(
 
     async createUpload(directory: string, filename: string, bytes: Uint8Array): Promise<string> {
       const entryPath = joinEntryPath(directory, filename)
+      assertNormalisedName(entryPath)
       const target = resolveEntryPath(root, entryPath, UPLOAD_EXTENSIONS)
 
       if (bytes.length === 0) throw new EmptyContentError(entryPath)

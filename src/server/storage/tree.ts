@@ -7,7 +7,7 @@ import path from 'node:path'
 import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
-import { DOCUMENT_EXTENSIONS, extensionOf, IMAGE_EXTENSIONS } from './safe-path.ts'
+import { DOCUMENT_EXTENSIONS, extensionOf, IMAGE_EXTENSIONS, isAllowedName } from './safe-path.ts'
 
 const logEscape = createLogger('storage/tree', 'symlinkEscape')
 const logCycle = createLogger('storage/tree', 'symlinkCycle')
@@ -118,7 +118,9 @@ async function buildEntries(entries: readonly Dirent[], at: Location): Promise<T
   const found: TreeEntry[] = []
 
   for (const entry of entries) {
-    if (entry.name.startsWith('.')) continue
+    // The same predicate the path validator uses, so the tree cannot show an
+    // entry that would then be refused when something tries to open it.
+    if (!isAllowedName(entry.name)) continue
 
     /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk is
        inherently sequential, and fanning out with Promise.all would risk

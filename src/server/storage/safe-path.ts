@@ -14,7 +14,22 @@ export const DOCUMENT_EXTENSIONS: readonly string[] = ['.md', '.txt']
 export const IMAGE_EXTENSIONS: readonly string[] = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']
 export const UPLOAD_EXTENSIONS: readonly string[] = [...DOCUMENT_EXTENSIONS, ...IMAGE_EXTENSIONS]
 
-const ALLOWED_SEGMENT = /^[A-Za-z0-9._-]+$/
+// NAME_MAX on Linux is 255 *bytes*, not characters: an emoji costs four and a
+// CJK character three, so a short-looking name can still exceed it.
+const MAX_NAME_BYTES = 255
+
+const CONTROL = /\p{Cc}/u
+
+// Every invisible formatting character except the zero-width joiner, which is
+// the one the emoji sequences below legitimately need.
+const INVISIBLE = /(?!\u200D)\p{Cf}/u
+
+// A well-formed emoji ZWJ sequence: pictographs joined through the joiner, with
+// skin-tone modifiers and variation selectors allowed between them.
+const EMOJI_ZWJ_SEQUENCE =
+  /\p{Extended_Pictographic}(?:[\p{Emoji_Modifier}\uFE0F]*\u200D\p{Extended_Pictographic})+[\p{Emoji_Modifier}\uFE0F]*/gu
+
+const ZERO_WIDTH_JOINER = '\u200D'
 
 function segmentsOf(value: string): string[] {
   return value.split('/')
@@ -24,31 +39,54 @@ export function extensionOf(value: string): string {
   return path.posix.extname(value).toLowerCase()
 }
 
-interface SegmentRule {
-  rejects: (value: string) => boolean
+function byteLength(name: string): number {
+  return new TextEncoder().encode(name).length
+}
+
+// Joining emoji is the only thing a joiner is for, so once the well-formed
+// sequences are removed any joiner left behind is hiding inside ordinary text.
+function hasStrayJoiner(name: string): boolean {
+  return name.replace(EMOJI_ZWJ_SEQUENCE, '').includes(ZERO_WIDTH_JOINER)
+}
+
+interface NameRule {
+  rejects: (name: string) => boolean
   reason: string
 }
 
-const SEGMENT_RULES: readonly SegmentRule[] = [
-  { rejects: (value) => value.includes('\0'), reason: 'must not contain a null byte' },
-  { rejects: (value) => segmentsOf(value).includes(''), reason: 'must not contain an empty path segment' },
-  {
-    rejects: (value) => segmentsOf(value).some((segment) => segment === '.' || segment === '..'),
-    reason: 'must not contain a relative path segment',
-  },
-  {
-    rejects: (value) => segmentsOf(value).some((segment) => segment.startsWith('.')),
-    reason: 'must not contain a segment beginning with a dot',
-  },
-  {
-    rejects: (value) => !segmentsOf(value).every((segment) => ALLOWED_SEGMENT.test(segment)),
-    reason: 'may only contain letters, digits, dot, underscore and hyphen',
-  },
+const NAME_RULES: readonly NameRule[] = [
+  { rejects: (name) => name === '', reason: 'must not contain an empty path segment' },
+  { rejects: (name) => name === '.' || name === '..', reason: 'must not contain a relative path segment' },
+  { rejects: (name) => name.startsWith('.'), reason: 'must not contain a segment beginning with a dot' },
+  { rejects: (name) => name.includes('\\'), reason: 'must not contain a backslash' },
+  { rejects: (name) => CONTROL.test(name), reason: 'must not contain a control character' },
+  { rejects: (name) => INVISIBLE.test(name), reason: 'must not contain an invisible formatting character' },
+  { rejects: hasStrayJoiner, reason: 'may only use a zero-width joiner between emoji' },
+  { rejects: (name) => name.trim() === '', reason: 'must not be only whitespace' },
+  { rejects: (name) => name !== name.trim(), reason: 'must not begin or end with whitespace' },
+  { rejects: (name) => byteLength(name) > MAX_NAME_BYTES, reason: `must be at most ${String(MAX_NAME_BYTES)} bytes` },
 ]
 
+// The single answer to "may this name exist here", shared by the validator that
+// guards every path and by the walks that decide what to list. Two answers is
+// what let a file be listed and then refused when opened.
+export function isAllowedName(name: string): boolean {
+  return !NAME_RULES.some((rule) => rule.rejects(name))
+}
+
 function assertValidSegments(value: string): void {
-  for (const rule of SEGMENT_RULES) {
-    if (rule.rejects(value)) throw new InvalidPathError(value, rule.reason)
+  for (const name of segmentsOf(value)) {
+    const broken = NAME_RULES.find((rule) => rule.rejects(name))
+    if (broken !== undefined) throw new InvalidPathError(value, broken.reason)
+  }
+}
+
+// Applied only where the client chooses a name, never on the way to an existing
+// file: normalising a lookup would hide a decomposed name that another tool
+// wrote, which is the very fault this validation exists to prevent.
+export function assertNormalisedName(value: string): void {
+  if (value.normalize('NFC') !== value) {
+    throw new InvalidPathError(value, 'must be in Unicode normal form NFC')
   }
 }
 

@@ -204,6 +204,49 @@ coverage gate.
 explorer is hidden it leaves the grid flow entirely, and with auto-placement
 the workspace slides into the collapsed `0`-width track and the editor vanishes.
 
+## Archive portability
+
+**Downloaded archives carry the names the store holds, unchanged.** No
+sanitising, no renaming, no rewriting of document contents. An export is a
+faithful copy of the tree or it is not worth having.
+
+Linux accepts filenames that Windows does not: `< > : " | ? *`, the device
+names (`CON`, `PRN`, `AUX`, `NUL`, `COM0`–`COM9`, `LPT0`–`LPT9`, with or
+without an extension), and a trailing dot. A store holding such a name — one
+created before this rule, or by another tool writing into `DOCS_ROOT` — will
+produce a zip that Windows Explorer refuses to extract.
+
+**The answer is a better tool.** 7-Zip and similar substitute the offending
+characters at extraction time, where the user can see what changed and
+override it. Explorer's built-in handler cannot. Point people there.
+
+### Why not munge the names on the way out
+
+This was considered and rejected. Recorded so it is not relitigated:
+
+- **It contradicts zip import.** Importing must _reject_ odd entry names
+  rather than sanitise them, because sanitising untrusted archive entries is
+  how traversal gets in. Munging on export therefore produces an archive this
+  application would refuse to read back.
+- **It is not injective.** `a:b.md` and `a?b.md` both become `a-b.md`, so it
+  needs collision suffixing, and the mapping stops being derivable from either
+  side. Reversing it would need a manifest shipped alongside.
+- **Round-tripping duplicates rather than updates.** A munged name reimported
+  lands beside the original as a second file. Silent duplication is a worse
+  failure than a download that visibly will not extract.
+- **Rewriting links to match is out of the question.** It breaks the rule that
+  the API never rewrites stored content, and doing it correctly needs a real
+  markdown parse that leaves fenced and inline code alone — a path inside a
+  code block is being documented, not linked.
+
+If it is ever built anyway: names only, never content, and ship a manifest so
+the change is visible. Prefer _reporting_ the non-portable names in the UI so
+the user renames them in the store, where the fix is permanent.
+
+**Creating a name Windows cannot take is prevented at the source** — see the
+create-time rules in `src/server/storage/safe-path.ts`. That stops the problem
+growing without touching names that already exist.
+
 ## Logging
 
 **Nothing writes to `stdout` or `stderr` directly.** No `console.*` in shipped

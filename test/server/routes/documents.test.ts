@@ -100,6 +100,24 @@ describe('GET /api/documents/:id', () => {
     expect(res.headers.get('etag')).not.toBe(etag)
   })
 
+  // The explorer lists whatever is on disk, so anything it can show has to be
+  // openable: a name the listing accepts and the reader refuses is the fault
+  // this guards against.
+  it.each([
+    ['a space', 'Finding Toy.md'],
+    ['an apostrophe', "Rachel's notes.md"],
+    ['an accented letter', 'caf\u00e9.md'],
+    ['CJK characters', '\u65e5\u672c\u8a9e.md'],
+    ['an emoji', 'party \u{1F389}.md'],
+  ])('serves a document whose name has %s', async (_label, name) => {
+    await fs.writeFile(path.join(root, name), '# hello')
+
+    const res = await app.request(`/api/documents/${encodeURIComponent(name)}`)
+
+    expect(res.status).toBe(200)
+    await expect(res.text()).resolves.toBe('# hello')
+  })
+
   it('returns a nested document', async () => {
     await store.createDocument('journal/2026/september.md', 'entry')
 
