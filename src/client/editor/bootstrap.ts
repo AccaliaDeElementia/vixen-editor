@@ -9,14 +9,25 @@ import { createToast } from '../layout/toast.ts'
 
 import { createSession, type Session } from './session.ts'
 
-export const DEFAULT_DOCUMENT = 'welcome.md'
 export const MOUNT_SELECTOR = '#editor'
 export { TOAST_SELECTOR as STATUS_SELECTOR } from '../layout/toast.ts'
-export const DOCUMENT_QUERY_PARAM = 'doc'
+export const DOC_PREFIX = '/doc/'
+export const FOLDER_INDEX = 'index.md'
 export const SAVE_KEY = 'Mod-s'
 
-export function documentIdFromSearch(search: string): string {
-  return new URLSearchParams(search).get(DOCUMENT_QUERY_PARAM) ?? DEFAULT_DOCUMENT
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return segment
+  }
+}
+
+export function documentIdFromPath(pathname: string): string {
+  const rest = pathname.startsWith(DOC_PREFIX) ? pathname.slice(DOC_PREFIX.length) : ''
+  const decoded = rest.split('/').map(decodeSegment).join('/')
+
+  return decoded === '' || decoded.endsWith('/') ? `${decoded}${FOLDER_INDEX}` : decoded
 }
 
 export function describeError(error: unknown): string {
@@ -25,7 +36,7 @@ export function describeError(error: unknown): string {
 
 export interface BootstrapOptions {
   root?: ParentNode
-  search?: string
+  pathname?: string
   session?: Session
 }
 
@@ -39,7 +50,7 @@ export class MissingMountError extends Error {
 
 export async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   const root = options.root ?? document
-  const search = options.search ?? window.location.search
+  const pathname = options.pathname ?? window.location.pathname
   const session = options.session ?? createSession(createDocumentClient())
 
   const toast = createToast(root)
@@ -53,7 +64,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<EditorV
     throw new MissingMountError(MOUNT_SELECTOR)
   }
 
-  const documentId = documentIdFromSearch(search)
+  const documentId = documentIdFromPath(pathname)
 
   const save = (view: EditorView): boolean => {
     void session

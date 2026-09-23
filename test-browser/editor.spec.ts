@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test'
 
 function newDocument(name: string): string {
-  return `/?doc=${name}`
+  return `/doc/${name}`
 }
 
 test('mounts the editor', async ({ page }) => {

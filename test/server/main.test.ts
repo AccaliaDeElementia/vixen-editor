@@ -84,8 +84,15 @@ function recordingRuntime(overrides: Partial<Runtime> = {}): {
 }
 
 describe('createApp', () => {
-  it('renders the editor template at the root', async () => {
+  it('redirects the root to the document view', async () => {
     const res = await createApp(configFor(), publicDir).request('/')
+
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe('/doc/')
+  })
+
+  it('renders the editor template at the document view', async () => {
+    const res = await createApp(configFor(), publicDir).request('/doc/')
 
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('text/html')
@@ -93,7 +100,7 @@ describe('createApp', () => {
   })
 
   it('passes the application title into the template', async () => {
-    const res = await createApp(configFor(), publicDir).request('/')
+    const res = await createApp(configFor(), publicDir).request('/doc/')
 
     await expect(res.text()).resolves.toContain(`<h1>${APP_TITLE}</h1>`)
   })
@@ -101,27 +108,27 @@ describe('createApp', () => {
   it('renders from the templates directory named by the config', async () => {
     await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'p from-the-configured-dir')
 
-    const res = await createApp(configFor(), publicDir).request('/')
+    const res = await createApp(configFor(), publicDir).request('/doc/')
 
     await expect(res.text()).resolves.toContain('from-the-configured-dir')
   })
 
   it('recompiles templates outside production, so edits need no restart', async () => {
     const app = createApp(configFor({ nodeEnv: 'development' }), publicDir)
-    await app.request('/')
+    await app.request('/doc/')
 
     await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'p edited-while-running')
-    const res = await app.request('/')
+    const res = await app.request('/doc/')
 
     await expect(res.text()).resolves.toContain('edited-while-running')
   })
 
   it('caches templates in production', async () => {
     const app = createApp(configFor({ nodeEnv: 'production' }), publicDir)
-    await app.request('/')
+    await app.request('/doc/')
 
     await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'p edited-while-running')
-    const res = await app.request('/')
+    const res = await app.request('/doc/')
 
     await expect(res.text()).resolves.not.toContain('edited-while-running')
   })

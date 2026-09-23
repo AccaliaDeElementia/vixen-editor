@@ -6,9 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bootstrap,
   bootstrapOrReport,
-  DEFAULT_DOCUMENT,
   describeError,
-  documentIdFromSearch,
+  documentIdFromPath,
   MissingMountError,
 } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
@@ -58,21 +57,33 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('documentIdFromSearch', () => {
-  it('reads the doc query parameter', () => {
-    expect(documentIdFromSearch('?doc=journal/2026.md')).toBe('journal/2026.md')
+describe('documentIdFromPath', () => {
+  it('reads the document from the path', () => {
+    expect(documentIdFromPath('/doc/journal/2026.md')).toBe('journal/2026.md')
   })
 
-  it('falls back to the default document when absent', () => {
-    expect(documentIdFromSearch('')).toBe(DEFAULT_DOCUMENT)
+  it('reads a flat document', () => {
+    expect(documentIdFromPath('/doc/notes.md')).toBe('notes.md')
   })
 
-  it('falls back when another parameter is present', () => {
-    expect(documentIdFromSearch('?theme=dark')).toBe(DEFAULT_DOCUMENT)
+  it('falls back to the folder index at the doc root', () => {
+    expect(documentIdFromPath('/doc/')).toBe('index.md')
   })
 
-  it('tolerates a leading question mark being absent', () => {
-    expect(documentIdFromSearch('doc=notes.md')).toBe('notes.md')
+  it('falls back to the folder index inside a folder', () => {
+    expect(documentIdFromPath('/doc/journal/')).toBe('journal/index.md')
+  })
+
+  it('decodes a percent-encoded segment', () => {
+    expect(documentIdFromPath('/doc/journal/a%2Db.md')).toBe('journal/a-b.md')
+  })
+
+  it('keeps a malformed escape rather than throwing on a hand-typed url', () => {
+    expect(documentIdFromPath('/doc/a%zz.md')).toBe('a%zz.md')
+  })
+
+  it('treats a path outside the doc prefix as the root', () => {
+    expect(documentIdFromPath('/elsewhere')).toBe('index.md')
   })
 })
 
@@ -88,18 +99,18 @@ describe('describeError', () => {
 
 describe('bootstrap', () => {
   it('mounts an editor into the configured selector', async () => {
-    await bootstrap({ root, search: '', session: fakeSession() })
+    await bootstrap({ root, pathname: '/doc/', session: fakeSession() })
 
     expect(root.querySelector('#editor .cm-editor')).not.toBeNull()
   })
 
   it('seeds the editor with the loaded document', async () => {
-    const view = await bootstrap({ root, search: '?doc=notes.md', session: fakeSession() })
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
 
     expect(view.state.doc.toString()).toBe('# notes.md')
   })
 
-  it('loads the document named by the query string', async () => {
+  it('loads the document named by the url path', async () => {
     const loaded: string[] = []
     const session = fakeSession({
       load: (id: string) => {
@@ -108,12 +119,12 @@ describe('bootstrap', () => {
       },
     })
 
-    await bootstrap({ root, search: '?doc=journal/2026.md', session })
+    await bootstrap({ root, pathname: '/doc/journal/2026.md', session })
 
     expect(loaded).toStrictEqual(['journal/2026.md'])
   })
 
-  it('loads the default document when the query string is empty', async () => {
+  it('loads the folder index when the url names no document', async () => {
     const loaded: string[] = []
     const session = fakeSession({
       load: (id: string) => {
@@ -122,13 +133,13 @@ describe('bootstrap', () => {
       },
     })
 
-    await bootstrap({ root, search: '', session })
+    await bootstrap({ root, pathname: '/doc/', session })
 
-    expect(loaded).toStrictEqual([DEFAULT_DOCUMENT])
+    expect(loaded).toStrictEqual(['index.md'])
   })
 
   it('reports the document being edited in the status element', async () => {
-    await bootstrap({ root, search: '?doc=notes.md', session: fakeSession() })
+    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
 
     expect(statusText(root)).toContain('Editing notes.md')
   })
@@ -137,14 +148,18 @@ describe('bootstrap', () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
 
-    await expect(bootstrap({ root: bare, search: '', session: fakeSession() })).rejects.toThrow(MissingMountError)
+    await expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(
+      MissingMountError,
+    )
   })
 
   it('reports a missing mount point in the status element', async () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
 
-    await expect(bootstrap({ root: bare, search: '', session: fakeSession() })).rejects.toThrow(MissingMountError)
+    await expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(
+      MissingMountError,
+    )
     expect(statusText(bare)).toContain('Missing editor mount point')
   })
 
@@ -152,7 +167,7 @@ describe('bootstrap', () => {
     document.body.innerHTML = ''
     const bare = page({ withStatus: false })
 
-    await expect(bootstrap({ root: bare, search: '', session: fakeSession() })).resolves.toBeDefined()
+    await expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).resolves.toBeDefined()
   })
 
   it('falls back to the live document, location and api session when given no options', async () => {
@@ -165,14 +180,14 @@ describe('bootstrap', () => {
     const view = await bootstrap()
 
     expect(view.state.doc.toString()).toBe('# from the api')
-    expect(statusText(document)).toContain(`Editing ${DEFAULT_DOCUMENT}`)
+    expect(statusText(document)).toContain('Editing index.md')
     vi.unstubAllGlobals()
   })
 })
 
 describe('saving', () => {
   it('writes the current document through the session', async () => {
-    const view = await bootstrap({ root, search: '?doc=notes.md', session: fakeSession() })
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
     view.dispatch({ changes: { from: 0, insert: 'extra ' } })
 
     await pressSave(view)
@@ -181,7 +196,7 @@ describe('saving', () => {
   })
 
   it('reports a successful save', async () => {
-    const view = await bootstrap({ root, search: '?doc=notes.md', session: fakeSession() })
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
     await pressSave(view)
 
     expect(statusText(root)).toBe('Saved notes.md')
@@ -189,7 +204,7 @@ describe('saving', () => {
 
   it('reports a failed save without throwing', async () => {
     const session = fakeSession({ save: () => Promise.reject(new Error('server exploded')) })
-    const view = await bootstrap({ root, search: '?doc=notes.md', session })
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session })
 
     await pressSave(view)
 
@@ -199,20 +214,20 @@ describe('saving', () => {
 
 describe('bootstrapOrReport', () => {
   it('returns the view on success', async () => {
-    await expect(bootstrapOrReport({ root, search: '', session: fakeSession() })).resolves.not.toBeNull()
+    await expect(bootstrapOrReport({ root, pathname: '/doc/', session: fakeSession() })).resolves.not.toBeNull()
   })
 
   it('resolves to null instead of rejecting when the mount is missing', async () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
 
-    await expect(bootstrapOrReport({ root: bare, search: '', session: fakeSession() })).resolves.toBeNull()
+    await expect(bootstrapOrReport({ root: bare, pathname: '/doc/', session: fakeSession() })).resolves.toBeNull()
   })
 
   it('reports the failure in the status element', async () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
-    await bootstrapOrReport({ root: bare, search: '', session: fakeSession() })
+    await bootstrapOrReport({ root: bare, pathname: '/doc/', session: fakeSession() })
 
     expect(statusText(bare)).toContain('Failed to start')
   })
@@ -221,7 +236,7 @@ describe('bootstrapOrReport', () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false, withStatus: false })
 
-    await expect(bootstrapOrReport({ root: bare, search: '', session: fakeSession() })).resolves.toBeNull()
+    await expect(bootstrapOrReport({ root: bare, pathname: '/doc/', session: fakeSession() })).resolves.toBeNull()
   })
 
   it('falls back to the live document when given no options', async () => {

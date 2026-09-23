@@ -21,7 +21,7 @@ async function boxOf(page: Page, selector: string): Promise<Box> {
 
 async function openLayout(page: Page, width = 1200, height = 700): Promise<void> {
   await page.setViewportSize({ width, height })
-  await page.goto('/')
+  await page.goto('/doc/')
   await expect(page.locator('.cm-editor')).toBeVisible()
 }
 
@@ -74,7 +74,7 @@ test('the page itself never scrolls', async ({ page }) => {
 })
 
 test('the icon font actually loads, so buttons show glyphs and not their names', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/doc/')
   await page.waitForFunction(() => document.fonts.status === 'loaded')
 
   const loaded = await page.evaluate(() => document.fonts.check('24px "Material Symbols Outlined"'))
@@ -83,7 +83,7 @@ test('the icon font actually loads, so buttons show glyphs and not their names',
 })
 
 test('the navigation arrows are present but disabled until SPA navigation exists', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/doc/')
 
   await expect(page.locator('#nav-back')).toBeDisabled()
   await expect(page.locator('#nav-forward')).toBeDisabled()
@@ -91,7 +91,7 @@ test('the navigation arrows are present but disabled until SPA navigation exists
 })
 
 test('the file browser placeholder is listed', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/doc/')
 
   const items = page.locator('.explorer__list li')
   expect(await items.count()).toBeGreaterThan(1)
@@ -99,7 +99,7 @@ test('the file browser placeholder is listed', async ({ page }) => {
 })
 
 test('saving surfaces a toast that then fades', async ({ page }) => {
-  await page.goto(`/?doc=toast-${String(Date.now())}.md`)
+  await page.goto(`/doc/toast-${String(Date.now())}.md`)
   await expect(page.locator('.cm-editor')).toBeVisible()
 
   const status = page.locator('#status')

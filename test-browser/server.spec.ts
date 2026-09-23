@@ -119,3 +119,24 @@ test('rejects a traversal attempt against the real process', async ({ request })
 
   expect(res.status()).toBe(400)
 })
+
+test('the real process sends the root to the document view', async ({ request }) => {
+  const res = await request.get('/', { maxRedirects: 0 })
+
+  expect(res.status()).toBe(302)
+  expect(res.headers().location).toBe('/doc/')
+})
+
+test('the real process gives a folder url its trailing slash', async ({ request }) => {
+  const res = await request.get('/doc/journal/2026', { maxRedirects: 0 })
+
+  expect(res.status()).toBe(302)
+  expect(res.headers().location).toBe('/doc/journal/2026/')
+})
+
+test('the real process serves the editor shell for a document url', async ({ request }) => {
+  const res = await request.get('/doc/notes.md')
+
+  expect(res.status()).toBe(200)
+  expect(await res.text()).toContain('id="editor"')
+})

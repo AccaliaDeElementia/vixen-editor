@@ -8,6 +8,7 @@ import type { Hono } from 'hono'
 import { buildApp } from './app.ts'
 import { loadConfig, type Config } from './config.ts'
 import { applyDebugFilter, createLogger } from './logging.ts'
+import { docRoutes } from './routes/doc.ts'
 import { createFsDocumentStore } from './storage/fs-store.ts'
 import { createTemplateRenderer } from './templates.ts'
 
@@ -23,7 +24,10 @@ export function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR
   const templates = createTemplateRenderer(config.templatesDir, config.nodeEnv === 'production')
 
   app.use(CLIENT_BUNDLE_ROUTE, serveStatic({ root: publicDir }))
-  app.get('/', (c) => c.html(templates.render(EDITOR_TEMPLATE, { title: APP_TITLE })))
+  app.route(
+    '/',
+    docRoutes(() => templates.render(EDITOR_TEMPLATE, { title: APP_TITLE })),
+  )
 
   return app
 }

@@ -124,9 +124,16 @@ describe('every api response carries the clacks header', () => {
 
 describe('static responses carry it too', () => {
   it('on the served page', async () => {
-    const res = await createApp(configFor(), publicDir).request('/')
+    const res = await createApp(configFor(), publicDir).request('/doc/')
 
     expect(res.status).toBe(200)
+    expect(clacksOf(res)).toBe(CLACKS_VALUE)
+  })
+
+  it('on a redirect, which builds its own response', async () => {
+    const res = await createApp(configFor(), publicDir).request('/')
+
+    expect(res.status).toBe(302)
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
