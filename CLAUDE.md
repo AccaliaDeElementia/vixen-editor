@@ -204,6 +204,222 @@ coverage gate.
 explorer is hidden it leaves the grid flow entirely, and with auto-placement
 the workspace slides into the collapsed `0`-width track and the editor vanishes.
 
+## URLs
+
+**A document is addressed by its path: `/doc/<path>`.** The root redirects to
+`/doc/`, and a folder URL that arrives without a trailing slash is redirected
+to one. Both redirects are `302`, never `301` — a permanent redirect is cached
+indefinitely and this scheme may still move.
+
+Bare paths at the root were considered and rejected. The reserved list was
+never going to stay small: `/favicon.ico`, `/robots.txt`, `/.well-known/`
+(ACME renewal breaks without it), `/sw.js`, `/manifest.json`, and every future
+page such as `/settings`. Each would **silently shadow a document of the same
+name**. With a prefix there are no reserved document names at all. GitLab
+shipped bare paths, hit this, and retrofitted `/-/`.
+
+**A folder URL always carries its trailing slash** because relative links are
+resolved against it. At `/doc/journal/2026` a link to `./image.png` resolves
+to `/doc/journal/image.png` — the wrong directory. At `/doc/journal/2026/` it
+resolves correctly.
+
+Whether a leaf is a folder is decided by `classifyFile`, not by looking for a
+dot: a folder named `v1.2` has an extension and is still a folder.
+
+## The document store
+
+### `.md` and `.txt` are the same thing
+
+One document family, in two coats. Anything that accepts one accepts the
+other, including the listing. A format that the listing shows but the reader
+refuses is the fault described below.
+
+### What a name may be
+
+`isAllowedName` in `src/server/storage/safe-path.ts` is the **single** answer
+to "may this name exist here", used both by the path validator and by the
+walks that decide what to list. Two answers is what let a file be listed and
+then refused when opened — a real defect, hit by a document with a space in
+its name.
+
+Rejected in a path segment:
+
+| Rejected                                      | Why                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------ |
+| `/` and `\`                                   | Separators. `\` breaks the moment an export is unzipped on Windows |
+| `\p{Cc}`                                      | Control characters corrupt logs and terminal output                |
+| `\p{Cf}` except U+200D                        | Bidi overrides and zero-width characters; the spoofing class       |
+| A zero-width joiner outside an emoji sequence | Its only legitimate use is joining emoji                           |
+| `.` and `..`                                  | Traversal                                                          |
+| A leading dot                                 | Hidden files, and it is how `.trash` stays unreachable             |
+| Empty, whitespace-only, or space-padded       | `notes.md` and `notes .md` are indistinguishable in a tree         |
+| Over 255 UTF-8 **bytes**                      | `NAME_MAX` counts bytes: 64 emoji is 256                           |
+
+Everything else is allowed — spaces, apostrophes, ampersands, brackets,
+accented letters, CJK, emoji including joined sequences.
+
+**The character set was never the traversal defence.** Separator rejection,
+`.`/`..` rejection, `path.resolve` containment and the realpath check in
+`assertResolvesInsideRoot` are. They are layered: with all the rules in place
+`../secrets.md` is refused as a relative segment; delete that rule and the
+leading-dot rule refuses it; delete both and the containment check does. That
+last one carries a `v8 ignore` saying it is unreachable, which is true only
+while the rules above it hold.
+
+**Unicode normalisation is required only where the client chooses a name** —
+create, upload, move destination. Reads, listings and move sources pass the
+bytes on disk through untouched. Normalising a lookup would hide a decomposed
+name written by another tool, which is the same fault as the listing and the
+validator disagreeing.
+
+### Never rewrite stored content
+
+The API stores what it is given and returns what it stored. `![](./image.png)`
+keeps working in an exported tree opened elsewhere only because nothing
+rewrites it: resolution to `/api/files/raw/…` happens in the preview
+transformer, never on disk.
+
+Three obligations keep that true: never rewrite content, have upload return
+the stored path so the client inserts a _relative_ link, and keep raw URLs
+mirroring store paths so the transform stays a prefix.
+
+**Known consequence:** a rename does not update the documents that link to the
+renamed file. Those links break. That is a live defect, not a design choice.
+
+### Deleting goes to the trash
+
+`.trash/<uuid>/` holds `meta.json` and a payload under the fixed name
+`payload`. Fixed, because a folder may legitimately be called `meta.json` and
+would otherwise collide with the metadata beside it.
+
+Entry ids are UUIDs, which is what keeps a caller-supplied id out of the
+filesystem path. Deleting the same path twice yields two entries. A damaged
+entry is skipped by the listing rather than breaking it.
+
+There is **one** delete. `DELETE /api/documents/:id` was removed so that
+existence is managed in one place.
+
+### Moving
+
+Overwrite checks are **per file and recursive**: two directories merge, so
+only the leaves where something non-mergeable already sits are losses. A move
+that would lose nothing simply happens; one that would lose something returns
+`WOULD_OVERWRITE` **naming every path**, so the client can show them rather
+than asking a vague question.
+
+Overwritten files go to the trash first, so a mistaken confirmation is
+recoverable, and a failure while trashing leaves the move itself untouched.
+
+**A merge into an existing folder is not atomic.** A move to a path that does
+not exist is one `rename`; merging moves entries individually and can
+partially complete. The write lock stops other callers interleaving, but
+serialisation is not atomicity — a crash mid-merge leaves a partial state.
+`EXDEV` is an error, never a copy that half-succeeds.
+
+A rename may not change what a file claims to be: the raw route types a
+response from the extension alone, so `notes.md` cannot become `notes.svg`.
+
+## Concurrency
+
+### Saves carry an ETag
+
+`GET` returns `ETag: "<sha256 of content>"`; `PUT` requires `If-Match` and
+answers `412` on a stale token, `428` when the header is absent. A client that
+forgets the header fails loudly rather than silently overwriting.
+
+A content hash rather than mtime: mtime resolution varies by filesystem, two
+saves in one tick can compare equal, and other tools can set it backwards —
+exactly the cases this exists to catch.
+
+`PUT` does not create. Once `If-Match` is required there is no coherent token
+for a document that does not exist, so creation goes through
+`POST /api/files/documents` and nowhere else.
+
+### The write lock
+
+`If-Match` alone has a hole: between hashing the current file and writing the
+new bytes, another save can land, the check passes, and the write clobbers it
+anyway. Serialising that read-modify-write is what the lock is for.
+
+| Aspect      | Decision                                                                                     |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| Scope       | Writes only — create, save, upload, move, delete, restore, purge                             |
+| Reads       | Never block: tree, document, raw and archive take nothing                                    |
+| Granularity | Global; contention is near zero and path-range locking brings deadlock avoidance for no gain |
+| On timeout  | `503` with `Retry-After` and `{ code: 'BUSY' }`; the client retries once                     |
+
+**It is in-process only.** Two containers on one volume and it protects
+nothing while looking like it does. A single process is the supported
+deployment.
+
+Archive streaming deliberately takes no lock: a slow client dragging a large
+download over minutes would otherwise block every save. A zip may therefore
+catch the tree mid-move.
+
+## Serving files we did not author
+
+`GET /api/files/raw/…` sets the `Content-Type` **from the extension**, never
+from what the upload claimed, plus:
+
+```
+X-Content-Type-Options: nosniff
+Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'
+```
+
+`<img>` already disables scripting, so markdown image syntax is safe by
+construction. The CSP closes the direct-navigation hole where an SVG becomes a
+scriptable same-origin document. **SVG is never inlined into the DOM.**
+
+Uploads are checked against an extension allowlist and, for rasters, their
+magic bytes. The SVG check is structural, not a parse — proving an SVG is
+well-formed XML proves nothing about safety, because a hostile SVG is
+well-formed. What a signature check can catch is a renamed file.
+
+## API errors
+
+Every error body is `{ error, code }`, and some carry more. The code is what
+the UI reacts to; the message is what it shows when it has nothing better.
+
+| Code                    | Status | Also carries                               |
+| ----------------------- | ------ | ------------------------------------------ |
+| `INVALID_PATH`          | 400    |                                            |
+| `BAD_REQUEST`           | 400    |                                            |
+| `CONTENT_MISMATCH`      | 400    |                                            |
+| `NOT_FOUND`             | 404    |                                            |
+| `ALREADY_EXISTS`        | 409    |                                            |
+| `INVALID_MOVE`          | 409    |                                            |
+| `WOULD_OVERWRITE`       | 409    | `paths`                                    |
+| `CONFLICT`              | 412    |                                            |
+| `TOO_LARGE`             | 413    | `unit`, `limit`, `measured` for an archive |
+| `EMPTY_CONTENT`         | 422    |                                            |
+| `PRECONDITION_REQUIRED` | 428    |                                            |
+| `BUSY`                  | 503    | `Retry-After` header                       |
+| `INTERNAL`              | 500    |                                            |
+
+**Every refusal is logged** through one funnel in `routes/error-response.ts`,
+with method, path, status and code. A 4xx is returned rather than thrown, so
+`app.onError` never sees it — without that line a rejected upload left no
+trace on the server at all.
+
+### Naming anything in the markup
+
+A password manager strips separators from an `id`, `name` or `class` and
+substring-matches the result. `file-dialog-input` squashes to
+`filedialoginput`, which contains **`login`**, and Bitwarden offered to fill
+it. `test/server/field-naming.test.ts` scans the rendered page for credential
+words so this cannot come back; it is invisible to anyone reading the markup.
+
+## Limits
+
+| Variable              | Default | Enforced                                       |
+| --------------------- | ------- | ---------------------------------------------- |
+| `UPLOAD_MAX_BYTES`    | 25 MiB  | `Content-Length` first, then the actual bytes  |
+| `ARCHIVE_MAX_BYTES`   | 100 MiB | By walking and measuring **before** any output |
+| `ARCHIVE_MAX_ENTRIES` | 2000    | As above                                       |
+
+Measuring the archive first is what lets an oversized request fail with a
+status code instead of a truncated download.
+
 ## Archive portability
 
 **Downloaded archives carry the names the store holds, unchanged.** No

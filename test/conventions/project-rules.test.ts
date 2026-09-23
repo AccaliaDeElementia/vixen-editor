@@ -158,3 +158,85 @@ describe('rule 5: every tooling suppression carries a rationale', () => {
     expect(found.length).toBeGreaterThan(0)
   })
 })
+
+// An error-code table is exactly the kind of list that rots: nobody re-reads
+// it when adding a code. The document and the server have to agree, or the
+// table is worse than no table at all.
+describe('the documented error codes match the ones the server emits', () => {
+  const STATUS_NAMES: Readonly<Record<string, string>> = {
+    HTTP_BAD_REQUEST: '400',
+    HTTP_NOT_FOUND: '404',
+    HTTP_CONFLICT: '409',
+    HTTP_PRECONDITION_FAILED: '412',
+    HTTP_CONTENT_TOO_LARGE: '413',
+    HTTP_UNPROCESSABLE_CONTENT: '422',
+    HTTP_PRECONDITION_REQUIRED: '428',
+    HTTP_INTERNAL_SERVER_ERROR: '500',
+    HTTP_SERVICE_UNAVAILABLE: '503',
+  }
+
+  const CODE_PATTERNS: readonly RegExp[] = [
+    /refuse\(c, (?<status>HTTP_[A-Z_]+), '(?<code>[A-Z_]+)'/gu,
+    /status: (?<status>HTTP_[A-Z_]+),\s*\n?\s*code: '(?<code>[A-Z_]+)'/gu,
+    /code: '(?<code>[A-Z_]+)' \},\s*(?<status>HTTP_[A-Z_]+)/gu,
+  ]
+
+  function emittedCodes(source: string): Map<string, string> {
+    const found = new Map<string, string>()
+
+    for (const pattern of CODE_PATTERNS) {
+      for (const match of source.matchAll(pattern)) {
+        const { code, status } = match.groups ?? {}
+        if (code !== undefined && status !== undefined) found.set(code, STATUS_NAMES[status] ?? status)
+      }
+    }
+
+    return found
+  }
+
+  function documentedCodes(guide: string): Map<string, string> {
+    const found = new Map<string, string>()
+
+    for (const match of guide.matchAll(/^\|\s*`(?<code>[A-Z_]+)`\s*\|\s*(?<status>\d{3})\s*\|/gmu)) {
+      const { code, status } = match.groups ?? {}
+      if (code !== undefined && status !== undefined) found.set(code, status)
+    }
+
+    return found
+  }
+
+  async function bothSides(): Promise<{ emitted: Map<string, string>; documented: Map<string, string> }> {
+    const files = await collect(path.join('src', 'server'))
+    const sources = await Promise.all(files.map(async (file) => await fs.readFile(file, 'utf8')))
+
+    return {
+      emitted: emittedCodes(sources.join('\n')),
+      documented: documentedCodes(await fs.readFile(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf8')),
+    }
+  }
+
+  it('documents every code the server can return', async () => {
+    const { emitted, documented } = await bothSides()
+
+    expect([...emitted.keys()].filter((code) => !documented.has(code))).toStrictEqual([])
+  })
+
+  it('documents no code the server cannot return', async () => {
+    const { emitted, documented } = await bothSides()
+
+    expect([...documented.keys()].filter((code) => !emitted.has(code))).toStrictEqual([])
+  })
+
+  it('agrees on the status of every code', async () => {
+    const { emitted, documented } = await bothSides()
+    const disagreements = [...emitted].filter(([code, status]) => documented.get(code) !== status)
+
+    expect(disagreements).toStrictEqual([])
+  })
+
+  it('found codes at all, so the comparison is not passing vacuously', async () => {
+    const { emitted } = await bothSides()
+
+    expect(emitted.size).toBeGreaterThan(5)
+  })
+})
