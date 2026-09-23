@@ -5,6 +5,10 @@ import { z } from 'zod'
 const DEFAULT_PORT = 3000
 const MIN_PORT = 1
 const MAX_PORT = 65535
+const MEBIBYTE = 1_048_576
+const DEFAULT_UPLOAD_MEBIBYTES = 25
+
+export const DEFAULT_UPLOAD_MAX_BYTES = DEFAULT_UPLOAD_MEBIBYTES * MEBIBYTE
 
 export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const
 export const NODE_ENVS = ['development', 'production', 'test'] as const
@@ -19,6 +23,7 @@ export interface Config {
   templatesDir: string
   logLevel: LogLevel
   nodeEnv: NodeEnv
+  uploadMaxBytes: number
 }
 
 export class ConfigError extends Error {
@@ -32,6 +37,7 @@ const envSchema = z.object({
   TEMPLATES_DIR: z.string().min(1).default('./src/templates'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   NODE_ENV: z.enum(NODE_ENVS).default('development'),
+  UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(DEFAULT_UPLOAD_MAX_BYTES),
 })
 
 function describeIssues(error: z.ZodError): string {
@@ -52,5 +58,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     templatesDir: result.data.TEMPLATES_DIR,
     logLevel: result.data.LOG_LEVEL,
     nodeEnv: result.data.NODE_ENV,
+    uploadMaxBytes: result.data.UPLOAD_MAX_BYTES,
   }
 }

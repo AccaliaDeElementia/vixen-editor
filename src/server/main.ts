@@ -19,7 +19,7 @@ export const EDITOR_TEMPLATE = 'editor'
 export const APP_TITLE = 'Vixen Editor'
 
 export function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono {
-  const app = buildApp({ store: createFsDocumentStore(config.docsRoot) })
+  const app = buildApp({ store: createFsDocumentStore(config.docsRoot), uploadMaxBytes: config.uploadMaxBytes })
   const templates = createTemplateRenderer(config.templatesDir, config.nodeEnv === 'production')
 
   app.use(CLIENT_BUNDLE_ROUTE, serveStatic({ root: publicDir }))

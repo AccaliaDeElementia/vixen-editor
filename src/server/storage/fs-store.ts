@@ -10,7 +10,15 @@ import { createLogger } from '../logging.ts'
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
 import { etagOf } from './etag.ts'
 import { createWriteLock, type WriteLock } from './lock.ts'
-import { InvalidPathError, resolveDocumentPath, resolveFolderPath } from './safe-path.ts'
+import {
+  InvalidPathError,
+  joinEntryPath,
+  resolveDocumentPath,
+  resolveEntryPath,
+  resolveFolderPath,
+  UPLOAD_EXTENSIONS,
+} from './safe-path.ts'
+import { contentMatchesExtension } from './signatures.ts'
 import { classifyFile, readTree, type TreeEntry } from './tree.ts'
 
 const logStore = createLogger('storage/fs-store')
@@ -22,6 +30,8 @@ export interface DocumentStore {
   read: (id: string) => Promise<string>
   createDocument: (id: string, content: string) => Promise<string>
   createFolder: (folderPath: string, indexContent: string) => Promise<string>
+  createUpload: (directory: string, filename: string, bytes: Uint8Array) => Promise<string>
+  readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
   updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
   remove: (id: string) => Promise<void>
 }
@@ -49,6 +59,14 @@ export class ConcurrentModificationError extends Error {
 
   constructor(id: string) {
     super(`Document changed since it was loaded: ${id}`)
+  }
+}
+
+export class ContentMismatchError extends Error {
+  override readonly name = 'ContentMismatchError'
+
+  constructor(entryPath: string) {
+    super(`Content does not match the extension: ${entryPath}`)
   }
 }
 
@@ -211,6 +229,41 @@ export function createFsDocumentStore(
         logStore('created folder %s', folderPath)
         return etagOf(indexContent)
       })
+    },
+
+    async createUpload(directory: string, filename: string, bytes: Uint8Array): Promise<string> {
+      const entryPath = joinEntryPath(directory, filename)
+      const target = resolveEntryPath(root, entryPath, UPLOAD_EXTENSIONS)
+
+      if (bytes.length === 0) throw new EmptyContentError(entryPath)
+      if (!contentMatchesExtension(entryPath, bytes)) throw new ContentMismatchError(entryPath)
+
+      return await lock.run(async () => {
+        const parent = path.dirname(target)
+        await fs.mkdir(parent, { recursive: true })
+        await assertResolvesInsideRoot(root, entryPath, parent)
+
+        try {
+          await fs.writeFile(target, bytes, { flag: 'wx' })
+        } catch (error) {
+          throw asExistsError(entryPath, error)
+        }
+        logStore('uploaded %s (%d bytes)', entryPath, bytes.length)
+        return entryPath
+      })
+    },
+
+    async readBytes(entryPath: string): Promise<Uint8Array<ArrayBuffer>> {
+      const target = resolveEntryPath(root, entryPath, UPLOAD_EXTENSIONS)
+      await assertResolvesInsideRoot(root, entryPath, target)
+
+      try {
+        // Copied out of the Buffer that readFile returns, whose backing store is
+        // a shared pool slice rather than an ArrayBuffer of its own.
+        return new Uint8Array(await fs.readFile(target))
+      } catch (error) {
+        throw asDocumentError(entryPath, error, ABSENT_ON_READ_CODES)
+      }
     },
 
     async remove(id: string): Promise<void> {

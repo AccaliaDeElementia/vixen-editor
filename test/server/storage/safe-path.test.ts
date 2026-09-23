@@ -9,6 +9,7 @@ import {
   extensionOf,
   IMAGE_EXTENSIONS,
   InvalidPathError,
+  joinEntryPath,
   resolveDocumentPath,
   resolveEntryPath,
   resolveFolderPath,
@@ -195,5 +196,27 @@ describe('resolveFolderPath', () => {
     it('rejects a hidden folder nested under a visible one', () => {
       expect(() => resolveFolderPath(ROOT, 'journal/.git')).toThrow(InvalidPathError)
     })
+  })
+})
+
+describe('joinEntryPath', () => {
+  it('joins a name onto a directory', () => {
+    expect(joinEntryPath('journal', 'notes.md')).toBe('journal/notes.md')
+  })
+
+  it('returns the bare name when the directory is the root', () => {
+    expect(joinEntryPath('', 'notes.md')).toBe('notes.md')
+  })
+
+  it('joins onto a nested directory', () => {
+    expect(joinEntryPath('journal/2026', 'notes.md')).toBe('journal/2026/notes.md')
+  })
+
+  it('rejects a name carrying its own separator, which an upload filename must not', () => {
+    expect(() => joinEntryPath('journal', 'nested/notes.md')).toThrow(InvalidPathError)
+  })
+
+  it('rejects a name that escapes with a separator, before path rules ever see it', () => {
+    expect(() => joinEntryPath('journal', '../notes.md')).toThrow(InvalidPathError)
   })
 })

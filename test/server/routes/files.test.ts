@@ -234,3 +234,204 @@ describe('POST /api/files/documents', () => {
     await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
   })
 })
+
+const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+
+async function upload(
+  filename: string,
+  bytes: Uint8Array<ArrayBuffer>,
+  directory?: string,
+  target = app,
+): Promise<Response> {
+  const form = new FormData()
+  form.append('file', new File([bytes], filename))
+  if (directory !== undefined) form.append('path', directory)
+
+  return await target.request('/api/files/uploads', { method: 'POST', body: form })
+}
+
+describe('POST /api/files/uploads', () => {
+  it('stores an upload and reports the path it landed at', async () => {
+    const res = await upload('photo.png', PNG_BYTES, 'journal')
+
+    expect(res.status).toBe(201)
+    await expect(res.json()).resolves.toStrictEqual({ path: 'journal/photo.png' })
+  })
+
+  it('stores at the root when no directory is given', async () => {
+    const res = await upload('photo.png', PNG_BYTES)
+
+    await expect(res.json()).resolves.toStrictEqual({ path: 'photo.png' })
+  })
+
+  it('writes the bytes verbatim', async () => {
+    await upload('photo.png', PNG_BYTES)
+
+    await expect(store.readBytes('photo.png')).resolves.toStrictEqual(PNG_BYTES)
+  })
+
+  it('rejects a png whose bytes are html, however the client labelled it', async () => {
+    const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
+
+    const res = await upload('photo.png', html)
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('CONTENT_MISMATCH')
+  })
+
+  it('rejects an extension outside the allowlist', async () => {
+    const res = await upload('payload.zip', PNG_BYTES)
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+
+  it('rejects a filename that tries to pick its own directory', async () => {
+    const res = await upload('../escape.png', PNG_BYTES)
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+
+  it('rejects a traversal in the target directory', async () => {
+    const res = await upload('photo.png', PNG_BYTES, '../outside')
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+
+  it('reports an existing file as a conflict', async () => {
+    await upload('photo.png', PNG_BYTES)
+
+    const res = await upload('photo.png', PNG_BYTES)
+
+    expect(res.status).toBe(409)
+    await expect(codeOf(res)).resolves.toBe('ALREADY_EXISTS')
+  })
+
+  it('rejects an empty upload', async () => {
+    const res = await upload('photo.png', new Uint8Array())
+
+    expect(res.status).toBe(422)
+    await expect(codeOf(res)).resolves.toBe('EMPTY_CONTENT')
+  })
+
+  it('rejects an upload larger than the configured limit', async () => {
+    const tiny = buildApp({ store, uploadMaxBytes: 4 })
+
+    const res = await upload('photo.png', PNG_BYTES, '', tiny)
+
+    expect(res.status).toBe(413)
+    await expect(codeOf(res)).resolves.toBe('TOO_LARGE')
+  })
+
+  it('does not store an upload it rejected as too large', async () => {
+    const tiny = buildApp({ store, uploadMaxBytes: 4 })
+
+    await upload('photo.png', PNG_BYTES, '', tiny)
+
+    await expect(store.readBytes('photo.png')).rejects.toThrow()
+  })
+
+  it('rejects a declared content-length over the limit before reading the body', async () => {
+    const tiny = buildApp({ store, uploadMaxBytes: 4 })
+
+    const res = await tiny.request('/api/files/uploads', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '999999' },
+      body: '--x--',
+    })
+
+    expect(res.status).toBe(413)
+  })
+
+  it('rejects a body carrying no file at all', async () => {
+    const form = new FormData()
+    form.append('path', 'journal')
+
+    const res = await app.request('/api/files/uploads', { method: 'POST', body: form })
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+  })
+
+  it('rejects a target directory that is not a string', async () => {
+    const form = new FormData()
+    form.append('file', new File([PNG_BYTES], 'photo.png'))
+    form.append('path', new File([PNG_BYTES], 'not-a-path.png'))
+
+    const res = await app.request('/api/files/uploads', { method: 'POST', body: form })
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+  })
+})
+
+describe('GET /api/files/raw/:path', () => {
+  it('serves an uploaded image byte for byte', async () => {
+    await upload('photo.png', PNG_BYTES)
+
+    const res = await app.request('/api/files/raw/photo.png')
+
+    expect(res.status).toBe(200)
+    await expect(res.arrayBuffer().then((b) => new Uint8Array(b))).resolves.toStrictEqual(PNG_BYTES)
+  })
+
+  it('serves a nested path, mirroring the store layout so relative links resolve', async () => {
+    await upload('photo.png', PNG_BYTES, 'journal/2026')
+
+    const res = await app.request('/api/files/raw/journal/2026/photo.png')
+
+    expect(res.status).toBe(200)
+  })
+
+  it.each([
+    ['photo.png', PNG_BYTES, 'image/png'],
+    ['notes.md', new TextEncoder().encode('# hi'), 'text/markdown'],
+  ])('types %s from its extension rather than from the upload', async (name, content, expected) => {
+    await store.createUpload('', name, content)
+
+    const res = await app.request(`/api/files/raw/${name}`)
+
+    expect(res.headers.get('content-type')).toContain(expected)
+  })
+
+  it('forbids sniffing, so a mislabelled file cannot be reinterpreted', async () => {
+    await upload('photo.png', PNG_BYTES)
+
+    const res = await app.request('/api/files/raw/photo.png')
+
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+  })
+
+  it('neuters a directly navigated svg with a content security policy', async () => {
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')
+    await upload('drawing.svg', svg)
+
+    const res = await app.request('/api/files/raw/drawing.svg')
+
+    expect(res.headers.get('content-type')).toBe('image/svg+xml')
+    expect(res.headers.get('content-security-policy')).toContain("default-src 'none'")
+  })
+
+  it('returns 404 for a file that is not there', async () => {
+    const res = await app.request('/api/files/raw/missing.png')
+
+    expect(res.status).toBe(404)
+    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+  })
+
+  it('rejects an extension outside the allowlist', async () => {
+    const res = await app.request('/api/files/raw/payload.zip')
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+
+  it('rejects an encoded traversal attempt', async () => {
+    const res = await app.request('/api/files/raw/..%2F..%2Fetc%2Fpasswd.png')
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+})

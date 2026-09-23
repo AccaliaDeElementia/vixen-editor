@@ -12,6 +12,7 @@ export class InvalidPathError extends Error {
 
 export const DOCUMENT_EXTENSIONS: readonly string[] = ['.md', '.txt']
 export const IMAGE_EXTENSIONS: readonly string[] = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']
+export const UPLOAD_EXTENSIONS: readonly string[] = [...DOCUMENT_EXTENSIONS, ...IMAGE_EXTENSIONS]
 
 const ALLOWED_SEGMENT = /^[A-Za-z0-9._-]+$/
 
@@ -86,4 +87,10 @@ export function resolveFolderPath(docsRoot: string, folderPath: string): string 
   if (folderPath !== '') assertValidSegments(folderPath)
 
   return resolveInsideRoot(docsRoot, folderPath)
+}
+
+export function joinEntryPath(directory: string, name: string): string {
+  if (name.includes('/')) throw new InvalidPathError(name, 'must be a single path segment')
+
+  return directory === '' ? name : `${directory}/${name}`
 }

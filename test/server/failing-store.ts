@@ -16,6 +16,8 @@ export function failingStore(): DocumentStore {
     updateDocument: fail,
     createDocument: fail,
     createFolder: fail,
+    createUpload: fail,
+    readBytes: fail,
     remove: fail,
   }
 }

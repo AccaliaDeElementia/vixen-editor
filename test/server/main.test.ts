@@ -7,7 +7,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { ConfigError, type Config } from '../../src/server/config.ts'
+import { ConfigError, DEFAULT_UPLOAD_MAX_BYTES, type Config } from '../../src/server/config.ts'
 import { applyDebugFilter, createLogger } from '../../src/server/logging.ts'
 import {
   APP_TITLE,
@@ -46,6 +46,7 @@ function configFor(overrides: Partial<Config> = {}): Config {
     templatesDir,
     logLevel: 'info',
     nodeEnv: 'test',
+    uploadMaxBytes: DEFAULT_UPLOAD_MAX_BYTES,
     ...overrides,
   }
 }

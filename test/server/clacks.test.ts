@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { buildApp, CLACKS_HEADER, CLACKS_VALUE } from '../../src/server/app.ts'
 import { createApp } from '../../src/server/main.ts'
-import type { Config } from '../../src/server/config.ts'
+import { DEFAULT_UPLOAD_MAX_BYTES, type Config } from '../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
 import { failingStore } from './failing-store.ts'
 
@@ -35,7 +35,15 @@ afterEach(async () => {
 })
 
 function configFor(): Config {
-  return { port: 3000, host: '0.0.0.0', docsRoot, templatesDir, logLevel: 'info', nodeEnv: 'test' }
+  return {
+    port: 3000,
+    host: '0.0.0.0',
+    docsRoot,
+    templatesDir,
+    logLevel: 'info',
+    nodeEnv: 'test',
+    uploadMaxBytes: DEFAULT_UPLOAD_MAX_BYTES,
+  }
 }
 
 function clacksOf(res: Response): string | null {

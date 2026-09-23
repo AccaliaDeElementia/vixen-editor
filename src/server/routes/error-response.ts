@@ -5,6 +5,7 @@ import type { Context } from 'hono'
 import { toError } from '../errors.ts'
 import {
   ConcurrentModificationError,
+  ContentMismatchError,
   DocumentNotFoundError,
   EmptyContentError,
   EntryExistsError,
@@ -17,6 +18,7 @@ const HTTP_NOT_FOUND = 404
 const HTTP_CONFLICT = 409
 const HTTP_PRECONDITION_FAILED = 412
 const HTTP_UNPROCESSABLE_CONTENT = 422
+const HTTP_CONTENT_TOO_LARGE = 413
 const HTTP_PRECONDITION_REQUIRED = 428
 const HTTP_SERVICE_UNAVAILABLE = 503
 
@@ -28,6 +30,10 @@ export function invalidBody(c: Context): Response {
 
 export function preconditionRequired(c: Context): Response {
   return c.json({ error: 'If-Match is required', code: 'PRECONDITION_REQUIRED' }, HTTP_PRECONDITION_REQUIRED)
+}
+
+export function payloadTooLarge(c: Context, limitBytes: number): Response {
+  return c.json({ error: `Upload exceeds ${String(limitBytes)} bytes`, code: 'TOO_LARGE' }, HTTP_CONTENT_TOO_LARGE)
 }
 
 export function toErrorResponse(c: Context, error: unknown): Response {
@@ -42,6 +48,9 @@ export function toErrorResponse(c: Context, error: unknown): Response {
   }
   if (error instanceof ConcurrentModificationError) {
     return c.json({ error: 'Document changed since it was loaded', code: 'CONFLICT' }, HTTP_PRECONDITION_FAILED)
+  }
+  if (error instanceof ContentMismatchError) {
+    return c.json({ error: 'Content does not match the file extension', code: 'CONTENT_MISMATCH' }, HTTP_BAD_REQUEST)
   }
   if (error instanceof EmptyContentError) {
     return c.json({ error: 'Content must not be empty', code: 'EMPTY_CONTENT' }, HTTP_UNPROCESSABLE_CONTENT)

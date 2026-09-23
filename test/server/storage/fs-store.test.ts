@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
   ConcurrentModificationError,
+  ContentMismatchError,
   createFsDocumentStore,
   DocumentNotFoundError,
   EmptyContentError,
@@ -432,5 +433,122 @@ describe('tree', () => {
 
   it('reports an empty tree for an empty root', async () => {
     await expect(store.tree()).resolves.toStrictEqual([])
+  })
+})
+
+describe('createUpload', () => {
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+
+  it('stores the bytes under the target directory', async () => {
+    await store.createUpload('journal', 'photo.png', PNG)
+
+    await expect(
+      fs.readFile(path.join(root, 'journal', 'photo.png')).then((b) => new Uint8Array(b)),
+    ).resolves.toStrictEqual(PNG)
+  })
+
+  it('returns the stored path, which the client turns into a relative link', async () => {
+    await expect(store.createUpload('journal', 'photo.png', PNG)).resolves.toBe('journal/photo.png')
+  })
+
+  it('stores at the root when no directory is given', async () => {
+    await expect(store.createUpload('', 'photo.png', PNG)).resolves.toBe('photo.png')
+  })
+
+  it('creates missing parent directories', async () => {
+    await expect(store.createUpload('journal/2026', 'photo.png', PNG)).resolves.toBe('journal/2026/photo.png')
+  })
+
+  it('refuses to replace an existing file', async () => {
+    await store.createUpload('', 'photo.png', PNG)
+
+    await expect(store.createUpload('', 'photo.png', PNG)).rejects.toThrow(EntryExistsError)
+  })
+
+  it('rejects a filename carrying a separator, so an upload cannot pick its own directory', async () => {
+    await expect(store.createUpload('journal', '../escape.png', PNG)).rejects.toThrow(InvalidPathError)
+  })
+
+  it('rejects a traversal in the target directory', async () => {
+    await expect(store.createUpload('../outside', 'photo.png', PNG)).rejects.toThrow(InvalidPathError)
+  })
+
+  it('rejects an extension outside the upload allowlist', async () => {
+    await expect(store.createUpload('', 'payload.zip', PNG)).rejects.toThrow(InvalidPathError)
+  })
+
+  it('rejects a hidden filename', async () => {
+    await expect(store.createUpload('', '.hidden.png', PNG)).rejects.toThrow(InvalidPathError)
+  })
+
+  it('rejects bytes that do not match the extension', async () => {
+    const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
+
+    await expect(store.createUpload('', 'photo.png', html)).rejects.toThrow(ContentMismatchError)
+  })
+
+  it('does not store a file it rejected as mismatched', async () => {
+    const html = new TextEncoder().encode('<!doctype html>')
+
+    await expect(store.createUpload('', 'photo.png', html)).rejects.toThrow(ContentMismatchError)
+    await expect(fs.readdir(root)).resolves.toStrictEqual([])
+  })
+
+  it('rejects an empty upload', async () => {
+    await expect(store.createUpload('', 'photo.png', new Uint8Array())).rejects.toThrow(EmptyContentError)
+  })
+
+  it('accepts a markdown upload, which carries no signature to check', async () => {
+    const markdown = new TextEncoder().encode('# imported')
+
+    await expect(store.createUpload('', 'imported.md', markdown)).resolves.toBe('imported.md')
+  })
+
+  it('refuses to upload through a symlinked directory that escapes the root', async () => {
+    await fs.symlink(outside, path.join(root, 'link'))
+
+    await expect(store.createUpload('link', 'photo.png', PNG)).rejects.toThrow(InvalidPathError)
+  })
+
+  it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
+    // NAME_MAX is 255, so a longer filename yields ENAMETOOLONG rather than EEXIST.
+    await expect(store.createUpload('', `${'a'.repeat(300)}.png`, PNG)).rejects.toThrow(
+      expect.objectContaining({ code: 'ENAMETOOLONG' }),
+    )
+  })
+})
+
+describe('readBytes', () => {
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7])
+
+  it('round-trips an upload byte for byte', async () => {
+    await store.createUpload('', 'photo.png', PNG)
+
+    await expect(store.readBytes('photo.png')).resolves.toStrictEqual(PNG)
+  })
+
+  it('reads a document as bytes too', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    await expect(store.readBytes('notes.md').then((b) => new TextDecoder().decode(b))).resolves.toBe('# hello')
+  })
+
+  it('throws DocumentNotFoundError for a missing file', async () => {
+    await expect(store.readBytes('missing.png')).rejects.toThrow(DocumentNotFoundError)
+  })
+
+  it('rejects an extension outside the upload allowlist', async () => {
+    await expect(store.readBytes('payload.zip')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('rejects a traversal attempt', async () => {
+    await expect(store.readBytes('../../etc/passwd.png')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('refuses to follow a symlink that escapes the root', async () => {
+    await fs.writeFile(path.join(outside, 'secret.png'), 'classified')
+    await fs.symlink(path.join(outside, 'secret.png'), path.join(root, 'innocent.png'))
+
+    await expect(store.readBytes('innocent.png')).rejects.toThrow(InvalidPathError)
   })
 })
