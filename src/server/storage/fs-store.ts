@@ -9,6 +9,7 @@ import { createLogger } from '../logging.ts'
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
 import { etagOf } from './etag.ts'
 import { createWriteLock, type WriteLock } from './lock.ts'
+import { moveEntry, type MoveRequest } from './move.ts'
 import {
   InvalidPathError,
   joinEntryPath,
@@ -41,6 +42,7 @@ export interface DocumentStore {
   createUpload: (directory: string, filename: string, bytes: Uint8Array) => Promise<string>
   readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
   updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
+  move: (request: MoveRequest) => Promise<void>
   trash: (entryPath: string) => Promise<string>
   listTrash: () => Promise<TrashEntry[]>
   restore: (entryId: string) => Promise<string>
@@ -223,6 +225,12 @@ export function createFsDocumentStore(
       } catch (error) {
         throw asDocumentError(entryPath, error, ABSENT_ON_READ_CODES)
       }
+    },
+
+    async move(request: MoveRequest): Promise<void> {
+      await lock.run(async () => {
+        await moveEntry(root, request)
+      })
     },
 
     async trash(entryPath: string): Promise<string> {

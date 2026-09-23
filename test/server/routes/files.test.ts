@@ -435,3 +435,89 @@ describe('GET /api/files/raw/:path', () => {
     await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
   })
 })
+
+describe('POST /api/files/moves', () => {
+  it('renames a document and returns 204', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    const res = await post('moves', { from: 'notes.md', to: 'renamed.md' })
+
+    expect(res.status).toBe(204)
+    await expect(store.read('renamed.md')).resolves.toBe('# hello')
+  })
+
+  it('moves a document into a folder', async () => {
+    await store.createFolder('archive', '# archive')
+    await store.createDocument('notes.md', '# hello')
+
+    expect((await post('moves', { from: 'notes.md', to: 'archive/notes.md' })).status).toBe(204)
+  })
+
+  it('returns 404 when the source is not there', async () => {
+    const res = await post('moves', { from: 'missing.md', to: 'elsewhere.md' })
+
+    expect(res.status).toBe(404)
+    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+  })
+
+  it('returns 409 with the colliding paths rather than overwriting', async () => {
+    await store.createDocument('notes.md', '# mine')
+    await store.createDocument('archive/notes.md', '# theirs')
+
+    const res = await post('moves', { from: 'notes.md', to: 'archive/notes.md' })
+    const body: unknown = await res.json()
+
+    expect(res.status).toBe(409)
+    expect(body).toStrictEqual({
+      error: 'Would overwrite existing files',
+      code: 'WOULD_OVERWRITE',
+      paths: ['archive/notes.md'],
+    })
+  })
+
+  it('overwrites once the caller confirms, which is the repeat of the same request', async () => {
+    await store.createDocument('notes.md', '# mine')
+    await store.createDocument('archive/notes.md', '# theirs')
+
+    const res = await post('moves', { from: 'notes.md', to: 'archive/notes.md', allowOverwrite: true })
+
+    expect(res.status).toBe(204)
+    await expect(store.read('archive/notes.md')).resolves.toBe('# mine')
+  })
+
+  it('returns 409 for a folder moved into its own descendant', async () => {
+    await store.createFolder('journal', '# journal')
+
+    const res = await post('moves', { from: 'journal', to: 'journal/2026' })
+
+    expect(res.status).toBe(409)
+    await expect(codeOf(res)).resolves.toBe('INVALID_MOVE')
+  })
+
+  it('returns 400 for a traversal attempt', async () => {
+    const res = await post('moves', { from: '../escape.md', to: 'notes.md' })
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+
+  it('returns 400 for a rename that would change what the file claims to be', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    const res = await post('moves', { from: 'notes.md', to: 'notes.svg' })
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+
+  it.each([
+    ['no destination', { from: 'notes.md' }],
+    ['no source', { to: 'notes.md' }],
+    ['a non-boolean overwrite flag', { from: 'a.md', to: 'b.md', allowOverwrite: 'yes' }],
+  ])('rejects a body with %s', async (_label, body) => {
+    const res = await post('moves', body)
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+  })
+})

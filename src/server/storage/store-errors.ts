@@ -52,3 +52,21 @@ export function asDocumentError(id: string, error: unknown, codes: readonly stri
 export function asExistsError(entryPath: string, error: unknown): Error {
   return hasErrorCode(error, OCCUPIED_CODES) ? new EntryExistsError(entryPath) : toError(error)
 }
+
+export class InvalidMoveError extends Error {
+  override readonly name = 'InvalidMoveError'
+
+  constructor(from: string, to: string) {
+    super(`Cannot move ${from} into its own descendant ${to}`)
+  }
+}
+
+export class WouldOverwriteError extends Error {
+  override readonly name = 'WouldOverwriteError'
+  readonly paths: readonly string[]
+
+  constructor(paths: readonly string[]) {
+    super(`Would overwrite ${String(paths.length)} existing path(s)`)
+    this.paths = paths
+  }
+}

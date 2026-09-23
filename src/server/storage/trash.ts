@@ -82,7 +82,7 @@ async function readMeta(root: string, entryId: string): Promise<Omit<TrashEntry,
   }
 }
 
-async function kindOf(root: string, entryPath: string, target: string): Promise<TrashKind> {
+export async function entryKindOf(entryPath: string, target: string): Promise<TrashKind> {
   const stats = await nullWhenAbsent(async () => await fs.stat(target))
   if (stats === null) throw new DocumentNotFoundError(entryPath)
   if (stats.isDirectory()) return 'folder'
@@ -97,7 +97,7 @@ export async function moveToTrash(root: string, entryPath: string): Promise<stri
   if (entryPath === '') throw new InvalidPathError(entryPath, 'must not be the document root')
 
   const target = resolveFolderPath(root, entryPath)
-  const kind = await kindOf(root, entryPath, target)
+  const kind = await entryKindOf(entryPath, target)
 
   const id = randomUUID()
   const directory = entryDirectory(root, id)

@@ -13,6 +13,7 @@ import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.
 
 const HTTP_OK = 200
 const HTTP_CREATED = 201
+const HTTP_NO_CONTENT = 204
 
 // A file served straight from the store is content we did not author. The
 // explicit type plus nosniff stops a browser inferring a richer one, and the
@@ -24,6 +25,11 @@ const UNTRUSTED_CONTENT_HEADERS: Readonly<Record<string, string>> = {
 }
 
 const folderBodySchema = z.object({ path: z.string().min(1) })
+const moveBodySchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  allowOverwrite: z.boolean().optional(),
+})
 const documentBodySchema = z.object({ path: z.string().min(1), content: z.string().optional() })
 
 function uploadedFile(body: Record<string, unknown>): File | null {
@@ -53,6 +59,20 @@ export function fileRoutes(store: DocumentStore, uploadMaxBytes: number): Hono {
       return toErrorResponse(c, error)
     }
   })
+
+  routes.post(
+    '/moves',
+    zValidator('json', moveBodySchema, (result, c) => (result.success ? undefined : invalidBody(c))),
+    async (c) => {
+      const { from, to, allowOverwrite = false } = c.req.valid('json')
+      try {
+        await store.move({ from, to, allowOverwrite })
+        return c.body(null, HTTP_NO_CONTENT)
+      } catch (error) {
+        return toErrorResponse(c, error)
+      }
+    },
+  )
 
   routes.delete('/entries/:entryPath{.+}', async (c) => {
     try {

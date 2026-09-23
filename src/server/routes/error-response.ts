@@ -11,6 +11,8 @@ import {
   DocumentNotFoundError,
   EmptyContentError,
   EntryExistsError,
+  InvalidMoveError,
+  WouldOverwriteError,
 } from '../storage/store-errors.ts'
 
 const HTTP_BAD_REQUEST = 400
@@ -45,6 +47,15 @@ export function toErrorResponse(c: Context, error: unknown): Response {
   }
   if (error instanceof EntryExistsError) {
     return c.json({ error: 'Already exists', code: 'ALREADY_EXISTS' }, HTTP_CONFLICT)
+  }
+  if (error instanceof InvalidMoveError) {
+    return c.json({ error: error.message, code: 'INVALID_MOVE' }, HTTP_CONFLICT)
+  }
+  if (error instanceof WouldOverwriteError) {
+    return c.json(
+      { error: 'Would overwrite existing files', code: 'WOULD_OVERWRITE', paths: error.paths },
+      HTTP_CONFLICT,
+    )
   }
   if (error instanceof ConcurrentModificationError) {
     return c.json({ error: 'Document changed since it was loaded', code: 'CONFLICT' }, HTTP_PRECONDITION_FAILED)
