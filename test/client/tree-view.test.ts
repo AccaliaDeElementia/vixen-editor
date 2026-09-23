@@ -230,24 +230,24 @@ describe('the trash pseudo-folder', () => {
   it('hides its entries until opened', () => {
     render({ trash: [entry] })
 
-    expect(tree.querySelectorAll('[data-trash-id]')).toHaveLength(0)
+    expect(tree.querySelectorAll('[role="treeitem"][data-trash-id]')).toHaveLength(0)
   })
 
   it('lists deleted entries by where they came from', () => {
     render({ trash: [entry], open: new Set([TRASH_PATH]) })
 
-    expect(tree.querySelector('[data-trash-id]')?.textContent).toContain('journal/gone.md')
+    expect(tree.querySelector('[role="treeitem"][data-trash-id]')?.textContent).toContain('journal/gone.md')
   })
 
   it('carries the entry id, which restore and purge address it by', () => {
     render({ trash: [entry], open: new Set([TRASH_PATH]) })
 
-    expect(tree.querySelector<HTMLElement>('[data-trash-id]')?.dataset.trashId).toBe('aaaa')
+    expect(tree.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')?.dataset.trashId).toBe('aaaa')
   })
 
   it('tells a deleted entry from a live one, which is the point of showing it here', () => {
     render({ trash: [entry], open: new Set([TRASH_PATH]) })
-    const deleted = tree.querySelector<HTMLElement>('[data-trash-id]')
+    const deleted = tree.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')
 
     expect(deleted?.hasAttribute('href')).toBe(false)
     expect(deleted?.title).toContain('2026-01-01')
@@ -256,7 +256,7 @@ describe('the trash pseudo-folder', () => {
   it('shows the kind of the deleted entry', () => {
     render({ trash: [{ ...entry, kind: 'folder' }], open: new Set([TRASH_PATH]) })
 
-    expect(tree.querySelector('[data-trash-id] .tree__icon')?.textContent).toBe('folder')
+    expect(tree.querySelector('[role="treeitem"][data-trash-id] .tree__icon')?.textContent).toBe('folder')
   })
 })
 
@@ -299,5 +299,57 @@ describe('rowIndexOf', () => {
     render()
 
     expect(rowIndexOf(tree, null)).toBe(-1)
+  })
+})
+
+describe('telling the two trash actions apart', () => {
+  const entry: TrashNode = {
+    id: 'aaaa',
+    originalPath: 'journal/gone.md',
+    kind: 'document',
+    deletedAt: '2026-01-01T00:00:00.000Z',
+  }
+
+  function actionButton(name: string): HTMLElement {
+    const found = tree.querySelector<HTMLElement>(`[data-action="${name}"]`)
+    if (found === null) throw new Error(`no ${name} button`)
+    return found
+  }
+
+  beforeEach(() => {
+    render({ trash: [entry], open: new Set([TRASH_PATH]) })
+  })
+
+  it('gives each action its own tooltip rather than inheriting the row deletion time', () => {
+    expect(actionButton('restore').title).not.toContain('2026-01-01')
+    expect(actionButton('purge').title).not.toContain('2026-01-01')
+  })
+
+  it('says what each action will do', () => {
+    expect(actionButton('restore').title).toBe('Restore journal/gone.md')
+    expect(actionButton('purge').title).toBe('Delete journal/gone.md for good')
+  })
+
+  it('matches the tooltip for anyone reading by label rather than hovering', () => {
+    expect(actionButton('restore').getAttribute('aria-label')).toBe(actionButton('restore').title)
+    expect(actionButton('purge').getAttribute('aria-label')).toBe(actionButton('purge').title)
+  })
+
+  it('uses glyphs with different silhouettes, not two trash cans', () => {
+    const restoreGlyph = actionButton('restore').querySelector('.icon')?.textContent
+    const purgeGlyph = actionButton('purge').querySelector('.icon')?.textContent
+
+    expect(restoreGlyph).toBe('restore')
+    expect(purgeGlyph).toBe('delete_forever')
+    expect(restoreGlyph).not.toContain('trash')
+  })
+
+  it('marks the irreversible one, so it can be coloured apart', () => {
+    expect(actionButton('purge').className).toContain('tree__action--danger')
+    expect(actionButton('restore').className).not.toContain('tree__action--danger')
+  })
+
+  it('keeps the deletion time on the row, where it belongs', () => {
+    expect(rowFor('journal/gone.md').title).toContain('2026-01-01')
   })
 })

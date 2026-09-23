@@ -1,4 +1,18 @@
 aside.explorer#explorer(aria-label='File browser')
+  .explorer__toolbar(role='toolbar' aria-label='File actions')
+    button.explorer__action#new-document(type='button' aria-label='New document' title='New document')
+      span.icon(aria-hidden='true') note_add
+    button.explorer__action#new-folder(type='button' aria-label='New folder' title='New folder')
+      span.icon(aria-hidden='true') create_new_folder
+    button.explorer__action#upload-file(type='button' aria-label='Upload' title='Upload')
+      span.icon(aria-hidden='true') upload_file
+    a.explorer__action#download-archive(href='/api/files/archive' aria-label='Download archive' title='Download archive')
+      span.icon(aria-hidden='true') folder_zip
+    button.explorer__action#delete-entry(type='button' aria-label='Delete' title='Delete')
+      span.icon(aria-hidden='true') delete
+    button.explorer__action#reveal-document(type='button' aria-label='Reveal open document' title='Reveal open document')
+      span.icon(aria-hidden='true') center_focus_strong
+    input#upload-input(type='file' multiple hidden aria-hidden='true' tabindex='-1')
   ul.tree#file-tree(role='tree' aria-label='Documents')
   button.explorer__resizer#explorer-resizer(
     type='button'

@@ -247,3 +247,122 @@ test('a width stored wider than the viewport is clamped on load', async ({ page 
 
   expect(await explorerWidth(page)).toBeCloseTo(640, 0)
 })
+
+test('the toolbar creates a folder through a real modal dialog', async ({ page, request }) => {
+  const name = `made-${String(Date.now())}`
+  await page.goto('/doc/')
+
+  await page.locator('#new-folder').click()
+  await expect(page.locator('#file-dialog')).toBeVisible()
+  await page.locator('#file-dialog-input').fill(name)
+  await page.locator('#file-dialog-confirm').click()
+
+  await expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a rejected name stays in the dialog to be corrected', async ({ page, request }) => {
+  const name = `taken-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: name } })
+  await page.goto('/doc/')
+
+  await page.locator('#new-folder').click()
+  await page.locator('#file-dialog-input').fill(name)
+  await page.locator('#file-dialog-confirm').click()
+
+  await expect(page.locator('#file-dialog-error')).toHaveText(/exists/i)
+  await expect(page.locator('#file-dialog')).toBeVisible()
+
+  await page.locator('#file-dialog-cancel').click()
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('the archive link follows the selection', async ({ page, request }) => {
+  const name = `zip-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: name } })
+
+  await page.goto('/doc/')
+  await expect(page.locator('#download-archive')).toHaveAttribute('href', '/api/files/archive')
+
+  await page.locator(`.tree__row[data-path="${name}"]`).click()
+  await expect(page.locator('#download-archive')).toHaveAttribute('href', `/api/files/archive?path=${name}`)
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('closing the explorer takes its actions away rather than disabling them', async ({ page }) => {
+  await page.goto('/doc/')
+  await expect(page.locator('#new-folder')).toBeVisible()
+
+  await page.locator('#toggle-explorer').click()
+
+  await expect(page.locator('#new-folder')).toBeHidden()
+})
+
+test('the trash actions are distinguishable by sight and by tooltip', async ({ page, request }) => {
+  const name = `bin-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name } })
+  const trashed = await request.delete(`/api/files/entries/${name}`)
+  const { trashId } = (await trashed.json()) as { trashId: string }
+
+  await page.goto('/doc/')
+  await page.locator('.tree__row[data-kind="trash"]').click()
+
+  const restore = page.locator(`[data-action="restore"][data-trash-id="${trashId}"]`)
+  const purge = page.locator(`[data-action="purge"][data-trash-id="${trashId}"]`)
+
+  await expect(restore).toHaveAttribute('title', `Restore ${name}`)
+  await expect(purge).toHaveAttribute('title', `Delete ${name} for good`)
+
+  // Different glyphs must render at different widths; identical silhouettes
+  // would be the defect this guards against.
+  const restoreBox = await restore.locator('.icon').boundingBox()
+  const purgeBox = await purge.locator('.icon').boundingBox()
+  expect(restoreBox?.width ?? 0).toBeGreaterThan(0)
+  expect(purgeBox?.width ?? 0).toBeGreaterThan(0)
+
+  await expect(purge).toHaveClass(/tree__action--danger/)
+
+  await request.delete(`/api/trash/${trashId}`)
+})
+
+test('the selected document is visibly marked, not merely marked up', async ({ page, request }) => {
+  const name = `sel-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name } })
+
+  await page.goto(`/doc/${name}`)
+  const row = page.locator(`.tree__row[data-path="${name}"]`)
+  await expect(row).toHaveAttribute('aria-selected', 'true')
+
+  const panel = await page.locator('#explorer').evaluate((el) => getComputedStyle(el).backgroundColor)
+  const selected = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
+  const accent = await row.evaluate((el) => getComputedStyle(el).boxShadow)
+
+  // The defect this guards against was a selected row painted the exact colour
+  // of the panel behind it: correct in the DOM, invisible on screen.
+  expect(selected).not.toBe(panel)
+  expect(accent).not.toBe('none')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('an unselected sibling is painted differently from the selected row', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  await request.post('/api/files/documents', { data: { path: `pick-${stamp}.md` } })
+  await request.post('/api/files/documents', { data: { path: `other-${stamp}.md` } })
+
+  await page.goto(`/doc/pick-${stamp}.md`)
+
+  const chosen = await page
+    .locator(`.tree__row[data-path="pick-${stamp}.md"]`)
+    .evaluate((el) => getComputedStyle(el).backgroundColor)
+  const sibling = await page
+    .locator(`.tree__row[data-path="other-${stamp}.md"]`)
+    .evaluate((el) => getComputedStyle(el).backgroundColor)
+
+  expect(chosen).not.toBe(sibling)
+
+  await request.delete(`/api/files/entries/pick-${stamp}.md`)
+  await request.delete(`/api/files/entries/other-${stamp}.md`)
+})

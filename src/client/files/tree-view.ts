@@ -88,6 +88,50 @@ function row(options: RowOptions): HTMLElement {
   return element
 }
 
+interface ActionSpec {
+  name: string
+  glyph: string
+  label: string
+  danger: boolean
+}
+
+function action(spec: ActionSpec, entry: TrashNode): HTMLElement {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = spec.danger ? 'tree__action tree__action--danger' : 'tree__action'
+  element.dataset.action = spec.name
+  element.dataset.trashId = entry.id
+  element.setAttribute('aria-label', spec.label)
+
+  // Its own tooltip, or the row's deletion time shows for both buttons and
+  // leaves two actions with very different consequences reading identically.
+  element.title = spec.label
+
+  const symbol = document.createElement('span')
+  symbol.className = 'icon'
+  symbol.setAttribute('aria-hidden', 'true')
+  symbol.textContent = spec.glyph
+  element.append(symbol)
+
+  return element
+}
+
+// A clock-arrow against a crossed-out bin: two trash-can glyphs side by side
+// read as the same button at this size, whatever their detail.
+function trashActions(entry: TrashNode): HTMLElement {
+  const element = document.createElement('span')
+  element.className = 'tree__actions'
+  element.append(
+    action({ name: 'restore', glyph: 'restore', label: `Restore ${entry.originalPath}`, danger: false }, entry),
+    action(
+      { name: 'purge', glyph: 'delete_forever', label: `Delete ${entry.originalPath} for good`, danger: true },
+      entry,
+    ),
+  )
+
+  return element
+}
+
 function group(): HTMLElement {
   const element = document.createElement('ul')
   element.className = 'tree__group'
@@ -162,6 +206,7 @@ function renderTrash(model: TreeViewModel): Rendered {
     })
     deleted.dataset.trashId = entry.id
     deleted.title = `Deleted ${entry.deletedAt}`
+    deleted.append(trashActions(entry))
     children.append(item(deleted))
     visible.push({ path: entry.originalPath, expandable: false })
   }

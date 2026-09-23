@@ -3,6 +3,8 @@
 import { documentIdFromPath } from '../doc-path.ts'
 import { createToast } from '../layout/toast.ts'
 
+import { bindActions, bindTrashActions, updateArchiveLink, type ActionContext } from './actions.ts'
+import { createDialogs, type Dialogs } from './dialogs.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
@@ -12,6 +14,7 @@ export interface FileTreeOptions {
   root?: ParentNode
   pathname?: string
   client?: FilesClient
+  dialogs?: Dialogs
 }
 
 function describe(error: unknown): string {
@@ -22,7 +25,8 @@ interface Mounted {
   tree: HTMLElement
   root: ParentNode
   client: FilesClient
-  selected: string
+  dialogs: Dialogs
+  openDocument: string
 }
 
 export async function initFileTree(options: FileTreeOptions = {}): Promise<void> {
@@ -34,15 +38,18 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<void>
     tree,
     root,
     client: options.client ?? createFilesClient(),
-    selected: documentIdFromPath(options.pathname ?? window.location.pathname),
+    dialogs: options.dialogs ?? createDialogs(root),
+    openDocument: documentIdFromPath(options.pathname ?? window.location.pathname),
   })
 }
 
-async function runFileTree({ tree, root, client, selected }: Mounted): Promise<void> {
+async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounted): Promise<void> {
+  const toast = createToast(root)
   let nodes: readonly TreeNode[] = []
   let trash: readonly TrashNode[] = []
   let open: ReadonlySet<string> = new Set()
   let visible: VisibleRow[] = []
+  let selected: string | null = openDocument
 
   function rows(): HTMLElement[] {
     return [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
@@ -51,7 +58,19 @@ async function runFileTree({ tree, root, client, selected }: Mounted): Promise<v
   function draw(next: ReadonlySet<string>, focusPath?: string): void {
     open = next
     visible = renderTree(tree, { nodes, trash, open, selected })
+    updateArchiveLink(root, targetDirectory())
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
+  }
+
+  // Where a create or an upload lands: inside a selected folder, beside a
+  // selected file, and at the store root when nothing is selected.
+  function targetDirectory(): string {
+    if (selected === null || selected === TRASH_PATH) return ''
+
+    const row = visible.find((candidate) => candidate.path === selected)
+    if (row === undefined) return ''
+
+    return row.expandable ? selected : (ancestorsOf(selected).at(-1) ?? '')
   }
 
   function indexOfPath(entryPath: string): number {
@@ -116,7 +135,13 @@ async function runFileTree({ tree, root, client, selected }: Mounted): Promise<v
 
   tree.addEventListener('click', (event) => {
     const current = visible[rowIndexOf(tree, event.target)]
-    if (current?.expandable !== true) return
+    if (current === undefined) return
+
+    selected = current.path
+    if (!current.expandable) {
+      draw(open)
+      return
+    }
 
     event.preventDefault()
     toggle(current.path)
@@ -130,15 +155,41 @@ async function runFileTree({ tree, root, client, selected }: Mounted): Promise<v
     if (handleKey(event.key, current, index)) event.preventDefault()
   })
 
-  try {
-    ;[nodes, trash] = await Promise.all([client.tree(), client.trash()])
-  } catch (error) {
-    createToast(root).show(`Could not load the file browser: ${describe(error)}`)
-    return
+  function reveal(): void {
+    openFolders(ancestorsOf(openDocument))
+    selected = openDocument
+    draw(readOpenFolders())
+    rows()[indexOfPath(openDocument)]?.scrollIntoView({ block: 'nearest' })
+    focusAt(indexOfPath(openDocument))
   }
 
-  // Revealing the open document comes before pruning, so an ancestor that no
-  // longer exists is dropped rather than accumulating in storage.
-  openFolders(ancestorsOf(selected))
-  draw(pruneOpenFolders([...folderPathsIn(nodes), TRASH_PATH]))
+  async function load(): Promise<void> {
+    ;[nodes, trash] = await Promise.all([client.tree(), client.trash()])
+
+    // Revealing the open document comes before pruning, so an ancestor that no
+    // longer exists is dropped rather than accumulating in storage.
+    openFolders(ancestorsOf(openDocument))
+    draw(pruneOpenFolders([...folderPathsIn(nodes), TRASH_PATH]))
+  }
+
+  const context: ActionContext = {
+    root,
+    client,
+    dialogs,
+    toast,
+    targetDirectory,
+    // A url can name a document the tree does not hold — one that was deleted,
+    // or never created. Nothing is selected in that case, whatever the url says.
+    selectionPath: () => (visible.some((row) => row.path === selected) ? selected : null),
+    refresh: load,
+    reveal,
+  }
+  bindActions(context)
+  bindTrashActions(context, tree)
+
+  try {
+    await load()
+  } catch (error) {
+    toast.show(`Could not load the file browser: ${describe(error)}`)
+  }
 }

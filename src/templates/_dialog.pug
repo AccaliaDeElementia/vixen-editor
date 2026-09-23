@@ -1,0 +1,11 @@
+dialog.modal#file-dialog(aria-labelledby='file-dialog-title')
+  form.modal__form(method='dialog')
+    h2.modal__title#file-dialog-title
+    p.modal__message#file-dialog-message
+    p.modal__field#file-dialog-field
+      label.modal__label(for='file-dialog-input') Name
+      input.modal__input#file-dialog-input(type='text' autocomplete='off' spellcheck='false')
+    p.modal__error#file-dialog-error(role='alert')
+    .modal__actions
+      button.modal__button#file-dialog-cancel(type='submit' value='cancel') Cancel
+      button.modal__button.modal__button--primary#file-dialog-confirm(type='submit' value='confirm')

@@ -227,12 +227,21 @@ describe('clicking', () => {
     expect(event.defaultPrevented).toBe(false)
   })
 
+  it('ignores a click that did not land on a row', async () => {
+    await start()
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+
+    document.querySelector('#file-tree')?.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+  })
+
   it('opens the trash to show what is in it', async () => {
     await start('/doc/', fakeClient({ trash: [TRASHED] }))
 
     rowFor(TRASH_PATH).click()
 
-    expect(document.querySelectorAll('[data-trash-id]')).toHaveLength(1)
+    expect(document.querySelectorAll('[role="treeitem"][data-trash-id]')).toHaveLength(1)
   })
 })
 
