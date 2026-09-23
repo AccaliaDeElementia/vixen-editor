@@ -47,7 +47,7 @@ describe('GET /api/files', () => {
   })
 
   it('reports folders, documents and images with distinct kinds', async () => {
-    await store.write('journal/september.md', '')
+    await store.createDocument('journal/september.md', 'x')
     await fs.writeFile(path.join(root, 'photo.png'), '')
 
     const res = await app.request('/api/files')
@@ -66,7 +66,21 @@ describe('POST /api/files/folders', () => {
     const res = await post('folders', { path: 'journal' })
 
     expect(res.status).toBe(201)
-    await expect(res.json()).resolves.toStrictEqual({ path: `journal/${FOLDER_INDEX_NAME}` })
+    await expect(res.json()).resolves.toMatchObject({ path: `journal/${FOLDER_INDEX_NAME}` })
+  })
+
+  it('returns an etag for the seeded index, so the client can save it without re-reading', async () => {
+    const res = await post('folders', { path: 'journal' })
+    const created: unknown = await res.json()
+    const etag = typeof created === 'object' && created !== null && 'etag' in created ? created.etag : undefined
+
+    const saved = await app.request(`/api/documents/journal/${FOLDER_INDEX_NAME}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'if-match': String(etag) },
+      body: JSON.stringify({ content: '# edited' }),
+    })
+
+    expect(saved.status).toBe(204)
   })
 
   it('seeds the index with a heading of the folder name', async () => {
@@ -125,7 +139,21 @@ describe('POST /api/files/documents', () => {
     const res = await post('documents', { path: 'notes.md' })
 
     expect(res.status).toBe(201)
-    await expect(res.json()).resolves.toStrictEqual({ path: 'notes.md' })
+    await expect(res.json()).resolves.toMatchObject({ path: 'notes.md' })
+  })
+
+  it('returns an etag for the new document', async () => {
+    const res = await post('documents', { path: 'notes.md' })
+    const created: unknown = await res.json()
+    const etag = typeof created === 'object' && created !== null && 'etag' in created ? created.etag : undefined
+
+    const saved = await app.request('/api/documents/notes.md', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'if-match': String(etag) },
+      body: JSON.stringify({ content: '# edited' }),
+    })
+
+    expect(saved.status).toBe(204)
   })
 
   it('seeds a heading of the filename without its extension', async () => {
@@ -147,7 +175,7 @@ describe('POST /api/files/documents', () => {
   })
 
   it('reports a document that already exists as a conflict', async () => {
-    await store.write('notes.md', 'original')
+    await store.createDocument('notes.md', 'original')
 
     const res = await post('documents', { path: 'notes.md' })
 
@@ -156,7 +184,7 @@ describe('POST /api/files/documents', () => {
   })
 
   it('leaves the existing content alone on a conflict', async () => {
-    await store.write('notes.md', 'original')
+    await store.createDocument('notes.md', 'original')
     await post('documents', { path: 'notes.md', content: 'replacement' })
 
     await expect(store.read('notes.md')).resolves.toBe('original')

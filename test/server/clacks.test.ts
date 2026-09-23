@@ -58,7 +58,7 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a document read', async () => {
-    await store.write('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello')
     const res = await buildApp({ store }).request('/api/documents/notes.md')
 
     expect(res.status).toBe(200)
@@ -105,7 +105,7 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 204 from a delete', async () => {
-    await store.write('notes.md', 'x')
+    await store.createDocument('notes.md', 'x')
     const res = await buildApp({ store }).request('/api/documents/notes.md', { method: 'DELETE' })
 
     expect(res.status).toBe(204)

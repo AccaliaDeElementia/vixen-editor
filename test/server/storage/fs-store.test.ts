@@ -7,8 +7,10 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  ConcurrentModificationError,
   createFsDocumentStore,
   DocumentNotFoundError,
+  EmptyContentError,
   EntryExistsError,
   FOLDER_INDEX_NAME,
   type DocumentStore,
@@ -32,67 +34,9 @@ afterEach(async () => {
   await fs.rm(path.dirname(root), { recursive: true, force: true })
 })
 
-describe('write', () => {
-  it('creates a document', async () => {
-    await store.write('notes.md', '# hello')
-
-    await expect(fs.readFile(path.join(root, 'notes.md'), 'utf8')).resolves.toBe('# hello')
-  })
-
-  it('creates missing parent directories', async () => {
-    await store.write('journal/2026/september.md', 'entry')
-
-    await expect(fs.readFile(path.join(root, 'journal/2026/september.md'), 'utf8')).resolves.toBe('entry')
-  })
-
-  it('creates the document root if it does not yet exist', async () => {
-    const fresh = createFsDocumentStore(path.join(root, 'nested', 'deeper'))
-    await fresh.write('notes.md', 'body')
-
-    await expect(fresh.read('notes.md')).resolves.toBe('body')
-  })
-
-  it('overwrites an existing document', async () => {
-    await store.write('notes.md', 'first')
-    await store.write('notes.md', 'second')
-
-    await expect(store.read('notes.md')).resolves.toBe('second')
-  })
-
-  it('stores an empty document', async () => {
-    await store.write('empty.md', '')
-
-    await expect(store.read('empty.md')).resolves.toBe('')
-  })
-
-  it('round-trips unicode content', async () => {
-    await store.write('unicode.md', '# ✨ héllo 世界')
-
-    await expect(store.read('unicode.md')).resolves.toBe('# ✨ héllo 世界')
-  })
-
-  it('rejects an invalid id', async () => {
-    await expect(store.write('../escape.md', 'x')).rejects.toThrow(InvalidPathError)
-  })
-
-  it('stores a plain text document', async () => {
-    await store.write('notes.txt', 'plain')
-
-    await expect(store.read('notes.txt')).resolves.toBe('plain')
-  })
-
-  it('refuses to create a hidden document the listing would then never show', async () => {
-    await expect(store.write('.hidden.md', 'x')).rejects.toThrow(InvalidPathError)
-  })
-
-  it('refuses to write into the trash, which is not addressable through the document API', async () => {
-    await expect(store.write('.trash/evil.md', 'x')).rejects.toThrow(InvalidPathError)
-  })
-})
-
 describe('read', () => {
   it('returns the stored content', async () => {
-    await store.write('notes.md', 'content')
+    await store.createDocument('notes.md', 'content')
 
     await expect(store.read('notes.md')).resolves.toBe('content')
   })
@@ -135,7 +79,7 @@ describe('read', () => {
   })
 
   it('allows a symlink that stays inside the root', async () => {
-    await store.write('real.md', 'inside')
+    await store.createDocument('real.md', 'inside')
     await fs.symlink(path.join(root, 'real.md'), path.join(root, 'alias.md'))
 
     await expect(store.read('alias.md')).resolves.toBe('inside')
@@ -161,27 +105,27 @@ describe('list', () => {
   })
 
   it('lists documents sorted by id', async () => {
-    await store.write('b.md', '')
-    await store.write('a.md', '')
+    await store.createDocument('b.md', 'x')
+    await store.createDocument('a.md', 'x')
 
     await expect(store.list()).resolves.toStrictEqual(['a.md', 'b.md'])
   })
 
   it('lists nested documents with posix separators', async () => {
-    await store.write('journal/2026/september.md', '')
+    await store.createDocument('journal/2026/september.md', 'x')
 
     await expect(store.list()).resolves.toStrictEqual(['journal/2026/september.md'])
   })
 
   it('lists plain text alongside markdown, because both are documents', async () => {
-    await store.write('notes.md', '')
-    await store.write('notes.txt', '')
+    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.txt', 'x')
 
     await expect(store.list()).resolves.toStrictEqual(['notes.md', 'notes.txt'])
   })
 
   it('ignores files that are not documents', async () => {
-    await store.write('notes.md', '')
+    await store.createDocument('notes.md', 'x')
     await fs.writeFile(path.join(root, 'image.png'), '')
     await fs.writeFile(path.join(root, 'README'), '')
 
@@ -189,7 +133,7 @@ describe('list', () => {
   })
 
   it('ignores dotfiles and dot-directories', async () => {
-    await store.write('notes.md', '')
+    await store.createDocument('notes.md', 'x')
     await fs.writeFile(path.join(root, '.hidden.md'), '')
     await fs.mkdir(path.join(root, '.git'), { recursive: true })
     await fs.writeFile(path.join(root, '.git', 'config.md'), '')
@@ -200,7 +144,7 @@ describe('list', () => {
 
 describe('remove', () => {
   it('deletes a document', async () => {
-    await store.write('notes.md', 'x')
+    await store.createDocument('notes.md', 'x')
     await store.remove('notes.md')
 
     await expect(store.read('notes.md')).rejects.toThrow(DocumentNotFoundError)
@@ -215,8 +159,8 @@ describe('remove', () => {
   })
 
   it('leaves other documents untouched', async () => {
-    await store.write('a.md', 'a')
-    await store.write('b.md', 'b')
+    await store.createDocument('a.md', 'a')
+    await store.createDocument('b.md', 'b')
     await store.remove('a.md')
 
     await expect(store.list()).resolves.toStrictEqual(['b.md'])
@@ -237,20 +181,20 @@ describe('createDocument', () => {
   })
 
   it('refuses to replace an existing document', async () => {
-    await store.write('notes.md', 'original')
+    await store.createDocument('notes.md', 'original')
 
     await expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError)
   })
 
   it('leaves the existing content untouched when it refuses', async () => {
-    await store.write('notes.md', 'original')
+    await store.createDocument('notes.md', 'original')
 
     await expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError)
     await expect(store.read('notes.md')).resolves.toBe('original')
   })
 
   it('names the taken path in the error', async () => {
-    await store.write('notes.md', 'original')
+    await store.createDocument('notes.md', 'original')
 
     await expect(store.createDocument('notes.md', 'x')).rejects.toThrow(/notes\.md/)
   })
@@ -280,6 +224,140 @@ describe('createDocument', () => {
     await expect(store.createDocument(`${'a'.repeat(300)}.md`, 'x')).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
+  })
+
+  it('creates the document root if it does not yet exist', async () => {
+    const fresh = createFsDocumentStore(path.join(root, 'nested', 'deeper'))
+    await fresh.createDocument('notes.md', 'body')
+
+    await expect(fresh.read('notes.md')).resolves.toBe('body')
+  })
+
+  it('round-trips unicode content', async () => {
+    await store.createDocument('unicode.md', '# ✨ héllo 世界')
+
+    await expect(store.read('unicode.md')).resolves.toBe('# ✨ héllo 世界')
+  })
+
+  it('stores a plain text document', async () => {
+    await store.createDocument('notes.txt', 'plain')
+
+    await expect(store.read('notes.txt')).resolves.toBe('plain')
+  })
+
+  it.each([
+    ['empty content', ''],
+    ['whitespace-only content', '  \n\t '],
+  ])('refuses %s', async (_label, content) => {
+    await expect(store.createDocument('empty.md', content)).rejects.toThrow(EmptyContentError)
+  })
+
+  it('returns an etag the caller can save against', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+
+    await expect(store.updateDocument('notes.md', '# changed', etag)).resolves.toBeTruthy()
+  })
+})
+
+describe('updateDocument', () => {
+  async function seeded(content = 'original'): Promise<string> {
+    return await store.createDocument('notes.md', content)
+  }
+
+  it('replaces the content when the etag matches', async () => {
+    const etag = await seeded()
+
+    await store.updateDocument('notes.md', 'replaced', etag)
+
+    await expect(store.read('notes.md')).resolves.toBe('replaced')
+  })
+
+  it('returns an etag matching the new content, so a second save needs no re-read', async () => {
+    const etag = await seeded()
+
+    const next = await store.updateDocument('notes.md', 'replaced', etag)
+    await store.updateDocument('notes.md', 'again', next)
+
+    await expect(store.read('notes.md')).resolves.toBe('again')
+  })
+
+  it('rejects a stale etag rather than clobbering the newer content', async () => {
+    const stale = await seeded()
+    await store.updateDocument('notes.md', 'someone else got here first', stale)
+
+    await expect(store.updateDocument('notes.md', 'mine', stale)).rejects.toThrow(ConcurrentModificationError)
+  })
+
+  it('leaves the newer content in place when it rejects a stale etag', async () => {
+    const stale = await seeded()
+    await store.updateDocument('notes.md', 'theirs', stale)
+
+    await expect(store.updateDocument('notes.md', 'mine', stale)).rejects.toThrow(ConcurrentModificationError)
+    await expect(store.read('notes.md')).resolves.toBe('theirs')
+  })
+
+  it('rejects an etag for entirely different content', async () => {
+    await seeded()
+
+    await expect(store.updateDocument('notes.md', 'mine', '"not-an-etag"')).rejects.toThrow(ConcurrentModificationError)
+  })
+
+  it('refuses to create a document that does not exist, which is what the create endpoint is for', async () => {
+    await expect(store.updateDocument('absent.md', 'x', '"whatever"')).rejects.toThrow(DocumentNotFoundError)
+  })
+
+  it.each([
+    ['empty content', ''],
+    ['whitespace-only content', '  \n\t '],
+  ])('refuses %s', async (_label, content) => {
+    const etag = await seeded()
+
+    await expect(store.updateDocument('notes.md', content, etag)).rejects.toThrow(EmptyContentError)
+  })
+
+  it('leaves the stored content alone when it refuses an empty save', async () => {
+    const etag = await seeded()
+
+    await expect(store.updateDocument('notes.md', '', etag)).rejects.toThrow(EmptyContentError)
+    await expect(store.read('notes.md')).resolves.toBe('original')
+  })
+
+  it('rejects an invalid id', async () => {
+    await expect(store.updateDocument('../escape.md', 'x', '"e"')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('refuses to follow a symlink that escapes the root', async () => {
+    await fs.writeFile(path.join(outside, 'secret.md'), 'classified')
+    await fs.symlink(path.join(outside, 'secret.md'), path.join(root, 'innocent.md'))
+
+    await expect(store.updateDocument('innocent.md', 'x', '"e"')).rejects.toThrow(InvalidPathError)
+  })
+
+  // Without the write lock both saves read the same content, both find their
+  // etag current, and both write: the precondition passes and the first change
+  // is lost anyway. Serialising the read-modify-write is what closes that.
+  it('lets only one of two concurrent saves holding the same etag through', async () => {
+    const etag = await store.createDocument('notes.md', 'original')
+
+    const outcomes = await Promise.allSettled([
+      store.updateDocument('notes.md', 'first writer', etag),
+      store.updateDocument('notes.md', 'second writer', etag),
+    ])
+
+    expect(outcomes.map((outcome) => outcome.status)).toContain('rejected')
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1)
+  })
+
+  it('reports the loser of two concurrent saves as a conflict, not as a silent success', async () => {
+    const etag = await store.createDocument('notes.md', 'original')
+
+    const outcomes = await Promise.allSettled([
+      store.updateDocument('notes.md', 'first writer', etag),
+      store.updateDocument('notes.md', 'second writer', etag),
+    ])
+    const rejection = outcomes.find((outcome) => outcome.status === 'rejected')
+
+    expect(rejection?.reason).toBeInstanceOf(ConcurrentModificationError)
   })
 })
 
@@ -316,7 +394,7 @@ describe('createFolder', () => {
   })
 
   it('refuses a path already occupied by a file', async () => {
-    await store.write('journal.md', 'x')
+    await store.createDocument('journal.md', 'x')
 
     await expect(store.createFolder('journal.md', '# journal')).rejects.toThrow(EntryExistsError)
   })
@@ -345,7 +423,7 @@ describe('createFolder', () => {
 
 describe('tree', () => {
   it('reports the document tree', async () => {
-    await store.write('journal/september.md', '')
+    await store.createDocument('journal/september.md', 'x')
 
     await expect(store.tree()).resolves.toMatchObject([
       { name: 'journal', kind: 'folder', children: [{ name: 'september.md', kind: 'document' }] },

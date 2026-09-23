@@ -13,7 +13,7 @@ export function failingStore(): DocumentStore {
     list: fail,
     tree: fail,
     read: fail,
-    write: fail,
+    updateDocument: fail,
     createDocument: fail,
     createFolder: fail,
     remove: fail,

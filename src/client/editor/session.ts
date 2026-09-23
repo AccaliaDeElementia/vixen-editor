@@ -14,23 +14,34 @@ function isAbsent(error: unknown): boolean {
 }
 
 export function defaultTemplate(id: string): string {
-  const name = id.slice(id.lastIndexOf('/') + 1).replace(/\.md$/u, '')
+  const name = id.slice(id.lastIndexOf('/') + 1).replace(/\.[^./]+$/u, '')
   return `# ${name}\n\nTODO: start writing.\n`
 }
 
 export function createSession(client: DocumentClient, template: (id: string) => string = defaultTemplate): Session {
+  const etags = new Map<string, string>()
+
   return {
     async load(id: string): Promise<string> {
       try {
-        return await client.read(id)
+        const { content, etag } = await client.read(id)
+        etags.set(id, etag)
+        return content
       } catch (error) {
-        if (isAbsent(error)) return template(id)
-        throw error
+        if (!isAbsent(error)) throw error
+
+        etags.delete(id)
+        return template(id)
       }
     },
 
+    // A document with no etag was never on the server, so the first save has to
+    // create it; every later save carries the etag the previous one returned.
     async save(id: string, content: string): Promise<void> {
-      await client.save(id, content)
+      const etag = etags.get(id)
+      const next = etag === undefined ? await client.create(id, content) : await client.save(id, content, etag)
+
+      etags.set(id, next)
     },
   }
 }

@@ -9,7 +9,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { createWriteLock } from '../../../src/server/storage/lock.ts'
 import { failingStore } from '../failing-store.ts'
+import { gate } from '../gate.ts'
 
 let root: string
 let store: DocumentStore
@@ -25,12 +27,22 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
-async function put(id: string, content: string): Promise<Response> {
+async function put(id: string, content: string, ifMatch = '"any"'): Promise<Response> {
   return await app.request(`/api/documents/${id}`, {
     method: 'PUT',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'if-match': ifMatch },
     body: JSON.stringify({ content }),
   })
+}
+
+async function seed(id: string, content: string): Promise<string> {
+  return await store.createDocument(id, content)
+}
+
+async function codeOf(res: Response): Promise<unknown> {
+  const body: unknown = await res.json()
+
+  return typeof body === 'object' && body !== null && 'code' in body ? body.code : undefined
 }
 
 describe('GET /api/health', () => {
@@ -51,8 +63,8 @@ describe('GET /api/documents', () => {
   })
 
   it('lists stored documents', async () => {
-    await store.write('b.md', '')
-    await store.write('a.md', '')
+    await store.createDocument('b.md', 'x')
+    await store.createDocument('a.md', 'x')
 
     const res = await app.request('/api/documents')
 
@@ -62,7 +74,7 @@ describe('GET /api/documents', () => {
 
 describe('GET /api/documents/:id', () => {
   it('returns the document content as markdown', async () => {
-    await store.write('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello')
 
     const res = await app.request('/api/documents/notes.md')
 
@@ -71,8 +83,25 @@ describe('GET /api/documents/:id', () => {
     await expect(res.text()).resolves.toBe('# hello')
   })
 
+  it('carries an etag the client can save against', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+
+    const res = await app.request('/api/documents/notes.md')
+
+    expect(res.headers.get('etag')).toBe(etag)
+  })
+
+  it('changes the etag when the content changes', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+    await store.updateDocument('notes.md', '# changed', etag)
+
+    const res = await app.request('/api/documents/notes.md')
+
+    expect(res.headers.get('etag')).not.toBe(etag)
+  })
+
   it('returns a nested document', async () => {
-    await store.write('journal/2026/september.md', 'entry')
+    await store.createDocument('journal/2026/september.md', 'entry')
 
     const res = await app.request('/api/documents/journal/2026/september.md')
 
@@ -107,33 +136,77 @@ describe('GET /api/documents/:id', () => {
 })
 
 describe('PUT /api/documents/:id', () => {
-  it('creates a document and returns 204', async () => {
-    const res = await put('notes.md', '# created')
+  it('replaces the content and returns 204', async () => {
+    const etag = await seed('notes.md', 'first')
+
+    const res = await put('notes.md', '# replaced', etag)
 
     expect(res.status).toBe(204)
-    await expect(store.read('notes.md')).resolves.toBe('# created')
+    await expect(store.read('notes.md')).resolves.toBe('# replaced')
   })
 
   it('round-trips a write then a read', async () => {
-    await put('notes.md', '# round trip')
+    const etag = await seed('notes.md', 'first')
+    await put('notes.md', '# round trip', etag)
 
     const res = await app.request('/api/documents/notes.md')
 
     await expect(res.text()).resolves.toBe('# round trip')
   })
 
-  it('overwrites an existing document', async () => {
-    await put('notes.md', 'first')
-    await put('notes.md', 'second')
+  it('returns the new etag, so a second save needs no re-read', async () => {
+    const etag = await seed('notes.md', 'first')
 
-    await expect(store.read('notes.md')).resolves.toBe('second')
+    const res = await put('notes.md', 'second', etag)
+    const next = res.headers.get('etag') ?? ''
+
+    expect((await put('notes.md', 'third', next)).status).toBe(204)
+    await expect(store.read('notes.md')).resolves.toBe('third')
   })
 
-  it('accepts empty content', async () => {
-    const res = await put('empty.md', '')
+  it('rejects a stale etag with 412 rather than clobbering the newer content', async () => {
+    const stale = await seed('notes.md', 'first')
+    await put('notes.md', 'theirs', stale)
 
-    expect(res.status).toBe(204)
-    await expect(store.read('empty.md')).resolves.toBe('')
+    const res = await put('notes.md', 'mine', stale)
+
+    expect(res.status).toBe(412)
+    await expect(codeOf(res)).resolves.toBe('CONFLICT')
+    await expect(store.read('notes.md')).resolves.toBe('theirs')
+  })
+
+  it('demands If-Match rather than silently overwriting, so a forgetful client fails loudly', async () => {
+    await seed('notes.md', 'first')
+
+    const res = await app.request('/api/documents/notes.md', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: 'mine' }),
+    })
+
+    expect(res.status).toBe(428)
+    await expect(codeOf(res)).resolves.toBe('PRECONDITION_REQUIRED')
+    await expect(store.read('notes.md')).resolves.toBe('first')
+  })
+
+  it('refuses to create a document, which is what the create endpoint is for', async () => {
+    const res = await put('absent.md', '# new')
+
+    expect(res.status).toBe(404)
+    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+  })
+
+  it.each([
+    ['empty content', ''],
+    ['whitespace-only content', '   \n\t '],
+  ])('rejects %s with 422', async (_label, content) => {
+    const etag = await seed('notes.md', 'first')
+
+    const res = await put('notes.md', content, etag)
+
+    expect(res.status).toBe(422)
+    await expect(codeOf(res)).resolves.toBe('EMPTY_CONTENT')
+    await expect(store.read('notes.md')).resolves.toBe('first')
   })
 
   it('returns 400 for an invalid id', async () => {
@@ -183,7 +256,7 @@ describe('PUT /api/documents/:id', () => {
 
 describe('DELETE /api/documents/:id', () => {
   it('deletes a document and returns 204', async () => {
-    await store.write('notes.md', 'x')
+    await store.createDocument('notes.md', 'x')
 
     const res = await app.request('/api/documents/notes.md', { method: 'DELETE' })
 
@@ -228,10 +301,66 @@ describe('unexpected storage faults', () => {
   it('propagates an unrecognised error from a write', async () => {
     const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md', {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'if-match': '"any"' },
       body: JSON.stringify({ content: 'x' }),
     })
 
     expect(res.status).toBe(500)
+  })
+})
+
+describe('write contention', () => {
+  const IMPATIENT_MS = 5
+
+  interface Held {
+    release: () => void
+    occupied: Promise<void>
+  }
+
+  // Occupies the very lock the store was built with, so a request has to queue
+  // behind it and give up, without needing a slow filesystem to simulate load.
+  function occupy(lock: ReturnType<typeof createWriteLock>): Held {
+    const until = gate()
+    const started = gate()
+
+    void lock.run(async () => {
+      started.open()
+      await until.hold()
+    })
+
+    return { release: until.open, occupied: started.hold() }
+  }
+
+  it('answers a save that cannot take the lock with 503 BUSY', async () => {
+    const lock = createWriteLock(IMPATIENT_MS)
+    const busy = buildApp({ store: createFsDocumentStore(root, lock) })
+    const held = occupy(lock)
+    await held.occupied
+
+    const res = await busy.request('/api/documents/notes.md', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'if-match': '"any"' },
+      body: JSON.stringify({ content: 'mine' }),
+    })
+
+    expect(res.status).toBe(503)
+    expect(res.headers.get('retry-after')).toBe('1')
+    await expect(codeOf(res)).resolves.toBe('BUSY')
+    held.release()
+  })
+
+  it('serves a read while a write holds the lock, because reads never queue', async () => {
+    const lock = createWriteLock(IMPATIENT_MS)
+    const contended = createFsDocumentStore(root, lock)
+    await contended.createDocument('notes.md', '# readable')
+    const busy = buildApp({ store: contended })
+    const held = occupy(lock)
+    await held.occupied
+
+    const res = await busy.request('/api/documents/notes.md')
+
+    expect(res.status).toBe(200)
+    await expect(res.text()).resolves.toBe('# readable')
+    held.release()
   })
 })

@@ -10,7 +10,7 @@ test('the built entry point boots and answers its health check', async ({ reques
 })
 
 test('every response from the real process carries the clacks header', async ({ request }) => {
-  const paths = ['/api/health', '/', '/assets/main.js', '/api/documents/missing.md', '/api/documents/bad.txt']
+  const paths = ['/api/health', '/', '/assets/main.js', '/api/documents/missing.md', '/api/documents/bad.zip']
 
   const overheads = await Promise.all(
     paths.map(async (path) => {
@@ -76,14 +76,38 @@ test('serves the built client bundle at the path the page asks for', async ({ re
 test('round-trips a document through the real process', async ({ request }) => {
   const id = `boot-${String(Date.now())}.md`
 
-  const written = await request.put(`/api/documents/${id}`, { data: { content: '# booted' } })
+  const created = await request.post('/api/files/documents', { data: { path: id, content: '# booted' } })
+  expect(created.status()).toBe(201)
+  const { etag } = (await created.json()) as { etag: string }
+
+  const written = await request.put(`/api/documents/${id}`, {
+    data: { content: '# edited' },
+    headers: { 'if-match': etag },
+  })
   expect(written.status()).toBe(204)
 
   const read = await request.get(`/api/documents/${id}`)
   expect(read.status()).toBe(200)
-  expect(await read.text()).toBe('# booted')
+  expect(await read.text()).toBe('# edited')
 
   expect((await request.delete(`/api/documents/${id}`)).status()).toBe(204)
+})
+
+test('rejects a stale save against the real process', async ({ request }) => {
+  const id = `stale-${String(Date.now())}.md`
+
+  const created = await request.post('/api/files/documents', { data: { path: id, content: '# first' } })
+  const { etag } = (await created.json()) as { etag: string }
+  await request.put(`/api/documents/${id}`, { data: { content: '# theirs' }, headers: { 'if-match': etag } })
+
+  const stale = await request.put(`/api/documents/${id}`, {
+    data: { content: '# mine' },
+    headers: { 'if-match': etag },
+  })
+
+  expect(stale.status()).toBe(412)
+  expect(await request.get(`/api/documents/${id}`).then(async (r) => await r.text())).toBe('# theirs')
+  await request.delete(`/api/documents/${id}`)
 })
 
 test('rejects a traversal attempt against the real process', async ({ request }) => {

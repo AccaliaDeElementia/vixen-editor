@@ -4,9 +4,10 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
+import { etagOf } from '../storage/etag.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 
-import { invalidBody, toErrorResponse } from './error-response.ts'
+import { invalidBody, preconditionRequired, toErrorResponse } from './error-response.ts'
 
 const HTTP_OK = 200
 const HTTP_NO_CONTENT = 204
@@ -23,7 +24,8 @@ export function documentRoutes(store: DocumentStore): Hono {
   routes.get('/:id{.+}', async (c) => {
     const id = c.req.param('id')
     try {
-      return c.text(await store.read(id), HTTP_OK, { 'content-type': MARKDOWN_CONTENT_TYPE })
+      const content = await store.read(id)
+      return c.text(content, HTTP_OK, { 'content-type': MARKDOWN_CONTENT_TYPE, etag: etagOf(content) })
     } catch (error) {
       return toErrorResponse(c, error)
     }
@@ -34,9 +36,12 @@ export function documentRoutes(store: DocumentStore): Hono {
     zValidator('json', writeBodySchema, (result, c) => (result.success ? undefined : invalidBody(c))),
     async (c) => {
       const id = c.req.param('id')
+      const ifMatch = c.req.header('if-match')
+      if (ifMatch === undefined) return preconditionRequired(c)
+
       try {
-        await store.write(id, c.req.valid('json').content)
-        return c.body(null, HTTP_NO_CONTENT)
+        const etag = await store.updateDocument(id, c.req.valid('json').content, ifMatch)
+        return c.body(null, HTTP_NO_CONTENT, { etag })
       } catch (error) {
         return toErrorResponse(c, error)
       }

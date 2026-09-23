@@ -147,10 +147,10 @@ describe('createApp', () => {
   it('wires the document store to docsRoot from the config', async () => {
     const app = createApp(configFor(), publicDir)
 
-    await app.request('/api/documents/wired.md', {
-      method: 'PUT',
+    await app.request('/api/files/documents', {
+      method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ content: '# wired' }),
+      body: JSON.stringify({ path: 'wired.md', content: '# wired' }),
     })
 
     await expect(fs.readFile(path.join(docsRoot, 'wired.md'), 'utf8')).resolves.toBe('# wired')

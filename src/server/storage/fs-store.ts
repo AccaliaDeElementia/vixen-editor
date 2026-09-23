@@ -8,6 +8,8 @@ import { hasErrorCode, toError } from '../errors.ts'
 import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
+import { etagOf } from './etag.ts'
+import { createWriteLock, type WriteLock } from './lock.ts'
 import { InvalidPathError, resolveDocumentPath, resolveFolderPath } from './safe-path.ts'
 import { classifyFile, readTree, type TreeEntry } from './tree.ts'
 
@@ -18,13 +20,17 @@ export interface DocumentStore {
   list: () => Promise<string[]>
   tree: () => Promise<TreeEntry[]>
   read: (id: string) => Promise<string>
-  write: (id: string, content: string) => Promise<void>
-  createDocument: (id: string, content: string) => Promise<void>
-  createFolder: (folderPath: string, indexContent: string) => Promise<void>
+  createDocument: (id: string, content: string) => Promise<string>
+  createFolder: (folderPath: string, indexContent: string) => Promise<string>
+  updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
   remove: (id: string) => Promise<void>
 }
 
 export const FOLDER_INDEX_NAME = 'index.md'
+
+// Long enough that ordinary contention resolves as latency, short enough that a
+// genuinely stuck write reports rather than leaving the session looking wedged.
+export const WRITE_LOCK_TIMEOUT_MS = 5000
 
 const ABSENT_ON_READ_CODES = ['ENOENT', 'ENOTDIR', 'EISDIR'] as const
 const OCCUPIED_CODES = ['EEXIST', 'ENOTDIR', 'EISDIR'] as const
@@ -35,6 +41,22 @@ export class DocumentNotFoundError extends Error {
 
   constructor(id: string) {
     super(`Document not found: ${id}`)
+  }
+}
+
+export class ConcurrentModificationError extends Error {
+  override readonly name = 'ConcurrentModificationError'
+
+  constructor(id: string) {
+    super(`Document changed since it was loaded: ${id}`)
+  }
+}
+
+export class EmptyContentError extends Error {
+  override readonly name = 'EmptyContentError'
+
+  constructor(id: string) {
+    super(`Refusing to store empty content: ${id}`)
   }
 }
 
@@ -52,6 +74,18 @@ export function asDocumentError(id: string, error: unknown, codes: readonly stri
 
 function asExistsError(entryPath: string, error: unknown): Error {
   return hasErrorCode(error, OCCUPIED_CODES) ? new EntryExistsError(entryPath) : toError(error)
+}
+
+function assertNotBlank(id: string, content: string): void {
+  if (content.trim() === '') throw new EmptyContentError(id)
+}
+
+async function readDocument(id: string, target: string): Promise<string> {
+  try {
+    return await fs.readFile(target, 'utf8')
+  } catch (error) {
+    throw asDocumentError(id, error, ABSENT_ON_READ_CODES)
+  }
 }
 
 async function assertResolvesInsideRoot(root: string, id: string, target: string): Promise<void> {
@@ -100,7 +134,10 @@ async function collectDocumentIds(dir: string, prefix: string, found: string[]):
   }
 }
 
-export function createFsDocumentStore(docsRoot: string): DocumentStore {
+export function createFsDocumentStore(
+  docsRoot: string,
+  lock: WriteLock = createWriteLock(WRITE_LOCK_TIMEOUT_MS),
+): DocumentStore {
   const root = path.resolve(docsRoot)
 
   return {
@@ -118,64 +155,77 @@ export function createFsDocumentStore(docsRoot: string): DocumentStore {
       const target = resolveDocumentPath(root, id)
       await assertResolvesInsideRoot(root, id, target)
 
-      try {
-        return await fs.readFile(target, 'utf8')
-      } catch (error) {
-        throw asDocumentError(id, error, ABSENT_ON_READ_CODES)
-      }
+      return await readDocument(id, target)
     },
 
-    async write(id: string, content: string): Promise<void> {
+    async updateDocument(id: string, content: string, expectedEtag: string): Promise<string> {
       const target = resolveDocumentPath(root, id)
-      const parent = path.dirname(target)
+      assertNotBlank(id, content)
 
-      await fs.mkdir(parent, { recursive: true })
-      await assertResolvesInsideRoot(root, id, parent)
-      await fs.writeFile(target, content, 'utf8')
-      logStore('wrote %s (%d bytes)', id, content.length)
+      return await lock.run(async () => {
+        await assertResolvesInsideRoot(root, id, target)
+
+        const current = await readDocument(id, target)
+        if (etagOf(current) !== expectedEtag) throw new ConcurrentModificationError(id)
+
+        await fs.writeFile(target, content, 'utf8')
+        logStore('updated %s (%d bytes)', id, content.length)
+        return etagOf(content)
+      })
     },
 
-    async createDocument(id: string, content: string): Promise<void> {
+    async createDocument(id: string, content: string): Promise<string> {
       const target = resolveDocumentPath(root, id)
-      const parent = path.dirname(target)
+      assertNotBlank(id, content)
 
-      await fs.mkdir(parent, { recursive: true })
-      await assertResolvesInsideRoot(root, id, parent)
+      return await lock.run(async () => {
+        const parent = path.dirname(target)
+        await fs.mkdir(parent, { recursive: true })
+        await assertResolvesInsideRoot(root, id, parent)
 
-      try {
-        await fs.writeFile(target, content, { encoding: 'utf8', flag: 'wx' })
-      } catch (error) {
-        throw asExistsError(id, error)
-      }
-      logStore('created %s (%d bytes)', id, content.length)
+        try {
+          await fs.writeFile(target, content, { encoding: 'utf8', flag: 'wx' })
+        } catch (error) {
+          throw asExistsError(id, error)
+        }
+        logStore('created %s (%d bytes)', id, content.length)
+        return etagOf(content)
+      })
     },
 
-    async createFolder(folderPath: string, indexContent: string): Promise<void> {
+    async createFolder(folderPath: string, indexContent: string): Promise<string> {
       const target = resolveFolderPath(root, folderPath)
-      const parent = path.dirname(target)
+      assertNotBlank(folderPath, indexContent)
 
-      await fs.mkdir(parent, { recursive: true })
-      await assertResolvesInsideRoot(root, folderPath, parent)
+      return await lock.run(async () => {
+        const parent = path.dirname(target)
+        await fs.mkdir(parent, { recursive: true })
+        await assertResolvesInsideRoot(root, folderPath, parent)
 
-      try {
-        await fs.mkdir(target)
-      } catch (error) {
-        throw asExistsError(folderPath, error)
-      }
-      await fs.writeFile(path.join(target, FOLDER_INDEX_NAME), indexContent, { encoding: 'utf8', flag: 'wx' })
-      logStore('created folder %s', folderPath)
+        try {
+          await fs.mkdir(target)
+        } catch (error) {
+          throw asExistsError(folderPath, error)
+        }
+        await fs.writeFile(path.join(target, FOLDER_INDEX_NAME), indexContent, { encoding: 'utf8', flag: 'wx' })
+        logStore('created folder %s', folderPath)
+        return etagOf(indexContent)
+      })
     },
 
     async remove(id: string): Promise<void> {
       const target = resolveDocumentPath(root, id)
-      await assertResolvesInsideRoot(root, id, target)
 
-      try {
-        await fs.unlink(target)
-      } catch (error) {
-        throw asDocumentError(id, error, ABSENT_ON_REMOVE_CODES)
-      }
-      logStore('removed %s', id)
+      await lock.run(async () => {
+        await assertResolvesInsideRoot(root, id, target)
+
+        try {
+          await fs.unlink(target)
+        } catch (error) {
+          throw asDocumentError(id, error, ABSENT_ON_REMOVE_CODES)
+        }
+        logStore('removed %s', id)
+      })
     },
   }
 }

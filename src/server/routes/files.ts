@@ -7,16 +7,12 @@ import { z } from 'zod'
 import { FOLDER_INDEX_NAME, type DocumentStore } from '../storage/fs-store.ts'
 import { seedDocument, seedFolderIndex } from '../storage/seed.ts'
 
-import { emptyContent, invalidBody, toErrorResponse } from './error-response.ts'
+import { invalidBody, toErrorResponse } from './error-response.ts'
 
 const HTTP_CREATED = 201
 
 const folderBodySchema = z.object({ path: z.string().min(1) })
 const documentBodySchema = z.object({ path: z.string().min(1), content: z.string().optional() })
-
-function isBlank(content: string): boolean {
-  return content.trim() === ''
-}
 
 export function fileRoutes(store: DocumentStore): Hono {
   const routes = new Hono()
@@ -29,8 +25,8 @@ export function fileRoutes(store: DocumentStore): Hono {
     async (c) => {
       const folderPath = c.req.valid('json').path
       try {
-        await store.createFolder(folderPath, seedFolderIndex(folderPath))
-        return c.json({ path: `${folderPath}/${FOLDER_INDEX_NAME}` }, HTTP_CREATED)
+        const etag = await store.createFolder(folderPath, seedFolderIndex(folderPath))
+        return c.json({ path: `${folderPath}/${FOLDER_INDEX_NAME}`, etag }, HTTP_CREATED)
       } catch (error) {
         return toErrorResponse(c, error)
       }
@@ -42,11 +38,10 @@ export function fileRoutes(store: DocumentStore): Hono {
     zValidator('json', documentBodySchema, (result, c) => (result.success ? undefined : invalidBody(c))),
     async (c) => {
       const { path: id, content } = c.req.valid('json')
-      if (content !== undefined && isBlank(content)) return emptyContent(c)
 
       try {
-        await store.createDocument(id, content ?? seedDocument(id))
-        return c.json({ path: id }, HTTP_CREATED)
+        const etag = await store.createDocument(id, content ?? seedDocument(id))
+        return c.json({ path: id, etag }, HTTP_CREATED)
       } catch (error) {
         return toErrorResponse(c, error)
       }

@@ -9,12 +9,17 @@ import { createSession, defaultTemplate } from '../../src/client/editor/session.
 let client: {
   list: ReturnType<typeof vi.fn>
   read: ReturnType<typeof vi.fn>
+  create: ReturnType<typeof vi.fn>
   save: ReturnType<typeof vi.fn>
   remove: ReturnType<typeof vi.fn>
 }
 
+function loaded(content: string, etag = '"e1"'): { content: string; etag: string } {
+  return { content, etag }
+}
+
 beforeEach(() => {
-  client = { list: vi.fn(), read: vi.fn(), save: vi.fn(), remove: vi.fn() }
+  client = { list: vi.fn(), read: vi.fn(), create: vi.fn(), save: vi.fn(), remove: vi.fn() }
 })
 
 function session(): ReturnType<typeof createSession> {
@@ -30,6 +35,10 @@ describe('defaultTemplate', () => {
     expect(defaultTemplate('journal/2026/september.md')).toContain('# september')
   })
 
+  it('strips a plain text extension too, matching what the server would seed', () => {
+    expect(defaultTemplate('notes.txt')).toContain('# notes\n')
+  })
+
   it('produces a valid markdown heading', () => {
     expect(defaultTemplate('notes.md').startsWith('# ')).toBe(true)
   })
@@ -37,13 +46,13 @@ describe('defaultTemplate', () => {
 
 describe('load', () => {
   it('returns the stored document', async () => {
-    client.read.mockResolvedValue('# stored')
+    client.read.mockResolvedValue(loaded('# stored'))
 
     await expect(session().load('notes.md')).resolves.toBe('# stored')
   })
 
   it('requests the document by id', async () => {
-    client.read.mockResolvedValue('')
+    client.read.mockResolvedValue(loaded(''))
 
     await session().load('notes.md')
 
@@ -77,17 +86,86 @@ describe('load', () => {
 })
 
 describe('save', () => {
-  it('delegates to the client', async () => {
-    client.save.mockResolvedValue(undefined)
+  it('quotes back the etag the load returned', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.save.mockResolvedValue('"next"')
+    const active = session()
+    await active.load('notes.md')
 
-    await session().save('notes.md', '# body')
+    await active.save('notes.md', '# body')
 
-    expect(client.save).toHaveBeenCalledWith('notes.md', '# body')
+    expect(client.save).toHaveBeenCalledWith('notes.md', '# body', '"abc"')
+  })
+
+  it('carries the etag returned by the previous save into the next one', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.save.mockResolvedValue('"next"')
+    const active = session()
+    await active.load('notes.md')
+
+    await active.save('notes.md', 'first')
+    await active.save('notes.md', 'second')
+
+    expect(client.save).toHaveBeenLastCalledWith('notes.md', 'second', '"next"')
+  })
+
+  it('creates a document that was never on the server rather than failing the precondition', async () => {
+    client.read.mockRejectedValue(new DocumentRequestError(404, 'Document not found'))
+    client.create.mockResolvedValue('"fresh"')
+    const active = session()
+    await active.load('fresh.md')
+
+    await active.save('fresh.md', '# body')
+
+    expect(client.create).toHaveBeenCalledWith('fresh.md', '# body')
+    expect(client.save).not.toHaveBeenCalled()
+  })
+
+  it('saves normally once a created document has an etag', async () => {
+    client.read.mockRejectedValue(new DocumentRequestError(404, 'Document not found'))
+    client.create.mockResolvedValue('"fresh"')
+    client.save.mockResolvedValue('"later"')
+    const active = session()
+    await active.load('fresh.md')
+    await active.save('fresh.md', 'first')
+
+    await active.save('fresh.md', 'second')
+
+    expect(client.save).toHaveBeenCalledWith('fresh.md', 'second', '"fresh"')
+  })
+
+  it('creates when the document was never loaded at all', async () => {
+    client.create.mockResolvedValue('"fresh"')
+
+    await session().save('never-loaded.md', 'x')
+
+    expect(client.create).toHaveBeenCalledWith('never-loaded.md', 'x')
+  })
+
+  it('keeps etags per document, so saving one does not corrupt another', async () => {
+    client.read.mockResolvedValueOnce(loaded('a', '"etag-a"')).mockResolvedValueOnce(loaded('b', '"etag-b"'))
+    client.save.mockResolvedValue('"saved"')
+    const active = session()
+    await active.load('a.md')
+    await active.load('b.md')
+
+    await active.save('a.md', 'x')
+
+    expect(client.save).toHaveBeenCalledWith('a.md', 'x', '"etag-a"')
   })
 
   it('propagates a failure', async () => {
-    client.save.mockRejectedValue(new DocumentRequestError(400, 'Invalid document id'))
+    client.create.mockRejectedValue(new DocumentRequestError(400, 'Invalid path'))
 
-    await expect(session().save('bad.txt', 'x')).rejects.toThrow(DocumentRequestError)
+    await expect(session().save('bad.zip', 'x')).rejects.toThrow(DocumentRequestError)
+  })
+
+  it('propagates a conflict so the caller can tell the user their copy is stale', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.save.mockRejectedValue(new DocumentRequestError(412, 'Document changed'))
+    const active = session()
+    await active.load('notes.md')
+
+    await expect(active.save('notes.md', 'x')).rejects.toMatchObject({ status: 412 })
   })
 })

@@ -37,7 +37,7 @@ afterEach(async () => {
 
 describe('the application never writes to the console', () => {
   it('stays silent while serving a document', async () => {
-    await store.write('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello')
     await buildApp({ store }).request('/api/documents/notes.md')
 
     expect(output).toStrictEqual([])
