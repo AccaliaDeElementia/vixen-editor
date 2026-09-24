@@ -65,6 +65,26 @@ export default [
     },
   },
   {
+    files: ['src/**/*.ts', 'scripts/**/*.ts'],
+    rules: {
+      /* A `TestOnly` container is a module's test-visible surface, not its
+         contract. Shipping code that imported one would make it contract by
+         use, which is the conflation the container exists to end. */
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**'],
+              importNames: ['TestOnly'],
+              message: 'TestOnly is a module test-visible surface; shipping code must use its public exports.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['*.config.ts', 'test-browser/playwright.config.ts', 'scripts/**/*.ts'],
     rules: {
       /* Ports, timeouts and threshold percentages are self-describing in context. */

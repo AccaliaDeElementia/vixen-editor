@@ -99,6 +99,65 @@ choice is the place to record it.
 
 Project-wide policy belongs in this file, not in code comments.
 
+### 6. Every export is contract; test-only surface lives in `TestOnly`
+
+An export from `src/` is valid only if one of these holds:
+
+1. **Something in `src/` or `scripts/` imports it.** It is the module's
+   contract.
+2. **It is the module's `TestOnly` container** — one object holding what only
+   tests reach for.
+3. **It is a type or interface.** A runtime container cannot hold one, so
+   types are exempt from the container, though not from needing a consumer.
+
+`export` was the default keystroke rather than a decision: **47% of this
+tree's exports had no consumer of any kind** when the rule was written, and a
+class added ninety minutes earlier was already among them.
+
+```ts
+function describeError(error: unknown): string { ... }
+
+export const TestOnly = { describeError }
+```
+
+**The container is a re-export, not an indirection.** Internal call sites keep
+using the local binding, so nothing in production pays for it — and by
+construction nothing can be stubbed through it, which is deliberate.
+
+**Why not the `Imports` / `Internals` pattern** from the sibling project: it
+was measured against this codebase first. Of 41 test-only exports, **zero**
+were stubbed by any test, and the whole suite has 9 stub points, 7 of them on
+`node:fs`. `Internals` is a dispatch-stub seam, so it would have added
+`Internals.helper()` at every call site to serve a need nothing here has. It
+earns its keep in a tree eight times this size with deep dispatch chains; the
+equivalent seams here are already function parameters — `startServer(runtime)`,
+`createFilesClient(fetchImpl)`, `bootstrap({ navigate })`.
+
+Two mechanisms hold the rule, split by what each does well. **ESLint** blocks
+`src/` and `scripts/` from importing `TestOnly`, which it does natively and
+precisely. **The conventions suite** owns consumer analysis, which ESLint
+cannot do without a new plugin.
+
+That analysis matches identifiers, not imports, so a name mentioned anywhere —
+including in a comment — counts as a consumer. It biases toward false passes,
+never false failures: it catches carelessness rather than proving absence. Two
+dead exports escaped it and were only found by following a cascade by hand,
+and the scanner excludes its own source for the same reason.
+
+### 7. Casing says what a name is
+
+| Casing            | For                                                             | Examples                                |
+| ----------------- | --------------------------------------------------------------- | --------------------------------------- |
+| `SCREAMING_SNAKE` | a fixed literal                                                 | `MOUNT_SELECTOR`, `DEFAULT_LIMITS`      |
+| `camelCase`       | a constructed value that gets passed somewhere                  | `defaultRuntime`, `vixenHighlightStyle` |
+| `PascalCase`      | a type, a class, or a namespace reached into rather than passed | `ConfigError`, `Runtime`, `TestOnly`    |
+
+`TestOnly` is PascalCase because it is a namespace, which is what JavaScript's
+own namespaces are — `Math`, `JSON`, `Object`. It is never passed as a value;
+that is what separates it from `defaultRuntime`. A static-only class would say
+the same thing, but `@typescript-eslint/no-extraneous-class` rejects one, and
+the object literal is what that rule asks for.
+
 ## Commands
 
 **`npm test` is the gate.** It is what CI and the Docker build run, and it must
@@ -786,6 +845,8 @@ gate on:
 - a `.ts` or `.js` file that does not open with `'use sanity'` (rule 2)
 - a default export outside the three tooling configs (rule 3)
 - an `eslint-disable` or `v8 ignore` with no ` -- rationale` (rule 5)
+- an export nothing imports, or a test-only runtime export outside a
+  `TestOnly` container (rule 6)
 - a file under `src/` matched by neither or both typecheck projects
 
 This exists because a rule that lives only in prose rots. `src/client/main.ts` grew

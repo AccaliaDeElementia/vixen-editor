@@ -165,6 +165,20 @@ describe('rule 5: every tooling suppression carries a rationale', () => {
   })
 })
 
+const TEST_ONLY = 'TestOnly'
+const RUNTIME_EXPORT = /^export\s+(?:async\s+)?(?:function|const|class)\s+(?<name>\w+)/gmu
+const TYPE_EXPORT = /^export\s+(?:interface|type)\s/u
+
+function runtimeExportsIn(contents: string): string[] {
+  return [...contents.matchAll(RUNTIME_EXPORT)].map((match) => match.groups?.name ?? '').filter((name) => name !== '')
+}
+
+function consumedBy(sources: readonly SourceFile[], name: string, definer: string): boolean {
+  const mention = new RegExp(`\\b${name}\\b`, 'u')
+
+  return sources.some((source) => source.relativePath !== definer && mention.test(source.contents))
+}
+
 function exportedNamesIn(contents: string): string[] {
   const declared = [...contents.matchAll(EXPORTED_DECLARATION)].map((match) => match.groups?.name ?? '')
 
@@ -218,6 +232,33 @@ describe('every export is consumed by something', () => {
       .flatMap((source) => exportedNamesIn(source.contents))
 
     expect(found.length).toBeGreaterThan(100)
+  })
+
+  // The container is the seam. A runtime export with no shipping consumer that
+  // is not inside one is an internal that leaked, and `export` is too easy to
+  // type for that to stay rare without a gate.
+  it('keeps every test-only runtime export inside a TestOnly container', () => {
+    const shipping = scannable().filter(
+      (source) => source.relativePath.startsWith('src/') || source.relativePath.startsWith('scripts/'),
+    )
+
+    const leaked = shipping
+      .filter((source) => source.relativePath.startsWith('src/'))
+      .flatMap((source) =>
+        runtimeExportsIn(source.contents)
+          .filter((name) => name !== TEST_ONLY)
+          .filter((name) => !consumedBy(shipping, name, source.relativePath))
+          .map((name) => `${source.relativePath}: ${name}`),
+      )
+
+    expect(leaked).toStrictEqual([])
+  })
+
+  // A container cannot hold a type, so they are exempt — but only from the
+  // container, not from needing a consumer at all.
+  it('exempts types, which no runtime container can hold', () => {
+    expect(TYPE_EXPORT.test('export interface Runtime {')).toBe(true)
+    expect(TYPE_EXPORT.test('export function startServer(')).toBe(false)
   })
 
   it('reads a renamed re-export as the name it presents, not the one it wraps', () => {
