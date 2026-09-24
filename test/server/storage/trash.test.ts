@@ -9,7 +9,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import { DocumentNotFoundError, EntryExistsError } from '../../../src/server/storage/store-errors.ts'
-import { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } from '../../../src/server/storage/trash.ts'
+import { TestOnly } from '../../../src/server/storage/trash.ts'
+
+const { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
 
 let root: string
 let store: DocumentStore

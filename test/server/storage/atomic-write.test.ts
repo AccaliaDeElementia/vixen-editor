@@ -10,9 +10,11 @@ import {
   createFileAtomic,
   isTemporaryName,
   replaceFileAtomic,
-  temporaryBeside,
+  TestOnly,
 } from '../../../src/server/storage/atomic-write.ts'
 import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
+
+const { temporaryBeside } = TestOnly
 
 const MAX_NAME_BYTES = 255
 

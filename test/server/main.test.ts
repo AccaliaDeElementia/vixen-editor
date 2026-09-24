@@ -8,19 +8,16 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ConfigError, DEFAULT_LIMITS, loadConfig, type Config } from '../../src/server/config.ts'
+import { DEFAULT_LIMITS, loadConfig, type Config, TestOnly as configTestOnly } from '../../src/server/config.ts'
 import * as lockModule from '../../src/server/storage/lock.ts'
 import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
-import { temporaryBeside } from '../../src/server/storage/atomic-write.ts'
+import { TestOnly as atomicWriteTestOnly } from '../../src/server/storage/atomic-write.ts'
 import { applyDebugFilter, createLogger } from '../../src/server/logging.ts'
-import {
-  APP_TITLE,
-  createApp,
-  defaultRuntime,
-  DEFAULT_PUBLIC_DIR,
-  startServer,
-  type Runtime,
-} from '../../src/server/main.ts'
+import { startServer, type Runtime, TestOnly as mainTestOnly } from '../../src/server/main.ts'
+
+const { ConfigError } = configTestOnly
+const { APP_TITLE, DEFAULT_PUBLIC_DIR, createApp, defaultRuntime } = mainTestOnly
+const { temporaryBeside } = atomicWriteTestOnly
 
 let workspace: string
 let publicDir: string

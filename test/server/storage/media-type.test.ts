@@ -2,7 +2,9 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { FALLBACK_MEDIA_TYPE, mediaTypeOf } from '../../../src/server/storage/media-type.ts'
+import { mediaTypeOf, TestOnly } from '../../../src/server/storage/media-type.ts'
+
+const { FALLBACK_MEDIA_TYPE } = TestOnly
 
 describe('mediaTypeOf', () => {
   it.each([

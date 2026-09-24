@@ -49,7 +49,7 @@ export interface Config {
   limits: Limits
 }
 
-export class ConfigError extends Error {
+class ConfigError extends Error {
   override readonly name = 'ConfigError'
 }
 
@@ -97,3 +97,5 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
   }
 }
+
+export const TestOnly = { ConfigError }

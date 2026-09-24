@@ -6,7 +6,9 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createTemplateRenderer, TemplateNotFoundError } from '../../src/server/templates.ts'
+import { createTemplateRenderer, TestOnly } from '../../src/server/templates.ts'
+
+const { TemplateNotFoundError } = TestOnly
 
 let templatesDir: string
 

@@ -15,13 +15,13 @@ import { classifyFile, type FileKind } from './tree.ts'
 const logTrash = createLogger('storage/trash')
 const logDamaged = createLogger('storage/trash', 'damagedEntry')
 
-export const TRASH_DIRECTORY = '.trash'
-export const TRASH_META_NAME = 'meta.json'
+const TRASH_DIRECTORY = '.trash'
+const TRASH_META_NAME = 'meta.json'
 
 // A fixed name rather than the original one: a folder may legitimately be
 // called `meta.json`, and storing it under its own name would then collide
 // with the metadata sitting beside it.
-export const TRASH_PAYLOAD_NAME = 'payload'
+const TRASH_PAYLOAD_NAME = 'payload'
 
 const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -163,3 +163,5 @@ export async function purgeFromTrash(root: string, entryId: string): Promise<voi
   await fs.rm(directory, { recursive: true, force: true })
   logTrash('purged %s', entryId)
 }
+
+export const TestOnly = { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME }

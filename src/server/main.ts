@@ -16,12 +16,12 @@ import { createTemplateRenderer } from './templates.ts'
 
 const logStartup = createLogger('main', 'startServer')
 
-export const DEFAULT_PUBLIC_DIR = './public'
+const DEFAULT_PUBLIC_DIR = './public'
 const CLIENT_BUNDLE_ROUTE = '/assets/*'
 const EDITOR_TEMPLATE = 'editor'
-export const APP_TITLE = 'Vixen Editor'
+const APP_TITLE = 'Vixen Editor'
 
-export function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono {
+function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono {
   const store = createFsDocumentStore(config.docsRoot, createWriteLock(config.writeLockTimeoutMs))
   const app = buildApp({ store, limits: config.limits })
   const templates = createTemplateRenderer(config.templatesDir, config.nodeEnv === 'production')
@@ -42,7 +42,7 @@ export interface Runtime {
   publicDir: string
 }
 
-export const defaultRuntime: Runtime = {
+const defaultRuntime: Runtime = {
   loadEnvFile: () => {
     loadDotenv({ quiet: true })
   },
@@ -75,3 +75,5 @@ export async function startServer(runtime: Runtime = defaultRuntime): Promise<Re
     logStartup('listening on http://%s:%d (docs: %s)', config.host, info.port, config.docsRoot)
   })
 }
+
+export const TestOnly = { APP_TITLE, DEFAULT_PUBLIC_DIR, createApp, defaultRuntime }

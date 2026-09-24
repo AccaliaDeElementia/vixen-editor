@@ -2,7 +2,9 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { DOC_PREFIX, docRoutes, folderRedirectTarget } from '../../../src/server/routes/doc.ts'
+import { DOC_PREFIX, docRoutes, TestOnly } from '../../../src/server/routes/doc.ts'
+
+const { folderRedirectTarget } = TestOnly
 
 const app = docRoutes(() => '<html lang="en"><body><div id="editor"></div></body></html>')
 

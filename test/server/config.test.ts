@@ -2,8 +2,10 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { ConfigError, DEFAULT_LIMITS, loadConfig } from '../../src/server/config.ts'
+import { DEFAULT_LIMITS, loadConfig, TestOnly } from '../../src/server/config.ts'
 import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
+
+const { ConfigError } = TestOnly
 
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {

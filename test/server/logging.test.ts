@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 import { afterEach } from 'vitest'
 
-import { applyDebugFilter, createLogger, loggerNamespace } from '../../src/server/logging.ts'
+import { applyDebugFilter, createLogger, TestOnly } from '../../src/server/logging.ts'
+
+const { loggerNamespace } = TestOnly
 
 afterEach(() => {
   applyDebugFilter({})

@@ -6,8 +6,10 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { temporaryBeside } from '../../../src/server/storage/atomic-write.ts'
+import { TestOnly } from '../../../src/server/storage/atomic-write.ts'
 import { sweepTemporaries } from '../../../src/server/storage/sweep.ts'
+
+const { temporaryBeside } = TestOnly
 
 let root: string
 

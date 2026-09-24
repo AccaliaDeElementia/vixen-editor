@@ -12,7 +12,7 @@ export const DOC_PREFIX = '/doc/'
 // link like ./image.png resolves against /doc/journal, the wrong directory.
 // The leaf is a folder when it names no file the app can open, which catches
 // a folder called v1.2 that a bare extension test would read as a file.
-export function folderRedirectTarget(rest: string): string | null {
+function folderRedirectTarget(rest: string): string | null {
   if (rest === '' || rest.endsWith('/')) return null
 
   const leaf = rest.slice(rest.lastIndexOf('/') + 1)
@@ -37,3 +37,5 @@ export function docRoutes(renderShell: () => string): Hono {
 
   return routes
 }
+
+export const TestOnly = { folderRedirectTarget }

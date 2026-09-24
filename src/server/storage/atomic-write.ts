@@ -13,7 +13,7 @@ const TEMPORARY_SUFFIX = '.tmp'
 
 // A sibling, because rename and link both fail with EXDEV across filesystems
 // and only a sibling is guaranteed to be on the same one.
-export function temporaryBeside(target: string): string {
+function temporaryBeside(target: string): string {
   return path.join(path.dirname(target), `${TEMPORARY_PREFIX}${randomUUID()}${TEMPORARY_SUFFIX}`)
 }
 
@@ -74,3 +74,5 @@ export async function createFileAtomic(target: string, data: string | Uint8Array
     await fs.link(temporary, target)
   })
 }
+
+export const TestOnly = { temporaryBeside }

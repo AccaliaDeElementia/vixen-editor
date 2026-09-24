@@ -9,7 +9,7 @@ import { hasErrorCode } from './errors.ts'
 const TEMPLATE_EXTENSION = '.pug'
 const ABSENT_CODES = ['ENOENT', 'ENOTDIR'] as const
 
-export class TemplateNotFoundError extends Error {
+class TemplateNotFoundError extends Error {
   override readonly name = 'TemplateNotFoundError'
 
   constructor(name: string) {
@@ -52,3 +52,5 @@ export function createTemplateRenderer(templatesDir: string, cache = true): Temp
     },
   }
 }
+
+export const TestOnly = { TemplateNotFoundError }

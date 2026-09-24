@@ -2,13 +2,10 @@
 
 import { describe, expect, it } from 'vitest'
 
-import {
-  decodeDestination,
-  encodeDestination,
-  findLinkDestinations,
-  rewriteLinkDestinations,
-} from '../../../src/server/markdown/links.ts'
+import { rewriteLinkDestinations, TestOnly } from '../../../src/server/markdown/links.ts'
 import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
+
+const { decodeDestination, encodeDestination, findLinkDestinations } = TestOnly
 
 function valuesIn(markdown: string): string[] {
   return findLinkDestinations(markdown).map((destination) => destination.value)

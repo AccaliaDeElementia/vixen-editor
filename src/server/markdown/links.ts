@@ -31,7 +31,7 @@ function decodePercentRun(run: string): string {
   }
 }
 
-export function decodeDestination(raw: string): string {
+function decodeDestination(raw: string): string {
   return raw.replace(BACKSLASH_ESCAPE, '$<punctuation>').replace(PERCENT_RUN, decodePercentRun)
 }
 
@@ -47,7 +47,7 @@ function mustEncode(character: string, bracketed: boolean): boolean {
   return bracketed ? INSIDE_BRACKETS.has(character) : OUTSIDE_BRACKETS.has(character)
 }
 
-export function encodeDestination(value: string, bracketed: boolean): string {
+function encodeDestination(value: string, bracketed: boolean): string {
   let encoded = ''
   let offset = 0
 
@@ -60,7 +60,7 @@ export function encodeDestination(value: string, bracketed: boolean): string {
   return encoded
 }
 
-export function findLinkDestinations(markdown: string): LinkDestination[] {
+function findLinkDestinations(markdown: string): LinkDestination[] {
   const events = postprocess(
     parse()
       .document()
@@ -101,3 +101,5 @@ export function rewriteLinkDestinations(markdown: string, rewrite: (destination:
 
   return result
 }
+
+export const TestOnly = { decodeDestination, encodeDestination, findLinkDestinations }

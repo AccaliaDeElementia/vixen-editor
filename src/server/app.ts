@@ -12,8 +12,8 @@ import type { DocumentStore } from './storage/fs-store.ts'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
-export const CLACKS_HEADER = 'X-Clacks-Overhead'
-export const CLACKS_VALUE = 'GNU Terry Pratchett'
+const CLACKS_HEADER = 'X-Clacks-Overhead'
+const CLACKS_VALUE = 'GNU Terry Pratchett'
 
 const logError = createLogger('app', 'onError')
 
@@ -47,3 +47,5 @@ export function buildApp({ store, limits = DEFAULT_LIMITS }: AppDependencies): H
 
   return app
 }
+
+export const TestOnly = { CLACKS_HEADER, CLACKS_VALUE }
