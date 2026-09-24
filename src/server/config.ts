@@ -2,9 +2,20 @@
 
 import { z } from 'zod'
 
+import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from './storage/lock.ts'
+
 const DEFAULT_PORT = 3000
 const MIN_PORT = 1
 const MAX_PORT = 65535
+
+// A waiter that gives up this fast turns ordinary concurrency into 503s. The
+// lock is still correct below it; it just stops being worth waiting on.
+const MIN_WRITE_LOCK_TIMEOUT_MS = 250
+
+// Past a client's own timeout the 503 can never be delivered, so a waiter
+// beyond this is held for a response nobody is left to receive — and a wedged
+// write becomes a spinner instead of an error.
+const MAX_WRITE_LOCK_TIMEOUT_MS = 60_000
 const MEBIBYTE = 1_048_576
 const DEFAULT_UPLOAD_MEBIBYTES = 25
 const DEFAULT_ARCHIVE_MEBIBYTES = 100
@@ -34,6 +45,7 @@ export interface Config {
   templatesDir: string
   logLevel: LogLevel
   nodeEnv: NodeEnv
+  writeLockTimeoutMs: number
   limits: Limits
 }
 
@@ -48,6 +60,12 @@ const envSchema = z.object({
   TEMPLATES_DIR: z.string().min(1).default('./src/templates'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   NODE_ENV: z.enum(NODE_ENVS).default('development'),
+  WRITE_LOCK_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(MIN_WRITE_LOCK_TIMEOUT_MS)
+    .max(MAX_WRITE_LOCK_TIMEOUT_MS)
+    .default(DEFAULT_WRITE_LOCK_TIMEOUT_MS),
   UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(DEFAULT_LIMITS.uploadMaxBytes),
   ARCHIVE_MAX_BYTES: z.coerce.number().int().positive().default(DEFAULT_LIMITS.archiveMaxBytes),
   ARCHIVE_MAX_ENTRIES: z.coerce.number().int().positive().default(DEFAULT_LIMITS.archiveMaxEntries),
@@ -71,6 +89,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     templatesDir: result.data.TEMPLATES_DIR,
     logLevel: result.data.LOG_LEVEL,
     nodeEnv: result.data.NODE_ENV,
+    writeLockTimeoutMs: result.data.WRITE_LOCK_TIMEOUT_MS,
     limits: {
       uploadMaxBytes: result.data.UPLOAD_MAX_BYTES,
       archiveMaxBytes: result.data.ARCHIVE_MAX_BYTES,

@@ -429,22 +429,30 @@ response from the extension alone, so `notes.md` cannot become `notes.svg`.
 
 **A move reads every document in the store**, because a link from anywhere can
 point at the thing that moved, and it does so inside the write lock along with
-the move itself. That makes the lock hold time scale with the store rather
-than with the move, which is the one thing about this design worth knowing
-before the store gets large:
+the move itself. So the lock hold time scales with the store rather than with
+the move, which is the one thing about this design worth knowing before the
+store gets large. Measured on a corpus where a fifth of documents hold links
+and a tenth of those point at what moved:
 
-| Documents | Store  | Move + relink |
-| --------- | ------ | ------------- |
-| 100       | 0.5 MB | ~0.12 s       |
-| 1000      | 5.5 MB | ~1.0 s        |
-| 5000      | 27 MB  | ~4.8 s        |
+| Documents | Store | Move + relink |
+| --------- | ----- | ------------- |
+| 1000      | 2 MB  | ~0.07 s       |
+| 5000      | 11 MB | ~0.32 s       |
+| 20000     | 44 MB | ~1.3 s        |
 
-Parsing dominates, at roughly half the total; the atomic writes are most of
-the rest. At around 5000 documents this approaches the 5 s lock timeout, past
-which a concurrent save gets `503 BUSY`. Reading outside the lock and taking
-it only to write was measured and rejected: it roughly halves the hold time
-without changing the shape of the curve, and it reopens the exact
-read-modify-write window the lock exists to close.
+**Parsing is most of that**, which is why a document holding no link syntax at
+all is skipped without being parsed — see `mayHoldLinks` in
+`storage/relink-store.ts`. The filter is worth roughly 60%, and its soundness
+is pinned by a test that computes the same answer unfiltered and compares.
+
+The `5 s` default timeout is therefore reached somewhere near 80 000
+documents, past which a concurrent save gets `503 BUSY`. A store larger or
+more link-dense than that has `WRITE_LOCK_TIMEOUT_MS` to pull.
+
+Reading outside the lock and taking it only to write was measured and
+rejected: it roughly halves the hold time without changing the shape of the
+curve, and it reopens the exact read-modify-write window the lock exists to
+close.
 
 ## Concurrency
 
@@ -468,16 +476,34 @@ for a document that does not exist, so creation goes through
 new bytes, another save can land, the check passes, and the write clobbers it
 anyway. Serialising that read-modify-write is what the lock is for.
 
-| Aspect      | Decision                                                                                     |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| Scope       | Writes only — create, save, upload, move, delete, restore, purge                             |
-| Reads       | Never block: tree, document, raw and archive take nothing                                    |
-| Granularity | Global; contention is near zero and path-range locking brings deadlock avoidance for no gain |
-| On timeout  | `503` with `Retry-After` and `{ code: 'BUSY' }`; the client retries once                     |
+| Aspect      | Decision                                                                                                                                      |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope       | Writes only — create, save, upload, move, delete, restore, purge                                                                              |
+| Reads       | Never block: tree, document, raw and archive take nothing                                                                                     |
+| Granularity | Global; contention is near zero and path-range locking brings deadlock avoidance for no gain                                                  |
+| On timeout  | `503` with `Retry-After` and `{ code: 'BUSY' }`; the client retries once                                                                      |
+| Timeout     | `WRITE_LOCK_TIMEOUT_MS`, default 5000, clamped to 250–60000; the default lives in `storage/lock.ts`, which both the config and the store read |
 
 **It is in-process only.** Two containers on one volume and it protects
 nothing while looking like it does. A single process is the supported
 deployment.
+
+**The timeout is how long a waiter queues, not how long the lock is held.**
+Below it nothing becomes unsafe — writes still serialise and `If-Match` still
+holds — but a waiter that gives up in a millisecond turns ordinary
+concurrency into a stream of `503 BUSY` that the client's single retry cannot
+absorb. Hence the 250 ms floor: the lock stays correct below it, it just
+stops being worth waiting on. The floor rejects an absurd value, not an
+inadequate one — a move on a large store holds the lock for longer than
+250 ms, so 5000 is still the right default.
+
+**The 60 s ceiling matters more than the floor**, because its failure is the
+quiet one. A tiny timeout fails loudly, as `503 BUSY` with a code the UI
+already handles. A huge one leaves the browser spinning on a wedged write,
+which is the outcome this design exists to avoid. Past a client's or a
+reverse proxy's own timeout the `503` cannot be delivered at all, so beyond
+that the server is holding a waiter for a response nobody is left to
+receive.
 
 Archive streaming deliberately takes no lock: a slow client dragging a large
 download over minutes would otherwise block every save. A zip may therefore
@@ -538,11 +564,12 @@ words so this cannot come back; it is invisible to anyone reading the markup.
 
 ## Limits
 
-| Variable              | Default | Enforced                                       |
-| --------------------- | ------- | ---------------------------------------------- |
-| `UPLOAD_MAX_BYTES`    | 25 MiB  | `Content-Length` first, then the actual bytes  |
-| `ARCHIVE_MAX_BYTES`   | 100 MiB | By walking and measuring **before** any output |
-| `ARCHIVE_MAX_ENTRIES` | 2000    | As above                                       |
+| Variable                | Default | Enforced                                            |
+| ----------------------- | ------- | --------------------------------------------------- |
+| `UPLOAD_MAX_BYTES`      | 25 MiB  | `Content-Length` first, then the actual bytes       |
+| `ARCHIVE_MAX_BYTES`     | 100 MiB | By walking and measuring **before** any output      |
+| `ARCHIVE_MAX_ENTRIES`   | 2000    | As above                                            |
+| `WRITE_LOCK_TIMEOUT_MS` | 5000    | How long a write waits before `503 BUSY`; 250–60000 |
 
 Measuring the archive first is what lets an oversized request fail with a
 status code instead of a truncated download.

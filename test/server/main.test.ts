@@ -8,7 +8,9 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ConfigError, DEFAULT_LIMITS, type Config } from '../../src/server/config.ts'
+import { ConfigError, DEFAULT_LIMITS, loadConfig, type Config } from '../../src/server/config.ts'
+import * as lockModule from '../../src/server/storage/lock.ts'
+import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
 import { temporaryBeside } from '../../src/server/storage/atomic-write.ts'
 import { applyDebugFilter, createLogger } from '../../src/server/logging.ts'
 import {
@@ -48,6 +50,7 @@ function configFor(overrides: Partial<Config> = {}): Config {
     templatesDir,
     logLevel: 'info',
     nodeEnv: 'test',
+    writeLockTimeoutMs: DEFAULT_WRITE_LOCK_TIMEOUT_MS,
     limits: DEFAULT_LIMITS,
     ...overrides,
   }
@@ -172,6 +175,24 @@ describe('createApp', () => {
     const res = await createApp(configFor()).request('/api/health')
 
     expect(res.status).toBe(200)
+  })
+})
+
+// The lock the store is built with is not reachable from outside the app, so
+// this asserts what `createWriteLock` was handed — the same shape as asserting
+// what `serve` was handed, and for the same reason.
+describe('the write lock timeout is configurable', () => {
+  it('hands the configured timeout to the lock the store runs on', () => {
+    const made = vi.spyOn(lockModule, 'createWriteLock')
+
+    createApp(configFor({ writeLockTimeoutMs: 250 }))
+
+    expect(made).toHaveBeenCalledWith(250)
+    vi.restoreAllMocks()
+  })
+
+  it('falls back to the shared default when the environment sets nothing', () => {
+    expect(loadConfig({}).writeLockTimeoutMs).toBe(DEFAULT_WRITE_LOCK_TIMEOUT_MS)
   })
 })
 

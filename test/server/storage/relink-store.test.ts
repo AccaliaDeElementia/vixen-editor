@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { PathMove } from '../../../src/server/markdown/relink.ts'
+import { relinkDocument, type PathMove } from '../../../src/server/markdown/relink.ts'
 import { createFsDocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { moveEntry } from '../../../src/server/storage/move.ts'
 import { relinkAfterMove, type RelinkOutcome } from '../../../src/server/storage/relink-store.ts'
@@ -211,5 +211,50 @@ describe('relinkAfterMove when one document cannot be repaired', () => {
     const outcome = await moveThenRelink('journal/a.md', 'archive/a.md')
 
     expect(outcome).toStrictEqual({ rewritten: ['one.md', 'three.md', 'two.md'], failed: [] })
+  })
+})
+
+// Parsing is most of what a move costs, so a document with no link syntax is
+// skipped without parsing. The filter is only allowed to be faster, never to
+// change the answer — so the answer is computed both ways and compared.
+describe('skipping documents that cannot hold a link', () => {
+  const JOURNAL_TO_ARCHIVE: PathMove[] = [{ from: 'journal', to: 'archive' }]
+
+  const CORPUS: Readonly<Record<string, string>> = {
+    'prose.md': '# just prose\n\nnothing to see\n',
+    'brackets-but-no-link.md': 'an array [1] and a stray ] plus a colon: here\n',
+    'inline.md': 'see [it](journal/a.md)\n',
+    'image.md': '![p](journal/p.png)\n',
+    'definition.md': '[a][id]\n\n[id]: journal/a.md\n',
+    'code-only.md': '```\n[a](journal/a.md)\n```\n',
+    'encoded.md': '[a](journal/my%20file.md)\n',
+    'bracketed.md': '[a](<journal/my file.md>)\n',
+    'unrelated-link.md': '[a](other/b.md)\n',
+  }
+
+  it('repairs exactly the documents an unfiltered pass would', async () => {
+    await write('journal/a.md', '# a')
+    await Promise.all(
+      Object.entries(CORPUS).map(async ([id, content]) => {
+        await write(id, content)
+      }),
+    )
+
+    const unfiltered = Object.entries(CORPUS)
+      .filter(([id, content]) => relinkDocument(content, id, JOURNAL_TO_ARCHIVE) !== content)
+      .map(([id]) => id)
+      .sort((a, b) => a.localeCompare(b))
+
+    const outcome = await moveThenRelink('journal', 'archive')
+
+    expect(unfiltered.length).toBeGreaterThan(0)
+    expect(outcome.rewritten).toStrictEqual(unfiltered)
+  })
+
+  it('still repairs a reference definition, whose syntax is "]:" and not "]("', async () => {
+    await write('journal/a.md', '# a')
+    await write('notes.md', '[a][id]\n\n[id]: journal/a.md\n')
+
+    await expect(rewrittenBy('journal', 'archive')).resolves.toStrictEqual(['notes.md'])
   })
 })

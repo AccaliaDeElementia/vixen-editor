@@ -30,8 +30,19 @@ function holderOfEachPath(documentIds: readonly string[], moves: readonly PathMo
   return holders
 }
 
+// Every form this repairs — inline link, image, reference definition — needs
+// `](` or `]:` written literally, and CommonMark allows no whitespace between
+// the bracket and what follows it, so no escaping or encoding can produce one
+// without it appearing. A document with neither holds nothing to repair, and
+// parsing is most of what a move costs.
+function mayHoldLinks(content: string): boolean {
+  return content.includes('](') || content.includes(']:')
+}
+
 async function repair(target: string, holder: string, moves: readonly PathMove[]): Promise<boolean> {
   const content = await fs.readFile(target, 'utf8')
+  if (!mayHoldLinks(content)) return false
+
   const relinked = relinkDocument(content, holder, moves)
   if (relinked === content) return false
 

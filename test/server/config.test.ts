@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { ConfigError, DEFAULT_LIMITS, loadConfig } from '../../src/server/config.ts'
+import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
 
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {
@@ -15,6 +16,7 @@ describe('loadConfig', () => {
       templatesDir: './src/templates',
       logLevel: 'info',
       nodeEnv: 'development',
+      writeLockTimeoutMs: DEFAULT_WRITE_LOCK_TIMEOUT_MS,
       limits: DEFAULT_LIMITS,
     })
   })
@@ -30,6 +32,7 @@ describe('loadConfig', () => {
       UPLOAD_MAX_BYTES: '1048576',
       ARCHIVE_MAX_BYTES: '2097152',
       ARCHIVE_MAX_ENTRIES: '7',
+      WRITE_LOCK_TIMEOUT_MS: '250',
     })
 
     expect(config).toStrictEqual({
@@ -39,6 +42,7 @@ describe('loadConfig', () => {
       templatesDir: '/srv/templates',
       logLevel: 'debug',
       nodeEnv: 'production',
+      writeLockTimeoutMs: 250,
       limits: { uploadMaxBytes: 1048576, archiveMaxBytes: 2097152, archiveMaxEntries: 7 },
     })
   })
@@ -52,6 +56,33 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ UPLOAD_MAX_BYTES: value })).toThrow(ConfigError)
     expect(() => loadConfig({ ARCHIVE_MAX_BYTES: value })).toThrow(ConfigError)
     expect(() => loadConfig({ ARCHIVE_MAX_ENTRIES: value })).toThrow(ConfigError)
+    expect(() => loadConfig({ WRITE_LOCK_TIMEOUT_MS: value })).toThrow(ConfigError)
+  })
+
+  // The lock still serialises writes at any timeout — this is the acquire
+  // timeout, not the hold time. What a tiny value destroys is patience: every
+  // waiter gives up at once and ordinary concurrency turns into 503s.
+  it.each([
+    ['1ms, which never queues', '1'],
+    ['just under the floor', '249'],
+  ])('rejects a timeout of %s', (_label, value) => {
+    expect(() => loadConfig({ WRITE_LOCK_TIMEOUT_MS: value })).toThrow(ConfigError)
+  })
+
+  // Past a client's own timeout the 503 can never be delivered, so the server
+  // would hold a waiter for a response nobody is left to receive.
+  it.each([
+    ['just over the ceiling', '60001'],
+    ['an hour', '3600000'],
+  ])('rejects a timeout of %s', (_label, value) => {
+    expect(() => loadConfig({ WRITE_LOCK_TIMEOUT_MS: value })).toThrow(ConfigError)
+  })
+
+  it.each([
+    ['the floor', '250', 250],
+    ['the ceiling', '60000', 60000],
+  ])('accepts %s itself', (_label, value, expected) => {
+    expect(loadConfig({ WRITE_LOCK_TIMEOUT_MS: value }).writeLockTimeoutMs).toBe(expected)
   })
 
   it('coerces PORT to a number', () => {

@@ -10,7 +10,7 @@ import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './atomic-write.ts'
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
 import { etagOf } from './etag.ts'
-import { createWriteLock, type WriteLock } from './lock.ts'
+import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from './lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
 import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
 import {
@@ -59,7 +59,6 @@ export const FOLDER_INDEX_NAME = 'index.md'
 
 // Long enough that ordinary contention resolves as latency, short enough that a
 // genuinely stuck write reports rather than leaving the session looking wedged.
-export const WRITE_LOCK_TIMEOUT_MS = 5000
 
 function assertNotBlank(id: string, content: string): void {
   if (content.trim() === '') throw new EmptyContentError(id)
@@ -117,7 +116,7 @@ async function collectDocumentIds(dir: string, prefix: string, found: string[]):
 
 export function createFsDocumentStore(
   docsRoot: string,
-  lock: WriteLock = createWriteLock(WRITE_LOCK_TIMEOUT_MS),
+  lock: WriteLock = createWriteLock(DEFAULT_WRITE_LOCK_TIMEOUT_MS),
 ): DocumentStore {
   const root = path.resolve(docsRoot)
 
