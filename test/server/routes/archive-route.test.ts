@@ -63,13 +63,49 @@ describe('GET /api/files/archive', () => {
 
     const res = await app.request('/api/files/archive?path=journal')
 
-    expect(res.headers.get('content-disposition')).toBe('attachment; filename="vixen-journal.zip"')
+    expect(res.headers.get('content-disposition')).toBe(
+      'attachment; filename="vixen-journal.zip"; filename*=UTF-8\'\'vixen-journal.zip',
+    )
   })
 
   it('names a whole-store download after the store', async () => {
     const res = await app.request('/api/files/archive')
 
-    expect(res.headers.get('content-disposition')).toBe('attachment; filename="vixen-documents.zip"')
+    expect(res.headers.get('content-disposition')).toBe(
+      'attachment; filename="vixen-documents.zip"; filename*=UTF-8\'\'vixen-documents.zip',
+    )
+  })
+
+  // Names may hold quotes, spaces and emoji. A quote inside the quoted form
+  // closes it early, so the real name travels in `filename*` and the quoted
+  // one is a plain-ASCII fallback for clients that cannot read it.
+  it('does not let a quote in the name break the quoted filename', async () => {
+    await store.createDocument('say "hi"/entry.md', '# entry')
+
+    const res = await app.request(`/api/files/archive?path=${encodeURIComponent('say "hi"')}`)
+    const disposition = res.headers.get('content-disposition') ?? ''
+
+    expect(disposition).toBe('attachment; filename="vixen-say_hi_.zip"; filename*=UTF-8\'\'vixen-say%20%22hi%22.zip')
+  })
+
+  it('carries a non-ASCII name through the encoded parameter', async () => {
+    await store.createDocument('café/entry.md', '# entry')
+
+    const res = await app.request(`/api/files/archive?path=${encodeURIComponent('café')}`)
+
+    expect(res.headers.get('content-disposition')).toContain("filename*=UTF-8''vixen-caf%C3%A9.zip")
+  })
+
+  it.each([
+    ['a space', 'my folder', 'vixen-my_folder.zip'],
+    ['an apostrophe', "it's", 'vixen-it_s.zip'],
+    ['an emoji', '🎉', 'vixen-_.zip'],
+  ])('reduces %s to plain ASCII in the fallback', async (_label, folder, fallback) => {
+    await store.createDocument(`${folder}/entry.md`, '# entry')
+
+    const res = await app.request(`/api/files/archive?path=${encodeURIComponent(folder)}`)
+
+    expect(res.headers.get('content-disposition')).toContain(`filename="${fallback}"`)
   })
 
   it('archives only the requested subtree, with paths relative to it', async () => {

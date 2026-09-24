@@ -34,12 +34,30 @@ const moveBodySchema = z.object({
 })
 const documentBodySchema = z.object({ path: z.string().min(1), content: z.string().optional() })
 
-// Store paths are restricted to letters, digits, dot, underscore and hyphen,
-// so a basename needs no further escaping inside a quoted filename.
+const HEX = 16
+const UNSAFE_IN_QUOTED_FILENAME = /[^A-Za-z0-9._-]+/gu
+
+// RFC 5987 attr-char is narrower than what encodeURIComponent leaves alone.
+const NOT_ATTR_CHAR = /['()*]/gu
+
 function archiveName(subtree: string): string {
   const leaf = path.posix.basename(subtree)
 
   return `vixen-${leaf === '' ? 'documents' : leaf}.zip`
+}
+
+// A name may hold a quote, a space or an emoji, so the quoted form cannot
+// carry it: a quote closes the string early and the header is malformed.
+// The real name travels percent-encoded in `filename*`, and the quoted form
+// is a plain-ASCII fallback for anything that cannot read that.
+function contentDisposition(name: string): string {
+  const fallback = name.replaceAll(UNSAFE_IN_QUOTED_FILENAME, '_')
+  const encoded = encodeURIComponent(name).replaceAll(
+    NOT_ATTR_CHAR,
+    (character) => `%${character.charCodeAt(0).toString(HEX).toUpperCase()}`,
+  )
+
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`
 }
 
 function uploadedFile(body: Record<string, unknown>): File | null {
@@ -80,7 +98,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
 
       return c.body(stream, HTTP_OK, {
         'content-type': 'application/zip',
-        'content-disposition': `attachment; filename="${archiveName(subtree)}"`,
+        'content-disposition': contentDisposition(archiveName(subtree)),
       })
     } catch (error) {
       return toErrorResponse(c, error)
