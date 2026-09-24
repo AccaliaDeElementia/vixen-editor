@@ -1,13 +1,15 @@
 'use sanity'
 
 import type { serve } from '@hono/node-server'
+import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConfigError, DEFAULT_LIMITS, type Config } from '../../src/server/config.ts'
+import { temporaryBeside } from '../../src/server/storage/atomic-write.ts'
 import { applyDebugFilter, createLogger } from '../../src/server/logging.ts'
 import {
   APP_TITLE,
@@ -174,20 +176,20 @@ describe('createApp', () => {
 })
 
 describe('startServer', () => {
-  it('loads the env file before reading configuration from it', () => {
+  it('loads the env file before reading configuration from it', async () => {
     const { runtime, order, recorded } = recordingRuntime()
     runtime.loadEnvFile = () => {
       order.push('loadEnvFile')
       runtime.env.PORT = '4321'
     }
 
-    startServer(runtime)
+    await startServer(runtime)
 
     expect(order).toStrictEqual(['loadEnvFile', 'serve'])
     expect(recorded[0]?.options.port).toBe(4321)
   })
 
-  it('applies DEBUG from the env file, so a .env value reaches loggers made at import time', () => {
+  it('applies DEBUG from the env file, so a .env value reaches loggers made at import time', async () => {
     const { runtime, order } = recordingRuntime()
     const alreadyCreated = createLogger('main', 'startServer')
     runtime.loadEnvFile = () => {
@@ -196,35 +198,35 @@ describe('startServer', () => {
     }
     expect(alreadyCreated.enabled).toBeFalsy()
 
-    startServer(runtime)
+    await startServer(runtime)
 
     expect(alreadyCreated.enabled).toBe(true)
     applyDebugFilter({})
   })
 
-  it('leaves loggers silent when the env file sets no DEBUG', () => {
+  it('leaves loggers silent when the env file sets no DEBUG', async () => {
     const { runtime } = recordingRuntime()
     const alreadyCreated = createLogger('main', 'startServer')
 
-    startServer(runtime)
+    await startServer(runtime)
 
     expect(alreadyCreated.enabled).toBe(false)
   })
 
-  it('passes the configured port and hostname to serve', () => {
+  it('passes the configured port and hostname to serve', async () => {
     const { runtime, recorded } = recordingRuntime()
     runtime.env = { DOCS_ROOT: docsRoot, PORT: '8080', HOST: '127.0.0.1' }
 
-    startServer(runtime)
+    await startServer(runtime)
 
     expect(recorded[0]?.options).toMatchObject({ port: 8080, hostname: '127.0.0.1' })
   })
 
-  it('falls back to the default port when the environment is bare', () => {
+  it('falls back to the default port when the environment is bare', async () => {
     const { runtime, recorded } = recordingRuntime()
     runtime.env = {}
 
-    startServer(runtime)
+    await startServer(runtime)
 
     expect(recorded[0]?.options).toMatchObject({ port: 3000, hostname: '0.0.0.0' })
   })
@@ -232,22 +234,22 @@ describe('startServer', () => {
   it('hands serve a fetch handler that answers requests', async () => {
     const { runtime, recorded } = recordingRuntime()
 
-    startServer(runtime)
+    await startServer(runtime)
     const fetchHandler = recorded[0]?.options.fetch as (req: Request) => Response | Promise<Response>
     const res = await fetchHandler(new Request('http://localhost/api/health'))
 
     await expect(res.json()).resolves.toStrictEqual({ status: 'ok' })
   })
 
-  it('returns whatever serve returns, so the caller can close it', () => {
+  it('returns whatever serve returns, so the caller can close it', async () => {
     const { runtime } = recordingRuntime()
 
-    expect(startServer(runtime)).toHaveProperty('close')
+    await expect(startServer(runtime)).resolves.toHaveProperty('close')
   })
 
-  it('logs on the listening callback without throwing', () => {
+  it('logs on the listening callback without throwing', async () => {
     const { runtime, recorded } = recordingRuntime()
-    startServer(runtime)
+    await startServer(runtime)
 
     expect(() => {
       recorded[0]?.onListening({ port: 3000 })
@@ -265,11 +267,42 @@ describe('startServer', () => {
     expect(defaultRuntime.publicDir).toBe(DEFAULT_PUBLIC_DIR)
   })
 
-  it('propagates a configuration error rather than starting', () => {
+  // A temporary left by a killed process is only safe to delete while nothing
+  // is mid-write, which stops being true the moment the server accepts a
+  // request — so the sweep has to finish first, not merely be started.
+  it('has already swept abandoned temporaries by the time it calls serve', async () => {
+    await fs.mkdir(docsRoot, { recursive: true })
+    const orphan = temporaryBeside(path.join(docsRoot, 'note.md'))
+    await fs.writeFile(orphan, '')
+
+    let orphanWhenServeRan: boolean | null = null
+    const { runtime } = recordingRuntime()
+    const recordingServe = runtime.serve
+    runtime.serve = (...args: Parameters<typeof serve>) => {
+      orphanWhenServeRan = existsSync(orphan)
+      return recordingServe(...args)
+    }
+
+    await startServer(runtime)
+
+    expect(orphanWhenServeRan).toBe(false)
+  })
+
+  it('still serves when the sweep fails, because housekeeping is not the job', async () => {
+    vi.spyOn(fs, 'readdir').mockRejectedValue(Object.assign(new Error('EACCES'), { code: 'EACCES' }))
+    const { runtime, order } = recordingRuntime()
+
+    await expect(startServer(runtime)).resolves.toHaveProperty('close')
+
+    expect(order).toStrictEqual(['loadEnvFile', 'serve'])
+    vi.restoreAllMocks()
+  })
+
+  it('propagates a configuration error rather than starting', async () => {
     const { runtime, order } = recordingRuntime()
     runtime.env = { PORT: 'not-a-port' }
 
-    expect(() => startServer(runtime)).toThrow(ConfigError)
+    await expect(startServer(runtime)).rejects.toThrow(ConfigError)
     expect(order).toStrictEqual(['loadEnvFile'])
   })
 })

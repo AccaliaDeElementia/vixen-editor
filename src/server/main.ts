@@ -10,6 +10,7 @@ import { loadConfig, type Config } from './config.ts'
 import { applyDebugFilter, createLogger } from './logging.ts'
 import { docRoutes } from './routes/doc.ts'
 import { createFsDocumentStore } from './storage/fs-store.ts'
+import { sweepTemporaries } from './storage/sweep.ts'
 import { createTemplateRenderer } from './templates.ts'
 
 const logStartup = createLogger('main', 'startServer')
@@ -48,11 +49,24 @@ export const defaultRuntime: Runtime = {
   publicDir: DEFAULT_PUBLIC_DIR,
 }
 
-export function startServer(runtime: Runtime = defaultRuntime): ReturnType<typeof serve> {
+// Housekeeping must not stop the editor serving, so a sweep that fails is
+// logged and forgotten. It runs before `serve` rather than alongside it: the
+// sweep is only safe while nothing is mid-write, and a server already
+// accepting requests could be writing a temporary it would then delete.
+async function sweepBeforeServing(docsRoot: string): Promise<void> {
+  try {
+    await sweepTemporaries(docsRoot)
+  } catch (error) {
+    logStartup('sweep of %s failed: %O', docsRoot, error)
+  }
+}
+
+export async function startServer(runtime: Runtime = defaultRuntime): Promise<ReturnType<typeof serve>> {
   runtime.loadEnvFile()
   applyDebugFilter(runtime.env)
 
   const config = loadConfig(runtime.env)
+  await sweepBeforeServing(config.docsRoot)
   const app = createApp(config, runtime.publicDir)
 
   return runtime.serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {

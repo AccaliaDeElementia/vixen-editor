@@ -6,5 +6,5 @@ import { startServer } from './server/main.ts'
    construction, so this branch only ever executes when the file is launched
    as the process entry point; the e2e suite covers that path for real */
 if (import.meta.main) {
-  startServer()
+  void startServer()
 }

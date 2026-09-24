@@ -359,9 +359,30 @@ a write that failed — on NFS that is where a deferred write error surfaces —
 and the caller has to hear about it.
 
 So a `.vixen-*.tmp` outlives its write in exactly two cases: a killed process,
-and a cleanup that could not delete it. Nothing collects those orphans yet — a
-recorded follow-up, and a startup sweep is the only thing that can, since a
-crashed instance is not around to tidy up after itself.
+and a cleanup that could not delete it.
+
+**`sweepTemporaries` collects those orphans, and only at startup.** A crashed
+instance is not around to tidy up after itself, and deleting a temporary is
+safe only while nothing is mid-write — which stops being true the moment the
+server accepts a request. So `startServer` awaits the sweep _before_ calling
+`serve`, and that ordering has its own test. At any other moment the sweep
+would need an age heuristic, and a wrong guess deletes a temporary out from
+under a live write.
+
+Three things it must not do, each with a test:
+
+- **Match a bare leading dot.** `.trash` is a dotfile too. The match is
+  anchored at both ends, against the same `isTemporaryName` the writer uses —
+  one predicate, or the prefix changes on one side and the sweep silently
+  stops matching anything.
+- **Remove a directory.** Nothing here creates one with that name, so one is
+  not ours, and deleting a tree on a name match is how a small bug becomes
+  data loss. It is logged and left.
+- **Follow a symlink.** `isFile()` is false for one, which is what stops a
+  name inside the store deleting a file outside it.
+
+A sweep that fails is logged and forgotten: housekeeping must not stop the
+editor serving. `startServer` is therefore `async`.
 
 Which makes the name load-bearing. `isAllowedName` refuses a leading dot, so
 an orphan is invisible to the tree, the document list and the archive rather

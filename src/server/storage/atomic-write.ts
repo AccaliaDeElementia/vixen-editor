@@ -8,10 +8,21 @@ import { createLogger } from '../logging.ts'
 
 const logDiscard = createLogger('storage/atomic-write', 'discard')
 
+const TEMPORARY_PREFIX = '.vixen-'
+const TEMPORARY_SUFFIX = '.tmp'
+
 // A sibling, because rename and link both fail with EXDEV across filesystems
 // and only a sibling is guaranteed to be on the same one.
 export function temporaryBeside(target: string): string {
-  return path.join(path.dirname(target), `.vixen-${randomUUID()}.tmp`)
+  return path.join(path.dirname(target), `${TEMPORARY_PREFIX}${randomUUID()}${TEMPORARY_SUFFIX}`)
+}
+
+export function isTemporaryName(name: string): boolean {
+  return (
+    name.length > TEMPORARY_PREFIX.length + TEMPORARY_SUFFIX.length &&
+    name.startsWith(TEMPORARY_PREFIX) &&
+    name.endsWith(TEMPORARY_SUFFIX)
+  )
 }
 
 async function writeThenSync(target: string, data: string | Uint8Array): Promise<void> {

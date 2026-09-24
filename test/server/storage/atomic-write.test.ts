@@ -6,7 +6,12 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createFileAtomic, replaceFileAtomic, temporaryBeside } from '../../../src/server/storage/atomic-write.ts'
+import {
+  createFileAtomic,
+  isTemporaryName,
+  replaceFileAtomic,
+  temporaryBeside,
+} from '../../../src/server/storage/atomic-write.ts'
 import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
 
 const MAX_NAME_BYTES = 255
@@ -270,5 +275,25 @@ describe('a cleanup that fails', () => {
 
     expect(left).toHaveLength(1)
     expect(left.every((name) => !isAllowedName(name))).toBe(true)
+  })
+})
+
+// The sweep that collects abandoned temporaries has to recognise exactly what
+// this module writes. One predicate, used by both, or the prefix changes on
+// one side and the sweep quietly stops matching anything.
+describe('isTemporaryName', () => {
+  it('accepts the name this module generates', () => {
+    expect(isTemporaryName(path.basename(temporaryBeside(at('note.md'))))).toBe(true)
+  })
+
+  it.each([
+    ['a document', 'notes.md'],
+    ['the trash', '.trash'],
+    ['another dotfile', '.gitignore'],
+    ['the prefix alone', '.vixen-'],
+    ['the suffix alone', 'something.tmp'],
+    ['a plausible near miss', '.vixen.tmp'],
+  ])('rejects %s', (_name, candidate) => {
+    expect(isTemporaryName(candidate)).toBe(false)
   })
 })
