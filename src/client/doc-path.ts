@@ -21,3 +21,14 @@ export function documentIdFromPath(pathname: string): string {
 export function docUrlFor(entryPath: string): string {
   return `${DOC_PREFIX}${entryPath.split('/').map(encodeURIComponent).join('/')}`
 }
+
+export interface EntryMove {
+  from: string
+  to: string
+}
+
+export function pathAfterMove({ from, to }: EntryMove, entryPath: string): string {
+  if (entryPath === from) return to
+
+  return entryPath.startsWith(`${from}/`) ? `${to}${entryPath.slice(from.length)}` : entryPath
+}

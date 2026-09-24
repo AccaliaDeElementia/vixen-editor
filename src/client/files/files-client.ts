@@ -8,7 +8,7 @@ export interface FilesClient {
   createDocument: (entryPath: string) => Promise<void>
   createFolder: (folderPath: string) => Promise<void>
   upload: (directory: string, file: File) => Promise<string>
-  move: (from: string, to: string, allowOverwrite: boolean) => Promise<void>
+  move: (from: string, to: string, allowOverwrite: boolean) => Promise<string[]>
   remove: (entryPath: string) => Promise<void>
   restore: (entryId: string) => Promise<void>
   purge: (entryId: string) => Promise<void>
@@ -105,8 +105,16 @@ export function createFilesClient(fetchImpl: typeof fetch = globalThis.fetch, ba
       return isRecord(created) && typeof created.path === 'string' ? created.path : ''
     },
 
-    async move(from: string, to: string, allowOverwrite: boolean): Promise<void> {
-      await postJson(`${baseUrl}/files/moves`, { from, to, allowOverwrite })
+    // The paths whose links the move repaired. A server that answers with
+    // something else costs the editor a warning, never the move itself.
+    async move(from: string, to: string, allowOverwrite: boolean): Promise<string[]> {
+      const outcome: unknown = await postJson(`${baseUrl}/files/moves`, { from, to, allowOverwrite }).then(
+        async (response): Promise<unknown> => await response.json().catch(() => null),
+      )
+
+      if (!isRecord(outcome) || !Array.isArray(outcome.rewritten)) return []
+
+      return outcome.rewritten.filter((entry): entry is string => typeof entry === 'string')
     },
 
     async remove(entryPath: string): Promise<void> {

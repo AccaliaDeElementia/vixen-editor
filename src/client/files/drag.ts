@@ -1,5 +1,6 @@
 'use sanity'
 
+import type { DocumentMoved } from '../document-moved.ts'
 import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
@@ -16,6 +17,7 @@ export interface DragContext {
   rowAt: (index: number) => VisibleRow | undefined
   refresh: () => Promise<void>
   revealPath: (entryPath: string) => void
+  announce: (moved: DocumentMoved) => void
 }
 
 function describe(error: unknown): string {
@@ -81,7 +83,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     if (to === from) return null
 
     try {
-      await context.client.move(from, to, false)
+      context.announce({ from, to, rewritten: await context.client.move(from, to, false) })
       return to
     } catch (error) {
       if (!(error instanceof FilesRequestError) || error.code !== 'WOULD_OVERWRITE') throw error
@@ -93,7 +95,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
       })
       if (!confirmed) return null
 
-      await context.client.move(from, to, true)
+      context.announce({ from, to, rewritten: await context.client.move(from, to, true) })
       return to
     }
   }

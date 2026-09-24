@@ -250,3 +250,34 @@ describe('move', () => {
     })
   })
 })
+
+// The editor needs to know whether the document it has open was repaired on
+// disk, but a malformed answer must cost a warning rather than the move.
+describe('move', () => {
+  it('reports the paths whose links were repaired', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ rewritten: ['a.md', 'b.md'], failed: [] }))
+
+    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual(['a.md', 'b.md'])
+  })
+
+  it.each([
+    ['a body with no rewritten list', {}],
+    ['a rewritten list that is not an array', { rewritten: 'a.md' }],
+  ])('reports nothing for %s', async (_label, body) => {
+    fetchMock.mockResolvedValue(jsonResponse(body))
+
+    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual([])
+  })
+
+  it('drops entries that are not strings', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ rewritten: ['a.md', 7, null] }))
+
+    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual(['a.md'])
+  })
+
+  it('reports nothing when the body is not JSON at all', async () => {
+    fetchMock.mockResolvedValue(new Response('', { status: 200 }))
+
+    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual([])
+  })
+})

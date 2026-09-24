@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { docUrlFor, documentIdFromPath } from '../../src/client/doc-path.ts'
+import { docUrlFor, documentIdFromPath, pathAfterMove } from '../../src/client/doc-path.ts'
 
 describe('documentIdFromPath', () => {
   it('reads the document from the path', () => {
@@ -60,5 +60,32 @@ describe('docUrlFor', () => {
 
   it('round-trips through documentIdFromPath', () => {
     expect(documentIdFromPath(docUrlFor('journal/2026/september.md'))).toBe('journal/2026/september.md')
+  })
+})
+
+// A folder move carries everything beneath it, so the document that is open
+// can move without ever being named in the request.
+describe('pathAfterMove', () => {
+  const RENAME = { from: 'notes.md', to: 'renamed.md' }
+  const FOLDER = { from: 'journal', to: 'archive/journal' }
+
+  it('maps the entry that was named', () => {
+    expect(pathAfterMove(RENAME, 'notes.md')).toBe('renamed.md')
+  })
+
+  it('maps a document carried by a folder move', () => {
+    expect(pathAfterMove(FOLDER, 'journal/2026/a.md')).toBe('archive/journal/2026/a.md')
+  })
+
+  it('maps the moved folder itself', () => {
+    expect(pathAfterMove(FOLDER, 'journal')).toBe('archive/journal')
+  })
+
+  it('leaves an unrelated document alone', () => {
+    expect(pathAfterMove(FOLDER, 'notes.md')).toBe('notes.md')
+  })
+
+  it('leaves a sibling that merely shares a prefix alone', () => {
+    expect(pathAfterMove(FOLDER, 'journal2/a.md')).toBe('journal2/a.md')
   })
 })

@@ -3,7 +3,8 @@
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
-import { documentIdFromPath } from '../doc-path.ts'
+import { docUrlFor, documentIdFromPath, pathAfterMove } from '../doc-path.ts'
+import { onDocumentMoved } from '../document-moved.ts'
 
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
@@ -23,6 +24,14 @@ export interface BootstrapOptions {
   root?: ParentNode
   pathname?: string
   session?: Session
+  navigate?: (url: string) => void
+}
+
+// The document moved, it did not navigate — the buffer, the scroll position
+// and any unsaved edit all stay exactly as they are, so the old address must
+// not be left behind in the history for Back to return to.
+function replaceAddress(url: string): void {
+  window.history.replaceState(null, '', url)
 }
 
 export class MissingMountError extends Error {
@@ -49,19 +58,40 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<EditorV
     throw new MissingMountError(MOUNT_SELECTOR)
   }
 
-  const documentId = documentIdFromPath(pathname)
+  const navigate = options.navigate ?? replaceAddress
+  let documentId = documentIdFromPath(pathname)
 
   const save = (view: EditorView): boolean => {
+    const target = documentId
     void session
-      .save(documentId, view.state.doc.toString())
+      .save(target, view.state.doc.toString())
       .then(() => {
-        setStatus(`Saved ${documentId}`)
+        setStatus(`Saved ${target}`)
       })
       .catch((error: unknown) => {
         toast.error(`Save failed: ${describeError(error)}`)
       })
     return true
   }
+
+  onDocumentMoved(root, ({ from, to, rewritten }) => {
+    const moved = pathAfterMove({ from, to }, documentId)
+
+    if (moved !== documentId) {
+      session.rename(documentId, moved)
+      documentId = moved
+      navigate(docUrlFor(moved))
+      setStatus(`Now editing ${moved}`)
+    }
+
+    // The bytes on disk are newer than the buffer in front of the user, and
+    // overwriting them silently is the one thing a save must not do. The etag
+    // the session carried across is stale, so a save answers 412 — this is
+    // the warning that explains why.
+    if (rewritten.includes(documentId)) {
+      toast.error(`${documentId} changed on disk — reload to see the repaired links`)
+    }
+  })
 
   const view = new EditorView({
     parent: mount,

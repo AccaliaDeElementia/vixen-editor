@@ -7,6 +7,7 @@ const HTTP_NOT_FOUND = 404
 export interface Session {
   load: (id: string) => Promise<string>
   save: (id: string, content: string) => Promise<void>
+  rename: (from: string, to: string) => void
 }
 
 function isAbsent(error: unknown): boolean {
@@ -33,6 +34,16 @@ export function createSession(client: DocumentClient, template: (id: string) => 
         etags.delete(id)
         return template(id)
       }
+    },
+
+    // A move leaves the content untouched, so the etag is still the right one
+    // for the bytes on disk — only the name it is filed under changed. If the
+    // move also repaired links, the etag is stale and the save answers 412,
+    // which is the correct loud outcome rather than a silent overwrite.
+    rename(from: string, to: string): void {
+      const etag = etags.get(from)
+      etags.delete(from)
+      if (etag !== undefined) etags.set(to, etag)
     },
 
     // A document with no etag was never on the server, so the first save has to

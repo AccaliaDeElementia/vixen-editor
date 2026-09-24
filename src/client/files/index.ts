@@ -1,6 +1,7 @@
 'use sanity'
 
 import { documentIdFromPath } from '../doc-path.ts'
+import { announceDocumentMoved } from '../document-moved.ts'
 import { createToast } from '../layout/toast.ts'
 
 import { bindActions, bindTrashActions, updateArchiveLink, type ActionContext } from './actions.ts'
@@ -191,7 +192,20 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   }
   bindActions(context)
   bindTrashActions(context, tree)
-  bindDragAndDrop({ client, dialogs, toast, rowAt: (index) => visible[index], refresh: load, revealPath }, tree)
+  bindDragAndDrop(
+    {
+      client,
+      dialogs,
+      toast,
+      rowAt: (index) => visible[index],
+      refresh: load,
+      revealPath,
+      announce: (moved) => {
+        announceDocumentMoved(root, moved)
+      },
+    },
+    tree,
+  )
 
   try {
     await load()

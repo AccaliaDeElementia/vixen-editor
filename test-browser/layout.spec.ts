@@ -506,3 +506,34 @@ test('an upload whose bytes contradict its extension tells the user why', async 
 
   await expect(page.locator('#status')).toContainText('liar.png')
 })
+
+// The tree and the editor are mounted separately and never see each other, so
+// this is the one place the channel between them is exercised for real: a
+// drag in one component has to change the address bar owned by the other.
+test('dragging the open document follows it in the address bar and keeps saving', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const folder = `followdest-${stamp}`
+  const doc = `followed-${stamp}.md`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: doc, content: '# before\n' } })
+
+  await page.goto(`/doc/${doc}`)
+  await expect(page.locator('#editor .cm-content')).toContainText('# before')
+
+  await page.locator(`.tree__row[data-path="${doc}"]`).dragTo(page.locator(`.tree__row[data-path="${folder}"]`))
+
+  await expect(page).toHaveURL(`/doc/${folder}/${doc}`)
+
+  // The save has to land at the new path: before this, it went to the old one
+  // and answered 404 because the store no longer had it.
+  await page.locator('#editor .cm-content').click()
+  await page.keyboard.type(' edited')
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect(page.locator('#status')).toContainText('Saved')
+
+  const moved = await request.get(`/api/documents/${folder}/${doc}`)
+  expect(moved.status()).toBe(200)
+  expect(await moved.text()).toContain('edited')
+
+  await request.delete(`/api/files/entries/${folder}`)
+})

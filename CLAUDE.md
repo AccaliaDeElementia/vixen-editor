@@ -226,6 +226,34 @@ resolves correctly.
 Whether a leaf is a folder is decided by `classifyFile`, not by looking for a
 dot: a folder named `v1.2` has an extension and is still a folder.
 
+### The editor follows a document that moves
+
+The file tree and the editor are mounted independently by `client/main.ts` and
+never see each other, so a move reaches the editor as an event on the shared
+root — `DOCUMENT_MOVED` in `src/client/document-moved.ts`, which owns the name
+and the shape so the two sides cannot disagree about either. It is a typed
+`Event` subclass rather than a `CustomEvent`, so the listener narrows with
+`instanceof` instead of asserting that `detail` holds what it hoped for, and
+an event that merely shares the name is ignored.
+
+On hearing one the editor re-reads its own identity through `pathAfterMove` —
+a folder move carries the open document without ever naming it — then calls
+`session.rename` to carry the etag across, and **replaces** the address rather
+than pushing one, because the document moved, it did not navigate.
+
+Without this the editor kept saving to a path the store no longer had. In
+session that answered `404`; after a reload of the stale URL it was worse,
+because `/doc/<old path>` still renders an editor shell, `session.load` treats
+an absent document as a new one, and the user was shown a **template** as if
+their content had vanished — with the next save creating a duplicate at the
+old path.
+
+**A repaired document is reported, not reloaded.** If the move rewrote links
+inside the open document, its bytes on disk are newer than the buffer, so the
+editor says so and leaves the buffer alone. Replacing it would discard unsaved
+edits, and the carried-over etag makes a save answer `412` rather than
+clobber — the warning is what explains that answer.
+
 ## The document store
 
 ### `.md` and `.txt` are the same thing

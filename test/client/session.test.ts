@@ -169,3 +169,43 @@ describe('save', () => {
     await expect(active.save('notes.md', 'x')).rejects.toMatchObject({ status: 412 })
   })
 })
+
+// A move does not change content, so the etag the session already holds stays
+// valid — it just belongs to a different name now. Carrying it across is what
+// keeps the next save an update rather than a create against an occupied path.
+describe('rename', () => {
+  it('saves to the new path as an update, not a create', async () => {
+    client.read.mockResolvedValue(loaded('# mine'))
+    client.save.mockResolvedValue('"e2"')
+    const active = session()
+    await active.load('notes.md')
+
+    active.rename('notes.md', 'archive/notes.md')
+    await active.save('archive/notes.md', '# edited')
+
+    expect(client.save).toHaveBeenCalledWith('archive/notes.md', '# edited', '"e1"')
+    expect(client.create).not.toHaveBeenCalled()
+  })
+
+  it('forgets the old path, so a save against it creates rather than updates', async () => {
+    client.read.mockResolvedValue(loaded('# mine'))
+    client.create.mockResolvedValue('"e3"')
+    const active = session()
+    await active.load('notes.md')
+
+    active.rename('notes.md', 'archive/notes.md')
+    await active.save('notes.md', '# edited')
+
+    expect(client.create).toHaveBeenCalledWith('notes.md', '# edited')
+  })
+
+  it('does nothing for a document it never loaded', async () => {
+    client.create.mockResolvedValue('"e4"')
+    const active = session()
+
+    active.rename('never-seen.md', 'elsewhere.md')
+    await active.save('elsewhere.md', '# new')
+
+    expect(client.create).toHaveBeenCalledWith('elsewhere.md', '# new')
+  })
+})

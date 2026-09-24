@@ -3,11 +3,13 @@
 import type { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { announceDocumentMoved } from '../../src/client/document-moved.ts'
 import { bootstrap, bootstrapOrReport, describeError, MissingMountError } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 
 let root: HTMLElement
 let saved: Array<{ id: string; content: string }>
+let renamed: Array<{ from: string; to: string }>
 
 function page({ withMount = true, withStatus = true } = {}): HTMLElement {
   const container = document.createElement('div')
@@ -32,6 +34,9 @@ function fakeSession(overrides: Partial<Session> = {}): Session {
       saved.push({ id, content })
       return Promise.resolve()
     },
+    rename: (from: string, to: string) => {
+      renamed.push({ from, to })
+    },
     ...overrides,
   }
 }
@@ -42,6 +47,7 @@ function statusText(container: ParentNode): string {
 
 beforeEach(() => {
   saved = []
+  renamed = []
   document.body.innerHTML = ''
   root = page()
 })
@@ -218,3 +224,109 @@ async function pressSave(view: EditorView): Promise<void> {
   await Promise.resolve()
   await Promise.resolve()
 }
+
+// The tree and the editor are mounted separately, so a move reaches the
+// editor only as an event. Without it the editor keeps saving to a path the
+// store no longer has, and a reload of the stale URL shows a template as if
+// the document were new.
+describe('bootstrap follows a document that moves underneath it', () => {
+  async function editing(pathname: string, navigated: string[]): Promise<EditorView> {
+    return await bootstrap({
+      root,
+      pathname,
+      session: fakeSession(),
+      navigate: (url) => {
+        navigated.push(url)
+      },
+    })
+  }
+
+  it('moves the session etag to the new path', async () => {
+    const navigated: string[] = []
+    await editing('/doc/notes.md', navigated)
+
+    announceDocumentMoved(root, { from: 'notes.md', to: 'archive/notes.md', rewritten: [] })
+
+    expect(renamed).toStrictEqual([{ from: 'notes.md', to: 'archive/notes.md' }])
+  })
+
+  it('rewrites the address bar to the new path', async () => {
+    const navigated: string[] = []
+    await editing('/doc/notes.md', navigated)
+
+    announceDocumentMoved(root, { from: 'notes.md', to: 'archive/my notes.md', rewritten: [] })
+
+    expect(navigated).toStrictEqual(['/doc/archive/my%20notes.md'])
+  })
+
+  it('follows a document carried by a folder move', async () => {
+    const navigated: string[] = []
+    await editing('/doc/journal/2026/a.md', navigated)
+
+    announceDocumentMoved(root, { from: 'journal', to: 'archive/journal', rewritten: [] })
+
+    expect(renamed).toStrictEqual([{ from: 'journal/2026/a.md', to: 'archive/journal/2026/a.md' }])
+  })
+
+  it('ignores a move of some other document', async () => {
+    const navigated: string[] = []
+    await editing('/doc/notes.md', navigated)
+
+    announceDocumentMoved(root, { from: 'other.md', to: 'archive/other.md', rewritten: [] })
+
+    expect(renamed).toStrictEqual([])
+    expect(navigated).toStrictEqual([])
+  })
+
+  it('says where the document went', async () => {
+    const navigated: string[] = []
+    await editing('/doc/notes.md', navigated)
+
+    announceDocumentMoved(root, { from: 'notes.md', to: 'archive/notes.md', rewritten: [] })
+
+    expect(statusText(root)).toContain('archive/notes.md')
+  })
+
+  // The buffer in front of the user is now older than the file on disk.
+  it('warns when the move repaired links inside the open document', async () => {
+    const navigated: string[] = []
+    await editing('/doc/notes.md', navigated)
+
+    announceDocumentMoved(root, { from: 'journal', to: 'archive', rewritten: ['notes.md'] })
+
+    expect(statusText(root)).toContain('reload')
+  })
+
+  it('warns about a repair even when the open document also moved', async () => {
+    const navigated: string[] = []
+    await editing('/doc/journal/a.md', navigated)
+
+    announceDocumentMoved(root, { from: 'journal', to: 'archive', rewritten: ['archive/a.md'] })
+
+    expect(statusText(root)).toContain('reload')
+  })
+
+  // The injected navigate covers the decision; this covers the effect it
+  // stands in for, which is the only part that touches real browser history.
+  it('replaces the address by default, without pushing a history entry', async () => {
+    const before = window.location.pathname
+    try {
+      await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
+
+      announceDocumentMoved(root, { from: 'notes.md', to: 'archive/notes.md', rewritten: [] })
+
+      expect(window.location.pathname).toBe('/doc/archive/notes.md')
+    } finally {
+      window.history.replaceState(null, '', before)
+    }
+  })
+
+  it('stays quiet when the repair touched some other document', async () => {
+    const navigated: string[] = []
+    await editing('/doc/notes.md', navigated)
+
+    announceDocumentMoved(root, { from: 'journal', to: 'archive', rewritten: ['elsewhere.md'] })
+
+    expect(statusText(root)).not.toContain('reload')
+  })
+})
