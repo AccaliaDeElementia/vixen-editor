@@ -1,6 +1,6 @@
 'use sanity'
 
-export type FileKind = 'document' | 'image'
+type FileKind = 'document' | 'image'
 export type EntryKind = FileKind | 'folder'
 
 interface FileNode {

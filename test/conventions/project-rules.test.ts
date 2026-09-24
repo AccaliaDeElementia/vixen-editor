@@ -166,6 +166,7 @@ describe('rule 5: every tooling suppression carries a rationale', () => {
 })
 
 const TEST_ONLY = 'TestOnly'
+const WHOLE_MODULE = '*'
 const RUNTIME_EXPORT = /^export\s+(?:async\s+)?(?:function|const|class)\s+(?<name>\w+)/gmu
 const TYPE_EXPORT = /^export\s+(?:interface|type)\s/u
 
@@ -173,10 +174,87 @@ function runtimeExportsIn(contents: string): string[] {
   return [...contents.matchAll(RUNTIME_EXPORT)].map((match) => match.groups?.name ?? '').filter((name) => name !== '')
 }
 
-function consumedBy(sources: readonly SourceFile[], name: string, definer: string): boolean {
-  const mention = new RegExp(`\\b${name}\\b`, 'u')
+const IMPORT_CLAUSE =
+  /^import\s+(?:type\s+)?(?<first>\{[^}]*\}|\*\s+as\s+\w+|\w+)?\s*(?:,\s*(?<second>\{[^}]*\}))?\s*from\s*'(?<from>[^']*)'/gmu
+const REEXPORT_FROM = /^export\s+(?:type\s+)?\{(?<names>[^}]*)\}\s*from\s*'(?<from>[^']*)'/gmu
 
-  return sources.some((source) => source.relativePath !== definer && mention.test(source.contents))
+function resolveSpecifier(importer: string, specifier: string): string | null {
+  if (!specifier.startsWith('.')) return null
+
+  const segments = importer.split('/').slice(0, -1)
+  for (const part of specifier.split('/')) {
+    if (part === '.') continue
+    if (part === '..') segments.pop()
+    else segments.push(part)
+  }
+
+  return segments.join('/')
+}
+
+function localNamesIn(clause: string): string[] {
+  return clause
+    .replaceAll(/[{}]/gu, '')
+    .split(',')
+    .map(
+      (entry) =>
+        entry
+          .trim()
+          .replace(/^type\s+/u, '')
+          .split(/\s+as\s+/u)[0]
+          ?.trim() ?? '',
+    )
+    .filter((name) => /^\w+$/u.test(name))
+}
+
+// Matching identifiers cannot tell which module a name came from, so a dead
+// export is kept alive by a live one of the same name elsewhere, or even by
+// its own filename appearing in an import path. Resolving the import says who
+// actually consumes what, and ignores a name written in a comment.
+// A namespace import may reach any export, so none of them can be called dead.
+function namesInClause(clause: string | undefined): string[] {
+  if (clause === undefined) return []
+  if (clause.startsWith('*')) return [WHOLE_MODULE]
+
+  return clause.startsWith('{') ? localNamesIn(clause) : []
+}
+
+function importedFrom(source: SourceFile): Array<[string, string[]]> {
+  return [...source.contents.matchAll(IMPORT_CLAUSE)].flatMap((match) => {
+    const module = resolveSpecifier(source.relativePath, match.groups?.from ?? '')
+    if (module === null) return []
+
+    const names = [...namesInClause(match.groups?.first), ...namesInClause(match.groups?.second)]
+
+    return names.length === 0 ? [] : [[module, names] as [string, string[]]]
+  })
+}
+
+function reexportedFrom(source: SourceFile): Array<[string, string[]]> {
+  return [...source.contents.matchAll(REEXPORT_FROM)].flatMap((match) => {
+    const module = resolveSpecifier(source.relativePath, match.groups?.from ?? '')
+
+    return module === null ? [] : [[module, localNamesIn(match.groups?.names ?? '')] as [string, string[]]]
+  })
+}
+
+function importGraph(sources: readonly SourceFile[]): Map<string, Set<string>> {
+  const consumed = new Map<string, Set<string>>()
+
+  for (const source of sources) {
+    for (const [module, names] of [...importedFrom(source), ...reexportedFrom(source)]) {
+      const already = consumed.get(module) ?? new Set<string>()
+      for (const name of names) already.add(name)
+      consumed.set(module, already)
+    }
+  }
+
+  return consumed
+}
+
+function consumes(graph: Map<string, Set<string>>, module: string, name: string): boolean {
+  const names = graph.get(module)
+
+  return names !== undefined && (names.has(name) || names.has(WHOLE_MODULE))
 }
 
 function exportedNamesIn(contents: string): string[] {
@@ -206,20 +284,13 @@ function exportedNamesIn(contents: string): string[] {
 // itself, because a name written in one of its own comments would otherwise
 // count as the consumer that keeps the export alive.
 describe('every export is consumed by something', () => {
-  function consumers(name: string, definer: string): string[] {
-    const mention = new RegExp(`\\b${name}\\b`, 'u')
-
-    return scannable()
-      .filter((source) => source.relativePath !== definer && mention.test(source.contents))
-      .map((source) => source.relativePath)
-  }
-
   it('leaves no export under src/ that nothing imports', () => {
+    const graph = importGraph(scannable())
     const orphans = scannable()
       .filter((source) => source.relativePath.startsWith('src/'))
       .flatMap((source) =>
         exportedNamesIn(source.contents)
-          .filter((name) => consumers(name, source.relativePath).length === 0)
+          .filter((name) => !consumes(graph, source.relativePath, name))
           .map((name) => `${source.relativePath}: ${name}`),
       )
 
@@ -241,13 +312,14 @@ describe('every export is consumed by something', () => {
     const shipping = scannable().filter(
       (source) => source.relativePath.startsWith('src/') || source.relativePath.startsWith('scripts/'),
     )
+    const graph = importGraph(shipping)
 
     const leaked = shipping
       .filter((source) => source.relativePath.startsWith('src/'))
       .flatMap((source) =>
         runtimeExportsIn(source.contents)
           .filter((name) => name !== TEST_ONLY)
-          .filter((name) => !consumedBy(shipping, name, source.relativePath))
+          .filter((name) => !consumes(graph, source.relativePath, name))
           .map((name) => `${source.relativePath}: ${name}`),
       )
 

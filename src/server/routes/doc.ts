@@ -6,7 +6,7 @@ import { classifyFile } from '../storage/tree.ts'
 
 const HTTP_FOUND = 302
 
-export const DOC_PREFIX = '/doc/'
+const DOC_PREFIX = '/doc/'
 
 // A folder URL has to carry a trailing slash: at /doc/journal/2026 a relative
 // link like ./image.png resolves against /doc/journal, the wrong directory.
@@ -38,4 +38,4 @@ export function docRoutes(renderShell: () => string): Hono {
   return routes
 }
 
-export const TestOnly = { folderRedirectTarget }
+export const TestOnly = { DOC_PREFIX, folderRedirectTarget }

@@ -4,10 +4,10 @@ import type { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { announceDocumentMoved } from '../../src/client/document-moved.ts'
-import { bootstrap, bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 
-const { MissingMountError, describeError } = TestOnly
+const { MissingMountError, bootstrap, describeError } = TestOnly
 
 let root: HTMLElement
 let saved: Array<{ id: string; content: string }>

@@ -41,7 +41,7 @@ class MissingMountError extends Error {
   }
 }
 
-export async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
+async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   const root = options.root ?? document
   const pathname = options.pathname ?? window.location.pathname
   const session = options.session ?? createSession(createDocumentClient())
@@ -111,4 +111,4 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
   })
 }
 
-export const TestOnly = { MissingMountError, describeError }
+export const TestOnly = { MissingMountError, bootstrap, describeError }
