@@ -110,9 +110,9 @@ An export from `src/` is valid only if one of these holds:
 3. **It is a type or interface.** A runtime container cannot hold one, so
    types are exempt from the container, though not from needing a consumer.
 
-`export` was the default keystroke rather than a decision: **47% of this
-tree's exports had no consumer of any kind** when the rule was written, and a
-class added ninety minutes earlier was already among them.
+`export` was the default keystroke rather than a decision: when the rule was
+written, nearly half this tree's exports had no consumer of any kind, and a
+class added the same morning was already among them.
 
 ```ts
 function describeError(error: unknown): string { ... }
@@ -125,9 +125,9 @@ using the local binding, so nothing in production pays for it — and by
 construction nothing can be stubbed through it, which is deliberate.
 
 **Why not the `Imports` / `Internals` pattern** from the sibling project: it
-was measured against this codebase first. Of 41 test-only exports, **zero**
-were stubbed by any test, and the whole suite has 9 stub points, 7 of them on
-`node:fs`. `Internals` is a dispatch-stub seam, so it would have added
+was measured against this codebase first: **nothing here stubs an internal**,
+and almost every stub point in the suite is on `node:fs`.
+`Internals` is a dispatch-stub seam, so it would have added
 `Internals.helper()` at every call site to serve a need nothing here has. It
 earns its keep in a tree eight times this size with deep dispatch chains; the
 equivalent seams here are already function parameters — `startServer(runtime)`,
@@ -138,11 +138,17 @@ Two mechanisms hold the rule, split by what each does well. **ESLint** blocks
 precisely. **The conventions suite** owns consumer analysis, which ESLint
 cannot do without a new plugin.
 
-That analysis matches identifiers, not imports, so a name mentioned anywhere —
-including in a comment — counts as a consumer. It biases toward false passes,
-never false failures: it catches carelessness rather than proving absence. Two
-dead exports escaped it and were only found by following a cascade by hand,
-and the scanner excludes its own source for the same reason.
+**That analysis resolves imports rather than matching identifiers**, because
+matching was measured and found to launder dead exports three different ways:
+a live export of the same name in another module (`DOC_PREFIX` and `FileKind`
+are each declared twice here), a name written in a comment, and — the one
+nobody predicts — a module's own filename appearing in an import path, which
+is how `bootstrap` stayed hidden while only `bootstrapOrReport` shipped.
+
+A namespace import (`import * as x`) may reach any export, so it marks the
+whole module consumed. The remaining limit is transitive: a dead export kept
+alive by a dead re-export is only found once the re-export goes, so a cascade
+takes two runs to settle.
 
 ### 7. Casing says what a name is
 
@@ -289,23 +295,13 @@ dot: a folder named `v1.2` has an extension and is still a folder.
 
 The file tree and the editor are mounted independently by `client/main.ts` and
 never see each other, so a move reaches the editor as an event on the shared
-root — `DOCUMENT_MOVED` in `src/client/document-moved.ts`, which owns the name
-and the shape so the two sides cannot disagree about either. It is a typed
-`Event` subclass rather than a `CustomEvent`, so the listener narrows with
-`instanceof` instead of asserting that `detail` holds what it hoped for, and
-an event that merely shares the name is ignored.
+root — `DOCUMENT_MOVED` in `src/client/document-moved.ts`, which owns the
+name and the shape so the two sides cannot disagree about either.
 
 On hearing one the editor re-reads its own identity through `pathAfterMove` —
 a folder move carries the open document without ever naming it — then calls
 `session.rename` to carry the etag across, and **replaces** the address rather
 than pushing one, because the document moved, it did not navigate.
-
-Without this the editor kept saving to a path the store no longer had. In
-session that answered `404`; after a reload of the stale URL it was worse,
-because `/doc/<old path>` still renders an editor shell, `session.load` treats
-an absent document as a new one, and the user was shown a **template** as if
-their content had vanished — with the next save creating a duplicate at the
-old path.
 
 **A repaired document is reported, not reloaded.** If the move rewrote links
 inside the open document, its bytes on disk are newer than the buffer, so the
@@ -389,24 +385,17 @@ The exception is deliberately narrow, and each part of it is load-bearing:
   real parser instead of a regex, and `src/server/markdown/links.ts` gets that
   for free from micromark's token stream.
 
-**The invariant that makes it safe: rewriting with an identity function
-returns the document byte-identical.** A destination is only ever spliced when
-its resolved target actually changed, so the written form — `./b.md`,
-`my%2Dfile.md`, `sub/../b.md`, an angle-bracketed path — is preserved exactly
-as authored. The module never normalises, and its tests hold a corpus of
-deliberately non-canonical documents to keep that honest.
+Rewriting with an identity function must return the document byte-identical:
+a destination is spliced only when its resolved target changed, so the written
+form is preserved exactly as authored.
 
 `POST /api/files/moves` answers `200 { rewritten, failed }`, naming documents
 at their paths _after_ the move, so a client can tell an open editor that its
 content moved underneath it.
 
-**Link repair is per document and never fails the move.** By the time links
-are repaired the move has already happened, so a document that cannot be read
-or written must not strand the rest half-repaired: it goes in `failed` and the
-pass carries on. That path is reported rather than only logged, because a link
-left broken is exactly what the person who moved the file needs to know. A
-document that fails is left byte-identical, since a failed atomic write
-changes nothing.
+**Link repair is per document and never fails the move.** A document that
+cannot be read or written goes in `failed` and the pass carries on, left
+byte-identical.
 
 **Documents are enumerated before the move, not after.** A document is
 relinked against the path it held when its links were written, and after the
@@ -429,22 +418,6 @@ that is interrupted leaves **half a document** — the editor's own content,
 destroyed by the editor. Through a temporary, the previous version survives
 every failure, and the caller is told the write failed.
 
-**Cleanup covers filling the temporary, not just putting it in place.** The
-file exists from the moment it is opened, so a failure part way through
-writing it is a different case from a failure to create it — and `ENOSPC` is
-that case. A temporary leaked there consumes the very space whose exhaustion
-caused the failure, so each failed save would make the next one likelier.
-
-**Removing the temporary is cleanup, not part of the write.** Whether it
-succeeds says nothing about whether the data landed, so a failing `fs.rm` is
-logged and swallowed: propagating it would replace a real `ENOSPC` with a
-misleading `EIO`, or report failure for a file `link` had already created —
-which a client would then retry into a confusing `ALREADY_EXISTS`.
-
-`handle.close` is deliberately **not** treated that way. A close that fails is
-a write that failed — on NFS that is where a deferred write error surfaces —
-and the caller has to hear about it.
-
 So a `.vixen-*.tmp` outlives its write in exactly two cases: a killed process,
 and a cleanup that could not delete it.
 
@@ -456,30 +429,8 @@ server accepts a request. So `startServer` awaits the sweep _before_ calling
 would need an age heuristic, and a wrong guess deletes a temporary out from
 under a live write.
 
-Three things it must not do, each with a test:
-
-- **Match a bare leading dot.** `.trash` is a dotfile too. The match is
-  anchored at both ends, against the same `isTemporaryName` the writer uses —
-  one predicate, or the prefix changes on one side and the sweep silently
-  stops matching anything.
-- **Remove a directory.** Nothing here creates one with that name, so one is
-  not ours, and deleting a tree on a name match is how a small bug becomes
-  data loss. It is logged and left.
-- **Follow a symlink.** `isFile()` is false for one, which is what stops a
-  name inside the store deleting a file outside it.
-
 A sweep that fails is logged and forgotten: housekeeping must not stop the
-editor serving. `startServer` is therefore `async`.
-
-Which makes the name load-bearing. `isAllowedName` refuses a leading dot, so
-an orphan is invisible to the tree, the document list and the archive rather
-than appearing as a mystery document. It carries **no part of the target's
-name**, because a name of exactly `NAME_MAX` bytes is legal here and anything
-derived from it would exceed the limit and fail a write the validator had
-accepted.
-
-Both helpers are on one filesystem by construction — the temporary is a
-sibling — since `rename` and `link` both require that.
+editor serving, which is why `startServer` is `async`.
 
 ### Deleting goes to the trash
 
@@ -518,23 +469,11 @@ response from the extension alone, so `notes.md` cannot become `notes.svg`.
 point at the thing that moved, and it does so inside the write lock along with
 the move itself. So the lock hold time scales with the store rather than with
 the move, which is the one thing about this design worth knowing before the
-store gets large. Measured on a corpus where a fifth of documents hold links
-and a tenth of those point at what moved:
-
-| Documents | Store | Move + relink |
-| --------- | ----- | ------------- |
-| 1000      | 2 MB  | ~0.07 s       |
-| 5000      | 11 MB | ~0.32 s       |
-| 20000     | 44 MB | ~1.3 s        |
-
-**Parsing is most of that**, which is why a document holding no link syntax at
-all is skipped without being parsed — see `mayHoldLinks` in
-`storage/relink-store.ts`. The filter is worth roughly 60%, and its soundness
-is pinned by a test that computes the same answer unfiltered and compares.
-
-The `5 s` default timeout is therefore reached somewhere near 80 000
-documents, past which a concurrent save gets `503 BUSY`. A store larger or
-more link-dense than that has `WRITE_LOCK_TIMEOUT_MS` to pull.
+store gets large. Parsing dominates, which is why a document
+holding no link syntax at all is skipped without being parsed — see
+`mayHoldLinks` in `storage/relink-store.ts`, whose soundness is pinned by a
+test computing the same answer unfiltered. A store large or link-dense enough
+to reach the timeout has `WRITE_LOCK_TIMEOUT_MS` to pull.
 
 Reading outside the lock and taking it only to write was measured and
 rejected: it roughly halves the hold time without changing the shape of the
@@ -577,20 +516,9 @@ deployment.
 
 **The timeout is how long a waiter queues, not how long the lock is held.**
 Below it nothing becomes unsafe — writes still serialise and `If-Match` still
-holds — but a waiter that gives up in a millisecond turns ordinary
-concurrency into a stream of `503 BUSY` that the client's single retry cannot
-absorb. Hence the 250 ms floor: the lock stays correct below it, it just
-stops being worth waiting on. The floor rejects an absurd value, not an
-inadequate one — a move on a large store holds the lock for longer than
-250 ms, so 5000 is still the right default.
-
-**The 60 s ceiling matters more than the floor**, because its failure is the
-quiet one. A tiny timeout fails loudly, as `503 BUSY` with a code the UI
-already handles. A huge one leaves the browser spinning on a wedged write,
-which is the outcome this design exists to avoid. Past a client's or a
-reverse proxy's own timeout the `503` cannot be delivered at all, so beyond
-that the server is holding a waiter for a response nobody is left to
-receive.
+holds — but a waiter that gives up too fast turns ordinary concurrency into
+`503 BUSY`. Why the bounds sit where they do is recorded on the constants in
+`config.ts`.
 
 Archive streaming deliberately takes no lock: a slow client dragging a large
 download over minutes would otherwise block every save. A zip may therefore
