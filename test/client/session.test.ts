@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DocumentRequestError } from '../../src/client/editor/document-client.ts'
 import type { DocumentClient } from '../../src/client/editor/document-client.ts'
-import { createSession, defaultTemplate } from '../../src/client/editor/session.ts'
+import { createSession, TestOnly } from '../../src/client/editor/session.ts'
+
+const { defaultTemplate } = TestOnly
 
 let client: {
   list: ReturnType<typeof vi.fn>

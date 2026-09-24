@@ -155,7 +155,7 @@ interface TrashAction {
 
 // The trash action an event came from, or null when it came from anywhere else
 // — including a target that is no element at all.
-export function trashActionOf(target: EventTarget | null): TrashAction | null {
+function trashActionOf(target: EventTarget | null): TrashAction | null {
   const button = target instanceof Element ? target.closest<HTMLElement>('[data-action]') : null
   const trashId = button?.dataset.trashId
   const action = button?.dataset.action
@@ -190,3 +190,5 @@ export function bindTrashActions(context: ActionContext, tree: Element): void {
     })
   })
 }
+
+export const TestOnly = { trashActionOf }

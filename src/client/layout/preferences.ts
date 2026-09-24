@@ -1,6 +1,6 @@
 'use sanity'
 
-export const PREFERENCES_KEY = 'vixen-editor:explorer'
+const PREFERENCES_KEY = 'vixen-editor:explorer'
 
 export interface ExplorerPreferences {
   widthPx: number | null
@@ -8,7 +8,7 @@ export interface ExplorerPreferences {
   openFolders: string[]
 }
 
-export const DEFAULT_PREFERENCES: ExplorerPreferences = { widthPx: null, open: true, openFolders: [] }
+const DEFAULT_PREFERENCES: ExplorerPreferences = { widthPx: null, open: true, openFolders: [] }
 
 // Touching localStorage throws outright when site data is blocked, so even
 // reaching for it has to be guarded.
@@ -59,3 +59,5 @@ export function writePreferences(preferences: ExplorerPreferences, storage: Stor
     // A blocked or full quota costs a remembered width, not a working editor.
   }
 }
+
+export const TestOnly = { DEFAULT_PREFERENCES, PREFERENCES_KEY }

@@ -7,8 +7,8 @@ import type { Dialogs } from './dialogs.ts'
 import { FilesRequestError, type FilesClient } from './files-client.ts'
 import { rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
 
-export const DRAG_MIME = 'application/x-vixen-path'
-export const DROP_TARGET_CLASS = 'tree__row--drop'
+const DRAG_MIME = 'application/x-vixen-path'
+const DROP_TARGET_CLASS = 'tree__row--drop'
 
 interface DragContext {
   client: FilesClient
@@ -34,13 +34,13 @@ function parentOf(entryPath: string): string {
   return cut === -1 ? '' : entryPath.slice(0, cut)
 }
 
-export function joinInto(directory: string, name: string): string {
+function joinInto(directory: string, name: string): string {
   return directory === '' ? name : `${directory}/${name}`
 }
 
 // The directory a drop on this row would land in. The trash and its entries
 // are rows but not places in the store, so they take no drops at all.
-export function containerOf(row: VisibleRow | undefined): string | null {
+function containerOf(row: VisibleRow | undefined): string | null {
   if (row === undefined) return ''
   if (row.kind === 'trash' || row.kind === 'trashed') return null
 
@@ -49,7 +49,7 @@ export function containerOf(row: VisibleRow | undefined): string | null {
 
 // Moving a folder into itself or into its own descendant is not a move, so the
 // drop affordance never appears; the server's INVALID_MOVE is the backstop.
-export function canMoveInto(source: string, directory: string): boolean {
+function canMoveInto(source: string, directory: string): boolean {
   return directory !== source && !directory.startsWith(`${source}/`)
 }
 
@@ -183,3 +183,5 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     })
   })
 }
+
+export const TestOnly = { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf, joinInto }

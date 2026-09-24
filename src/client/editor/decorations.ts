@@ -78,7 +78,7 @@ function decorateLine(line: Line, ranges: Array<Range<Decoration>>): void {
   }
 }
 
-export function computeDecorations(state: EditorState): DecorationSet {
+function computeDecorations(state: EditorState): DecorationSet {
   const ranges: Array<Range<Decoration>> = []
   let fence = OUTSIDE_FENCE
 
@@ -93,10 +93,12 @@ export function computeDecorations(state: EditorState): DecorationSet {
   return Decoration.set(ranges, true)
 }
 
-export const vixenDecorationField = StateField.define<DecorationSet>({
+const vixenDecorationField = StateField.define<DecorationSet>({
   create: (state) => computeDecorations(state),
   update: (value, transaction) => (transaction.docChanged ? computeDecorations(transaction.state) : value),
   provide: (field) => EditorView.decorations.from(field),
 })
 
 export const vixenDecorations: Extension = [vixenDecorationField]
+
+export const TestOnly = { computeDecorations, vixenDecorationField }

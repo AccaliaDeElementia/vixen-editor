@@ -5,8 +5,10 @@ import { EditorState } from '@codemirror/state'
 import { tags, type Tag } from '@lezer/highlight'
 import { describe, expect, it } from 'vitest'
 
-import { vixenHighlightStyle, vixenHighlighting } from '../../src/client/editor/highlight.ts'
+import { vixenHighlighting, TestOnly } from '../../src/client/editor/highlight.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
+
+const { vixenHighlightStyle } = TestOnly
 
 function classesFor(tag: Tag): string | null {
   const state = EditorState.create({ extensions: [vixenHighlighting] })

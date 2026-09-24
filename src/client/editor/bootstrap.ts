@@ -15,7 +15,7 @@ import { createSession, type Session } from './session.ts'
 const MOUNT_SELECTOR = '#editor'
 const SAVE_KEY = 'Mod-s'
 
-export function describeError(error: unknown): string {
+function describeError(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown error'
 }
 
@@ -33,7 +33,7 @@ function replaceAddress(url: string): void {
   window.history.replaceState(null, '', url)
 }
 
-export class MissingMountError extends Error {
+class MissingMountError extends Error {
   override readonly name = 'MissingMountError'
 
   constructor(selector: string) {
@@ -110,3 +110,5 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
     return null
   })
 }
+
+export const TestOnly = { MissingMountError, describeError }

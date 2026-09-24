@@ -12,7 +12,7 @@ const SUCCESS = '#00bc8c'
 const WARNING = '#f39c12'
 const DANGER = '#e74c3c'
 
-export const vixenHighlightStyle = HighlightStyle.define([
+const vixenHighlightStyle = HighlightStyle.define([
   { tag: tags.heading, color: WHITE, fontWeight: '700' },
   // The `#`, `*` and backtick markers. CodeMirror's bundled defaultHighlightStyle
   // renders these near-black, which is invisible on a dark surface.
@@ -31,3 +31,5 @@ export const vixenHighlightStyle = HighlightStyle.define([
 ])
 
 export const vixenHighlighting: Extension = syntaxHighlighting(vixenHighlightStyle)
+
+export const TestOnly = { vixenHighlightStyle }

@@ -1,11 +1,11 @@
 'use sanity'
 
 const TOAST_SELECTOR = '#status'
-export const TOAST_VISIBLE_MS = 2500
+const TOAST_VISIBLE_MS = 2500
 
 // A failure is something to act on, so it outstays a confirmation that only
 // says the expected thing happened.
-export const TOAST_ERROR_MS = 10000
+const TOAST_ERROR_MS = 10000
 
 export interface Toast {
   show: (message: string) => void
@@ -46,3 +46,5 @@ export function createToast(root: ParentNode = document): Toast {
     },
   }
 }
+
+export const TestOnly = { TOAST_ERROR_MS, TOAST_VISIBLE_MS }

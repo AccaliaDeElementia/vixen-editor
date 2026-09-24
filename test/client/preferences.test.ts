@@ -2,12 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import {
-  DEFAULT_PREFERENCES,
-  PREFERENCES_KEY,
-  readPreferences,
-  writePreferences,
-} from '../../src/client/layout/preferences.ts'
+import { readPreferences, writePreferences, TestOnly } from '../../src/client/layout/preferences.ts'
+
+const { DEFAULT_PREFERENCES, PREFERENCES_KEY } = TestOnly
 
 function storageHolding(raw: string | null): Storage {
   return { getItem: () => raw, setItem: () => undefined } as unknown as Storage

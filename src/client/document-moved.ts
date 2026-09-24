@@ -6,7 +6,7 @@ import type { EntryMove } from './doc-path.ts'
 // other, so a move reaches the editor as an event on the shared root. The
 // name and the shape live here once, because two copies of an event name
 // fail silently: the listener simply never runs.
-export const DOCUMENT_MOVED = 'vixen:document-moved'
+const DOCUMENT_MOVED = 'vixen:document-moved'
 
 export interface DocumentMoved extends EntryMove {
   rewritten: readonly string[]
@@ -32,3 +32,5 @@ export function onDocumentMoved(root: ParentNode, handle: (moved: DocumentMoved)
     if (event instanceof DocumentMovedEvent) handle(event.moved)
   })
 }
+
+export const TestOnly = { DOCUMENT_MOVED }

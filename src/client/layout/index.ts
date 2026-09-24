@@ -12,7 +12,7 @@ import {
   toggleExplorer,
 } from './explorer.ts'
 
-export const KEYBOARD_STEP_PX = 16
+const KEYBOARD_STEP_PX = 16
 
 interface LayoutOptions {
   root?: ParentNode
@@ -94,3 +94,5 @@ export function initLayout(options: LayoutOptions = {}): void {
   bindToggle(root, view)
   bindViewportResize(root, view)
 }
+
+export const TestOnly = { KEYBOARD_STEP_PX }

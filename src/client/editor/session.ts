@@ -14,7 +14,7 @@ function isAbsent(error: unknown): boolean {
   return error instanceof DocumentRequestError && error.status === HTTP_NOT_FOUND
 }
 
-export function defaultTemplate(id: string): string {
+function defaultTemplate(id: string): string {
   const name = id.slice(id.lastIndexOf('/') + 1).replace(/\.[^./]+$/u, '')
   return `# ${name}\n\nTODO: start writing.\n`
 }
@@ -56,3 +56,5 @@ export function createSession(client: DocumentClient, template: (id: string) => 
     },
   }
 }
+
+export const TestOnly = { defaultTemplate }

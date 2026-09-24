@@ -5,10 +5,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   MAX_EXPLORER_FRACTION,
   MIN_EXPLORER_PX,
-  readExplorerState,
   setExplorerWidth,
+  TestOnly as explorerTestOnly,
 } from '../../src/client/layout/explorer.ts'
-import { initLayout, KEYBOARD_STEP_PX } from '../../src/client/layout/index.ts'
+import { initLayout, TestOnly as indexTestOnly } from '../../src/client/layout/index.ts'
+
+const { KEYBOARD_STEP_PX } = indexTestOnly
+const { readExplorerState } = explorerTestOnly
 
 const VIEWPORT = 1000
 const EXPLORER_LEFT = 64

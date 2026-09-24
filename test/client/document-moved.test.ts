@@ -4,10 +4,12 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   announceDocumentMoved,
-  DOCUMENT_MOVED,
   onDocumentMoved,
   type DocumentMoved,
+  TestOnly,
 } from '../../src/client/document-moved.ts'
+
+const { DOCUMENT_MOVED } = TestOnly
 
 function detail(overrides: Partial<DocumentMoved> = {}): DocumentMoved {
   return { from: 'notes.md', to: 'archive/notes.md', rewritten: [], ...overrides }

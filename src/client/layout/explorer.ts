@@ -10,12 +10,12 @@ export const EXPLORER_SELECTOR = '#explorer'
 export const TOGGLE_SELECTOR = '#toggle-explorer'
 export const RESIZER_SELECTOR = '#explorer-resizer'
 
-export function clampExplorerWidth(requestedPx: number, viewportPx: number): number {
+function clampExplorerWidth(requestedPx: number, viewportPx: number): number {
   const maxPx = viewportPx * MAX_EXPLORER_FRACTION
   return Math.min(Math.max(requestedPx, MIN_EXPLORER_PX), maxPx)
 }
 
-export function readExplorerState(viewportPx: number): ExplorerPreferences {
+function readExplorerState(viewportPx: number): ExplorerPreferences {
   const stored = readPreferences()
   if (stored.widthPx === null) return stored
 
@@ -26,7 +26,7 @@ export function setExplorerWidth(px: number, viewportPx: number): void {
   writePreferences({ ...readPreferences(), widthPx: clampExplorerWidth(px, viewportPx) })
 }
 
-export function setExplorerOpen(open: boolean): void {
+function setExplorerOpen(open: boolean): void {
   writePreferences({ ...readPreferences(), open })
 }
 
@@ -74,3 +74,5 @@ export function applyExplorerState(root: ParentNode, viewportPx: number): void {
 
   applyExplorerWidth(root, state.widthPx, viewportPx)
 }
+
+export const TestOnly = { clampExplorerWidth, readExplorerState, setExplorerOpen }

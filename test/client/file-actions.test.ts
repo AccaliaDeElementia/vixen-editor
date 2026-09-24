@@ -2,11 +2,13 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { trashActionOf } from '../../src/client/files/actions.ts'
+import { TestOnly } from '../../src/client/files/actions.ts'
 import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
+
+const { trashActionOf } = TestOnly
 
 const SAMPLE = parseTree({
   tree: [

@@ -5,15 +5,15 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   applyExplorerState,
   applyExplorerWidth,
-  clampExplorerWidth,
   MAX_EXPLORER_FRACTION,
   MIN_EXPLORER_PX,
-  readExplorerState,
-  setExplorerOpen,
   setExplorerWidth,
   toggleExplorer,
+  TestOnly,
 } from '../../src/client/layout/explorer.ts'
 import { writePreferences } from '../../src/client/layout/preferences.ts'
+
+const { clampExplorerWidth, readExplorerState, setExplorerOpen } = TestOnly
 
 const VIEWPORT = 1000
 

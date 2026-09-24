@@ -4,8 +4,10 @@ import { language } from '@codemirror/language'
 import { EditorState, StateField } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
 
-import { vixenDecorationField } from '../../src/client/editor/decorations.ts'
+import { TestOnly } from '../../src/client/editor/decorations.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
+
+const { vixenDecorationField } = TestOnly
 
 describe('createEditorState', () => {
   it('seeds the document', () => {

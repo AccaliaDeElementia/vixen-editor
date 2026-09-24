@@ -2,7 +2,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createToast, TOAST_ERROR_MS, TOAST_VISIBLE_MS } from '../../src/client/layout/toast.ts'
+import { createToast, TestOnly } from '../../src/client/layout/toast.ts'
+
+const { TOAST_ERROR_MS, TOAST_VISIBLE_MS } = TestOnly
 
 let root: HTMLElement
 
