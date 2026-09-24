@@ -20,13 +20,13 @@ export interface ArchiveLimits {
   maxEntries: number
 }
 
-export interface ArchiveContents {
+interface ArchiveContents {
   files: string[]
   directories: string[]
   totalBytes: number
 }
 
-export interface ArchivePlan extends ArchiveContents {
+interface ArchivePlan extends ArchiveContents {
   base: string
 }
 

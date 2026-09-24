@@ -32,11 +32,11 @@ export const DEFAULT_LIMITS: Limits = {
   archiveMaxEntries: 2000,
 }
 
-export const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const
-export const NODE_ENVS = ['development', 'production', 'test'] as const
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const
+const NODE_ENVS = ['development', 'production', 'test'] as const
 
-export type LogLevel = (typeof LOG_LEVELS)[number]
-export type NodeEnv = (typeof NODE_ENVS)[number]
+type LogLevel = (typeof LOG_LEVELS)[number]
+type NodeEnv = (typeof NODE_ENVS)[number]
 
 export interface Config {
   port: number

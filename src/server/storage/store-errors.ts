@@ -3,7 +3,7 @@
 import { hasErrorCode, toError } from '../errors.ts'
 
 export const ABSENT_ON_READ_CODES = ['ENOENT', 'ENOTDIR', 'EISDIR'] as const
-export const OCCUPIED_CODES = ['EEXIST', 'ENOTDIR', 'EISDIR'] as const
+const OCCUPIED_CODES = ['EEXIST', 'ENOTDIR', 'EISDIR'] as const
 
 export class DocumentNotFoundError extends Error {
   override readonly name = 'DocumentNotFoundError'

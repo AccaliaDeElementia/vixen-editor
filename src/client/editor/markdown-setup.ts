@@ -6,7 +6,7 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { vixenDecorations } from './decorations.ts'
 import { vixenHighlighting } from './highlight.ts'
 
-export interface CreateEditorStateOptions {
+interface CreateEditorStateOptions {
   doc?: string
   extensions?: Extension[]
 }

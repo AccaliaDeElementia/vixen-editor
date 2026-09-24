@@ -17,7 +17,7 @@ export const CLACKS_VALUE = 'GNU Terry Pratchett'
 
 const logError = createLogger('app', 'onError')
 
-export interface AppDependencies {
+interface AppDependencies {
   store: DocumentStore
   limits?: Limits
 }

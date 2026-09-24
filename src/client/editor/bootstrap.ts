@@ -12,15 +12,14 @@ import { createToast } from '../layout/toast.ts'
 
 import { createSession, type Session } from './session.ts'
 
-export const MOUNT_SELECTOR = '#editor'
-export { TOAST_SELECTOR as STATUS_SELECTOR } from '../layout/toast.ts'
-export const SAVE_KEY = 'Mod-s'
+const MOUNT_SELECTOR = '#editor'
+const SAVE_KEY = 'Mod-s'
 
 export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : 'unknown error'
 }
 
-export interface BootstrapOptions {
+interface BootstrapOptions {
   root?: ParentNode
   pathname?: string
   session?: Session

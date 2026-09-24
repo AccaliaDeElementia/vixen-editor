@@ -1,7 +1,7 @@
 'use sanity'
 
 export const DOC_PREFIX = '/doc/'
-export const FOLDER_INDEX = 'index.md'
+const FOLDER_INDEX = 'index.md'
 
 function decodeSegment(segment: string): string {
   try {

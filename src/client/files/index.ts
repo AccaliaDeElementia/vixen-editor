@@ -12,7 +12,7 @@ import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from '.
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
 import { renderTree, rowIndexOf, ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR, type VisibleRow } from './tree-view.ts'
 
-export interface FileTreeOptions {
+interface FileTreeOptions {
   root?: ParentNode
   pathname?: string
   client?: FilesClient

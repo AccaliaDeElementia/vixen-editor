@@ -1,10 +1,10 @@
 'use sanity'
 
-export const DIALOG_SELECTOR = '#file-dialog'
+const DIALOG_SELECTOR = '#file-dialog'
 
 const CONFIRM_VALUE = 'confirm'
 
-export interface PromptRequest {
+interface PromptRequest {
   title: string
   label: string
   confirmLabel: string
@@ -15,7 +15,7 @@ export interface PromptRequest {
   submit: (value: string) => Promise<string | null>
 }
 
-export interface ConfirmRequest {
+interface ConfirmRequest {
   title: string
   message: string
   confirmLabel: string

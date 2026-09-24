@@ -3,7 +3,6 @@
 import {
   applyExplorerState,
   applyExplorerWidth,
-  clampExplorerWidth,
   EXPLORER_SELECTOR,
   MAX_EXPLORER_FRACTION,
   MIN_EXPLORER_PX,
@@ -15,7 +14,7 @@ import {
 
 export const KEYBOARD_STEP_PX = 16
 
-export interface LayoutOptions {
+interface LayoutOptions {
   root?: ParentNode
   view?: Window
 }
@@ -95,5 +94,3 @@ export function initLayout(options: LayoutOptions = {}): void {
   bindToggle(root, view)
   bindViewportResize(root, view)
 }
-
-export { clampExplorerWidth }

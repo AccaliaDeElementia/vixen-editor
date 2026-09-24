@@ -14,7 +14,7 @@ export interface DocumentMoved extends EntryMove {
 
 // A typed subclass rather than a CustomEvent, so the listener narrows with
 // `instanceof` instead of asserting that `detail` is what it hoped for.
-export class DocumentMovedEvent extends Event {
+class DocumentMovedEvent extends Event {
   readonly moved: DocumentMoved
 
   constructor(moved: DocumentMoved) {

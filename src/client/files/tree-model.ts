@@ -3,13 +3,13 @@
 export type FileKind = 'document' | 'image'
 export type EntryKind = FileKind | 'folder'
 
-export interface FileNode {
+interface FileNode {
   name: string
   path: string
   kind: FileKind
 }
 
-export interface FolderNode {
+interface FolderNode {
   name: string
   path: string
   kind: 'folder'
@@ -46,7 +46,7 @@ function parseNode(value: unknown): TreeNode | null {
   return null
 }
 
-export function parseNodes(value: unknown): TreeNode[] {
+function parseNodes(value: unknown): TreeNode[] {
   return Array.isArray(value) ? value.flatMap((entry: unknown) => parseNode(entry) ?? []) : []
 }
 

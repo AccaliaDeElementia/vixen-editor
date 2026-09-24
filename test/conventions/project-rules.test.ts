@@ -20,6 +20,9 @@ const DEFAULT_EXPORT_ALLOWLIST = ['eslint.config.js', 'test-browser/playwright.c
 
 const SCANNER = 'test/conventions/project-rules.test.ts'
 
+const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmu
+const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^}]*)\}/gmu
+
 const ATOMIC_WRITE = 'src/server/storage/atomic-write.ts'
 const DIRECT_WRITE = /\bwriteFile\(/u
 
@@ -159,6 +162,68 @@ describe('rule 5: every tooling suppression carries a rationale', () => {
     const found = scannable().filter((source) => SUPPRESSION.test(source.contents))
 
     expect(found.length).toBeGreaterThan(0)
+  })
+})
+
+function exportedNamesIn(contents: string): string[] {
+  const declared = [...contents.matchAll(EXPORTED_DECLARATION)].map((match) => match.groups?.name ?? '')
+
+  // `export { a, b as c }` exports `a` and `c`; the local name `b` is not a
+  // surface of this module and must not be counted as one.
+  const rebound = [...contents.matchAll(EXPORTED_BINDINGS)].flatMap((match) =>
+    (match.groups?.names ?? '')
+      .split(',')
+      .map(
+        (entry) =>
+          entry
+            .trim()
+            .split(/\s+as\s+/u)
+            .at(-1) ?? '',
+      )
+      .filter((name) => /^\w+$/u.test(name)),
+  )
+
+  return [...declared, ...rebound].filter((name) => name !== '')
+}
+
+// An export nothing imports is surface with no purpose, and `export` is the
+// default keystroke rather than a decision — 47% of this tree's exports had
+// no consumer of any kind before this rule existed. The scanner excludes
+// itself, because a name written in one of its own comments would otherwise
+// count as the consumer that keeps the export alive.
+describe('every export is consumed by something', () => {
+  function consumers(name: string, definer: string): string[] {
+    const mention = new RegExp(`\\b${name}\\b`, 'u')
+
+    return scannable()
+      .filter((source) => source.relativePath !== definer && mention.test(source.contents))
+      .map((source) => source.relativePath)
+  }
+
+  it('leaves no export under src/ that nothing imports', () => {
+    const orphans = scannable()
+      .filter((source) => source.relativePath.startsWith('src/'))
+      .flatMap((source) =>
+        exportedNamesIn(source.contents)
+          .filter((name) => consumers(name, source.relativePath).length === 0)
+          .map((name) => `${source.relativePath}: ${name}`),
+      )
+
+    expect(orphans).toStrictEqual([])
+  })
+
+  it('finds the exports that do exist, so the scan is not passing vacuously', () => {
+    const found = scannable()
+      .filter((source) => source.relativePath.startsWith('src/'))
+      .flatMap((source) => exportedNamesIn(source.contents))
+
+    expect(found.length).toBeGreaterThan(100)
+  })
+
+  it('reads a renamed re-export as the name it presents, not the one it wraps', () => {
+    expect(exportedNamesIn("export { TOAST_SELECTOR as STATUS_SELECTOR } from './toast.ts'")).toStrictEqual([
+      'STATUS_SELECTOR',
+    ])
   })
 })
 

@@ -21,7 +21,7 @@ export interface FolderEntry {
   children: TreeEntry[]
 }
 
-export interface FileEntry {
+interface FileEntry {
   name: string
   path: string
   kind: FileKind

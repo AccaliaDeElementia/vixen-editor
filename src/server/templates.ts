@@ -17,9 +17,9 @@ export class TemplateNotFoundError extends Error {
   }
 }
 
-export type TemplateLocals = Record<string, unknown>
+type TemplateLocals = Record<string, unknown>
 
-export interface TemplateRenderer {
+interface TemplateRenderer {
   render: (name: string, locals?: TemplateLocals) => string
 }
 

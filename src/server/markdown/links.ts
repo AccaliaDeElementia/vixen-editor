@@ -2,7 +2,7 @@
 
 import { parse, postprocess, preprocess } from 'micromark'
 
-export interface LinkDestination {
+interface LinkDestination {
   value: string
   start: number
   end: number

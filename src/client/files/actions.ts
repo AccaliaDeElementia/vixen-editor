@@ -5,7 +5,7 @@ import type { Toast } from '../layout/toast.ts'
 import type { Dialogs } from './dialogs.ts'
 import { archiveUrlFor, FilesRequestError, type FilesClient } from './files-client.ts'
 
-export const ACTION_SELECTORS = {
+const ACTION_SELECTORS = {
   newDocument: '#new-document',
   newFolder: '#new-folder',
   upload: '#upload-file',
@@ -30,7 +30,7 @@ export interface ActionContext {
   reveal: () => void
 }
 
-export function joinPath(directory: string, name: string): string {
+function joinPath(directory: string, name: string): string {
   return directory === '' ? name : `${directory}/${name}`
 }
 
@@ -148,7 +148,7 @@ export function updateArchiveLink(root: ParentNode, directory: string): void {
   root.querySelector<HTMLAnchorElement>(ACTION_SELECTORS.download)?.setAttribute('href', archiveUrlFor(directory))
 }
 
-export interface TrashAction {
+interface TrashAction {
   action: string
   trashId: string
 }

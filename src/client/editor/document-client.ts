@@ -12,7 +12,7 @@ export class DocumentRequestError extends Error {
   }
 }
 
-export interface LoadedDocument {
+interface LoadedDocument {
   content: string
   etag: string
 }

@@ -17,8 +17,8 @@ import { createTemplateRenderer } from './templates.ts'
 const logStartup = createLogger('main', 'startServer')
 
 export const DEFAULT_PUBLIC_DIR = './public'
-export const CLIENT_BUNDLE_ROUTE = '/assets/*'
-export const EDITOR_TEMPLATE = 'editor'
+const CLIENT_BUNDLE_ROUTE = '/assets/*'
+const EDITOR_TEMPLATE = 'editor'
 export const APP_TITLE = 'Vixen Editor'
 
 export function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono {

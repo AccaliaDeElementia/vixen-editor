@@ -5,7 +5,7 @@ import { readPreferences, writePreferences, type ExplorerPreferences } from './p
 export const MIN_EXPLORER_PX = 160
 export const MAX_EXPLORER_FRACTION = 0.8
 
-export const APP_SELECTOR = '#app'
+const APP_SELECTOR = '#app'
 export const EXPLORER_SELECTOR = '#explorer'
 export const TOGGLE_SELECTOR = '#toggle-explorer'
 export const RESIZER_SELECTOR = '#explorer-resizer'

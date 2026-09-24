@@ -26,7 +26,7 @@ export interface VisibleRow {
 // 'trash' is the pseudo-folder itself and 'trashed' one of its entries. Both
 // look like rows and neither is a place in the store, so the distinction has
 // to survive into what the controller works from.
-export type RowKind = EntryKind | 'trash' | 'trashed'
+type RowKind = EntryKind | 'trash' | 'trashed'
 
 export interface TreeViewModel {
   nodes: readonly TreeNode[]

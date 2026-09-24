@@ -1,6 +1,6 @@
 'use sanity'
 
-export const TOAST_SELECTOR = '#status'
+const TOAST_SELECTOR = '#status'
 export const TOAST_VISIBLE_MS = 2500
 
 // A failure is something to act on, so it outstays a confirmation that only

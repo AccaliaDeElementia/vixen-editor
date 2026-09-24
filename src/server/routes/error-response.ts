@@ -27,7 +27,7 @@ const HTTP_CONTENT_TOO_LARGE = 413
 const HTTP_PRECONDITION_REQUIRED = 428
 const HTTP_SERVICE_UNAVAILABLE = 503
 
-export const RETRY_AFTER_SECONDS = '1'
+const RETRY_AFTER_SECONDS = '1'
 
 // Every refusal funnels through here. Without it a rejected upload leaves no
 // trace at all on the server, and "why did that fail" has nowhere to look.

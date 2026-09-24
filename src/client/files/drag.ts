@@ -10,7 +10,7 @@ import { rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
 export const DRAG_MIME = 'application/x-vixen-path'
 export const DROP_TARGET_CLASS = 'tree__row--drop'
 
-export interface DragContext {
+interface DragContext {
   client: FilesClient
   dialogs: Dialogs
   toast: Toast
