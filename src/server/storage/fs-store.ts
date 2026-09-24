@@ -57,9 +57,6 @@ export interface DocumentStore {
 
 export const FOLDER_INDEX_NAME = 'index.md'
 
-// Long enough that ordinary contention resolves as latency, short enough that a
-// genuinely stuck write reports rather than leaving the session looking wedged.
-
 function assertNotBlank(id: string, content: string): void {
   if (content.trim() === '') throw new EmptyContentError(id)
 }
@@ -231,8 +228,6 @@ export function createFsDocumentStore(
       }
     },
 
-    // Deliberately outside the write lock: a slow client dragging a large
-    // download over minutes would otherwise block every save.
     async archive(subtree: string, limits: ArchiveLimits): Promise<ReadableStream> {
       return archiveStream(await planArchive(root, subtree, limits))
     },

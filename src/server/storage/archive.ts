@@ -58,8 +58,6 @@ function collect(entries: readonly TreeEntry[]): ArchiveContents {
   return { files, directories, totalBytes }
 }
 
-// Walking and measuring before a single byte is produced is what lets an
-// oversized request fail with a status code rather than a truncated download.
 export async function planArchive(root: string, subtree: string, limits: ArchiveLimits): Promise<ArchivePlan> {
   const base = resolveFolderPath(root, subtree)
   const stats = await nullWhenAbsent(async () => await fs.stat(base))

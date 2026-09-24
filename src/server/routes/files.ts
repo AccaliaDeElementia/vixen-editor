@@ -17,10 +17,6 @@ import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.
 const HTTP_OK = 200
 const HTTP_CREATED = 201
 
-// A file served straight from the store is content we did not author. The
-// explicit type plus nosniff stops a browser inferring a richer one, and the
-// CSP neuters an SVG opened by direct navigation, where it would otherwise be
-// a scriptable same-origin document rather than an inert <img> source.
 const UNTRUSTED_CONTENT_HEADERS: Readonly<Record<string, string>> = {
   'x-content-type-options': 'nosniff',
   'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",

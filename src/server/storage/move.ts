@@ -79,9 +79,6 @@ async function moveInto(fromTarget: string, toTarget: string): Promise<void> {
   await fs.rmdir(fromTarget)
 }
 
-// A rename may not change what a file claims to be: the raw route types a
-// response from the extension alone, so turning notes.md into notes.svg would
-// have the server describe prose as an image.
 function assertKindSurvives(from: string, to: string, fromKind: TrashKind): void {
   if (fromKind === 'folder') return
 
@@ -110,8 +107,6 @@ export async function moveEntry(root: string, request: MoveRequest): Promise<voi
   await collectCollisions({ fromTarget, toTarget, toPath: to }, collisions)
   if (collisions.length > 0 && !allowOverwrite) throw new WouldOverwriteError(collisions)
 
-  // Trashing every loser first means a confirmed overwrite stays recoverable,
-  // and that a failure here leaves the move itself untouched.
   for (const collision of collisions) {
     /* eslint-disable-next-line no-await-in-loop -- the write lock is held for the
        whole move, so these run one at a time regardless; sequencing them keeps

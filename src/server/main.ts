@@ -51,10 +51,6 @@ const defaultRuntime: Runtime = {
   publicDir: DEFAULT_PUBLIC_DIR,
 }
 
-// Housekeeping must not stop the editor serving, so a sweep that fails is
-// logged and forgotten. It runs before `serve` rather than alongside it: the
-// sweep is only safe while nothing is mid-write, and a server already
-// accepting requests could be writing a temporary it would then delete.
 async function sweepBeforeServing(docsRoot: string): Promise<void> {
   try {
     await sweepTemporaries(docsRoot)

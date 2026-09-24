@@ -39,9 +39,6 @@ async function sweepDirectory(directory: string, prefix: string, removed: string
   }
 }
 
-// Only safe at startup, and only because a single process is the supported
-// deployment: nothing is mid-write, so every temporary still on disk was
-// abandoned by a killed process or by a cleanup that could not delete it.
 export async function sweepTemporaries(docsRoot: string): Promise<string[]> {
   const removed: string[] = []
   await sweepDirectory(path.resolve(docsRoot), '', removed)

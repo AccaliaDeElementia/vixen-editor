@@ -10,8 +10,6 @@ export interface ExplorerPreferences {
 
 const DEFAULT_PREFERENCES: ExplorerPreferences = { widthPx: null, open: true, openFolders: [] }
 
-// Touching localStorage throws outright when site data is blocked, so even
-// reaching for it has to be guarded.
 function defaultStorage(): Storage | null {
   try {
     return globalThis.localStorage

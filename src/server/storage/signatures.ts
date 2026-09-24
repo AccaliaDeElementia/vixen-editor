@@ -63,9 +63,6 @@ function afterPrologue(text: string): string {
   }
 }
 
-// A structural check, not a parse: it catches a file that is not SVG at all,
-// which is all a signature check can do. Well-formed SVG may still carry
-// scripts, so the CSP and nosniff on the raw route are what make serving safe.
 function isSvg(bytes: Uint8Array): boolean {
   const head = new TextDecoder('utf8').decode(bytes.subarray(0, SVG_HEAD_BYTES))
 

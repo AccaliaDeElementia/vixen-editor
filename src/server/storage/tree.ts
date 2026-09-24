@@ -91,9 +91,6 @@ async function buildFolder(at: FolderLocation): Promise<FolderEntry | null> {
   }
   const children = await walkDirectory(at.target, at.entryPath, scope)
 
-  // Gone between its parent's listing and its own. A tree is a snapshot, and
-  // an entry removed while it was being taken is absent from it — reporting
-  // it as an empty folder would be a listing of something that is not there.
   if (children === null) return null
 
   return { name: at.name, path: at.entryPath, kind: 'folder', children }
@@ -123,8 +120,6 @@ async function buildEntries(entries: readonly Dirent[], at: Location): Promise<T
   const found: TreeEntry[] = []
 
   for (const entry of entries) {
-    // The same predicate the path validator uses, so the tree cannot show an
-    // entry that would then be refused when something tries to open it.
     if (!isAllowedName(entry.name)) continue
 
     /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk is

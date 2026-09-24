@@ -13,9 +13,6 @@ const MEDIA_TYPES: Readonly<Record<string, string>> = {
   '.svg': 'image/svg+xml',
 }
 
-// Never derived from the upload's own Content-Type, which the client chooses.
-// An unrecognised extension gets the opaque type rather than a guess, so a
-// browser has nothing to sniff towards.
 const FALLBACK_MEDIA_TYPE = 'application/octet-stream'
 
 export function mediaTypeOf(entryPath: string): string {

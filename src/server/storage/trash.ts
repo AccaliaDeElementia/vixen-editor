@@ -18,9 +18,6 @@ const logDamaged = createLogger('storage/trash', 'damagedEntry')
 const TRASH_DIRECTORY = '.trash'
 const TRASH_META_NAME = 'meta.json'
 
-// A fixed name rather than the original one: a folder may legitimately be
-// called `meta.json`, and storing it under its own name would then collide
-// with the metadata sitting beside it.
 const TRASH_PAYLOAD_NAME = 'payload'
 
 const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

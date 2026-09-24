@@ -29,8 +29,6 @@ const HTTP_SERVICE_UNAVAILABLE = 503
 
 const RETRY_AFTER_SECONDS = '1'
 
-// Every refusal funnels through here. Without it a rejected upload leaves no
-// trace at all on the server, and "why did that fail" has nowhere to look.
 const logRefused = createLogger('routes', 'refused')
 
 function refuse(c: Context, status: ContentfulStatusCode, code: string, body: Record<string, unknown>): Response {

@@ -16,9 +16,6 @@ export interface RelinkOutcome {
   failed: string[]
 }
 
-// Documents are enumerated before the move and mapped forward. The mapping
-// cannot be inverted afterwards: a merge leaves the destination holding both
-// moved and pre-existing files, with nothing to tell them apart.
 function holderOfEachPath(documentIds: readonly string[], moves: readonly PathMove[]): Map<string, string> {
   const holders = new Map<string, string>()
 
@@ -66,10 +63,6 @@ export async function relinkAfterMove(
          store would hold every file open at once */
       if (await repair(path.join(root, current), holder, moves)) rewritten.push(current)
     } catch (error) {
-      // The move itself has already succeeded, so one document that cannot be
-      // read or written must not strand the rest half-repaired. The path is
-      // reported rather than only logged, because a link left broken is
-      // something the person who moved the file needs to know about.
       failed.push(current)
       logFailed('%s: %O', current, error)
     }

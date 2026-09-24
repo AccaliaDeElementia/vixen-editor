@@ -67,9 +67,6 @@ const NAME_RULES: readonly NameRule[] = [
   { rejects: (name) => byteLength(name) > MAX_NAME_BYTES, reason: `must be at most ${String(MAX_NAME_BYTES)} bytes` },
 ]
 
-// The single answer to "may this name exist here", shared by the validator that
-// guards every path and by the walks that decide what to list. Two answers is
-// what let a file be listed and then refused when opened.
 export function isAllowedName(name: string): boolean {
   return !NAME_RULES.some((rule) => rule.rejects(name))
 }
@@ -81,9 +78,6 @@ function assertValidSegments(value: string): void {
   }
 }
 
-// Applied only where the client chooses a name, never on the way to an existing
-// file: normalising a lookup would hide a decomposed name that another tool
-// wrote, which is the very fault this validation exists to prevent.
 export function assertNormalisedName(value: string): void {
   if (value.normalize('NFC') !== value) {
     throw new InvalidPathError(value, 'must be in Unicode normal form NFC')
