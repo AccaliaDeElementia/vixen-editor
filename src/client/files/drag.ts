@@ -59,16 +59,15 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   // whether a drop is legal at all.
   let dragging: string | null = null
 
-  // Index -1 is the tree background, which is a legal drop target with no row
-  // to mark, so the lookup coming back empty is the ordinary case.
-  function highlight(index: number): void {
+  // null is the tree background: a legal drop target with no row to mark.
+  function highlight(index: number | null): void {
     for (const marked of tree.querySelectorAll(`.${DROP_TARGET_CLASS}`)) marked.classList.remove(DROP_TARGET_CLASS)
-    tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)[index]?.classList.add(DROP_TARGET_CLASS)
+    if (index !== null) tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)[index]?.classList.add(DROP_TARGET_CLASS)
   }
 
-  function targetOf(event: DragEvent): { directory: string; index: number } | null {
+  function targetOf(event: DragEvent): { directory: string; index: number | null } | null {
     const index = rowIndexOf(tree, event.target)
-    const directory = containerOf(index === -1 ? undefined : context.rowAt(index))
+    const directory = containerOf(index === null ? undefined : context.rowAt(index))
     if (directory === null) return null
     if (dragging !== null && !canMoveInto(dragging, directory)) return null
 
@@ -125,7 +124,8 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   }
 
   tree.addEventListener('dragstart', (event) => {
-    const row = context.rowAt(rowIndexOf(tree, event.target))
+    const index = rowIndexOf(tree, event.target)
+    const row = index === null ? undefined : context.rowAt(index)
     if (row === undefined || row.kind === 'trash' || row.kind === 'trashed') return
 
     dragging = row.path
@@ -134,13 +134,13 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
 
   tree.addEventListener('dragend', () => {
     dragging = null
-    highlight(-1)
+    highlight(null)
   })
 
   tree.addEventListener('dragover', (event) => {
     const target = targetOf(event)
     if (target === null) {
-      highlight(-1)
+      highlight(null)
       return
     }
 
@@ -150,12 +150,12 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   })
 
   tree.addEventListener('dragleave', (event) => {
-    if (event.target === tree) highlight(-1)
+    if (event.target === tree) highlight(null)
   })
 
   tree.addEventListener('drop', (event) => {
     const target = targetOf(event)
-    highlight(-1)
+    highlight(null)
     if (target === null || event.dataTransfer === null) return
 
     event.preventDefault()

@@ -286,19 +286,27 @@ describe('rowIndexOf', () => {
   it('reports no row for the container itself', () => {
     render()
 
-    expect(rowIndexOf(tree, tree)).toBe(-1)
+    expect(rowIndexOf(tree, tree)).toBeNull()
   })
 
   it('reports no row for a target that is not an element at all', () => {
     render()
 
-    expect(rowIndexOf(tree, new EventTarget())).toBe(-1)
+    expect(rowIndexOf(tree, new EventTarget())).toBeNull()
+  })
+
+  it('reports no row for one that belongs to a different tree', () => {
+    render()
+    const other = document.createElement('div')
+    other.append(rowFor('notes.md').cloneNode(true))
+
+    expect(rowIndexOf(tree, other.querySelector('.tree__row'))).toBeNull()
   })
 
   it('reports no row for no target', () => {
     render()
 
-    expect(rowIndexOf(tree, null)).toBe(-1)
+    expect(rowIndexOf(tree, null)).toBeNull()
   })
 })
 

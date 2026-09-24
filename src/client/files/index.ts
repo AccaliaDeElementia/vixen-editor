@@ -125,7 +125,9 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
     return true
   }
 
-  function handleKey(key: string, current: VisibleRow, index: number): boolean {
+  function handleKey(key: string, current: VisibleRow): boolean {
+    const index = visible.indexOf(current)
+
     if (key === 'ArrowDown') return focusAt(index + 1)
     if (key === 'ArrowUp') return focusAt(index - 1)
     if (key === 'ArrowRight') return expandOrDescend(current, index)
@@ -136,7 +138,8 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   }
 
   tree.addEventListener('click', (event) => {
-    const current = visible[rowIndexOf(tree, event.target)]
+    const index = rowIndexOf(tree, event.target)
+    const current = index === null ? undefined : visible[index]
     if (current === undefined) return
 
     selected = current.path
@@ -151,10 +154,10 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
 
   tree.addEventListener('keydown', (event) => {
     const index = rowIndexOf(tree, event.target)
-    const current = visible[index]
+    const current = index === null ? undefined : visible[index]
     if (current === undefined) return
 
-    if (handleKey(event.key, current, index)) event.preventDefault()
+    if (handleKey(event.key, current)) event.preventDefault()
   })
 
   function revealPath(entryPath: string): void {

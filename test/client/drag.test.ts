@@ -361,6 +361,20 @@ describe('confirming an overwrite', () => {
   })
 })
 
+// The tree background is not a row. Before the index became nullable this
+// path existed but had no branch to count, so nothing exercised it.
+describe('a drag that does not start on a row', () => {
+  it('carries nothing, so a later drop has no source to move', async () => {
+    await start()
+    const tree = document.querySelector('#file-tree')
+    const transfer = new DataTransfer()
+
+    tree?.dispatchEvent(dragEvent('dragstart', transfer))
+
+    expect(transfer.getData(DRAG_MIME)).toBe('')
+  })
+})
+
 describe('where a drop is refused', () => {
   it('offers no affordance for a folder onto its own descendant', async () => {
     await start()

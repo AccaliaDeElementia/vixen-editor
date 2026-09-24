@@ -242,12 +242,11 @@ export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {
   return [...main.visible, ...bin.visible]
 }
 
-// The row an event came from, as an index into the last render. Anything that
-// is not a row — the container itself, or a target that is no element at all —
-// is -1, which no row occupies.
-export function rowIndexOf(tree: Element, target: EventTarget | null): number {
+export function rowIndexOf(tree: Element, target: EventTarget | null): number | null {
   const element = target instanceof Element ? target.closest<HTMLElement>(ROW_SELECTOR) : null
-  if (element === null) return -1
+  if (element === null) return null
 
-  return [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)].indexOf(element)
+  const index = [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)].indexOf(element)
+
+  return index === -1 ? null : index
 }
