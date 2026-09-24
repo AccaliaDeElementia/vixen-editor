@@ -4,11 +4,14 @@ import path from 'node:path'
 
 import { defineConfig, devices } from '@playwright/test'
 
+import { BROWSER_DOCS_ROOT } from './docs-root.ts'
+
 const PORT = 3210
 const BASE_URL = `http://127.0.0.1:${String(PORT)}`
 const ci = process.env.CI !== undefined
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..')
+const LIFECYCLE = /store\.lifecycle\.ts$/u
 
 export default defineConfig({
   testDir: '.',
@@ -20,7 +23,11 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'setup', testMatch: LIFECYCLE, grep: /@setup/u, teardown: 'cleanup' },
+    { name: 'cleanup', testMatch: LIFECYCLE, grep: /@teardown/u },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
+  ],
   webServer: {
     command: 'npm run build && node dist/index.js',
     // Playwright resolves webServer.command against the config file's directory.
@@ -30,7 +37,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       PORT: String(PORT),
-      DOCS_ROOT: './data/browser-test-docs',
+      DOCS_ROOT: BROWSER_DOCS_ROOT,
     },
   },
 })

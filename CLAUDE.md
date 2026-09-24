@@ -663,6 +663,31 @@ Tests are written first. Two suites, deliberately separate:
   assertions that require real layout, geometry or paint, and for driving the
   real built artifacts end to end.
 
+  Its `DOCS_ROOT` is emptied at both ends of the run, by a **setup project**
+  and a **teardown project**. Both run the same check from
+  `test-browser/store.lifecycle.ts` — empty the directory, then assert it is
+  empty — so a wipe that stops working fails the suite rather than going
+  unnoticed. Emptying at the start is what makes it self-healing: a run killed
+  part way through never reaches its teardown, and failing the _next_ run over
+  that would punish the wrong person.
+
+  `test-browser/docs-root.ts` owns the one definition of the path, imported by
+  both the lifecycle tests and the config that hands it to the server. Two
+  copies of that path is how a cleanup silently starts emptying a directory
+  the suite does not write to.
+
+  Specs still delete what they create, but that is **isolation, not
+  housekeeping** — the suite is `fullyParallel` against one store. Relying on
+  it for housekeeping is what rotted: `DELETE` became a soft delete in the
+  trash work, and every "cleanup" quietly began filling `.trash` instead of
+  emptying it, unnoticed because `data/` is gitignored.
+
+  These are setup and teardown _projects_, not `globalSetup`/`globalTeardown`,
+  because those must default-export and rule 3 stays at exactly three files.
+  Both projects match the one lifecycle file and pick their half of it with
+  `grep` against a `@setup` / `@teardown` tag, which is what lets two tests
+  that are three lines apart stay in the same file.
+
 ### The conventions suite enforces this document
 
 `test/conventions/project-rules.test.ts` reads the source tree and fails the
