@@ -4,6 +4,10 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { createLogger } from '../logging.ts'
+
+const logDiscard = createLogger('storage/atomic-write', 'discard')
+
 // A sibling, because rename and link both fail with EXDEV across filesystems
 // and only a sibling is guaranteed to be on the same one.
 export function temporaryBeside(target: string): string {
@@ -21,6 +25,18 @@ async function writeThenSync(target: string, data: string | Uint8Array): Promise
   }
 }
 
+// Cleanup, not part of the write: whether it succeeds says nothing about
+// whether the data landed. `handle.close` is deliberately not treated this
+// way — a close that fails is a write that failed, and the caller has to hear
+// about that one.
+async function discard(temporary: string): Promise<void> {
+  try {
+    await fs.rm(temporary, { force: true })
+  } catch (error) {
+    logDiscard('%s: %O', temporary, error)
+  }
+}
+
 async function throughTemporary(
   target: string,
   data: string | Uint8Array,
@@ -32,7 +48,7 @@ async function throughTemporary(
     await writeThenSync(temporary, data)
     await place(temporary)
   } finally {
-    await fs.rm(temporary, { force: true })
+    await discard(temporary)
   }
 }
 

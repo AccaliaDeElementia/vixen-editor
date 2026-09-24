@@ -215,3 +215,60 @@ describe('temporaryBeside', () => {
     await expect(fs.readFile(at(longest), 'utf8')).resolves.toBe('# fresh')
   })
 })
+
+// Removing the temporary is cleanup, not part of the write: whether it works
+// says nothing about whether the data landed. Letting it propagate would
+// replace a real error with a misleading one, or report failure for a file
+// that was in fact created.
+describe('a cleanup that fails', () => {
+  function failEveryCleanup(): void {
+    vi.spyOn(fs, 'rm').mockImplementation(async (...args: Parameters<typeof fs.rm>) => {
+      const [target] = args
+      if (typeof target === 'string' && target.endsWith('.tmp')) {
+        throw Object.assign(new Error('EIO'), { code: 'EIO' })
+      }
+
+      await Promise.resolve()
+    })
+  }
+
+  it('does not replace the failure that actually stopped the write', async () => {
+    failEveryWriteWithNoSpace()
+    failEveryCleanup()
+
+    await expect(replaceFileAtomic(at('note.md'), '# fresh')).rejects.toThrow('ENOSPC')
+  })
+
+  it('does not turn a completed create into a reported failure', async () => {
+    failEveryCleanup()
+
+    await expect(createFileAtomic(at('note.md'), '# fresh')).resolves.toBeUndefined()
+
+    vi.restoreAllMocks()
+    await expect(fs.readFile(at('note.md'), 'utf8')).resolves.toBe('# fresh')
+  })
+
+  it('does not turn a completed replace into a reported failure', async () => {
+    await fs.writeFile(at('note.md'), '# old')
+    failEveryCleanup()
+
+    await expect(replaceFileAtomic(at('note.md'), '# new')).resolves.toBeUndefined()
+
+    vi.restoreAllMocks()
+    await expect(fs.readFile(at('note.md'), 'utf8')).resolves.toBe('# new')
+  })
+
+  // The orphan is the accepted cost, and it is invisible for the same reason a
+  // crash-orphaned one is: nothing in the store will list that name.
+  it('leaves the temporary behind, where only a sweep will find it', async () => {
+    failEveryCleanup()
+
+    await createFileAtomic(at('note.md'), '# fresh')
+
+    vi.restoreAllMocks()
+    const left = (await namesIn(base)).filter((name) => name !== 'note.md')
+
+    expect(left).toHaveLength(1)
+    expect(left.every((name) => !isAllowedName(name))).toBe(true)
+  })
+})

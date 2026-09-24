@@ -348,9 +348,19 @@ writing it is a different case from a failure to create it — and `ENOSPC` is
 that case. A temporary leaked there consumes the very space whose exhaustion
 caused the failure, so each failed save would make the next one likelier.
 
-That leaves a killed process as the **only** way a `.vixen-*.tmp` outlives its
-write: every error path removes its own. Nothing collects those orphans yet —
-a recorded follow-up, and a startup sweep is the only thing that can, since a
+**Removing the temporary is cleanup, not part of the write.** Whether it
+succeeds says nothing about whether the data landed, so a failing `fs.rm` is
+logged and swallowed: propagating it would replace a real `ENOSPC` with a
+misleading `EIO`, or report failure for a file `link` had already created —
+which a client would then retry into a confusing `ALREADY_EXISTS`.
+
+`handle.close` is deliberately **not** treated that way. A close that fails is
+a write that failed — on NFS that is where a deferred write error surfaces —
+and the caller has to hear about it.
+
+So a `.vixen-*.tmp` outlives its write in exactly two cases: a killed process,
+and a cleanup that could not delete it. Nothing collects those orphans yet — a
+recorded follow-up, and a startup sweep is the only thing that can, since a
 crashed instance is not around to tidy up after itself.
 
 Which makes the name load-bearing. `isAllowedName` refuses a leading dot, so
