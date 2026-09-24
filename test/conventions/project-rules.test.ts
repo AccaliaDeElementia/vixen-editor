@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url'
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { TestOnly as safePathTestOnly } from '../../src/server/storage/safe-path.ts'
+
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const SOURCE_DIRECTORIES = ['src', 'scripts', 'test', 'test-browser']
@@ -166,6 +168,14 @@ describe('rule 5: every tooling suppression carries a rationale', () => {
 })
 
 const TEST_ONLY = 'TestOnly'
+
+async function guide(): Promise<string> {
+  return await fs.readFile(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf8')
+}
+
+function compare(a: string, b: string): number {
+  return a.localeCompare(b)
+}
 const WHOLE_MODULE = '*'
 const RUNTIME_EXPORT = /^export\s+(?:async\s+)?(?:function|const|class)\s+(?<name>\w+)/gmu
 const TYPE_EXPORT = /^export\s+(?:interface|type)\s/u
@@ -285,7 +295,10 @@ function exportedNamesIn(contents: string): string[] {
 // count as the consumer that keeps the export alive.
 describe('every export is consumed by something', () => {
   it('leaves no export under src/ that nothing imports', () => {
-    const graph = importGraph(scannable())
+    // Built from every source, not `scannable()`: the scanner is excluded from
+    // pattern scans so it cannot match itself, but an import it writes is a
+    // real consumer like any other.
+    const graph = importGraph(sources)
     const orphans = scannable()
       .filter((source) => source.relativePath.startsWith('src/'))
       .flatMap((source) =>
@@ -354,6 +367,35 @@ describe('every store write goes through the atomic helpers', () => {
     const helpers = sources.find((source) => source.relativePath === ATOMIC_WRITE)
 
     expect(helpers?.contents).toMatch(DIRECT_WRITE)
+  })
+})
+
+// The same lesson as the error-code table, learned the hard way: a comment in
+// `routes/files.ts` claimed names were restricted to a safe character set,
+// stayed after the rules were widened, and the header it justified went
+// malformed. The validator's own messages are the source here.
+describe('the documented name rules match the ones the validator applies', () => {
+  const NAME_RULE_TABLE = /Rejected in a path segment[\s\S]*?\n\n`\//u
+  const DOCUMENTED = /^\| `(?<reason>[^`]+)`\s*\|/gmu
+
+  function documentedReasons(guide: string): string[] {
+    const table = NAME_RULE_TABLE.exec(guide)?.[0] ?? ''
+
+    return [...table.matchAll(DOCUMENTED)].map((match) => match.groups?.reason ?? '').sort(compare)
+  }
+
+  const { NAME_RULES } = safePathTestOnly
+
+  function applied(): string[] {
+    return NAME_RULES.map((rule) => rule.reason).sort(compare)
+  }
+
+  it('documents every rule the validator applies', async () => {
+    expect(documentedReasons(await guide())).toStrictEqual(applied())
+  })
+
+  it('found rules at all, so the comparison is not passing vacuously', async () => {
+    expect(documentedReasons(await guide()).length).toBeGreaterThan(5)
   })
 })
 

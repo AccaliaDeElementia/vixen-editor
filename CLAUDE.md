@@ -325,18 +325,26 @@ walks that decide what to list. Two answers is what let a file be listed and
 then refused when opened — a real defect, hit by a document with a space in
 its name.
 
-Rejected in a path segment:
+Rejected in a path segment. The left column is the message the validator
+gives back, verbatim — `test/conventions/` fails the gate if this table and
+`NAME_RULES` disagree, which is how a prose copy of a code-owned rule silently
+went false once before.
 
-| Rejected                                      | Why                                                                |
-| --------------------------------------------- | ------------------------------------------------------------------ |
-| `/` and `\`                                   | Separators. `\` breaks the moment an export is unzipped on Windows |
-| `\p{Cc}`                                      | Control characters corrupt logs and terminal output                |
-| `\p{Cf}` except U+200D                        | Bidi overrides and zero-width characters; the spoofing class       |
-| A zero-width joiner outside an emoji sequence | Its only legitimate use is joining emoji                           |
-| `.` and `..`                                  | Traversal                                                          |
-| A leading dot                                 | Hidden files, and it is how `.trash` stays unreachable             |
-| Empty, whitespace-only, or space-padded       | `notes.md` and `notes .md` are indistinguishable in a tree         |
-| Over 255 UTF-8 **bytes**                      | `NAME_MAX` counts bytes: 64 emoji is 256                           |
+| Refused because it…                                  | Why that matters                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------- |
+| `must not contain an empty path segment`             | `a//b` is two names with nothing between them                       |
+| `must not contain a relative path segment`           | Traversal                                                           |
+| `must not contain a segment beginning with a dot`    | Hidden files, and it is how `.trash` stays unreachable              |
+| `must not contain a backslash`                       | A separator that breaks the moment an export is unzipped on Windows |
+| `must not contain a control character`               | Corrupts logs and terminal output                                   |
+| `must not contain an invisible formatting character` | Bidi overrides and zero-width characters; the spoofing class        |
+| `may only use a zero-width joiner between emoji`     | Joining emoji is the only thing a joiner is for                     |
+| `must not be only whitespace`                        | A name nobody can see or type                                       |
+| `must not begin or end with whitespace`              | `notes.md` and `notes .md` are indistinguishable in a tree          |
+| `must be at most 255 bytes`                          | `NAME_MAX` counts bytes: 64 emoji is 256                            |
+
+`/` never reaches these rules — a path is split on it first, so a segment
+cannot contain one.
 
 Everything else is allowed — spaces, apostrophes, ampersands, brackets,
 accented letters, CJK, emoji including joined sequences.

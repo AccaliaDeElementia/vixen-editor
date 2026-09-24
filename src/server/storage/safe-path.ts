@@ -132,3 +132,5 @@ export function joinEntryPath(directory: string, name: string): string {
 
   return directory === '' ? name : `${directory}/${name}`
 }
+
+export const TestOnly = { NAME_RULES }
