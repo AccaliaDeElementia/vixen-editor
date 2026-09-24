@@ -438,20 +438,32 @@ describe('GET /api/files/raw/:path', () => {
 })
 
 describe('POST /api/files/moves', () => {
-  it('renames a document and returns 204', async () => {
+  it('renames a document and reports what it rewrote', async () => {
     await store.createDocument('notes.md', '# hello')
 
     const res = await post('moves', { from: 'notes.md', to: 'renamed.md' })
 
-    expect(res.status).toBe(204)
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toStrictEqual({ rewritten: [], failed: [] })
     await expect(store.read('renamed.md')).resolves.toBe('# hello')
+  })
+
+  it('names the documents whose links it repaired', async () => {
+    await store.createDocument('journal/a.md', '# a')
+    await store.createDocument('notes.md', 'see [it](journal/a.md)')
+
+    const res = await post('moves', { from: 'journal/a.md', to: 'archive/a.md' })
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toStrictEqual({ rewritten: ['notes.md'], failed: [] })
+    await expect(store.read('notes.md')).resolves.toBe('see [it](archive/a.md)')
   })
 
   it('moves a document into a folder', async () => {
     await store.createFolder('archive', '# archive')
     await store.createDocument('notes.md', '# hello')
 
-    expect((await post('moves', { from: 'notes.md', to: 'archive/notes.md' })).status).toBe(204)
+    expect((await post('moves', { from: 'notes.md', to: 'archive/notes.md' })).status).toBe(200)
   })
 
   it('returns 404 when the source is not there', async () => {
@@ -482,7 +494,7 @@ describe('POST /api/files/moves', () => {
 
     const res = await post('moves', { from: 'notes.md', to: 'archive/notes.md', allowOverwrite: true })
 
-    expect(res.status).toBe(204)
+    expect(res.status).toBe(200)
     await expect(store.read('archive/notes.md')).resolves.toBe('# mine')
   })
 

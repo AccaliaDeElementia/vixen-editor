@@ -16,7 +16,6 @@ import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.
 
 const HTTP_OK = 200
 const HTTP_CREATED = 201
-const HTTP_NO_CONTENT = 204
 
 // A file served straight from the store is content we did not author. The
 // explicit type plus nosniff stops a browser inferring a richer one, and the
@@ -94,8 +93,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     async (c) => {
       const { from, to, allowOverwrite = false } = c.req.valid('json')
       try {
-        await store.move({ from, to, allowOverwrite })
-        return c.body(null, HTTP_NO_CONTENT)
+        return c.json(await store.move({ from, to, allowOverwrite }))
       } catch (error) {
         return toErrorResponse(c, error)
       }

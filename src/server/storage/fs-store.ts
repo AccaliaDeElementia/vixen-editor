@@ -12,6 +12,7 @@ import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
 import { etagOf } from './etag.ts'
 import { createWriteLock, type WriteLock } from './lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
+import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
 import {
   assertNormalisedName,
   InvalidPathError,
@@ -47,7 +48,7 @@ export interface DocumentStore {
   readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
   updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
   archive: (subtree: string, limits: ArchiveLimits) => Promise<ReadableStream>
-  move: (request: MoveRequest) => Promise<void>
+  move: (request: MoveRequest) => Promise<RelinkOutcome>
   trash: (entryPath: string) => Promise<string>
   listTrash: () => Promise<TrashEntry[]>
   restore: (entryId: string) => Promise<string>
@@ -237,9 +238,13 @@ export function createFsDocumentStore(
       return archiveStream(await planArchive(root, subtree, limits))
     },
 
-    async move(request: MoveRequest): Promise<void> {
-      await lock.run(async () => {
+    async move(request: MoveRequest): Promise<RelinkOutcome> {
+      return await lock.run(async () => {
+        const before: string[] = []
+        await collectDocumentIds(root, '', before)
         await moveEntry(root, request)
+
+        return await relinkAfterMove(root, before, [{ from: request.from, to: request.to }])
       })
     },
 

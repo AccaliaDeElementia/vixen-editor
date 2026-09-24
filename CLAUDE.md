@@ -283,8 +283,49 @@ Three obligations keep that true: never rewrite content, have upload return
 the stored path so the client inserts a _relative_ link, and keep raw URLs
 mirroring store paths so the transform stays a prefix.
 
-**Known consequence:** a rename does not update the documents that link to the
-renamed file. Those links break. That is a live defect, not a design choice.
+#### The one exception: a move repairs the links it broke
+
+A move rewrites markdown link and image destinations, and nothing else does.
+The exception is deliberately narrow, and each part of it is load-bearing:
+
+- **Only a move.** It is a user action with a visible result, never a side
+  effect of a save, a read, an upload or an export. Nothing else in the API
+  may rewrite content.
+- **Only what the move broke.** A destination is repaired when the path it
+  resolves to moved, or when the document holding it moved so the path it was
+  written relative to is gone. Links that were already broken stay broken —
+  repairing those would be a different feature, and a guessing one.
+- **Only markdown link syntax.** `<a href>` and `<img src>` inside embedded
+  HTML are left alone. Chasing them means parsing HTML inside markdown.
+- **Never inside code.** A path in a fenced or indented block, or in inline
+  code, is being documented rather than linked. This is why the feature uses a
+  real parser instead of a regex, and `src/server/markdown/links.ts` gets that
+  for free from micromark's token stream.
+
+**The invariant that makes it safe: rewriting with an identity function
+returns the document byte-identical.** A destination is only ever spliced when
+its resolved target actually changed, so the written form — `./b.md`,
+`my%2Dfile.md`, `sub/../b.md`, an angle-bracketed path — is preserved exactly
+as authored. The module never normalises, and its tests hold a corpus of
+deliberately non-canonical documents to keep that honest.
+
+`POST /api/files/moves` answers `200 { rewritten, failed }`, naming documents
+at their paths _after_ the move, so a client can tell an open editor that its
+content moved underneath it.
+
+**Link repair is per document and never fails the move.** By the time links
+are repaired the move has already happened, so a document that cannot be read
+or written must not strand the rest half-repaired: it goes in `failed` and the
+pass carries on. That path is reported rather than only logged, because a link
+left broken is exactly what the person who moved the file needs to know. A
+document that fails is left byte-identical, since a failed atomic write
+changes nothing.
+
+**Documents are enumerated before the move, not after.** A document is
+relinked against the path it held when its links were written, and after the
+move that path is gone. The mapping also cannot be inverted: a merge leaves
+the destination holding both moved and pre-existing files with nothing to tell
+them apart.
 
 ### Every write lands whole
 
@@ -354,6 +395,25 @@ serialisation is not atomicity — a crash mid-merge leaves a partial state.
 
 A rename may not change what a file claims to be: the raw route types a
 response from the extension alone, so `notes.md` cannot become `notes.svg`.
+
+**A move reads every document in the store**, because a link from anywhere can
+point at the thing that moved, and it does so inside the write lock along with
+the move itself. That makes the lock hold time scale with the store rather
+than with the move, which is the one thing about this design worth knowing
+before the store gets large:
+
+| Documents | Store  | Move + relink |
+| --------- | ------ | ------------- |
+| 100       | 0.5 MB | ~0.12 s       |
+| 1000      | 5.5 MB | ~1.0 s        |
+| 5000      | 27 MB  | ~4.8 s        |
+
+Parsing dominates, at roughly half the total; the atomic writes are most of
+the rest. At around 5000 documents this approaches the 5 s lock timeout, past
+which a concurrent save gets `503 BUSY`. Reading outside the lock and taking
+it only to write was measured and rejected: it roughly halves the hold time
+without changing the shape of the curve, and it reopens the exact
+read-modify-write window the lock exists to close.
 
 ## Concurrency
 

@@ -1,0 +1,74 @@
+'use sanity'
+
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
+import { createLogger } from '../logging.ts'
+import { movedPath, relinkDocument, type PathMove } from '../markdown/relink.ts'
+
+import { replaceFileAtomic } from './atomic-write.ts'
+
+const logRelink = createLogger('storage/relink-store')
+const logFailed = createLogger('storage/relink-store', 'failed')
+
+export interface RelinkOutcome {
+  rewritten: string[]
+  failed: string[]
+}
+
+// Documents are enumerated before the move and mapped forward. The mapping
+// cannot be inverted afterwards: a merge leaves the destination holding both
+// moved and pre-existing files, with nothing to tell them apart.
+function holderOfEachPath(documentIds: readonly string[], moves: readonly PathMove[]): Map<string, string> {
+  const holders = new Map<string, string>()
+
+  for (const id of documentIds) {
+    const current = movedPath(moves, id)
+    if (current !== id || !holders.has(current)) holders.set(current, id)
+  }
+
+  return holders
+}
+
+async function repair(target: string, holder: string, moves: readonly PathMove[]): Promise<boolean> {
+  const content = await fs.readFile(target, 'utf8')
+  const relinked = relinkDocument(content, holder, moves)
+  if (relinked === content) return false
+
+  await replaceFileAtomic(target, relinked)
+
+  return true
+}
+
+export async function relinkAfterMove(
+  root: string,
+  documentIds: readonly string[],
+  moves: readonly PathMove[],
+): Promise<RelinkOutcome> {
+  const rewritten: string[] = []
+  const failed: string[] = []
+
+  for (const [current, holder] of holderOfEachPath(documentIds, moves)) {
+    try {
+      /* eslint-disable-next-line no-await-in-loop -- one document at a time, for
+         the same reason the document walk is sequential: fanning out over a large
+         store would hold every file open at once */
+      if (await repair(path.join(root, current), holder, moves)) rewritten.push(current)
+    } catch (error) {
+      // The move itself has already succeeded, so one document that cannot be
+      // read or written must not strand the rest half-repaired. The path is
+      // reported rather than only logged, because a link left broken is
+      // something the person who moved the file needs to know about.
+      failed.push(current)
+      logFailed('%s: %O', current, error)
+    }
+  }
+
+  logRelink('rewrote %d, failed %d, of %d documents', rewritten.length, failed.length, documentIds.length)
+
+  return { rewritten: rewritten.sort(compare), failed: failed.sort(compare) }
+}
+
+function compare(a: string, b: string): number {
+  return a.localeCompare(b)
+}

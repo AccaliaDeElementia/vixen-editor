@@ -7,6 +7,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import type { RelinkOutcome } from '../../../src/server/storage/relink-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import {
   DocumentNotFoundError,
@@ -28,8 +29,12 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
-function move(from: string, to: string, allowOverwrite = false): Promise<void> {
+function move(from: string, to: string, allowOverwrite = false): Promise<RelinkOutcome> {
   return store.move({ from, to, allowOverwrite })
+}
+
+async function rewrittenBy(from: string, to: string, allowOverwrite = false): Promise<string[]> {
+  return (await move(from, to, allowOverwrite)).rewritten
 }
 
 async function exists(...parts: string[]): Promise<boolean> {
@@ -39,11 +44,44 @@ async function exists(...parts: string[]): Promise<boolean> {
     .catch(() => false)
 }
 
-async function overwritePathsOf(attempt: Promise<void>): Promise<readonly string[]> {
+async function overwritePathsOf(attempt: Promise<unknown>): Promise<readonly string[]> {
   return await attempt
     .then((): readonly string[] => [])
     .catch((error: unknown) => (error instanceof WouldOverwriteError ? error.paths : []))
 }
+
+// The store has to enumerate documents *before* it moves anything: a document
+// is relinked against the path it held when its links were written, and after
+// the move that path is gone.
+describe('repairing links', () => {
+  it('re-bases the links inside a document that itself moved', async () => {
+    await store.createDocument('img/p.png', 'x').catch(() => undefined)
+    await fs.mkdir(path.join(root, 'img'), { recursive: true })
+    await fs.writeFile(path.join(root, 'img', 'p.png'), 'x')
+    await store.createDocument('journal/a.md', '![p](../img/p.png)')
+
+    const rewritten = await rewrittenBy('journal', 'deep/journal')
+
+    expect(rewritten).toStrictEqual(['deep/journal/a.md'])
+    await expect(store.read('deep/journal/a.md')).resolves.toBe('![p](../../img/p.png)')
+  })
+
+  it('repairs a link held by a document that did not move', async () => {
+    await store.createDocument('journal/a.md', '# a')
+    await store.createDocument('notes.md', 'see [it](journal/a.md)')
+
+    const rewritten = await rewrittenBy('journal/a.md', 'archive/a.md')
+
+    expect(rewritten).toStrictEqual(['notes.md'])
+    await expect(store.read('notes.md')).resolves.toBe('see [it](archive/a.md)')
+  })
+
+  it('reports nothing when a move breaks no links', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    await expect(rewrittenBy('notes.md', 'renamed.md')).resolves.toStrictEqual([])
+  })
+})
 
 describe('renaming', () => {
   it('moves a document to a new name in the same folder', async () => {
