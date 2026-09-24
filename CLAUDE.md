@@ -509,6 +509,20 @@ Archive streaming deliberately takes no lock: a slow client dragging a large
 download over minutes would otherwise block every save. A zip may therefore
 catch the tree mid-move.
 
+**Because reads take no lock, a listing can race a delete, and the walk
+tolerates it.** Two tabs are enough: delete a folder in one while the other
+lists the tree. `walkDirectory` treats a subdirectory that vanished the same
+way `readTree` treats an absent root — the entry is omitted, because a tree is
+a snapshot and something removed while it was being taken is legitimately
+absent from it. Reporting it as an _empty_ folder would list something that is
+not there, and letting the `ENOENT` escape turned an ordinary delete in
+another tab into a `500`. `planArchive` walks the same tree and inherits this.
+
+The move code reads directories without that tolerance on purpose: it runs
+inside the write lock, so a directory disappearing under it means something
+outside the application is writing to `DOCS_ROOT`, which is an error rather
+than a race.
+
 ## Serving files we did not author
 
 `GET /api/files/raw/…` sets the `Content-Type` **from the extension**, never

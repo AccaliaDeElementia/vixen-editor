@@ -6,8 +6,9 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { planArchive } from '../../../src/server/storage/archive.ts'
 import { classifyFile, readTree, type FolderEntry, type TreeEntry } from '../../../src/server/storage/tree.ts'
 
 let root: string
@@ -225,5 +226,60 @@ describe('readTree', () => {
       socket.close()
       await once(socket, 'close')
     }
+  })
+})
+
+// Reads never take the write lock, so two tabs are enough: delete a folder in
+// one while the other lists the tree. A listing is a snapshot, and an entry
+// removed while it was being taken is legitimately absent from it.
+describe('a folder deleted while the walk is in progress', () => {
+  // The deletion is real, not a mocked error: `stat` runs just before the
+  // recursive `readdir`, so removing the folder there reproduces the race
+  // exactly rather than approximating it.
+  function removeAfterStatOf(name: string): void {
+    const realStat = fs.stat.bind(fs)
+
+    vi.spyOn(fs, 'stat').mockImplementation(async (...args: Parameters<typeof fs.stat>) => {
+      const stats = await realStat(...args)
+      const [target] = args
+      if (typeof target === 'string' && path.basename(target) === name) {
+        await fs.rm(target, { recursive: true, force: true })
+      }
+
+      return stats
+    })
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('omits it instead of failing the whole listing', async () => {
+    await write('keep/a.md')
+    await write('vanishes/b.md')
+    removeAfterStatOf('vanishes')
+
+    const tree = await readTree(root)
+
+    expect(names(tree)).toStrictEqual(['keep'])
+  })
+
+  it('still reports everything the walk did see', async () => {
+    await write('keep/a.md')
+    await write('vanishes/b.md')
+    await write('notes.md')
+    removeAfterStatOf('vanishes')
+
+    expect(paths(await readTree(root))).toStrictEqual(['keep', 'keep/a.md', 'notes.md'])
+  })
+
+  it('omits it from an archive plan too, which walks the same tree', async () => {
+    await write('keep/a.md')
+    await write('vanishes/b.md')
+    removeAfterStatOf('vanishes')
+
+    const plan = await planArchive(root, '', { maxBytes: 1_000_000, maxEntries: 100 })
+
+    expect(plan.files).toStrictEqual(['keep/a.md'])
   })
 })

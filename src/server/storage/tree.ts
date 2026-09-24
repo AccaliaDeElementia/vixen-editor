@@ -91,6 +91,11 @@ async function buildFolder(at: FolderLocation): Promise<FolderEntry | null> {
   }
   const children = await walkDirectory(at.target, at.entryPath, scope)
 
+  // Gone between its parent's listing and its own. A tree is a snapshot, and
+  // an entry removed while it was being taken is absent from it — reporting
+  // it as an empty folder would be a listing of something that is not there.
+  if (children === null) return null
+
   return { name: at.name, path: at.entryPath, kind: 'folder', children }
 }
 
@@ -132,8 +137,9 @@ async function buildEntries(entries: readonly Dirent[], at: Location): Promise<T
   return found.sort(compareEntries)
 }
 
-async function walkDirectory(dir: string, prefix: string, scope: WalkScope): Promise<TreeEntry[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true })
+async function walkDirectory(dir: string, prefix: string, scope: WalkScope): Promise<TreeEntry[] | null> {
+  const entries = await nullWhenAbsent(async () => await fs.readdir(dir, { withFileTypes: true }))
+  if (entries === null) return null
 
   return await buildEntries(entries, { dir, prefix, scope })
 }
