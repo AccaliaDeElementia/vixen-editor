@@ -1,5 +1,7 @@
 'use sanity'
 
+import { EMPTY } from '../../shared/sequences.ts'
+
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { Readable } from 'node:stream'
@@ -42,7 +44,7 @@ function collect(entries: readonly TreeEntry[]): ArchiveContents {
       continue
     }
 
-    if (entry.children.length === 0) {
+    if (entry.children.length === EMPTY) {
       directories.push(entry.path)
       continue
     }

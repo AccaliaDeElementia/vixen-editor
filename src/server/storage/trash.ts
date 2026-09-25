@@ -25,6 +25,8 @@ const TRASH_PAYLOAD_NAME = 'payload'
 
 const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+const SORT_EQUAL = 0
+
 export interface TrashEntry {
   id: string
   originalPath: string
@@ -35,7 +37,7 @@ export interface TrashEntry {
 function newestFirstThenIdForStableTies(a: TrashEntry, b: TrashEntry): number {
   const byTime = b.deletedAt.localeCompare(a.deletedAt)
 
-  return byTime === 0 ? a.id.localeCompare(b.id) : byTime
+  return byTime === SORT_EQUAL ? a.id.localeCompare(b.id) : byTime
 }
 
 function trashRoot(root: string): string {

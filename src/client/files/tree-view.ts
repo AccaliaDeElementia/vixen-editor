@@ -1,5 +1,7 @@
 'use sanity'
 
+import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
+
 import { docUrlFor } from '../doc-path.ts'
 
 import type { TrashNode, TreeNode } from './tree-model.ts'
@@ -186,7 +188,7 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
 
     if (!expanded) continue
 
-    const nested = renderNodes(node.children, model, depth + 1)
+    const nested = renderNodes(node.children, model, depth + ONE_LEVEL_DEEPER)
     const children = group()
     children.append(...nested.items)
     element.append(children)
@@ -196,10 +198,16 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
   return { items, visible }
 }
 
+const ROOT_DEPTH = 0
+const TRASH_ENTRY_DEPTH = 1
+const ONE_LEVEL_DEEPER = 1
+
 function renderTrash(model: TreeViewModel): Rendered {
   const expanded = model.open.has(TRASH_PATH)
   const name = `Trash (${String(model.trash.length)})`
-  const element = item(row({ path: TRASH_PATH, kind: 'trash-root', name, depth: 0, expanded, selected: false }))
+  const element = item(
+    row({ path: TRASH_PATH, kind: 'trash-root', name, depth: ROOT_DEPTH, expanded, selected: false }),
+  )
   const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash-root' }]
 
   if (!expanded) return { items: [element], visible }
@@ -210,7 +218,7 @@ function renderTrash(model: TreeViewModel): Rendered {
       path: entry.originalPath,
       kind: entry.kind,
       name: entry.originalPath,
-      depth: 1,
+      depth: TRASH_ENTRY_DEPTH,
       expanded: null,
       selected: false,
     })
@@ -227,13 +235,13 @@ function renderTrash(model: TreeViewModel): Rendered {
 
 function applyRovingTabindex(tree: Element): void {
   const rows = [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
-  const focusable = rows.find((candidate) => candidate.getAttribute('aria-selected') === 'true') ?? rows[0]
+  const focusable = rows.find((candidate) => candidate.getAttribute('aria-selected') === 'true') ?? rows[SEQUENCE_START]
 
   focusable?.setAttribute('tabindex', '0')
 }
 
 export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {
-  const main = renderNodes(model.nodes, model, 0)
+  const main = renderNodes(model.nodes, model, ROOT_DEPTH)
   const bin = renderTrash(model)
 
   tree.replaceChildren(...main.items, ...bin.items)
@@ -248,5 +256,5 @@ export function rowIndexOf(tree: Element, target: EventTarget | null): number | 
 
   const index = [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)].indexOf(element)
 
-  return index === -1 ? null : index
+  return index === NOT_FOUND ? null : index
 }

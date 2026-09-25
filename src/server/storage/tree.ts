@@ -38,12 +38,16 @@ export function classifyFile(name: string): FileKind | null {
   return null
 }
 
-const FOLDERS_FIRST: Record<TreeEntry['kind'], number> = { folder: 0, document: 1, image: 1 }
+const FOLDER_RANK = 0
+const FILE_RANK = 1
+const SORT_EQUAL = 0
+
+const FOLDERS_FIRST: Record<TreeEntry['kind'], number> = { folder: FOLDER_RANK, document: FILE_RANK, image: FILE_RANK }
 
 function compareEntries(a: TreeEntry, b: TreeEntry): number {
   const byKind = FOLDERS_FIRST[a.kind] - FOLDERS_FIRST[b.kind]
 
-  return byKind === 0 ? a.name.localeCompare(b.name) : byKind
+  return byKind === SORT_EQUAL ? a.name.localeCompare(b.name) : byKind
 }
 
 interface WalkScope {

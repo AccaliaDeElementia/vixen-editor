@@ -1,5 +1,7 @@
 'use sanity'
 
+import { EMPTY } from '../../shared/sequences.ts'
+
 import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -196,7 +198,7 @@ export function createFsDocumentStore(
       assertNormalisedName(entryPath)
       const target = resolveEntryPath(root, entryPath, UPLOAD_EXTENSIONS)
 
-      if (bytes.length === 0) throw new EmptyContentError(entryPath)
+      if (bytes.length === EMPTY) throw new EmptyContentError(entryPath)
       if (!contentMatchesExtension(entryPath, bytes)) throw new ContentMismatchError(entryPath)
 
       return await lock.run(async () => {

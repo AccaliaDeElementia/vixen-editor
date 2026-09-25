@@ -1,5 +1,7 @@
 'use sanity'
 
+import { SEQUENCE_START } from '../../shared/sequences.ts'
+
 import path from 'node:path'
 
 import { extensionOf } from './safe-path.ts'
@@ -11,7 +13,7 @@ function seed(name: string): string {
 export function seedDocument(id: string): string {
   const base = path.posix.basename(id)
 
-  return seed(base.slice(0, base.length - extensionOf(base).length))
+  return seed(base.slice(SEQUENCE_START, base.length - extensionOf(base).length))
 }
 
 export function seedFolderIndex(folderPath: string): string {

@@ -1,6 +1,7 @@
 'use sanity'
 
 import type { DocumentMoved } from '../document-moved.ts'
+import { EMPTY, PAST_SEPARATOR } from '../../shared/sequences.ts'
 import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../layout/toast.ts'
 
@@ -29,7 +30,7 @@ interface DragContext {
 }
 
 function basenameOf(entryPath: string): string {
-  return entryPath.slice(entryPath.lastIndexOf('/') + 1)
+  return entryPath.slice(entryPath.lastIndexOf('/') + PAST_SEPARATOR)
 }
 
 function containerOf(row: VisibleRow | undefined): DropDirectory | null {
@@ -137,7 +138,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     event.preventDefault()
     const transfer = event.dataTransfer
     const dropped = [...transfer.files]
-    if (dropped.length > 0) {
+    if (dropped.length > EMPTY) {
       run(async () => {
         await uploadAll(dropped, target.directory)
         return undefined

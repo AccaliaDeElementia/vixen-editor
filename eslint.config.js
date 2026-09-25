@@ -25,13 +25,6 @@ export default [
     rules: {
       ...love.rules,
 
-      /* Relaxed: fires on 0, 1 and -1 in ordinary index and slice arithmetic,
-         which is noise. Left on for opaque values such as ports and status codes. */
-      '@typescript-eslint/no-magic-numbers': [
-        'error',
-        { ignore: [-1, 0, 1, 2], ignoreArrayIndexes: true, ignoreDefaultValues: true },
-      ],
-
       /* Relaxed: the v flag changes character-class and case-folding semantics.
          These patterns are deliberately ASCII-only, so it risks behaviour change
          for no benefit. */
@@ -47,7 +40,6 @@ export default [
     rules: {
       /* Tests assert on values the types cannot narrow, and arrange deliberately
          invalid input to prove validation rejects it. */
-      '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-unsafe-type-assertion': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-magic-numbers': 'off',
@@ -61,7 +53,6 @@ export default [
 
       /* Test helpers returning promises read better without the async ceremony. */
       '@typescript-eslint/promise-function-async': 'off',
-      '@typescript-eslint/return-await': 'off',
     },
   },
   {

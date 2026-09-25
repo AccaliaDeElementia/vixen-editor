@@ -1,5 +1,7 @@
 'use sanity'
 
+import { PAST_SEPARATOR } from '../../shared/sequences.ts'
+
 import { Hono } from 'hono'
 
 import { classifyFile } from '../storage/tree.ts'
@@ -10,7 +12,7 @@ const HTTP_FOUND = 302
 function folderRedirectTarget(rest: string): string | null {
   if (rest === '' || rest.endsWith('/')) return null
 
-  const leaf = rest.slice(rest.lastIndexOf('/') + 1)
+  const leaf = rest.slice(rest.lastIndexOf('/') + PAST_SEPARATOR)
 
   return classifyFile(leaf) === null ? `${DOC_PREFIX}${rest}/` : null
 }

@@ -24,10 +24,13 @@ export interface Limits {
   archiveMaxEntries: number
 }
 
+const DEFAULT_ARCHIVE_ENTRIES = 2000
+const NON_EMPTY = 1
+
 export const DEFAULT_LIMITS: Limits = {
   uploadMaxBytes: DEFAULT_UPLOAD_MEBIBYTES * MEBIBYTE,
   archiveMaxBytes: DEFAULT_ARCHIVE_MEBIBYTES * MEBIBYTE,
-  archiveMaxEntries: 2000,
+  archiveMaxEntries: DEFAULT_ARCHIVE_ENTRIES,
 }
 
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const
@@ -53,9 +56,9 @@ class ConfigError extends Error {
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().min(MIN_PORT).max(MAX_PORT).default(DEFAULT_PORT),
-  HOST: z.string().min(1).default('0.0.0.0'),
-  DOCS_ROOT: z.string().min(1).default('./data/docs'),
-  TEMPLATES_DIR: z.string().min(1).default('./src/templates'),
+  HOST: z.string().min(NON_EMPTY).default('0.0.0.0'),
+  DOCS_ROOT: z.string().min(NON_EMPTY).default('./data/docs'),
+  TEMPLATES_DIR: z.string().min(NON_EMPTY).default('./src/templates'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   NODE_ENV: z.enum(NODE_ENVS).default('development'),
   WRITE_LOCK_TIMEOUT_MS: z.coerce

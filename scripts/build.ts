@@ -76,9 +76,6 @@ export async function buildAll(): Promise<void> {
   await Promise.all([buildClient(), buildStyles(), buildAssets(), buildServer()])
 }
 
-/* v8 ignore next 3 -- runs only when this file is the process entry point; the
-   exported functions above are what everything else calls, and scripts/ sits
-   outside the coverage gate */
 if (import.meta.main) {
   await buildAll()
 }

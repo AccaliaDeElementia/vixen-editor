@@ -21,8 +21,10 @@ function defaultStorage(): Storage | null {
   }
 }
 
+const NO_WIDTH = 0
+
 function widthFrom(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+  return typeof value === 'number' && Number.isFinite(value) && value > NO_WIDTH ? value : null
 }
 
 function parse(raw: string): ExplorerPreferences {

@@ -1,5 +1,7 @@
 'use sanity'
 
+import { SEQUENCE_START } from '../../shared/sequences.ts'
+
 import { parse, postprocess, preprocess } from 'micromark'
 
 interface LinkDestination {
@@ -15,6 +17,8 @@ const DESTINATION_TOKENS = new Set(['resourceDestinationString', 'definitionDest
 const BACKSLASH_ESCAPE = /\\(?<punctuation>[!-/:-@[-`{-~])/gu
 const PERCENT_RUN = /(?:%[0-9A-Fa-f]{2})+/gu
 const CHARACTER_REFERENCE = /^&(?:#\d+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/u
+
+const PRECEDING_CHARACTER = 1
 
 const HEX = 16
 const BYTE_DIGITS = 2
@@ -78,7 +82,7 @@ function findLinkDestinations(markdown: string): LinkDestination[] {
       value: decodeDestination(markdown.slice(start, end)),
       start,
       end,
-      bracketed: markdown[start - 1] === '<',
+      bracketed: markdown[start - PRECEDING_CHARACTER] === '<',
     })
   }
 
@@ -93,7 +97,7 @@ export function rewriteLinkDestinations(markdown: string, rewrite: (destination:
     if (replacement === destination.value) continue
 
     const encoded = encodeDestination(replacement, destination.bracketed)
-    result = result.slice(0, destination.start) + encoded + result.slice(destination.end)
+    result = result.slice(SEQUENCE_START, destination.start) + encoded + result.slice(destination.end)
   }
 
   return result

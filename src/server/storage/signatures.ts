@@ -1,5 +1,7 @@
 'use sanity'
 
+import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
+
 import { Buffer } from 'node:buffer'
 
 import { extensionOf } from './safe-path.ts'
@@ -25,7 +27,10 @@ const GIF89A = Buffer.from('GIF89a', 'ascii')
 const RIFF = Buffer.from('RIFF', 'ascii')
 const WEBP = Buffer.from('WEBP', 'ascii')
 
-function startsWith(bytes: Uint8Array, expected: Uint8Array, offset = 0): boolean {
+const PROLOGUE_OPEN = 0
+const PROLOGUE_CLOSE = 1
+
+function startsWith(bytes: Uint8Array, expected: Uint8Array, offset = SEQUENCE_START): boolean {
   return expected.every((byte, index) => bytes[offset + index] === byte)
 }
 
@@ -56,15 +61,15 @@ function afterPrologue(text: string): string {
     const construct = prologueAt(rest)
     if (construct === undefined) return rest
 
-    const end = rest.indexOf(construct[1], construct[0].length)
-    if (end === -1) return ''
+    const end = rest.indexOf(construct[PROLOGUE_CLOSE], construct[PROLOGUE_OPEN].length)
+    if (end === NOT_FOUND) return ''
 
-    rest = rest.slice(end + construct[1].length).trimStart()
+    rest = rest.slice(end + construct[PROLOGUE_CLOSE].length).trimStart()
   }
 }
 
 function isSvg(bytes: Uint8Array): boolean {
-  const head = new TextDecoder('utf8').decode(bytes.subarray(0, SVG_HEAD_BYTES))
+  const head = new TextDecoder('utf8').decode(bytes.subarray(SEQUENCE_START, SVG_HEAD_BYTES))
 
   return /^<svg[\s/>]/i.test(afterPrologue(head))
 }

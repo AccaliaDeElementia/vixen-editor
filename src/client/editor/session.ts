@@ -1,5 +1,7 @@
 'use sanity'
 
+import { PAST_SEPARATOR } from '../../shared/sequences.ts'
+
 import { DocumentRequestError, type DocumentClient } from './document-client.ts'
 
 const HTTP_NOT_FOUND = 404
@@ -15,7 +17,7 @@ function isAbsent(error: unknown): boolean {
 }
 
 function defaultTemplate(id: string): string {
-  const name = id.slice(id.lastIndexOf('/') + 1).replace(/\.[^./]+$/u, '')
+  const name = id.slice(id.lastIndexOf('/') + PAST_SEPARATOR).replace(/\.[^./]+$/u, '')
   return `# ${name}\n\nTODO: start writing.\n`
 }
 

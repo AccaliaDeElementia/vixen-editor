@@ -36,6 +36,8 @@ export function toggleExplorer(): boolean {
   return next
 }
 
+const NO_STORED_WIDTH = 0
+
 function describeWidth(root: ParentNode, widthPx: number, viewportPx: number): void {
   const resizer = root.querySelector(RESIZER_SELECTOR)
   if (resizer === null) return
@@ -68,7 +70,7 @@ export function applyExplorerState(root: ParentNode, viewportPx: number): void {
 
   if (state.widthPx === null) {
     app.style.removeProperty('--explorer-width')
-    describeWidth(root, 0, viewportPx)
+    describeWidth(root, NO_STORED_WIDTH, viewportPx)
     return
   }
 

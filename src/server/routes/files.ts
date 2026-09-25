@@ -1,5 +1,7 @@
 'use sanity'
 
+import { SEQUENCE_START } from '../../shared/sequences.ts'
+
 import path from 'node:path'
 
 import { zValidator } from '@hono/zod-validator'
@@ -23,12 +25,15 @@ const UNTRUSTED_CONTENT_HEADERS: Readonly<Record<string, string>> = {
   'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",
 }
 
-const folderBodySchema = z.object({ path: z.string().min(1) })
+const NON_EMPTY = 1
+const UNDECLARED_LENGTH = 0
+
+const folderBodySchema = z.object({ path: z.string().min(NON_EMPTY) })
 const moveBodySchema = z.object({
-  from: z.string().min(1),
-  to: z.string().min(1),
+  from: z.string().min(NON_EMPTY),
+  to: z.string().min(NON_EMPTY),
 })
-const documentBodySchema = z.object({ path: z.string().min(1), content: z.string().optional() })
+const documentBodySchema = z.object({ path: z.string().min(NON_EMPTY), content: z.string().optional() })
 
 const HEX = 16
 const UNSAFE_IN_QUOTED_FILENAME = /[^A-Za-z0-9._-]+/gu
@@ -46,7 +51,7 @@ function contentDisposition(name: string): string {
   const fallback = name.replaceAll(UNSAFE_IN_QUOTED_FILENAME, '_')
   const encoded = encodeURIComponent(name).replaceAll(
     NOT_ATTR_CHAR,
-    (character) => `%${character.charCodeAt(0).toString(HEX).toUpperCase()}`,
+    (character) => `%${character.charCodeAt(SEQUENCE_START).toString(HEX).toUpperCase()}`,
   )
 
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`
@@ -120,7 +125,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
   })
 
   routes.post('/uploads', async (c) => {
-    const declared = Number(c.req.header('content-length') ?? 0)
+    const declared = Number(c.req.header('content-length') ?? UNDECLARED_LENGTH)
     if (declared > limits.uploadMaxBytes) return payloadTooLarge(c, limits.uploadMaxBytes)
 
     const body = await c.req.parseBody()

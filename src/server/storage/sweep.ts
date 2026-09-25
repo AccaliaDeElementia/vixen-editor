@@ -1,5 +1,7 @@
 'use sanity'
 
+import { EMPTY } from '../../shared/sequences.ts'
+
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -42,7 +44,7 @@ export async function sweepTemporaries(docsRoot: string): Promise<string[]> {
   const removed: string[] = []
   await sweepDirectory(path.resolve(docsRoot), '', removed)
 
-  if (removed.length > 0) logSwept('removed %d abandoned temporary file(s)', removed.length)
+  if (removed.length > EMPTY) logSwept('removed %d abandoned temporary file(s)', removed.length)
 
   return removed.sort((a, b) => a.localeCompare(b))
 }

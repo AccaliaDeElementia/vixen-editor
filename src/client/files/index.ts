@@ -20,6 +20,10 @@ interface FileTreeOptions {
   dialogs?: Dialogs
 }
 
+const NEXT_ROW = 1
+const PREVIOUS_ROW = -1
+const LAST_ANCESTOR = -1
+
 interface Mounted {
   tree: HTMLElement
   root: ParentNode
@@ -97,7 +101,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
       return true
     }
 
-    return focusAt(index + 1)
+    return focusAt(index + NEXT_ROW)
   }
 
   function collapseOrAscend(current: VisibleRow, index: number): boolean {
@@ -106,7 +110,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
       return true
     }
 
-    const parent = ancestorsOf(current.path).at(-1)
+    const parent = ancestorsOf(current.path).at(LAST_ANCESTOR)
 
     return parent !== undefined && focusAt(indexOfPath(parent))
   }
@@ -123,8 +127,8 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   function handleKey(key: string, current: VisibleRow): boolean {
     const index = visible.indexOf(current)
 
-    if (key === 'ArrowDown') return focusAt(index + 1)
-    if (key === 'ArrowUp') return focusAt(index - 1)
+    if (key === 'ArrowDown') return focusAt(index + NEXT_ROW)
+    if (key === 'ArrowUp') return focusAt(index + PREVIOUS_ROW)
     if (key === 'ArrowRight') return expandOrDescend(current, index)
     if (key === 'ArrowLeft') return collapseOrAscend(current, index)
     if (key === 'Enter') return activate(current)

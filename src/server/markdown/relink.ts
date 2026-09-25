@@ -1,5 +1,7 @@
 'use sanity'
 
+import { EMPTY, NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
+
 import path from 'node:path'
 
 import { rewriteLinkDestinations } from './links.ts'
@@ -30,7 +32,7 @@ export function movedPath(moves: readonly PathMove[], entryPath: string): string
 function directoryOf(entryPath: string): string {
   const cut = entryPath.lastIndexOf('/')
 
-  return cut === -1 ? '' : entryPath.slice(0, cut)
+  return cut === NOT_FOUND ? '' : entryPath.slice(SEQUENCE_START, cut)
 }
 
 function resolveWithin(directory: string, destination: string): string | null {
@@ -44,7 +46,7 @@ function resolveWithin(directory: string, destination: string): string | null {
       continue
     }
 
-    if (segments.length === 0) return null
+    if (segments.length === EMPTY) return null
     segments.pop()
   }
 
@@ -65,7 +67,7 @@ function asWholeName(destination: string): Reading {
 }
 
 function asUrlWithSuffix(destination: string, suffixAt: number): Reading {
-  return { pathPart: destination.slice(0, suffixAt), suffix: destination.slice(suffixAt) }
+  return { pathPart: destination.slice(SEQUENCE_START, suffixAt), suffix: destination.slice(suffixAt) }
 }
 
 function readingsInPrecedenceOrder(destination: string): Reading[] {
