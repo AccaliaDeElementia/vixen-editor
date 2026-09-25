@@ -42,8 +42,6 @@ function collect(entries: readonly TreeEntry[]): ArchiveContents {
       continue
     }
 
-    // A folder with contents is implied by the paths of those contents, so only
-    // an empty one needs an entry of its own to survive the round trip.
     if (entry.children.length === 0) {
       directories.push(entry.path)
       continue

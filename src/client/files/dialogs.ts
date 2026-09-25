@@ -1,5 +1,7 @@
 'use sanity'
 
+type RejectionMessage = string
+
 const DIALOG_SELECTOR = '#file-dialog'
 
 const CONFIRM_VALUE = 'confirm'
@@ -9,10 +11,7 @@ interface PromptRequest {
   label: string
   confirmLabel: string
   value?: string
-  // Returns a message to show inside the still-open dialog, or null on success.
-  // Keeping the dialog open is the point: a rejected name is corrected where it
-  // was typed rather than announced somewhere else after the dialog has gone.
-  submit: (value: string) => Promise<string | null>
+  submit: (value: string) => Promise<RejectionMessage | null>
 }
 
 interface ConfirmRequest {
@@ -56,9 +55,6 @@ function partsOf(root: ParentNode): Parts | null {
   return { dialog, title, message, field, label, input, error, cancel, confirm }
 }
 
-// A form with method="dialog" would close the dialog for free, but a form
-// wrapping a lone text field is what makes a password manager offer to fill
-// it. Closing by hand costs two listeners and removes the signal entirely.
 function bindClosing(parts: Parts): void {
   parts.cancel.addEventListener('click', () => {
     parts.dialog.close('cancel')

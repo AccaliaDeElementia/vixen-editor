@@ -55,9 +55,7 @@ interface SimpleMapping {
   message: string
 }
 
-// Errors whose response is nothing but a status and a code. The few that carry
-// extra fields stay spelled out below, where their shape is visible.
-const SIMPLE_ERRORS: readonly SimpleMapping[] = [
+const STATUS_AND_CODE_ONLY: readonly SimpleMapping[] = [
   { type: InvalidPathError, status: HTTP_BAD_REQUEST, code: 'INVALID_PATH', message: 'Invalid path' },
   { type: DocumentNotFoundError, status: HTTP_NOT_FOUND, code: 'NOT_FOUND', message: 'Document not found' },
   { type: EntryExistsError, status: HTTP_CONFLICT, code: 'ALREADY_EXISTS', message: 'Already exists' },
@@ -82,7 +80,7 @@ const SIMPLE_ERRORS: readonly SimpleMapping[] = [
 ]
 
 export function toErrorResponse(c: Context, error: unknown): Response {
-  const simple = SIMPLE_ERRORS.find(({ type }) => error instanceof type)
+  const simple = STATUS_AND_CODE_ONLY.find(({ type }) => error instanceof type)
   if (simple !== undefined) return refuse(c, simple.status, simple.code, { error: simple.message })
 
   if (error instanceof InvalidMoveError) {

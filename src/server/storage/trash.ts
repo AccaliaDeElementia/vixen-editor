@@ -33,10 +33,7 @@ export interface TrashEntry {
   kind: TrashKind
 }
 
-// Timestamps are millisecond-resolution, so a burst of deletes can tie. The id
-// breaks the tie only to keep the order stable between requests; within a tie
-// it carries no meaning.
-function newestFirst(a: TrashEntry, b: TrashEntry): number {
+function newestFirstThenIdForStableTies(a: TrashEntry, b: TrashEntry): number {
   const byTime = b.deletedAt.localeCompare(a.deletedAt)
 
   return byTime === 0 ? a.id.localeCompare(b.id) : byTime
@@ -126,7 +123,7 @@ export async function readTrash(root: string): Promise<TrashEntry[]> {
 
       return [{ id, ...meta }]
     })
-    .sort(newestFirst)
+    .sort(newestFirstThenIdForStableTies)
 }
 
 export async function restoreFromTrash(root: string, entryId: string): Promise<string> {

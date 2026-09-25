@@ -1,6 +1,10 @@
 'use sanity'
 
 type FileKind = 'document' | 'image'
+type FolderPath = string
+
+export const STORE_ROOT = ''
+
 export type EntryKind = FileKind | 'folder'
 
 interface FileNode {
@@ -68,8 +72,7 @@ export function parseTrash(payload: unknown): TrashNode[] {
   return payload.entries.flatMap((entry: unknown) => parseTrashNode(entry) ?? [])
 }
 
-// Every folder on the way down to an entry, so opening a document can reveal it.
-export function ancestorsOf(entryPath: string): string[] {
+export function ancestorsOf(entryPath: string): FolderPath[] {
   const segments = entryPath.split('/')
   segments.pop()
 

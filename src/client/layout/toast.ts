@@ -11,9 +11,6 @@ export interface Toast {
   error: (message: string) => void
 }
 
-// One element, several callers holding their own handle to it. The timer
-// belongs to the element rather than the handle, so a message written through
-// one handle cannot be hidden early by the timer of another.
 const hideTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>()
 
 export function createToast(root: ParentNode = document): Toast {

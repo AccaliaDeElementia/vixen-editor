@@ -9,7 +9,7 @@ import { createDialogs, type Dialogs } from './dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
-import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
+import { ancestorsOf, folderPathsIn, STORE_ROOT, type TrashNode, type TreeNode } from './tree-model.ts'
 import { renderTree, rowIndexOf, ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR, type VisibleRow } from './tree-view.ts'
 
 interface FileTreeOptions {
@@ -64,15 +64,13 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
   }
 
-  // Where a create or an upload lands: inside a selected folder, beside a
-  // selected file, and at the store root when nothing is selected.
   function targetDirectory(): string {
-    if (selected === null || selected === TRASH_PATH) return ''
+    if (selected === null || selected === TRASH_PATH) return STORE_ROOT
 
     const row = visible.find((candidate) => candidate.path === selected)
-    if (row === undefined) return ''
+    if (row === undefined) return STORE_ROOT
 
-    return row.expandable ? selected : (ancestorsOf(selected).at(-1) ?? '')
+    return row.expandable ? selected : (ancestorsOf(selected).at(-1) ?? STORE_ROOT)
   }
 
   function indexOfPath(entryPath: string): number {
@@ -187,8 +185,6 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
     dialogs,
     toast,
     targetDirectory,
-    // A url can name a document the tree does not hold — one that was deleted,
-    // or never created. Nothing is selected in that case, whatever the url says.
     selectionPath: () => (visible.some((row) => row.path === selected) ? selected : null),
     refresh: load,
     reveal,

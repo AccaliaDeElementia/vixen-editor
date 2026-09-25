@@ -8,8 +8,6 @@ export interface DocumentMoved extends EntryMove {
   rewritten: readonly string[]
 }
 
-// A typed subclass rather than a CustomEvent, so the listener narrows with
-// `instanceof` instead of asserting that `detail` is what it hoped for.
 class DocumentMovedEvent extends Event {
   readonly moved: DocumentMoved
 

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { parseTrash, parseTree, type TrashNode, type TreeNode } from './tree-model.ts'
+import { parseTrash, parseTree, STORE_ROOT, type TrashNode, type TreeNode } from './tree-model.ts'
 
 export interface FilesClient {
   tree: () => Promise<TreeNode[]>
@@ -13,6 +13,8 @@ export interface FilesClient {
   restore: (entryId: string) => Promise<void>
   purge: (entryId: string) => Promise<void>
 }
+
+type RepairedPath = string
 
 export class FilesRequestError extends Error {
   override readonly name = 'FilesRequestError'
@@ -51,7 +53,7 @@ function encodePath(entryPath: string): string {
 }
 
 export function archiveUrlFor(directory: string, baseUrl = '/api'): string {
-  return directory === ''
+  return directory === STORE_ROOT
     ? `${baseUrl}/files/archive`
     : `${baseUrl}/files/archive?path=${encodeURIComponent(directory)}`
 }
@@ -105,9 +107,7 @@ export function createFilesClient(fetchImpl: typeof fetch = globalThis.fetch, ba
       return isRecord(created) && typeof created.path === 'string' ? created.path : ''
     },
 
-    // The paths whose links the move repaired. A server that answers with
-    // something else costs the editor a warning, never the move itself.
-    async move(from: string, to: string): Promise<string[]> {
+    async move(from: string, to: string): Promise<RepairedPath[]> {
       const outcome: unknown = await postJson(`${baseUrl}/files/moves`, { from, to }).then(
         async (response): Promise<unknown> => await response.json().catch(() => null),
       )

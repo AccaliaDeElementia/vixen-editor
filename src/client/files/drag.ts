@@ -6,6 +6,13 @@ import type { Toast } from '../layout/toast.ts'
 import type { Dialogs } from './dialogs.ts'
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
+import { STORE_ROOT } from './tree-model.ts'
+
+type OnceRebuilt = () => void
+
+type DropDirectory = string
+
+type DestinationPath = string
 
 const DRAG_MIME = 'application/x-vixen-path'
 const DROP_TARGET_CLASS = 'tree__row--drop'
@@ -31,17 +38,15 @@ function basenameOf(entryPath: string): string {
 function parentOf(entryPath: string): string {
   const cut = entryPath.lastIndexOf('/')
 
-  return cut === -1 ? '' : entryPath.slice(0, cut)
+  return cut === -1 ? STORE_ROOT : entryPath.slice(0, cut)
 }
 
 function joinInto(directory: string, name: string): string {
-  return directory === '' ? name : `${directory}/${name}`
+  return directory === STORE_ROOT ? name : `${directory}/${name}`
 }
 
-// The directory a drop on this row would land in. The trash and its entries
-// are rows but not places in the store, so they take no drops at all.
-function containerOf(row: VisibleRow | undefined): string | null {
-  if (row === undefined) return ''
+function containerOf(row: VisibleRow | undefined): DropDirectory | null {
+  if (row === undefined) return STORE_ROOT
   if (!isStoreRow(row)) return null
 
   return row.kind === 'folder' ? row.path : parentOf(row.path)
@@ -59,10 +64,13 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   // whether a drop is legal at all.
   let dragging: string | null = null
 
-  // null is the tree background: a legal drop target with no row to mark.
-  function highlight(index: number | null): void {
+  function clearDropTarget(): void {
     for (const marked of tree.querySelectorAll(`.${DROP_TARGET_CLASS}`)) marked.classList.remove(DROP_TARGET_CLASS)
-    if (index !== null) tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)[index]?.classList.add(DROP_TARGET_CLASS)
+  }
+
+  function markDropTarget(rowIndex: number): void {
+    clearDropTarget()
+    tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)[rowIndex]?.classList.add(DROP_TARGET_CLASS)
   }
 
   function targetOf(event: DragEvent): { directory: string; index: number | null } | null {
@@ -74,10 +82,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     return { directory, index }
   }
 
-  // Returns where the entry ended up, or null when nothing moved, so the
-  // caller can show the user where it went rather than leaving it hidden
-  // inside whichever folder it was dropped on.
-  async function moveInto(from: string, directory: string): Promise<string | null> {
+  async function moveInto(from: string, directory: string): Promise<DestinationPath | null> {
     const to = joinInto(directory, basenameOf(from))
     if (to === from) return null
 
@@ -96,9 +101,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     }
   }
 
-  // Work may hand back something to do once the tree has been rebuilt, which
-  // is the only point at which a newly moved row exists to be revealed.
-  function run(work: () => Promise<(() => void) | undefined>): void {
+  function run(work: () => Promise<OnceRebuilt | undefined>): void {
     void (async () => {
       try {
         const after = await work()
@@ -121,28 +124,29 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
 
   tree.addEventListener('dragend', () => {
     dragging = null
-    highlight(null)
+    clearDropTarget()
   })
 
   tree.addEventListener('dragover', (event) => {
     const target = targetOf(event)
     if (target === null) {
-      highlight(null)
+      clearDropTarget()
       return
     }
 
     // Without this the browser leaves the page to open the dragged file.
     event.preventDefault()
-    highlight(target.index)
+    if (target.index === null) clearDropTarget()
+    else markDropTarget(target.index)
   })
 
   tree.addEventListener('dragleave', (event) => {
-    if (event.target === tree) highlight(null)
+    if (event.target === tree) clearDropTarget()
   })
 
   tree.addEventListener('drop', (event) => {
     const target = targetOf(event)
-    highlight(null)
+    clearDropTarget()
     if (target === null || event.dataTransfer === null) return
 
     event.preventDefault()

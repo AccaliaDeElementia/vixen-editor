@@ -36,11 +36,9 @@ async function writeThenSync(target: string, data: string | Uint8Array): Promise
   }
 }
 
-// Cleanup, not part of the write: whether it succeeds says nothing about
-// whether the data landed. `handle.close` is deliberately not treated this
-// way — a close that fails is a write that failed, and the caller has to hear
-// about that one.
-async function discard(temporary: string): Promise<void> {
+// `handle.close` is deliberately not treated this way: on NFS a close is where
+// a deferred write error surfaces, so a close that fails is a write that failed.
+async function discardIgnoringFailure(temporary: string): Promise<void> {
   try {
     await fs.rm(temporary, { force: true })
   } catch (error) {
@@ -59,7 +57,7 @@ async function throughTemporary(
     await writeThenSync(temporary, data)
     await place(temporary)
   } finally {
-    await discard(temporary)
+    await discardIgnoringFailure(temporary)
   }
 }
 

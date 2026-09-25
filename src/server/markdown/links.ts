@@ -85,9 +85,6 @@ function findLinkDestinations(markdown: string): LinkDestination[] {
   return found
 }
 
-// Returning the destination unchanged leaves its bytes exactly as the author
-// wrote them, which is what keeps an identity rewrite byte-identical: the
-// written form and the decoded value are not the same string.
 export function rewriteLinkDestinations(markdown: string, rewrite: (destination: string) => string): string {
   let result = markdown
 

@@ -8,8 +8,6 @@ const DEFAULT_PORT = 3000
 const MIN_PORT = 1
 const MAX_PORT = 65535
 
-// A waiter that gives up this fast turns ordinary concurrency into 503s. The
-// lock is still correct below it; it just stops being worth waiting on.
 const MIN_WRITE_LOCK_TIMEOUT_MS = 250
 
 // Past a client's own timeout the 503 can never be delivered, so a waiter

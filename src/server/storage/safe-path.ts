@@ -20,9 +20,7 @@ const MAX_NAME_BYTES = 255
 
 const CONTROL = /\p{Cc}/u
 
-// Every invisible formatting character except the zero-width joiner, which is
-// the one the emoji sequences below legitimately need.
-const INVISIBLE = /(?!\u200D)\p{Cf}/u
+const INVISIBLE_EXCEPT_JOINER = /(?!\u200D)\p{Cf}/u
 
 // A well-formed emoji ZWJ sequence: pictographs joined through the joiner, with
 // skin-tone modifiers and variation selectors allowed between them.
@@ -43,8 +41,6 @@ function byteLength(name: string): number {
   return new TextEncoder().encode(name).length
 }
 
-// Joining emoji is the only thing a joiner is for, so once the well-formed
-// sequences are removed any joiner left behind is hiding inside ordinary text.
 function hasStrayJoiner(name: string): boolean {
   return name.replace(EMOJI_ZWJ_SEQUENCE, '').includes(ZERO_WIDTH_JOINER)
 }
@@ -60,7 +56,10 @@ const NAME_RULES: readonly NameRule[] = [
   { rejects: (name) => name.startsWith('.'), reason: 'must not contain a segment beginning with a dot' },
   { rejects: (name) => name.includes('\\'), reason: 'must not contain a backslash' },
   { rejects: (name) => CONTROL.test(name), reason: 'must not contain a control character' },
-  { rejects: (name) => INVISIBLE.test(name), reason: 'must not contain an invisible formatting character' },
+  {
+    rejects: (name) => INVISIBLE_EXCEPT_JOINER.test(name),
+    reason: 'must not contain an invisible formatting character',
+  },
   { rejects: hasStrayJoiner, reason: 'may only use a zero-width joiner between emoji' },
   { rejects: (name) => name.trim() === '', reason: 'must not be only whitespace' },
   { rejects: (name) => name !== name.trim(), reason: 'must not begin or end with whitespace' },

@@ -20,11 +20,9 @@ function holderOfEachPath(documentIds: readonly string[], moves: readonly PathMo
   return new Map(documentIds.map((id) => [movedPath(moves, id), id]))
 }
 
-// Every form this repairs — inline link, image, reference definition — needs
-// `](` or `]:` written literally, and CommonMark allows no whitespace between
-// the bracket and what follows it, so no escaping or encoding can produce one
-// without it appearing. A document with neither holds nothing to repair, and
-// parsing is most of what a move costs.
+// CommonMark allows no whitespace between the bracket and what follows it, so
+// every form this repairs needs `](` or `]:` written literally and no escaping
+// or encoding can produce one without it appearing.
 function mayHoldLinks(content: string): boolean {
   return content.includes('](') || content.includes(']:')
 }

@@ -4,6 +4,7 @@ import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
 import { archiveUrlFor, FilesRequestError, type FilesClient } from './files-client.ts'
+import { STORE_ROOT } from './tree-model.ts'
 
 const ACTION_SELECTORS = {
   newDocument: '#new-document',
@@ -35,7 +36,7 @@ export interface ActionContext {
 }
 
 function joinPath(directory: string, name: string): string {
-  return directory === '' ? name : `${directory}/${name}`
+  return directory === STORE_ROOT ? name : `${directory}/${name}`
 }
 
 function describe(error: unknown): string {
@@ -157,8 +158,6 @@ interface TrashAction {
   trashId: string
 }
 
-// The trash action an event came from, or null when it came from anywhere else
-// — including a target that is no element at all.
 function trashActionOf(target: EventTarget | null): TrashAction | null {
   const button = target instanceof Element ? target.closest<HTMLElement>('[data-action]') : null
   const trashId = button?.dataset.trashId

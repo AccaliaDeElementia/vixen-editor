@@ -65,7 +65,7 @@ describe('loadConfig', () => {
   // timeout, not the hold time. What a tiny value destroys is patience: every
   // waiter gives up at once and ordinary concurrency turns into 503s.
   it.each([
-    ['1ms, which never queues', '1'],
+    ['1ms, which turns ordinary concurrency into a stream of 503s', '1'],
     ['just under the floor', '249'],
   ])('rejects a timeout of %s', (_label, value) => {
     expect(() => loadConfig({ WRITE_LOCK_TIMEOUT_MS: value })).toThrow(ConfigError)

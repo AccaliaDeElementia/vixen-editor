@@ -1,8 +1,5 @@
 'use sanity'
 
-// Long enough that ordinary contention is invisible latency, short enough
-// that a genuinely wedged write reports rather than hanging. Configurable
-// because a large or link-dense store makes a move take longer.
 export const DEFAULT_WRITE_LOCK_TIMEOUT_MS = 5000
 
 export class LockTimeoutError extends Error {

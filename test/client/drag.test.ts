@@ -6,7 +6,7 @@ import { TestOnly } from '../../src/client/files/drag.ts'
 import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
-import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
+import { ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR } from '../../src/client/files/tree-view.ts'
 
 const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf, joinInto } = TestOnly
 
@@ -119,6 +119,13 @@ function drag(from: string, onto: HTMLElement, transfer = internalTransfer(from)
   const drop = dragEvent('drop', transfer)
   onto.dispatchEvent(drop)
   return drop
+}
+
+function treeElement(): HTMLElement {
+  const tree = document.querySelector<HTMLElement>(TREE_SELECTOR)
+  if (tree === null) throw new Error('no tree')
+
+  return tree
 }
 
 function statusText(): string {
@@ -326,6 +333,18 @@ describe('where a drop is refused', () => {
 
     expect(over.defaultPrevented).toBe(false)
     expect(rowFor('journal/2026').className).not.toContain(DROP_TARGET_CLASS)
+  })
+
+  it('marks no row when the drag is over the tree background, which is the root', async () => {
+    await start()
+    const transfer = internalTransfer('notes.md')
+    rowFor('notes.md').dispatchEvent(dragEvent('dragstart', transfer))
+
+    const over = dragEvent('dragover', transfer)
+    treeElement().dispatchEvent(over)
+
+    expect(over.defaultPrevented).toBe(true)
+    expect(document.querySelectorAll(`.${DROP_TARGET_CLASS}`)).toHaveLength(0)
   })
 
   it('offers no affordance onto the trash', async () => {

@@ -41,10 +41,6 @@ function archiveName(subtree: string): string {
   return `vixen-${leaf === '' ? 'documents' : leaf}.zip`
 }
 
-// A name may hold a quote, a space or an emoji, so the quoted form cannot
-// carry it: a quote closes the string early and the header is malformed.
-// The real name travels percent-encoded in `filename*`, and the quoted form
-// is a plain-ASCII fallback for anything that cannot read that.
 function contentDisposition(name: string): string {
   const fallback = name.replaceAll(UNSAFE_IN_QUOTED_FILENAME, '_')
   const encoded = encodeURIComponent(name).replaceAll(

@@ -29,8 +29,7 @@ async function sweepDirectory(directory: string, prefix: string, removed: string
       continue
     }
 
-    // isFile is false for a symlink, which is what keeps a name inside the
-    // store from deleting a file outside it.
+    // isFile is false for a symlink, never true for one it points at.
     if (!entry.isFile() || !isTemporaryName(entry.name)) continue
 
     /* eslint-disable-next-line no-await-in-loop -- see above */

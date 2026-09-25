@@ -60,18 +60,19 @@ function expressRelative(writtenPath: string, directory: string, target: string)
   return keepPrefix ? `${EXPLICITLY_RELATIVE}${relative}` : relative
 }
 
-// `?` and `#` are legal in a name here, so a destination can be read either as
-// a filename or as a URL with a query or fragment. Both readings are offered,
-// filename first, and the caller settles it by which one names something that
-// actually moved.
-function readingsOf(destination: string): Reading[] {
-  const suffix = SUFFIX_START.exec(destination)
-  if (suffix === null) return [{ pathPart: destination, suffix: '' }]
+function asWholeName(destination: string): Reading {
+  return { pathPart: destination, suffix: '' }
+}
 
-  return [
-    { pathPart: destination, suffix: '' },
-    { pathPart: destination.slice(0, suffix.index), suffix: destination.slice(suffix.index) },
-  ]
+function asUrlWithSuffix(destination: string, suffixAt: number): Reading {
+  return { pathPart: destination.slice(0, suffixAt), suffix: destination.slice(suffixAt) }
+}
+
+function readingsInPrecedenceOrder(destination: string): Reading[] {
+  const suffix = SUFFIX_START.exec(destination)
+  if (suffix === null) return [asWholeName(destination)]
+
+  return [asWholeName(destination), asUrlWithSuffix(destination, suffix.index)]
 }
 
 function relinkDestination(
@@ -84,7 +85,7 @@ function relinkDestination(
 
   let rebased: string | null = null
 
-  for (const { pathPart, suffix } of readingsOf(destination)) {
+  for (const { pathPart, suffix } of readingsInPrecedenceOrder(destination)) {
     if (pathPart === '') continue
 
     const oldTarget = resolveWithin(oldDirectory, pathPart)

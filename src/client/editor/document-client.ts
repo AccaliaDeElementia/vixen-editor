@@ -62,8 +62,6 @@ async function createdEtagOf(response: Response): Promise<string> {
 export function createDocumentClient(fetchImpl: typeof fetch = globalThis.fetch, baseUrl = '/api'): DocumentClient {
   const documentsUrl = `${baseUrl}/documents`
 
-  // A 503 is the write lock reporting contention, so one immediate retry turns
-  // a lost race into latency. Anything still failing is reported to the caller.
   async function retrying(url: string, init: RequestInit): Promise<Response> {
     const first = await fetchImpl(url, init)
     if (first.status !== HTTP_SERVICE_UNAVAILABLE) return first
@@ -108,8 +106,6 @@ export function createDocumentClient(fetchImpl: typeof fetch = globalThis.fetch,
       return etagOf(response)
     },
 
-    // Deleting goes to the trash rather than removing bytes, so it is the file
-    // API that owns it; the document API has no delete at all.
     async remove(entryPath: string): Promise<void> {
       const response = await retrying(`${baseUrl}/files/entries/${encodeDocumentId(entryPath)}`, { method: 'DELETE' })
       if (!response.ok) await throwRequestError(response)

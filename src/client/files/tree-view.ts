@@ -14,18 +14,14 @@ const ENTRY_ICONS: Readonly<Record<EntryKind, string>> = {
   image: 'image',
 }
 
-// What the render produced, in the order the rows appear. The controller works
-// from this rather than reading state back out of attributes, so a path and
-// whether it expands are never re-derived from the DOM.
 export interface VisibleRow {
   path: string
   expandable: boolean
   kind: RowKind
 }
 
-// `trash` is the pseudo-folder itself and `trashed` one of its entries. Both
-// render as rows and neither names a place in the store, which is why
-// `isStoreRow` exists rather than the two-clause test it replaces.
+// `trash` is the pseudo-folder itself and `trashed` one of its entries: the
+// two literals the union cannot tell apart on its own.
 type RowKind = EntryKind | 'trash' | 'trashed'
 
 interface StoreRow extends VisibleRow {
@@ -119,8 +115,6 @@ function action(spec: ActionSpec, entry: TrashNode): HTMLElement {
   element.dataset.trashId = entry.id
   element.setAttribute('aria-label', spec.label)
 
-  // Its own tooltip, or the row's deletion time shows for both buttons and
-  // leaves two actions with very different consequences reading identically.
   element.title = spec.label
 
   const symbol = document.createElement('span')
@@ -232,7 +226,6 @@ function renderTrash(model: TreeViewModel): Rendered {
   return { items: [element], visible }
 }
 
-// Exactly one row is reachable by Tab; the arrow keys move within the tree.
 function applyRovingTabindex(tree: Element): void {
   const rows = [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
   const focusable = rows.find((candidate) => candidate.getAttribute('aria-selected') === 'true') ?? rows[0]
