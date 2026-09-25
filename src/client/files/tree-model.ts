@@ -1,13 +1,11 @@
 'use sanity'
 
 import { isRecord } from '../../shared/guards.ts'
+import { isEntryKind, type EntryKind, type FileKind } from '../../shared/documents.ts'
 
-type FileKind = 'document' | 'image'
 type FolderPath = string
 
 export const STORE_ROOT = ''
-
-export type EntryKind = FileKind | 'folder'
 
 interface FileNode {
   name: string
@@ -29,10 +27,6 @@ export interface TrashNode {
   originalPath: string
   kind: EntryKind
   deletedAt: string
-}
-
-function isEntryKind(value: unknown): value is EntryKind {
-  return value === 'folder' || value === 'document' || value === 'image'
 }
 
 function parseNode(value: unknown): TreeNode | null {

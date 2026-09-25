@@ -8,11 +8,10 @@ import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { DOCUMENT_EXTENSIONS, extensionOf, IMAGE_EXTENSIONS, isAllowedName } from './safe-path.ts'
+import type { FileKind } from '../../shared/documents.ts'
 
 const logEscape = createLogger('storage/tree', 'symlinkEscape')
 const logCycle = createLogger('storage/tree', 'symlinkCycle')
-
-export type FileKind = 'document' | 'image'
 
 export interface FolderEntry {
   name: string

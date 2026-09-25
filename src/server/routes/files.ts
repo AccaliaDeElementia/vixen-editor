@@ -7,12 +7,13 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import type { Limits } from '../config.ts'
-import { FOLDER_INDEX_NAME, type DocumentStore } from '../storage/fs-store.ts'
+import type { DocumentStore } from '../storage/fs-store.ts'
 import { mediaTypeOf } from '../storage/media-type.ts'
 import { joinEntryPath } from '../storage/safe-path.ts'
 import { seedDocument, seedFolderIndex } from '../storage/seed.ts'
 
 import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'
+import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 
 const HTTP_OK = 200
 const HTTP_CREATED = 201

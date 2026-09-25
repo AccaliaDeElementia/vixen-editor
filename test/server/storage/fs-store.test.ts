@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFsDocumentStore, FOLDER_INDEX_NAME, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import {
   ConcurrentModificationError,
   ContentMismatchError,
@@ -15,6 +15,7 @@ import {
   EntryExistsError,
 } from '../../../src/server/storage/store-errors.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
+import { FOLDER_INDEX_NAME } from '../../../src/shared/documents.ts'
 
 // Every segment is inside NAME_MAX, but the whole path exceeds PATH_MAX (4096),
 // so the filesystem refuses it with ENAMETOOLONG rather than reporting absence.

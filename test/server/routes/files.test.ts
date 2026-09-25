@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { buildApp } from '../../../src/server/app.ts'
 import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
-import { createFsDocumentStore, FOLDER_INDEX_NAME, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { FOLDER_INDEX_NAME } from '../../../src/shared/documents.ts'
 
 let root: string
 let store: DocumentStore

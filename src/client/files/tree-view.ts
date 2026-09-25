@@ -2,7 +2,8 @@
 
 import { docUrlFor } from '../doc-path.ts'
 
-import type { EntryKind, TrashNode, TreeNode } from './tree-model.ts'
+import type { TrashNode, TreeNode } from './tree-model.ts'
+import type { EntryKind } from '../../shared/documents.ts'
 
 export const TREE_SELECTOR = '#file-tree'
 export const ROW_SELECTOR = '[role="treeitem"]'

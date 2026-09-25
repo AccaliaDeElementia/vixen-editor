@@ -10,8 +10,9 @@ import { createFileAtomic } from './atomic-write.ts'
 import { nullWhenAbsent } from './containment.ts'
 import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { asDocumentError, DocumentNotFoundError, EntryExistsError } from './store-errors.ts'
-import { classifyFile, type FileKind } from './tree.ts'
+import { classifyFile } from './tree.ts'
 import { isRecord } from '../../shared/guards.ts'
+import type { EntryKind } from '../../shared/documents.ts'
 
 const logTrash = createLogger('storage/trash')
 const logDamaged = createLogger('storage/trash', 'damagedEntry')
@@ -25,13 +26,11 @@ const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 const ABSENT_CODES = ['ENOENT', 'ENOTDIR'] as const
 
-export type TrashKind = FileKind | 'folder'
-
 export interface TrashEntry {
   id: string
   originalPath: string
   deletedAt: string
-  kind: TrashKind
+  kind: EntryKind
 }
 
 function newestFirstThenIdForStableTies(a: TrashEntry, b: TrashEntry): number {
@@ -74,7 +73,7 @@ async function readMeta(root: string, entryId: string): Promise<Omit<TrashEntry,
   }
 }
 
-export async function entryKindOf(entryPath: string, target: string): Promise<TrashKind> {
+export async function entryKindOf(entryPath: string, target: string): Promise<EntryKind> {
   const stats = await nullWhenAbsent(async () => await fs.stat(target))
   if (stats === null) throw new DocumentNotFoundError(entryPath)
   if (stats.isDirectory()) return 'folder'

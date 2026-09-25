@@ -34,6 +34,7 @@ import {
 } from './store-errors.ts'
 import { classifyFile, readTree, type TreeEntry } from './tree.ts'
 import { moveToTrash, purgeFromTrash, readTrash, restoreFromTrash, type TrashEntry } from './trash.ts'
+import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 
 const logStore = createLogger('storage/fs-store')
 const logEscape = createLogger('storage/fs-store', 'symlinkEscape')
@@ -54,8 +55,6 @@ export interface DocumentStore {
   restore: (entryId: string) => Promise<string>
   purge: (entryId: string) => Promise<void>
 }
-
-export const FOLDER_INDEX_NAME = 'index.md'
 
 function assertNotBlank(id: string, content: string): void {
   if (content.trim() === '') throw new EmptyContentError(id)

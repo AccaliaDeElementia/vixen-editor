@@ -9,7 +9,8 @@ import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { EntryExistsError, InvalidMoveError } from './store-errors.ts'
 import { classifyFile } from './tree.ts'
-import { entryKindOf, type TrashKind } from './trash.ts'
+import { entryKindOf } from './trash.ts'
+import type { EntryKind } from '../../shared/documents.ts'
 
 const logMove = createLogger('storage/move')
 
@@ -18,7 +19,7 @@ export interface MoveRequest {
   to: string
 }
 
-function assertKindSurvives(from: string, to: string, fromKind: TrashKind): void {
+function assertKindSurvives(from: string, to: string, fromKind: EntryKind): void {
   if (fromKind === 'folder') return
 
   if (classifyFile(path.basename(to)) !== fromKind) {
