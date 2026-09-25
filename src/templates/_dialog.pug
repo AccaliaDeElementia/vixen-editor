@@ -5,7 +5,8 @@ dialog.modal#file-dialog(aria-labelledby='file-dialog-title')
       "login", and Bitwarden offered to fill it. test/server/field-naming
       keeps that from coming back. The data attributes are each vendor's
       documented opt-out; data-bwignore is gone because it made no difference.
-  .modal__form
+      The form was measured against Bitwarden and is not a trigger.
+  form.modal__form(method='dialog')
     h2.modal__title#file-dialog-title
     p.modal__message#file-dialog-message
     p.modal__field#file-dialog-field
@@ -21,5 +22,5 @@ dialog.modal#file-dialog(aria-labelledby='file-dialog-title')
       )
     p.modal__error#file-dialog-error(role='alert')
     .modal__actions
-      button.modal__button#file-dialog-cancel(type='button' value='cancel') Cancel
-      button.modal__button.modal__button--primary#file-dialog-confirm(type='button' value='confirm')
+      button.modal__button#file-dialog-cancel(type='submit' value='cancel') Cancel
+      button.modal__button.modal__button--primary#file-dialog-confirm(type='submit' value='confirm')

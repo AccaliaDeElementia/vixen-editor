@@ -264,6 +264,23 @@ test('the toolbar creates a folder through a real modal dialog', async ({ page, 
   await request.delete(`/api/files/entries/${name}`)
 })
 
+test('Enter in the name field confirms, though Cancel is the first button the form would submit', async ({
+  page,
+  request,
+}) => {
+  const name = `entered-${String(Date.now())}`
+  await page.goto('/doc/')
+
+  await page.locator('#new-folder').click()
+  await expect(page.locator('#file-dialog')).toBeVisible()
+  await page.locator('#file-dialog-entry').fill(name)
+  await page.locator('#file-dialog-entry').press('Enter')
+
+  await expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
 test('a rejected name stays in the dialog to be corrected', async ({ page, request }) => {
   const name = `taken-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: name } })

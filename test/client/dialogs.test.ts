@@ -7,7 +7,7 @@ import { createDialogs } from '../../src/client/files/dialogs.ts'
 function page(): void {
   document.body.innerHTML = `
     <dialog id="file-dialog">
-      <div>
+      <form method="dialog">
         <h2 id="file-dialog-title"></h2>
         <p id="file-dialog-message"></p>
         <p id="file-dialog-field">
@@ -15,9 +15,9 @@ function page(): void {
           <input id="file-dialog-entry" type="text">
         </p>
         <p id="file-dialog-error"></p>
-        <button id="file-dialog-cancel" type="button">Cancel</button>
-        <button id="file-dialog-confirm" type="button"></button>
-      </div>
+        <button id="file-dialog-cancel" type="submit" value="cancel">Cancel</button>
+        <button id="file-dialog-confirm" type="submit" value="confirm"></button>
+      </form>
     </dialog>`
 }
 
@@ -248,10 +248,6 @@ describe('a page without the dialog markup', () => {
 })
 
 describe('closing without a form', () => {
-  it('has no form, so closing is wired by hand rather than submitted', () => {
-    expect(document.querySelectorAll('#file-dialog form')).toHaveLength(0)
-  })
-
   it('confirms when Enter is pressed in the field', async () => {
     const dialogs = createDialogs(document)
     const pending = dialogs.prompt({

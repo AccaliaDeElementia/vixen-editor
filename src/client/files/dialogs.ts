@@ -55,13 +55,7 @@ function partsOf(root: ParentNode): Parts | null {
   return { dialog, title, message, field, label, input, error, cancel, confirm }
 }
 
-function bindClosing(parts: Parts): void {
-  parts.cancel.addEventListener('click', () => {
-    parts.dialog.close('cancel')
-  })
-  parts.confirm.addEventListener('click', () => {
-    parts.dialog.close(CONFIRM_VALUE)
-  })
+function bindEnterToConfirm(parts: Parts): void {
   parts.input.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return
 
@@ -134,7 +128,7 @@ async function confirmWith(parts: Parts, request: ConfirmRequest): Promise<boole
 
 export function createDialogs(root: ParentNode = document): Dialogs {
   const parts = partsOf(root)
-  if (parts !== null) bindClosing(parts)
+  if (parts !== null) bindEnterToConfirm(parts)
 
   return {
     async prompt(request: PromptRequest): Promise<boolean> {
