@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { isAtOrInside, realpathOrNull } from '../../../src/server/storage/containment.ts'
 
+const OVER_NAME_MAX = 'a'.repeat(300)
+
 const ROOT = path.resolve('/srv/vixen/docs')
 
 let base: string
@@ -66,8 +68,7 @@ describe('realpathOrNull', () => {
   })
 
   it('surfaces a genuine filesystem fault rather than reporting the path as absent', async () => {
-    // NAME_MAX is 255, so a longer filename yields ENAMETOOLONG rather than ENOENT.
-    await expect(realpathOrNull(path.join(base, 'a'.repeat(300)))).rejects.toThrow(
+    await expect(realpathOrNull(path.join(base, OVER_NAME_MAX))).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })

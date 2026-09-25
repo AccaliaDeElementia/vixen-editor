@@ -51,9 +51,6 @@ describe('the document-moved channel', () => {
     expect(heard).not.toHaveBeenCalled()
   })
 
-  // The name is a string in a shared DOM, so anything may dispatch it. The
-  // listener narrows on the class rather than trusting a `detail` property,
-  // which is what lets it ignore a same-named event without asserting.
   it('ignores an event that merely shares the name', () => {
     const root = document.createElement('div')
     const heard = vi.fn()

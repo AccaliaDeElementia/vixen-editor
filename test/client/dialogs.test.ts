@@ -248,9 +248,7 @@ describe('a page without the dialog markup', () => {
 })
 
 describe('closing without a form', () => {
-  // A form wrapping a lone text field is what makes a password manager offer
-  // to fill it, so the dialog closes itself rather than being submitted.
-  it('has no form for a password manager to recognise', () => {
+  it('has no form, so closing is wired by hand rather than submitted', () => {
     expect(document.querySelectorAll('#file-dialog form')).toHaveLength(0)
   })
 

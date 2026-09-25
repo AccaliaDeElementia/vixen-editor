@@ -18,8 +18,8 @@ async function write(entryPath: string, content = 'x'): Promise<void> {
   await fs.writeFile(path.join(root, entryPath), content)
 }
 
-// The name a real write would have left behind, rather than one hand-written
-// to match the pattern the sweep looks for.
+// The name a real write leaves behind, rather than one hand-written to match
+// the pattern the sweep looks for.
 function orphanIn(directory: string): string {
   const target = path.join(root, directory, 'note.md')
 
@@ -57,8 +57,6 @@ describe('sweepTemporaries', () => {
     await expect(sweepTemporaries(root)).resolves.toStrictEqual([orphan])
   })
 
-  // The trash holds documents too, and its metadata is written through the
-  // same helpers, so an orphan can land inside it.
   it('removes an orphan inside a trash entry', async () => {
     const orphan = orphanIn('.trash/8f14e45f-ea8d-4b9c-a1c2-3d4e5f607182')
     await write(orphan)
@@ -107,8 +105,6 @@ describe('sweepTemporaries', () => {
     expect(await exists('.gitkeep')).toBe(true)
   })
 
-  // Nothing here creates a directory with that name, so one is not ours.
-  // Deleting a tree on a name match is how a small bug becomes data loss.
   it('never removes a directory, even one named like a temporary', async () => {
     const impostor = orphanIn('')
     await fs.mkdir(path.join(root, impostor), { recursive: true })
@@ -126,7 +122,6 @@ describe('sweepTemporaries', () => {
     await expect(sweepTemporaries(root)).resolves.toStrictEqual([orphan])
   })
 
-  // Following one would let a name inside the store delete a file outside it.
   it('never removes through a symlink', async () => {
     const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-outside-'))
     const bait = path.join(outside, 'precious.md')

@@ -63,8 +63,6 @@ describe('docUrlFor', () => {
   })
 })
 
-// A folder move carries everything beneath it, so the document that is open
-// can move without ever being named in the request.
 describe('pathAfterMove', () => {
   const RENAME = { from: 'notes.md', to: 'renamed.md' }
   const FOLDER = { from: 'journal', to: 'archive/journal' }

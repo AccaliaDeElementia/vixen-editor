@@ -227,10 +227,6 @@ async function pressSave(view: EditorView): Promise<void> {
   await Promise.resolve()
 }
 
-// The tree and the editor are mounted separately, so a move reaches the
-// editor only as an event. Without it the editor keeps saving to a path the
-// store no longer has, and a reload of the stale URL shows a template as if
-// the document were new.
 describe('bootstrap follows a document that moves underneath it', () => {
   async function editing(pathname: string, navigated: string[]): Promise<EditorView> {
     return await bootstrap({
@@ -289,7 +285,6 @@ describe('bootstrap follows a document that moves underneath it', () => {
     expect(statusText(root)).toContain('archive/notes.md')
   })
 
-  // The buffer in front of the user is now older than the file on disk.
   it('warns when the move repaired links inside the open document', async () => {
     const navigated: string[] = []
     await editing('/doc/notes.md', navigated)
@@ -308,9 +303,7 @@ describe('bootstrap follows a document that moves underneath it', () => {
     expect(statusText(root)).toContain('reload')
   })
 
-  // The injected navigate covers the decision; this covers the effect it
-  // stands in for, which is the only part that touches real browser history.
-  it('replaces the address by default, without pushing a history entry', async () => {
+  it('replaces the address in real browser history rather than pushing an entry', async () => {
     const before = window.location.pathname
     try {
       await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })

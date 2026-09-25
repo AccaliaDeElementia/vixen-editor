@@ -29,8 +29,6 @@ test('renders the editor page from the pug template', async ({ request }) => {
   expect(res.status()).toBe(200)
   expect(res.headers()['content-type']).toContain('text/html')
   expect(html).toContain('id="editor"')
-  // Rendered, not served from disk: the title comes from a template local, and
-  // pug emits a minified doctype that the old static file did not.
   expect(html).toContain('<title>Vixen Editor</title>')
   expect(html.startsWith('<!DOCTYPE html>')).toBe(true)
 })

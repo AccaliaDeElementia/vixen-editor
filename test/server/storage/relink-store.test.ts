@@ -26,8 +26,6 @@ async function documentIds(): Promise<string[]> {
   return await createFsDocumentStore(root).list()
 }
 
-// The move itself, then the repair — the order the store does it in, because a
-// document has to be read at the path it now occupies.
 async function moveThenRelink(from: string, to: string): Promise<RelinkOutcome> {
   const before = await documentIds()
   await fs.mkdir(path.join(root, path.dirname(to)), { recursive: true })
@@ -195,9 +193,6 @@ describe('relinkAfterMove when one document cannot be repaired', () => {
   })
 })
 
-// Parsing is most of what a move costs, so a document with no link syntax is
-// skipped without parsing. The filter is only allowed to be faster, never to
-// change the answer — so the answer is computed both ways and compared.
 describe('skipping documents that cannot hold a link', () => {
   const JOURNAL_TO_ARCHIVE: PathMove[] = [{ from: 'journal', to: 'archive' }]
 

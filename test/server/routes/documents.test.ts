@@ -100,9 +100,6 @@ describe('GET /api/documents/:id', () => {
     expect(res.headers.get('etag')).not.toBe(etag)
   })
 
-  // The explorer lists whatever is on disk, so anything it can show has to be
-  // openable: a name the listing accepts and the reader refuses is the fault
-  // this guards against.
   it.each([
     ['a space', 'Finding Toy.md'],
     ['an apostrophe', "Rachel's notes.md"],
@@ -306,8 +303,8 @@ describe('write contention', () => {
     occupied: Promise<void>
   }
 
-  // Occupies the very lock the store was built with, so a request has to queue
-  // behind it and give up, without needing a slow filesystem to simulate load.
+  // Holds the lock the store was built with, so a request queues behind it and
+  // gives up without needing a slow filesystem to simulate load.
   function occupy(lock: ReturnType<typeof createWriteLock>): Held {
     const until = gate()
     const started = gate()

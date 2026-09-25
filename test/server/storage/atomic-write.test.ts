@@ -37,10 +37,6 @@ afterEach(async () => {
   await fs.rm(base, { recursive: true, force: true })
 })
 
-// The temporary exists from the moment it is opened, so a failure part way
-// through filling it is not the same case as a failure to create it at all.
-// ENOSPC is the one that matters: a leak there consumes the very space whose
-// exhaustion caused it, so each failed write makes the next one likelier.
 function failEveryWriteWithNoSpace(): void {
   const open = fs.open.bind(fs)
 
@@ -223,10 +219,6 @@ describe('temporaryBeside', () => {
   })
 })
 
-// Removing the temporary is cleanup, not part of the write: whether it works
-// says nothing about whether the data landed. Letting it propagate would
-// replace a real error with a misleading one, or report failure for a file
-// that was in fact created.
 describe('a cleanup that fails', () => {
   function failEveryCleanup(): void {
     vi.spyOn(fs, 'rm').mockImplementation(async (...args: Parameters<typeof fs.rm>) => {
@@ -265,8 +257,6 @@ describe('a cleanup that fails', () => {
     await expect(fs.readFile(at('note.md'), 'utf8')).resolves.toBe('# new')
   })
 
-  // The orphan is the accepted cost, and it is invisible for the same reason a
-  // crash-orphaned one is: nothing in the store will list that name.
   it('leaves the temporary behind, where only a sweep will find it', async () => {
     failEveryCleanup()
 
@@ -280,9 +270,6 @@ describe('a cleanup that fails', () => {
   })
 })
 
-// The sweep that collects abandoned temporaries has to recognise exactly what
-// this module writes. One predicate, used by both, or the prefix changes on
-// one side and the sweep quietly stops matching anything.
 describe('isTemporaryName', () => {
   it('accepts the name this module generates', () => {
     expect(isTemporaryName(path.basename(temporaryBeside(at('note.md'))))).toBe(true)

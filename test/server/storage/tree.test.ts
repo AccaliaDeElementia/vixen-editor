@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { planArchive } from '../../../src/server/storage/archive.ts'
 import { classifyFile, readTree, type FolderEntry, type TreeEntry } from '../../../src/server/storage/tree.ts'
 
+const OVER_NAME_MAX = 'a'.repeat(300)
+
 let root: string
 let outside: string
 
@@ -71,8 +73,7 @@ describe('readTree', () => {
   })
 
   it('surfaces a genuine filesystem fault rather than returning an empty tree', async () => {
-    // NAME_MAX is 255, so a longer directory name yields ENAMETOOLONG rather than ENOENT.
-    await expect(readTree(path.join(root, 'b'.repeat(300)))).rejects.toThrow(
+    await expect(readTree(path.join(root, OVER_NAME_MAX))).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
@@ -229,9 +230,6 @@ describe('readTree', () => {
   })
 })
 
-// Reads never take the write lock, so two tabs are enough: delete a folder in
-// one while the other lists the tree. A listing is a snapshot, and an entry
-// removed while it was being taken is legitimately absent from it.
 describe('a folder deleted while the walk is in progress', () => {
   // The deletion is real, not a mocked error: `stat` runs just before the
   // recursive `readdir`, so removing the folder there reproduces the race

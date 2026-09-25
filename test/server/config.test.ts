@@ -61,9 +61,6 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ WRITE_LOCK_TIMEOUT_MS: value })).toThrow(ConfigError)
   })
 
-  // The lock still serialises writes at any timeout — this is the acquire
-  // timeout, not the hold time. What a tiny value destroys is patience: every
-  // waiter gives up at once and ordinary concurrency turns into 503s.
   it.each([
     ['1ms, which turns ordinary concurrency into a stream of 503s', '1'],
     ['just under the floor', '249'],
@@ -71,8 +68,6 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ WRITE_LOCK_TIMEOUT_MS: value })).toThrow(ConfigError)
   })
 
-  // Past a client's own timeout the 503 can never be delivered, so the server
-  // would hold a waiter for a response nobody is left to receive.
   it.each([
     ['just over the ceiling', '60001'],
     ['an hour', '3600000'],

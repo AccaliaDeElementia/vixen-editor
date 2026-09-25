@@ -104,8 +104,6 @@ describe('a link to something that moved', () => {
   })
 })
 
-// The document that moved keeps its own outbound links, and those are relative
-// to where it now sits. A move that changes depth breaks every one of them.
 describe('a document that moved keeps its own links working', () => {
   it('re-bases a link when the holder moves deeper', () => {
     const rewritten = relinkDocument('![p](p.png)', 'a.md', [{ from: 'a.md', to: 'deep/sub/a.md' }])
@@ -126,8 +124,6 @@ describe('a document that moved keeps its own links working', () => {
   })
 })
 
-// A folder move takes the links inside it along unchanged, because the holder
-// and the target move together. Rewriting them would be churn, not repair.
 describe('a folder that moves wholesale leaves its internal links untouched', () => {
   it.each([
     ['a bare sibling', '[a](b.md)'],

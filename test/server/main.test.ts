@@ -285,9 +285,6 @@ describe('startServer', () => {
     expect(defaultRuntime.publicDir).toBe(DEFAULT_PUBLIC_DIR)
   })
 
-  // A temporary left by a killed process is only safe to delete while nothing
-  // is mid-write, which stops being true the moment the server accepts a
-  // request — so the sweep has to finish first, not merely be started.
   it('has already swept abandoned temporaries by the time it calls serve', async () => {
     await fs.mkdir(docsRoot, { recursive: true })
     const orphan = temporaryBeside(path.join(docsRoot, 'note.md'))

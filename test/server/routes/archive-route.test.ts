@@ -76,9 +76,8 @@ describe('GET /api/files/archive', () => {
     )
   })
 
-  // Names may hold quotes, spaces and emoji. A quote inside the quoted form
-  // closes it early, so the real name travels in `filename*` and the quoted
-  // one is a plain-ASCII fallback for clients that cannot read it.
+  // A quote inside a quoted filename closes it early, so the real name travels
+  // in `filename*` and the quoted one is a plain-ASCII fallback.
   it('does not let a quote in the name break the quoted filename', async () => {
     await store.createDocument('say "hi"/entry.md', '# entry')
 

@@ -28,8 +28,7 @@ const SAMPLE = parseTree({
   ],
 })
 
-// What the server returns once notes.md has been moved into archive.
-const MOVED = parseTree({
+const TREE_AFTER_MOVE = parseTree({
   tree: [
     {
       name: 'archive',
@@ -91,9 +90,7 @@ function tree(): HTMLElement {
 }
 
 // happy-dom ignores `dataTransfer` in the DragEvent init and leaves the
-// property undefined, so it is attached by hand. Everything downstream — files,
-// types, getData — then behaves as a browser does. The Playwright suite drags
-// for real, because a shimmed environment is exactly where this could lie.
+// property undefined, so it is attached by hand.
 function dragEvent(type: string, transfer: DataTransfer): DragEvent {
   const event = new DragEvent(type, { bubbles: true, cancelable: true })
   Object.defineProperty(event, 'dataTransfer', { value: transfer })
@@ -277,7 +274,7 @@ describe('moving by drag', () => {
 describe('showing where the entry went', () => {
   it('opens the destination folder so the moved entry is visible', async () => {
     await start([])
-    client.tree.mockResolvedValue(MOVED)
+    client.tree.mockResolvedValue(TREE_AFTER_MOVE)
 
     drag('notes.md', rowFor('archive'))
 
@@ -288,7 +285,7 @@ describe('showing where the entry went', () => {
 
   it('selects the entry at its new path', async () => {
     await start([])
-    client.tree.mockResolvedValue(MOVED)
+    client.tree.mockResolvedValue(TREE_AFTER_MOVE)
 
     drag('notes.md', rowFor('archive'))
 
@@ -299,7 +296,7 @@ describe('showing where the entry went', () => {
 
   it('reveals nothing when the drop was a no-op', async () => {
     await start()
-    client.tree.mockResolvedValue(MOVED)
+    client.tree.mockResolvedValue(TREE_AFTER_MOVE)
 
     drag('archive/old.md', rowFor('archive'))
 
@@ -533,12 +530,10 @@ describe('drops that carry nothing usable', () => {
   })
 })
 
-// An occupied destination now refuses, so the only thing left to check is
-// that a move which succeeds still reveals where the entry went.
 describe('after a move succeeds', () => {
   it('reveals the destination', async () => {
     await start([])
-    client.tree.mockResolvedValue(MOVED)
+    client.tree.mockResolvedValue(TREE_AFTER_MOVE)
 
     drag('notes.md', rowFor('archive'))
 

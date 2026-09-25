@@ -40,9 +40,6 @@ async function exists(...parts: string[]): Promise<boolean> {
     .catch(() => false)
 }
 
-// The store has to enumerate documents *before* it moves anything: a document
-// is relinked against the path it held when its links were written, and after
-// the move that path is gone.
 describe('repairing links', () => {
   it('re-bases the links inside a document that itself moved', async () => {
     await store.createDocument('img/p.png', 'x').catch(() => undefined)
@@ -208,9 +205,6 @@ describe('rejecting impossible moves', () => {
   })
 })
 
-// A move puts an entry where nothing is. Merging two folders and replacing an
-// occupied path are both post-MVP: the user deletes or renames what is in the
-// way, which is one visible act rather than a confirmation with a blast radius.
 describe('an occupied destination', () => {
   it('refuses rather than replacing a file', async () => {
     await store.createDocument('notes.md', '# mine')

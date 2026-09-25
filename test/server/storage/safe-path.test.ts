@@ -311,8 +311,6 @@ describe('isAllowedName', () => {
     expect(isAllowedName(name)).toBe(false)
   })
 
-  // The bug this predicate exists to prevent: the explorer listing a document
-  // that the path validator then refuses to open.
   it('agrees with the path validator on every name, so nothing is listed that cannot be opened', () => {
     const names = [
       'notes.md',

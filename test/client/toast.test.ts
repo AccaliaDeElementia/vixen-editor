@@ -128,9 +128,6 @@ describe('errors', () => {
   })
 })
 
-// Two parts of the app each hold their own handle to the single status
-// element. An error written through one was being hidden early — and in one
-// observed case overwritten outright — by the other's timer.
 describe('two handles to the same element', () => {
   it('does not let one handle hide a message written through another', () => {
     const editor = createToast(root)

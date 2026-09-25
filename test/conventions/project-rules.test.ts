@@ -57,6 +57,10 @@ function scannable(): SourceFile[] {
   return sources.filter((source) => source.relativePath !== SCANNER)
 }
 
+function importers(): SourceFile[] {
+  return sources
+}
+
 beforeAll(async () => {
   const discovered = await Promise.all(SOURCE_DIRECTORIES.map(collect))
   const paths = [...ROOT_SOURCE_FILES, ...discovered.flat()].sort()
@@ -217,11 +221,6 @@ function localNamesIn(clause: string): string[] {
     .filter((name) => /^\w+$/u.test(name))
 }
 
-// Matching identifiers cannot tell which module a name came from, so a dead
-// export is kept alive by a live one of the same name elsewhere, or even by
-// its own filename appearing in an import path. Resolving the import says who
-// actually consumes what, and ignores a name written in a comment.
-// A namespace import may reach any export, so none of them can be called dead.
 function namesInClause(clause: string | undefined): string[] {
   if (clause === undefined) return []
   if (clause.startsWith('*')) return [WHOLE_MODULE]
@@ -271,8 +270,7 @@ function consumes(graph: Map<string, Set<string>>, module: string, name: string)
 function exportedNamesIn(contents: string): string[] {
   const declared = [...contents.matchAll(EXPORTED_DECLARATION)].map((match) => match.groups?.name ?? '')
 
-  // `export { a, b as c }` exports `a` and `c`; the local name `b` is not a
-  // surface of this module and must not be counted as one.
+  // In `export { b as c }` the surface is `c`; `b` is a local name.
   const rebound = [...contents.matchAll(EXPORTED_BINDINGS)].flatMap((match) =>
     (match.groups?.names ?? '')
       .split(',')
@@ -289,17 +287,9 @@ function exportedNamesIn(contents: string): string[] {
   return [...declared, ...rebound].filter((name) => name !== '')
 }
 
-// An export nothing imports is surface with no purpose, and `export` is the
-// default keystroke rather than a decision — 47% of this tree's exports had
-// no consumer of any kind before this rule existed. The scanner excludes
-// itself, because a name written in one of its own comments would otherwise
-// count as the consumer that keeps the export alive.
 describe('every export is consumed by something', () => {
   it('leaves no export under src/ that nothing imports', () => {
-    // Built from every source, not `scannable()`: the scanner is excluded from
-    // pattern scans so it cannot match itself, but an import it writes is a
-    // real consumer like any other.
-    const graph = importGraph(sources)
+    const graph = importGraph(importers())
     const orphans = scannable()
       .filter((source) => source.relativePath.startsWith('src/'))
       .flatMap((source) =>
@@ -319,9 +309,6 @@ describe('every export is consumed by something', () => {
     expect(found.length).toBeGreaterThan(100)
   })
 
-  // The container is the seam. A runtime export with no shipping consumer that
-  // is not inside one is an internal that leaked, and `export` is too easy to
-  // type for that to stay rare without a gate.
   it('keeps every test-only runtime export inside a TestOnly container', () => {
     const shipping = scannable().filter(
       (source) => source.relativePath.startsWith('src/') || source.relativePath.startsWith('scripts/'),
@@ -340,8 +327,6 @@ describe('every export is consumed by something', () => {
     expect(leaked).toStrictEqual([])
   })
 
-  // A container cannot hold a type, so they are exempt — but only from the
-  // container, not from needing a consumer at all.
   it('exempts types, which no runtime container can hold', () => {
     expect(TYPE_EXPORT.test('export interface Runtime {')).toBe(true)
     expect(TYPE_EXPORT.test('export function startServer(')).toBe(false)
@@ -434,10 +419,6 @@ describe('every store write goes through the atomic helpers', () => {
   })
 })
 
-// The same lesson as the error-code table, learned the hard way: a comment in
-// `routes/files.ts` claimed names were restricted to a safe character set,
-// stayed after the rules were widened, and the header it justified went
-// malformed. The validator's own messages are the source here.
 describe('the documented name rules match the ones the validator applies', () => {
   const NAME_RULE_TABLE = /Rejected in a path segment[\s\S]*?\n\n`\//u
   const DOCUMENTED = /^\| `(?<reason>[^`]+)`\s*\|/gmu
@@ -463,9 +444,6 @@ describe('the documented name rules match the ones the validator applies', () =>
   })
 })
 
-// An error-code table is exactly the kind of list that rots: nobody re-reads
-// it when adding a code. The document and the server have to agree, or the
-// table is worse than no table at all.
 describe('the documented error codes match the ones the server emits', () => {
   const STATUS_NAMES: Readonly<Record<string, string>> = {
     HTTP_BAD_REQUEST: '400',

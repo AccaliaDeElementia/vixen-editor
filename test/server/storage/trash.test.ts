@@ -29,6 +29,8 @@ function trashPath(...parts: string[]): string {
   return path.join(root, TRASH_DIRECTORY, ...parts)
 }
 
+// Two deletes in the same millisecond carry the same timestamp, which would
+// leave both the ordering and the tie-break asserted below untested.
 async function redate(entryId: string, deletedAt: string): Promise<void> {
   const file = trashPath(entryId, TRASH_META_NAME)
   const meta = JSON.parse(await fs.readFile(file, 'utf8')) as Record<string, unknown>
@@ -175,8 +177,6 @@ describe('listTrash', () => {
     await store.createDocument('newer.md', 'x')
     const older = await store.trash('older.md')
     const newer = await store.trash('newer.md')
-    // Written by hand: two deletes in the same millisecond carry the same
-    // timestamp, which would leave the ordering this asserts untested.
     await redate(older, '2026-01-01T00:00:00.000Z')
     await redate(newer, '2026-06-01T00:00:00.000Z')
 
@@ -190,8 +190,6 @@ describe('listTrash', () => {
     await store.createDocument('b.md', 'x')
     const first = await store.trash('a.md')
     const second = await store.trash('b.md')
-    // Set by hand rather than trusting two deletes to land in the same
-    // millisecond, which would leave the tie-break untested at random.
     await redate(first, '2026-01-01T00:00:00.000Z')
     await redate(second, '2026-01-01T00:00:00.000Z')
 

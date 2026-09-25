@@ -4,9 +4,6 @@ import { describe, expect, it } from 'vitest'
 
 import { createTemplateRenderer } from '../../src/server/templates.ts'
 
-// What a password manager looks for once it has stripped the separators from
-// an id, name or class. The list is short on purpose: these are the tokens
-// that make an extension offer to fill a field.
 const CREDENTIAL_TOKENS = ['login', 'username', 'user', 'email', 'mail', 'password', 'passwd', 'account', 'signin']
 
 const ATTRIBUTES = ['id', 'name', 'class', 'for', 'placeholder', 'aria-label']
@@ -64,9 +61,6 @@ describe('credentialTokensIn', () => {
   })
 })
 
-// A password manager offering to fill a filename is not a security hole, but
-// it is the kind of defect nobody spots by reading: "dialog-input" spells
-// "login" only once the hyphen is gone.
 describe('the rendered page names nothing like a credential field', () => {
   it('has no offending id, name, class or label anywhere', () => {
     expect(offendingAttributes(renderedPage())).toStrictEqual([])

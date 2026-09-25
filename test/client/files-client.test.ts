@@ -240,8 +240,6 @@ describe('move', () => {
   })
 })
 
-// The editor needs to know whether the document it has open was repaired on
-// disk, but a malformed answer must cost a warning rather than the move.
 describe('move', () => {
   it('reports the paths whose links were repaired', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ rewritten: ['a.md', 'b.md'], failed: [] }))

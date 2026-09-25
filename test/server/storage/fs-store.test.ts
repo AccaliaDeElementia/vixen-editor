@@ -17,6 +17,8 @@ import {
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import { FOLDER_INDEX_NAME } from '../../../src/shared/documents.ts'
 
+const OVER_NAME_MAX = 'a'.repeat(300)
+
 // Every segment is inside NAME_MAX, but the whole path exceeds PATH_MAX (4096),
 // so the filesystem refuses it with ENAMETOOLONG rather than reporting absence.
 const DEEP_FOLDER = Array.from({ length: 25 }, () => 'd'.repeat(200)).join('/')
@@ -107,8 +109,7 @@ describe('list', () => {
   })
 
   it('surfaces a genuine filesystem fault rather than returning an empty list', async () => {
-    // NAME_MAX is 255, so a longer directory name yields ENAMETOOLONG rather than ENOENT.
-    const unusable = createFsDocumentStore(path.join(root, 'b'.repeat(300)))
+    const unusable = createFsDocumentStore(path.join(root, OVER_NAME_MAX))
 
     await expect(unusable.list()).rejects.toThrow(expect.objectContaining({ code: 'ENAMETOOLONG' }))
   })
@@ -322,9 +323,6 @@ describe('updateDocument', () => {
     await expect(store.updateDocument('innocent.md', 'x', '"e"')).rejects.toThrow(InvalidPathError)
   })
 
-  // Without the write lock both saves read the same content, both find their
-  // etag current, and both write: the precondition passes and the first change
-  // is lost anyway. Serialising the read-modify-write is what closes that.
   it('lets only one of two concurrent saves holding the same etag through', async () => {
     const etag = await store.createDocument('notes.md', 'original')
 

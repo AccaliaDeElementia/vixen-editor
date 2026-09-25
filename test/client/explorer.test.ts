@@ -55,8 +55,6 @@ describe('clampExplorerWidth', () => {
   })
 
   it('lets the cap win on a viewport too narrow for the minimum', () => {
-    // 80% of 150 is 120, below the 160 floor. Honouring the floor would push
-    // the editor off-screen, so the cap has to take precedence.
     expect(clampExplorerWidth(500, 150)).toBe(150 * MAX_EXPLORER_FRACTION)
   })
 
@@ -77,8 +75,6 @@ describe('readExplorerState', () => {
   })
 
   it('clamps a stored width wider than the current viewport allows', () => {
-    // Saved on a wide monitor, reopened on a laptop. localStorage outlives the
-    // window it was written in, so the cap has to apply on read.
     writePreferences({ widthPx: 1800, open: true, openFolders: [] })
 
     expect(readExplorerState(VIEWPORT)).toStrictEqual({

@@ -5,8 +5,6 @@ export interface Gate {
   hold: () => Promise<void>
 }
 
-// A promise the test settles by hand, so a concurrency test controls exactly
-// when an operation finishes rather than guessing at a number of milliseconds.
 export function gate(): Gate {
   let open = (): void => undefined
 

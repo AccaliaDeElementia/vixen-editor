@@ -36,7 +36,6 @@ test('lays out three full-height columns', async ({ page }) => {
   expect(explorer.height).toBeCloseTo(700, 0)
   expect(workspace.height).toBeCloseTo(700, 0)
 
-  // The columns tile the viewport left to right with no gaps.
   expect(ribbon.x).toBeCloseTo(0, 0)
   expect(explorer.x).toBeCloseTo(ribbon.width, 0)
   expect(workspace.x).toBeCloseTo(ribbon.width + explorer.width, 0)
@@ -104,7 +103,10 @@ test('the file browser lists what the store holds', async ({ page, request }) =>
   await request.delete(`/api/files/entries/${folder}`)
 })
 
-test('a folder opens on click and its contents appear below it', async ({ page, request }) => {
+test('a folder opens on click and its contents appear below it, indented by label and not by row', async ({
+  page,
+  request,
+}) => {
   const folder = `open-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: folder } })
 
@@ -114,9 +116,6 @@ test('a folder opens on click and its contents appear below it', async ({ page, 
   const child = page.locator(`.tree__row[data-path="${folder}/index.md"]`)
   await expect(child).toBeVisible()
 
-  // The label has to sit further right, or the nesting is invisible to a
-  // reader. The rows themselves share an x: depth is padding, so the hover
-  // highlight still spans the full width of the panel.
   const parentLabel = await page.locator(`.tree__row[data-path="${folder}"] .tree__name`).boundingBox()
   const childLabel = await child.locator('.tree__name').boundingBox()
   expect(childLabel?.x ?? 0).toBeGreaterThan(parentLabel?.x ?? 0)
@@ -315,8 +314,6 @@ test('the trash actions are distinguishable by sight and by tooltip', async ({ p
   await expect(restore).toHaveAttribute('title', `Restore ${name}`)
   await expect(purge).toHaveAttribute('title', `Delete ${name} for good`)
 
-  // Different glyphs must render at different widths; identical silhouettes
-  // would be the defect this guards against.
   const restoreBox = await restore.locator('.icon').boundingBox()
   const purgeBox = await purge.locator('.icon').boundingBox()
   expect(restoreBox?.width ?? 0).toBeGreaterThan(0)
@@ -339,8 +336,6 @@ test('the selected document is visibly marked, not merely marked up', async ({ p
   const selected = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
   const accent = await row.evaluate((el) => getComputedStyle(el).boxShadow)
 
-  // The defect this guards against was a selected row painted the exact colour
-  // of the panel behind it: correct in the DOM, invisible on screen.
   expect(selected).not.toBe(panel)
   expect(accent).not.toBe('none')
 
@@ -381,7 +376,6 @@ test('a real drag moves a document into a folder', async ({ page, request }) => 
   await expect(source).toHaveAttribute('draggable', 'true')
   await source.dragTo(target)
 
-  // The move reveals the destination, so no click is needed to open it.
   await expect(page.locator(`.tree__row[data-path="${folder}/${doc}"]`)).toBeVisible()
   await expect(page.locator(`.tree__row[data-path="${doc}"]`)).toHaveCount(0)
 
@@ -401,7 +395,6 @@ test('a real drag shows the drop affordance only where a drop is legal', async (
   await page.mouse.down()
   await trash.hover()
 
-  // The trash is a row but not a place in the store, so it must not light up.
   await expect(trash).not.toHaveClass(/tree__row--drop/)
   await page.mouse.up()
 
@@ -419,10 +412,8 @@ test('the name field does not look like a login to a password manager', async ({
   await expect(input).toHaveAttribute('data-form-type', 'other')
   await expect(page.locator('#file-dialog input[type="password"]')).toHaveCount(0)
 
-  // The real cause: a manager strips separators and substring-matches, so
-  // "file-dialog-input" became "filedialoginput" and read as a login field.
-  // Scanned across the whole live page, which covers markup built in script
-  // as well as markup from the template.
+  // The live page, so this covers markup built in script as well as markup
+  // from the template.
   const offenders = await page.evaluate(() => {
     const tokens = ['login', 'username', 'user', 'email', 'mail', 'password', 'passwd', 'account', 'signin']
     const found: string[] = []
@@ -439,7 +430,6 @@ test('the name field does not look like a login to a password manager', async ({
   })
   expect(offenders).toEqual([])
 
-  // The label says what is being asked for rather than a bare "Name".
   await expect(page.locator('#file-dialog-label')).toHaveText('Folder name')
 
   await page.locator('#file-dialog-cancel').click()
@@ -455,7 +445,6 @@ test('a real drag reveals the moved document at its new location', async ({ page
   await page.goto('/doc/')
   await page.locator(`.tree__row[data-path="${doc}"]`).dragTo(page.locator(`.tree__row[data-path="${folder}"]`))
 
-  // Without the reveal the entry is inside a folder that is still collapsed.
   const moved = page.locator(`.tree__row[data-path="${folder}/${doc}"]`)
   await expect(moved).toBeVisible()
   await expect(moved).toHaveAttribute('aria-selected', 'true')
@@ -507,9 +496,6 @@ test('an upload whose bytes contradict its extension tells the user why', async 
   await expect(page.locator('#status')).toContainText('liar.png')
 })
 
-// The tree and the editor are mounted separately and never see each other, so
-// this is the one place the channel between them is exercised for real: a
-// drag in one component has to change the address bar owned by the other.
 test('dragging the open document follows it in the address bar and keeps saving', async ({ page, request }) => {
   const stamp = String(Date.now())
   const folder = `followdest-${stamp}`
@@ -524,8 +510,6 @@ test('dragging the open document follows it in the address bar and keeps saving'
 
   await expect(page).toHaveURL(`/doc/${folder}/${doc}`)
 
-  // The save has to land at the new path: before this, it went to the old one
-  // and answered 404 because the store no longer had it.
   await page.locator('#editor .cm-content').click()
   await page.keyboard.type(' edited')
   await page.keyboard.press('ControlOrMeta+s')

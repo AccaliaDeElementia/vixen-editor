@@ -172,9 +172,6 @@ describe('save', () => {
   })
 })
 
-// A move does not change content, so the etag the session already holds stays
-// valid — it just belongs to a different name now. Carrying it across is what
-// keeps the next save an update rather than a create against an occupied path.
 describe('rename', () => {
   it('saves to the new path as an update, not a create', async () => {
     client.read.mockResolvedValue(loaded('# mine'))

@@ -61,8 +61,6 @@ describe('findLinkDestinations', () => {
   })
 })
 
-// A path inside a code block is being documented, not linked. This is the
-// reason the feature uses a parser rather than a regex.
 describe('findLinkDestinations leaves code alone', () => {
   it('ignores a fenced block', () => {
     expect(valuesIn('```\n[a](fence.md)\n```')).toStrictEqual([])
@@ -84,8 +82,6 @@ describe('findLinkDestinations leaves code alone', () => {
   })
 })
 
-// Links inside embedded HTML are out of scope by decision: chasing them means
-// parsing HTML inside markdown. They break on a move, like they do today.
 describe('findLinkDestinations ignores what is not markdown link syntax', () => {
   it('ignores an HTML anchor', () => {
     expect(valuesIn('<a href="html.md">x</a>')).toStrictEqual([])
@@ -177,8 +173,6 @@ describe('encodeDestination', () => {
   })
 })
 
-// The parser is the judge. Anything the store can hold must survive being
-// written into a document and read back out of it.
 describe('a name the store allows survives a round trip through a document', () => {
   const NAMES = [
     'plain.md',
@@ -256,8 +250,6 @@ const CORPUS: Readonly<Record<string, string>> = {
   bracketedWithParens: '[a](<a(b).md>)\n',
 }
 
-// The whole feature rests on this: a rewrite that changes no destination must
-// give the document back unchanged, byte for byte.
 describe('rewriteLinkDestinations is byte-identical under an identity rewrite', () => {
   it.each(Object.entries(CORPUS))('leaves the %s document untouched', (_name, markdown) => {
     expect(rewriteLinkDestinations(markdown, (destination) => destination)).toBe(markdown)

@@ -105,8 +105,6 @@ describe('readPreferences', () => {
   })
 
   it('keeps an implausibly large width for the caller to clamp', () => {
-    // Discarding it would throw away intent; a width saved on a wide monitor is
-    // indistinguishable from a bogus one, and both want clamping to the viewport.
     const raw = JSON.stringify({ widthPx: 99999, open: true })
 
     expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: 99999, open: true, openFolders: [] })
