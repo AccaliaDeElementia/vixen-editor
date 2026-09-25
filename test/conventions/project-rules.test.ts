@@ -130,7 +130,7 @@ describe('every source file belongs to exactly one typecheck project', () => {
     return filePath.startsWith(prefix) && filePath.endsWith('.ts')
   }
 
-  it('leaves no src file unchecked and none checked twice', () => {
+  it('leaves no src file unchecked, and only shared code checked twice', () => {
     const projects = TYPECHECK_PROJECTS.map((configPath) => ({ configPath, includes: includesOf(configPath) }))
 
     const misfiled = sources
@@ -141,7 +141,7 @@ describe('every source file belongs to exactly one typecheck project', () => {
           .filter(({ includes }) => includes.some((pattern) => matches(pattern, source.relativePath)))
           .map(({ configPath }) => configPath),
       }))
-      .filter(({ projects: matched }) => matched.length !== 1)
+      .filter(({ path, projects: matched }) => matched.length !== (path.startsWith(SHARED) ? 2 : 1))
 
     expect(misfiled).toStrictEqual([])
   })
@@ -167,6 +167,7 @@ describe('rule 5: every tooling suppression carries a rationale', () => {
   })
 })
 
+const SHARED = 'src/shared/'
 const TEST_ONLY = 'TestOnly'
 
 async function guide(): Promise<string> {
@@ -350,6 +351,69 @@ describe('every export is consumed by something', () => {
     expect(exportedNamesIn("export { TOAST_SELECTOR as STATUS_SELECTOR } from './toast.ts'")).toStrictEqual([
       'STATUS_SELECTOR',
     ])
+  })
+})
+
+describe('src/shared is what both sides need', () => {
+  function importsOfSharedModule(from: string): Map<string, Set<string>> {
+    const graph = new Map<string, Set<string>>()
+
+    for (const source of sources.filter((candidate) => candidate.relativePath.startsWith(from))) {
+      for (const [module, names] of importedFrom(source)) {
+        if (!module.startsWith(SHARED)) continue
+        const already = graph.get(module) ?? new Set<string>()
+        for (const name of names) already.add(name)
+        graph.set(module, already)
+      }
+    }
+
+    return graph
+  }
+
+  function sharedModules(): string[] {
+    return sources
+      .filter((source) => source.relativePath.startsWith(SHARED))
+      .map((source) => source.relativePath)
+      .sort(compare)
+  }
+
+  it('finds shared modules at all, so the checks below are not vacuous', () => {
+    expect(sharedModules().length).toBeGreaterThan(0)
+  })
+
+  it('is imported by both sides, every module', () => {
+    const client = importsOfSharedModule('src/client/')
+    const server = importsOfSharedModule('src/server/')
+
+    const lopsided = sharedModules().filter((module) => !client.has(module) || !server.has(module))
+
+    expect(lopsided).toStrictEqual([])
+  })
+
+  it('has at least one export both sides import, so its halves cannot have separate audiences', () => {
+    const client = importsOfSharedModule('src/client/')
+    const server = importsOfSharedModule('src/server/')
+
+    const disjoint = sharedModules().filter((module) => {
+      const fromClient = client.get(module) ?? new Set<string>()
+
+      return ![...(server.get(module) ?? new Set<string>())].some((name) => fromClient.has(name))
+    })
+
+    expect(disjoint).toStrictEqual([])
+  })
+
+  it('never reaches back into client or server', () => {
+    const offenders = sources
+      .filter((source) => source.relativePath.startsWith(SHARED))
+      .flatMap((source) =>
+        importedFrom(source)
+          .map(([module]) => module)
+          .filter((module) => module.startsWith('src/client/') || module.startsWith('src/server/'))
+          .map((module) => `${source.relativePath} -> ${module}`),
+      )
+
+    expect(offenders).toStrictEqual([])
   })
 })
 

@@ -11,6 +11,7 @@ import { nullWhenAbsent } from './containment.ts'
 import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { asDocumentError, DocumentNotFoundError, EntryExistsError } from './store-errors.ts'
 import { classifyFile, type FileKind } from './tree.ts'
+import { isRecord } from '../../shared/guards.ts'
 
 const logTrash = createLogger('storage/trash')
 const logDamaged = createLogger('storage/trash', 'damagedEntry')
@@ -47,10 +48,6 @@ function entryDirectory(root: string, entryId: string): string {
   if (!TRASH_ENTRY_ID.test(entryId)) throw new InvalidPathError(entryId, 'is not a trash entry id')
 
   return path.join(trashRoot(root), entryId)
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function isTrashEntry(value: unknown): value is Omit<TrashEntry, 'id'> {

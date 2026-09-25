@@ -1,5 +1,7 @@
 'use sanity'
 
+import { isRecord } from '../../shared/guards.ts'
+
 const PREFERENCES_KEY = 'vixen-editor:explorer'
 
 export interface ExplorerPreferences {
@@ -16,10 +18,6 @@ function defaultStorage(): Storage | null {
   } catch {
     return null
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function widthFrom(value: unknown): number | null {

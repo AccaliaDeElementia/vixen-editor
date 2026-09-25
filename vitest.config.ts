@@ -25,6 +25,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'shared',
+          environment: 'node',
+          include: ['test/shared/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'conventions',
           environment: 'node',
           include: ['test/conventions/**/*.test.ts'],

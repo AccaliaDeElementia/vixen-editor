@@ -1,5 +1,7 @@
 'use sanity'
 
+import { isRecord } from '../../shared/guards.ts'
+
 const HTTP_SERVICE_UNAVAILABLE = 503
 
 export class DocumentRequestError extends Error {
@@ -23,10 +25,6 @@ export interface DocumentClient {
   create: (id: string, content: string) => Promise<string>
   save: (id: string, content: string, etag: string) => Promise<string>
   remove: (entryPath: string) => Promise<void>
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function encodeDocumentId(id: string): string {

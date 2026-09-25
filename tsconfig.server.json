@@ -8,9 +8,11 @@
     "types": ["node"]
   },
   "include": [
+    "src/shared/**/*.ts",
     "src/index.ts",
     "src/server/**/*.ts",
     "test/server/**/*.ts",
+    "test/shared/**/*.ts",
     "test/conventions/**/*.ts",
     "scripts/**/*.ts"
   ]

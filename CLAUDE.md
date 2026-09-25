@@ -135,6 +135,26 @@ the occasional ordering constraint no type can hold. Check each against:
 - **Does a test or this file already hold it?** Then that is the record.
   Rename the test until it is findable, and delete the comment.
 
+#### The same applies to `test/` and `test-browser/`
+
+Everything above holds for test code, with one addition: in a test the first
+move is almost always **renaming the test**. A comment above an `it(...)` is a
+sign the name is not carrying its weight, and the name is what a failure
+prints.
+
+Two shapes recur and neither is justified:
+
+- **A table of contents.** A comment above a `describe` listing the checks
+  below duplicates the names it sits on, and rots the moment a fourth is
+  added or one is renamed.
+- **A restatement of the assertions.** If the comment says what the test
+  asserts, the test already says it.
+
+What can justify one: why a fixture is shaped oddly when the shape is load
+bearing — names chosen so that taking the first match would pass, say — or
+why a failure is injected rather than provoked for real. Both are facts about
+the test that its name cannot hold without becoming a paragraph.
+
 #### Surface what you add to the durable record, as you add it
 
 Two things outlive the change that introduced them: a comment, and a rule in
@@ -807,6 +827,51 @@ memory, because `tsc` exits 0 while silently ignoring such a directory.
 
 `scripts/` is deliberately outside `src/`: it is build tooling, never shipped,
 and never imported by the app.
+
+### `src/shared/` is what both sides need
+
+Three directories under `src/`, and the boundary between them is enforced:
+`server/` and `client/` may not import each other, and `shared/` may not
+import either. A module lands in `shared/` only when **both** sides import
+it — the rule is per module, not per export, because a module is one
+vocabulary and a predicate belongs beside the type it guards even in a week
+when only one side calls it.
+
+**A shared module holds one meaning, and that is load-bearing rather than
+tidy.** The both-sides rule is checked per module, so a module containing two
+unrelated things — a guard the client uses and a constant the server uses —
+would satisfy it while sharing nothing. `test/conventions/` closes that by
+also requiring the two sides' import sets to **overlap**: at least one export
+must be imported by both. That permits a predicate only one side calls today,
+because the type beside it is imported by both, and refuses a module whose
+halves have separate audiences.
+
+Cohesion is what makes the check meaningful, so merge modules only when they
+mean the same thing. Similar code is not common meaning: two functions with
+identical bodies can belong to different vocabularies, and putting them
+together buys a line and loses the property that makes `shared/` legible.
+
+**Portability is checked by the compiler, not by convention.** `src/shared/**`
+is listed in _both_ typecheck projects, so it compiles once with
+`types: ["node"]` and again with `types: []` and DOM libs. Shared code
+therefore cannot reach for `node:fs` or `document`; the attempt fails a build
+rather than a review. This is the one place a `src/` file belongs to two
+projects, and `test/conventions/` allows it there and nowhere else.
+
+**Shared code is paid for twice.** It is bundled into `dist/` and into the
+browser bundle, so weight lands on the client whether the client needs it or
+not. A two-member enum costs 103 bytes as a `const` array with a derived
+type, and 453 KB as a `z.enum` — zod does not tree-shake to a schema. Zod
+stays on the server, where it is already loaded and where nothing is shipped
+over the wire.
+
+What belongs here: a fact both sides must agree on — the document kinds, the
+`/doc/` prefix, the folder index name — and small pure helpers both already
+duplicate. What does not: anything naming an HTTP standard, anything either
+side could define alone, and anything whose shape differs across the
+boundary. The tree JSON is the example — the client deliberately narrows the
+server's entry, dropping `size` and `modified` it never renders, and forcing
+one type on both would make one of them lie.
 
 ## Testing
 

@@ -1,6 +1,7 @@
 'use sanity'
 
 import { parseTrash, parseTree, STORE_ROOT, type TrashNode, type TreeNode } from './tree-model.ts'
+import { isRecord } from '../../shared/guards.ts'
 
 export interface FilesClient {
   tree: () => Promise<TreeNode[]>
@@ -28,10 +29,6 @@ export class FilesRequestError extends Error {
     this.code = code
     this.paths = paths
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function stringsIn(value: unknown): string[] {

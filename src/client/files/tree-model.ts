@@ -1,5 +1,7 @@
 'use sanity'
 
+import { isRecord } from '../../shared/guards.ts'
+
 type FileKind = 'document' | 'image'
 type FolderPath = string
 
@@ -27,10 +29,6 @@ export interface TrashNode {
   originalPath: string
   kind: EntryKind
   deletedAt: string
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function isEntryKind(value: unknown): value is EntryKind {
