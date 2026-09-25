@@ -84,7 +84,8 @@ const SIGNATURES: Readonly<Record<string, (bytes: Uint8Array) => boolean>> = {
 }
 
 export function contentMatchesExtension(entryPath: string, bytes: Uint8Array): boolean {
-  const check = SIGNATURES[extensionOf(entryPath)]
+  const extension = extensionOf(entryPath)
+  const { [extension]: check } = SIGNATURES
 
   return check === undefined || check(bytes)
 }

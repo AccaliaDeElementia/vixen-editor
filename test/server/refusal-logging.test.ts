@@ -17,8 +17,8 @@ let lines: string[]
 // that does not set its own falls through to the shared one. Swapping that is
 // how the output is read without the suite printing anything.
 async function capture(work: () => Promise<void>): Promise<string[]> {
-  const createDebug = (await import('debug')).default
-  const original = createDebug.log
+  const { default: createDebug } = await import('debug')
+  const { log: original } = createDebug
 
   createDebug.log = (...args: unknown[]): void => {
     lines.push(args.map(String).join(' '))

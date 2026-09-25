@@ -292,7 +292,7 @@ describe('startServer', () => {
 
     let orphanWhenServeRan: boolean | null = null
     const { runtime } = recordingRuntime()
-    const recordingServe = runtime.serve
+    const { serve: recordingServe } = runtime
     runtime.serve = (...args: Parameters<typeof serve>) => {
       orphanWhenServeRan = existsSync(orphan)
       return recordingServe(...args)

@@ -75,8 +75,10 @@ function findLinkDestinations(markdown: string): LinkDestination[] {
   for (const [kind, token] of events) {
     if (kind !== 'enter' || !DESTINATION_TOKENS.has(token.type)) continue
 
-    const { offset: start } = token.start
-    const { offset: end } = token.end
+    const {
+      start: { offset: start },
+      end: { offset: end },
+    } = token
 
     found.push({
       value: decodeDestination(markdown.slice(start, end)),

@@ -273,7 +273,16 @@ describe('keyboard navigation', () => {
 
     press(TRASH_PATH, 'ArrowDown')
 
+    expect(document.activeElement).not.toBe(rowFor('journal'))
     expect(rows().at(-1)?.dataset.path).toBe(TRASH_PATH)
+  })
+
+  it('stays put at the top of the tree rather than wrapping to the bottom', async () => {
+    await start()
+
+    press('journal', 'ArrowUp')
+
+    expect(document.activeElement).not.toBe(rowFor(TRASH_PATH))
   })
 
   it('expands a closed folder with the right arrow', async () => {

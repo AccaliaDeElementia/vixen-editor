@@ -294,7 +294,9 @@ describe('bootstrap follows a document that moves underneath it', () => {
   })
 
   it('replaces the address in real browser history rather than pushing an entry', async () => {
-    const before = window.location.pathname
+    const {
+      location: { pathname: before },
+    } = window
     try {
       await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
 

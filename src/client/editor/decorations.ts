@@ -93,10 +93,10 @@ function computeDecorations(state: EditorState): DecorationSet {
 
   for (let lineNumber = CODEMIRROR_FIRST_LINE; lineNumber <= state.doc.lines; lineNumber += NEXT_LINE) {
     const line = state.doc.line(lineNumber)
-    const step = stepFence(fence, line.text)
-    fence = step.fence
+    const { fence: stepped, decorate } = stepFence(fence, line.text)
+    fence = stepped
 
-    if (step.decorate) decorateLine(line, ranges)
+    if (decorate) decorateLine(line, ranges)
   }
 
   return Decoration.set(ranges, true)

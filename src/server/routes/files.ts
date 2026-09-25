@@ -58,13 +58,13 @@ function contentDisposition(name: string): string {
 }
 
 function uploadedFile(body: Record<string, unknown>): File | null {
-  const file = body.file
+  const { file } = body
 
   return file instanceof File ? file : null
 }
 
 function targetDirectory(body: Record<string, unknown>): string | null {
-  const directory = body.path
+  const { path: directory } = body
 
   if (directory === undefined) return ''
   return typeof directory === 'string' ? directory : null
@@ -148,7 +148,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     '/folders',
     zValidator('json', folderBodySchema, (result, c) => (result.success ? undefined : invalidBody(c))),
     async (c) => {
-      const folderPath = c.req.valid('json').path
+      const { path: folderPath } = c.req.valid('json')
       try {
         const etag = await store.createFolder(folderPath, seedFolderIndex(folderPath))
         return c.json({ path: joinEntryPath(folderPath, FOLDER_INDEX_NAME), etag }, HTTP_CREATED)

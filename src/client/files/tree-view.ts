@@ -78,25 +78,22 @@ interface RowOptions {
 }
 
 function row(options: RowOptions): HTMLElement {
-  const element = document.createElement(options.href === undefined ? 'div' : 'a')
-  if (element instanceof HTMLAnchorElement && options.href !== undefined) element.href = options.href
+  const { path, kind, draggable, name, depth, expanded, selected, href } = options
+  const element = document.createElement(href === undefined ? 'div' : 'a')
+  if (element instanceof HTMLAnchorElement && href !== undefined) element.href = href
 
   element.className = 'tree__row'
   element.setAttribute('role', 'treeitem')
-  element.setAttribute('aria-selected', String(options.selected))
+  element.setAttribute('aria-selected', String(selected))
   element.setAttribute('tabindex', '-1')
-  element.style.setProperty('--depth', String(options.depth))
-  element.dataset.path = options.path
-  element.dataset.kind = options.kind
-  if (options.draggable === true) element.draggable = true
+  element.style.setProperty('--depth', String(depth))
+  element.dataset.path = path
+  element.dataset.kind = kind
+  if (draggable === true) element.draggable = true
 
-  if (options.expanded !== null) element.setAttribute('aria-expanded', String(options.expanded))
+  if (expanded !== null) element.setAttribute('aria-expanded', String(expanded))
 
-  element.append(
-    twisty(options.expanded),
-    icon(ENTRY_ICONS[options.kind === 'trash-root' ? 'folder' : options.kind], options.kind),
-    label(options.name),
-  )
+  element.append(twisty(expanded), icon(ENTRY_ICONS[kind === 'trash-root' ? 'folder' : kind], kind), label(name))
 
   return element
 }
@@ -109,19 +106,21 @@ interface ActionSpec {
 }
 
 function action(spec: ActionSpec, entry: TrashNode): HTMLElement {
+  const { name, glyph, label: description, danger } = spec
+  const { id } = entry
   const element = document.createElement('button')
   element.type = 'button'
-  element.className = spec.danger ? 'tree__action tree__action--danger' : 'tree__action'
-  element.dataset.action = spec.name
-  element.dataset.trashId = entry.id
-  element.setAttribute('aria-label', spec.label)
+  element.className = danger ? 'tree__action tree__action--danger' : 'tree__action'
+  element.dataset.action = name
+  element.dataset.trashId = id
+  element.setAttribute('aria-label', description)
 
-  element.title = spec.label
+  element.title = description
 
   const symbol = document.createElement('span')
   symbol.className = 'icon'
   symbol.setAttribute('aria-hidden', 'true')
-  symbol.textContent = spec.glyph
+  symbol.textContent = glyph
   element.append(symbol)
 
   return element
@@ -214,19 +213,20 @@ function renderTrash(model: TreeViewModel): Rendered {
 
   const children = group()
   for (const entry of model.trash) {
+    const { id, originalPath, kind, deletedAt } = entry
     const deleted = row({
-      path: entry.originalPath,
-      kind: entry.kind,
-      name: entry.originalPath,
+      path: originalPath,
+      kind,
+      name: originalPath,
       depth: TRASH_ENTRY_DEPTH,
       expanded: null,
       selected: false,
     })
-    deleted.dataset.trashId = entry.id
-    deleted.title = `Deleted ${entry.deletedAt}`
+    deleted.dataset.trashId = id
+    deleted.title = `Deleted ${deletedAt}`
     deleted.append(trashActions(entry))
     children.append(item(deleted))
-    visible.push({ path: entry.originalPath, expandable: false, kind: 'trash-entry' })
+    visible.push({ path: originalPath, expandable: false, kind: 'trash-entry' })
   }
   element.append(children)
 

@@ -104,8 +104,9 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     const row = index === null ? undefined : context.rowAt(index)
     if (!isStoreRow(row)) return
 
-    dragging = row.path
-    event.dataTransfer?.setData(DRAG_MIME, row.path)
+    const { path } = row
+    dragging = path
+    event.dataTransfer?.setData(DRAG_MIME, path)
   })
 
   tree.addEventListener('dragend', () => {
@@ -136,7 +137,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     if (target === null || event.dataTransfer === null) return
 
     event.preventDefault()
-    const transfer = event.dataTransfer
+    const { dataTransfer: transfer } = event
     const dropped = [...transfer.files]
     if (dropped.length > EMPTY) {
       run(async () => {

@@ -111,8 +111,8 @@ async function buildEntry(entry: Dirent, at: Location): Promise<TreeEntry | null
     return null
   }
 
-  const entryPath = at.prefix === '' ? entry.name : `${at.prefix}/${entry.name}`
-  const name = entry.name
+  const { name } = entry
+  const entryPath = at.prefix === '' ? name : `${at.prefix}/${name}`
 
   if (stats.isDirectory()) return await buildFolder({ name, target, entryPath, real, scope: at.scope })
 

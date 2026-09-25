@@ -29,10 +29,6 @@ export default [
          These patterns are deliberately ASCII-only, so it risks behaviour change
          for no benefit. */
       'require-unicode-regexp': 'off',
-
-      /* Relaxed: reports `const first = parts[0]` in favour of array
-         destructuring, which is not clearer when the index is meaningful. */
-      '@typescript-eslint/prefer-destructuring': 'off',
     },
   },
   {

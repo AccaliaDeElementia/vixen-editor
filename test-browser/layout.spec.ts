@@ -191,7 +191,7 @@ test('dragging below the minimum floors the explorer', async ({ page }) => {
 
 test('the toggle collapses the explorer and the editor reclaims the space', async ({ page }) => {
   await openLayout(page)
-  const workspaceBefore = (await boxOf(page, WORKSPACE)).width
+  const { width: workspaceBefore } = await boxOf(page, WORKSPACE)
 
   await page.locator('#toggle-explorer').click()
 

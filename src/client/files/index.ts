@@ -79,10 +79,11 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   }
 
   function focusAt(index: number): boolean {
-    const next = rows()[index]
+    const rowsInTree = rows()
+    const { [index]: next } = rowsInTree
     if (next === undefined) return false
 
-    for (const candidate of rows()) candidate.setAttribute('tabindex', '-1')
+    for (const candidate of rowsInTree) candidate.setAttribute('tabindex', '-1')
     next.setAttribute('tabindex', '0')
     next.focus()
 
@@ -141,7 +142,8 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
     const current = index === null ? undefined : visible[index]
     if (current === undefined) return
 
-    selected = current.path
+    const { path } = current
+    selected = path
     if (!current.expandable) {
       draw(open)
       return

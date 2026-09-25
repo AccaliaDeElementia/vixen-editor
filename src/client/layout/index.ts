@@ -50,7 +50,7 @@ function bindResizer(root: ParentNode, view: Window): void {
   })
 
   resizer.addEventListener('keydown', (event: KeyboardEvent) => {
-    const current = explorer.getBoundingClientRect().width
+    const { width: current } = explorer.getBoundingClientRect()
     const maxPx = view.innerWidth * MAX_EXPLORER_FRACTION
     const next = keyboardWidth(event.key, current, maxPx)
     if (next === null) return

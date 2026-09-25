@@ -95,10 +95,11 @@ function reset(parts: Parts, heading: string, confirmLabel: string): void {
 
 async function promptWith(parts: Parts, request: PromptRequest): Promise<boolean> {
   const { dialog, message, field, label, input, error } = parts
+  const { label: fieldLabel } = request
 
   reset(parts, request.title, request.confirmLabel)
   message.textContent = ''
-  label.textContent = request.label
+  label.textContent = fieldLabel
   field.hidden = false
   input.value = request.value ?? ''
   dialog.showModal()
@@ -121,9 +122,10 @@ async function promptWith(parts: Parts, request: PromptRequest): Promise<boolean
 
 async function confirmWith(parts: Parts, request: ConfirmRequest): Promise<boolean> {
   const { dialog, message, field } = parts
+  const { message: text } = request
 
   reset(parts, request.title, request.confirmLabel)
-  message.textContent = request.message
+  message.textContent = text
   field.hidden = true
   dialog.showModal()
 

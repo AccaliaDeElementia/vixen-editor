@@ -175,7 +175,7 @@ describe('vixenDecorationField', () => {
 
   it('recomputes the field when the document changes', () => {
     const state = stateFor('plain')
-    const next = state.update({ changes: { from: 0, to: 5, insert: '# title' } }).state
+    const { state: next } = state.update({ changes: { from: 0, to: 5, insert: '# title' } })
 
     expect(flatten(next.field(vixenDecorationField))).toStrictEqual([
       { from: 0, to: 0, class: 'cm-vixen-heading cm-vixen-heading-1' },
@@ -184,14 +184,14 @@ describe('vixenDecorationField', () => {
 
   it('leaves the field untouched when a transaction does not change the document', () => {
     const state = stateFor('# title')
-    const next = state.update({ selection: { anchor: 1 } }).state
+    const { state: next } = state.update({ selection: { anchor: 1 } })
 
     expect(next.field(vixenDecorationField)).toBe(state.field(vixenDecorationField))
   })
 
   it('clears decorations when the heading is removed', () => {
     const state = stateFor('# title')
-    const next = state.update({ changes: { from: 0, to: 2, insert: '' } }).state
+    const { state: next } = state.update({ changes: { from: 0, to: 2, insert: '' } })
 
     expect(flatten(next.field(vixenDecorationField))).toStrictEqual([])
   })
