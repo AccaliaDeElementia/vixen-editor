@@ -1,13 +1,12 @@
 'use sanity'
 
 import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
+import { STORE_ROOT } from '../../shared/store-path.ts'
 
 import { isRecord } from '../../shared/guards.ts'
 import { isEntryKind, type EntryKind, type FileKind } from '../../shared/documents.ts'
 
 type FolderPath = string
-
-export const STORE_ROOT = ''
 
 interface FileNode {
   name: string
@@ -72,10 +71,6 @@ export function parentOf(entryPath: string): string {
   const cut = entryPath.lastIndexOf('/')
 
   return cut === NOT_FOUND ? STORE_ROOT : entryPath.slice(SEQUENCE_START, cut)
-}
-
-export function joinPath(directory: string, name: string): string {
-  return directory === STORE_ROOT ? name : `${directory}/${name}`
 }
 
 export function ancestorsOf(entryPath: string): FolderPath[] {

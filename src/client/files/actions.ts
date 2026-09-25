@@ -5,7 +5,7 @@ import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
 import { archiveUrlFor, FilesRequestError, type FilesClient } from './files-client.ts'
-import { joinPath } from './tree-model.ts'
+import { joinPath } from '../../shared/store-path.ts'
 
 const ACTION_SELECTORS = {
   newDocument: '#new-document',

@@ -9,6 +9,7 @@ import { createLogger } from '../logging.ts'
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { DOCUMENT_EXTENSIONS, extensionOf, IMAGE_EXTENSIONS, isAllowedName } from './safe-path.ts'
 import type { FileKind } from '../../shared/documents.ts'
+import { joinPath } from '../../shared/store-path.ts'
 
 const logEscape = createLogger('storage/tree', 'symlinkEscape')
 const logCycle = createLogger('storage/tree', 'symlinkCycle')
@@ -112,7 +113,7 @@ async function buildEntry(entry: Dirent, at: Location): Promise<TreeEntry | null
   }
 
   const { name } = entry
-  const entryPath = at.prefix === '' ? name : `${at.prefix}/${name}`
+  const entryPath = joinPath(at.prefix, name)
 
   if (stats.isDirectory()) return await buildFolder({ name, target, entryPath, real, scope: at.scope })
 

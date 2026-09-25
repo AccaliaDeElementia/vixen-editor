@@ -2,6 +2,8 @@
 
 import path from 'node:path'
 
+import { joinPath } from '../../shared/store-path.ts'
+
 export class InvalidPathError extends Error {
   override readonly name = 'InvalidPathError'
 
@@ -123,7 +125,7 @@ export function resolveFolderPath(docsRoot: string, folderPath: string): string 
 export function joinEntryPath(directory: string, name: string): string {
   if (name.includes('/')) throw new InvalidPathError(name, 'must be a single path segment')
 
-  return directory === '' ? name : `${directory}/${name}`
+  return joinPath(directory, name)
 }
 
 export const TestOnly = { NAME_RULES }

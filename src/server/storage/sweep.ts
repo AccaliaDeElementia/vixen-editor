@@ -9,6 +9,7 @@ import { createLogger } from '../logging.ts'
 
 import { isTemporaryName } from './atomic-write.ts'
 import { nullWhenAbsent } from './containment.ts'
+import { joinPath } from '../../shared/store-path.ts'
 
 const logSwept = createLogger('storage/sweep')
 const logKept = createLogger('storage/sweep', 'kept')
@@ -19,7 +20,7 @@ async function sweepDirectory(directory: string, prefix: string, removed: string
 
   for (const entry of entries) {
     const here = path.join(directory, entry.name)
-    const entryPath = prefix === '' ? entry.name : `${prefix}/${entry.name}`
+    const entryPath = joinPath(prefix, entry.name)
 
     if (entry.isDirectory()) {
       if (isTemporaryName(entry.name)) logKept('%s is a directory, so nothing here wrote it', entryPath)

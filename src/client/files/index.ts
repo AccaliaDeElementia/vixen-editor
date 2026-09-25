@@ -10,7 +10,8 @@ import { createDialogs, type Dialogs } from './dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
-import { ancestorsOf, folderPathsIn, parentOf, STORE_ROOT, type TrashNode, type TreeNode } from './tree-model.ts'
+import { ancestorsOf, folderPathsIn, parentOf, type TrashNode, type TreeNode } from './tree-model.ts'
+import { STORE_ROOT } from '../../shared/store-path.ts'
 import { renderTree, rowIndexOf, ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR, type VisibleRow } from './tree-view.ts'
 
 interface FileTreeOptions {

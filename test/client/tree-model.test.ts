@@ -2,14 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import {
-  ancestorsOf,
-  folderPathsIn,
-  joinPath,
-  parentOf,
-  parseTrash,
-  parseTree,
-} from '../../src/client/files/tree-model.ts'
+import { ancestorsOf, folderPathsIn, parentOf, parseTrash, parseTree } from '../../src/client/files/tree-model.ts'
 
 describe('parseTree', () => {
   it('reads a flat document', () => {
@@ -143,16 +136,6 @@ describe('folderPathsIn', () => {
 
   it('lists nothing for a flat tree of documents', () => {
     expect(folderPathsIn(parseTree({ tree: [{ name: 'a.md', path: 'a.md', kind: 'document' }] }))).toStrictEqual([])
-  })
-})
-
-describe('joinPath', () => {
-  it('joins onto a directory', () => {
-    expect(joinPath('archive', 'notes.md')).toBe('archive/notes.md')
-  })
-
-  it('returns the bare name at the root', () => {
-    expect(joinPath('', 'notes.md')).toBe('notes.md')
   })
 })
 

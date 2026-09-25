@@ -37,6 +37,7 @@ import {
 import { classifyFile, readTree, type TreeEntry } from './tree.ts'
 import { moveToTrash, purgeFromTrash, readTrash, restoreFromTrash, type TrashEntry } from './trash.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
+import { joinPath } from '../../shared/store-path.ts'
 
 const logStore = createLogger('storage/fs-store')
 const logEscape = createLogger('storage/fs-store', 'symlinkEscape')
@@ -99,7 +100,7 @@ async function collectDocumentIds(dir: string, prefix: string, found: string[]):
   for (const entry of entries) {
     if (!isAllowedName(entry.name)) continue
 
-    const id = prefix === '' ? entry.name : `${prefix}/${entry.name}`
+    const id = joinPath(prefix, entry.name)
 
     if (entry.isDirectory()) {
       /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk is

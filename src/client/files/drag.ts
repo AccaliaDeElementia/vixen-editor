@@ -8,7 +8,8 @@ import type { Toast } from '../layout/toast.ts'
 import type { Dialogs } from './dialogs.ts'
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
-import { joinPath, parentOf, STORE_ROOT } from './tree-model.ts'
+import { parentOf } from './tree-model.ts'
+import { joinPath, STORE_ROOT } from '../../shared/store-path.ts'
 
 type OnceRebuilt = () => void
 
