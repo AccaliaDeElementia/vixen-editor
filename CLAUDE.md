@@ -99,6 +99,78 @@ choice is the place to record it.
 
 Project-wide policy belongs in this file, not in code comments.
 
+#### A comment is a defect report about the code
+
+Before writing one, find the change that removes the need for it. The need is
+almost never irreducible; it is usually a value, a type or a branch that has
+no name yet. Each of these replaced a real comment:
+
+| The comment explains…                          | The change that removes it                                                |
+| ---------------------------------------------- | ------------------------------------------------------------------------- |
+| what a bare literal means                      | a named constant — `''` became `STORE_ROOT` at eight sites                |
+| what a `string` or a `null` means in a return  | a type alias — `Promise<RejectionMessage \| null>`                        |
+| a multi-clause test written out more than once | a named predicate — `isStoreRow`, which also narrows the type             |
+| why a condition is being checked               | a named local — `const neverReachedTheServer = etag === undefined`        |
+| how two constants relate                       | derive one — `TOAST_ERROR_MS = TOAST_VISIBLE_MS * ERROR_OUTSTAYS_INFO_BY` |
+| why the code behaves as it does                | a test named for that behaviour                                           |
+| why code that was never justified exists       | delete the code                                                           |
+| a rule that applies project-wide               | a section in this file                                                    |
+
+Verbosity is the cheaper side of this trade. A longer name, an extra alias or
+a separate predicate can be tested and cannot fall out of sync; a comment can
+do neither. Prefer the code every time the code can carry it.
+
+#### Then, if no change removes it
+
+Only three things reach here: an external fact, a suppression rationale, and
+the occasional ordering constraint no type can hold. Check each against:
+
+- **Was it measured, or is it a hypothesis?** Do not state a cause that has
+  not been isolated from its confounders. A comment once blamed a `<form>`
+  for a password manager's behaviour; the form and the field's `id` changed
+  in one commit, and the evidence pointed at the `id`.
+- **Does the thing it describes still sit beside it?** A comment about a
+  neighbour dies with the neighbour. One outlived the constant it explained
+  moving to another module, and went on describing an unrelated function.
+- **Does a test or this file already hold it?** Then that is the record.
+  Rename the test until it is findable, and delete the comment.
+
+#### Surface what you add to the durable record, as you add it
+
+Two things outlive the change that introduced them: a comment, and a rule in
+this file. Both get announced in the reply that introduces them, so a
+reviewer can push back while the reasoning is live rather than finding it in
+a scan months later.
+
+**For a comment:** quote it, name which justified case it falls under, and
+say what you considered changing in the code instead and why that did not
+work. One line each.
+
+**For anything added to this file:** quote it, and say why it is policy
+rather than a comment, a test name, or nothing at all.
+
+The second matters more than it looks, because this file is the sanctioned
+way out of writing a comment — which makes it the lever you will reach for
+when the rule above blocks you. It has been reached for at that scale before:
+a single session added around three hundred lines here, much of it rationale
+the tests already held.
+
+Three specific traps:
+
+- **A one-off instruction is not policy.** The human may have been giving
+  design guidance for the situation in front of you. Writing it here promotes
+  it to a standing rule binding every later session, which is a change of
+  scope they did not ask for.
+- **Wanting to write it down is a signal, not a licence.** If you feel the
+  urge to make something policy and nobody asked you to, the likely causes
+  are that their instruction was imprecisely worded, or that you have read it
+  more broadly than they meant. Both are worth raising. Neither is resolved
+  by writing your reading into the rules.
+- **These are your instructions.** An addition nobody reviewed changes how
+  you behave everywhere, permanently, and it is the one kind of change no
+  failing test can catch. Reviewing it is how the two of you stay on the same
+  page instead of drifting apart a paragraph at a time.
+
 ### 6. Every export is contract; test-only surface lives in `TestOnly`
 
 An export from `src/` is valid only if one of these holds:
