@@ -8,6 +8,8 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { cast } from '../cast.ts'
+
 import { DEFAULT_LIMITS, loadConfig, type Config, TestOnly as configTestOnly } from '../../src/server/config.ts'
 import * as lockModule from '../../src/server/storage/lock.ts'
 import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
@@ -66,11 +68,13 @@ function recordingRuntime(overrides: Partial<Runtime> = {}): {
   const order: string[] = []
   const recorded: RecordedServe[] = []
 
-  const fakeServe = ((options: RecordedServe['options'], onListening: RecordedServe['onListening']) => {
-    order.push('serve')
-    recorded.push({ options, onListening })
-    return { close: () => undefined }
-  }) as unknown as typeof serve
+  const fakeServe = cast<typeof serve>(
+    (options: RecordedServe['options'], onListening: RecordedServe['onListening']) => {
+      order.push('serve')
+      recorded.push({ options, onListening })
+      return { close: () => undefined }
+    },
+  )
 
   const runtime: Runtime = {
     loadEnvFile: () => {
@@ -253,7 +257,7 @@ describe('startServer', () => {
     const { runtime, recorded } = recordingRuntime()
 
     await startServer(runtime)
-    const fetchHandler = recorded[0]?.options.fetch as (req: Request) => Response | Promise<Response>
+    const fetchHandler = cast<(req: Request) => Response | Promise<Response>>(recorded[0]?.options.fetch)
     const res = await fetchHandler(new Request('http://localhost/api/health'))
 
     await expect(res.json()).resolves.toStrictEqual({ status: 'ok' })

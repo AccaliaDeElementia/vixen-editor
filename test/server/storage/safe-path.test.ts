@@ -4,6 +4,8 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { toError } from '../../../src/server/errors.ts'
+
 import {
   DOCUMENT_EXTENSIONS,
   extensionOf,
@@ -148,7 +150,7 @@ describe('resolveDocumentPath', () => {
       resolveDocumentPath(ROOT, '../secrets.md')
       expect.unreachable('expected resolveDocumentPath to throw')
     } catch (error) {
-      expect((error as Error).message).not.toContain(ROOT)
+      expect(toError(error).message).not.toContain(ROOT)
     }
   })
 })

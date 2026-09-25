@@ -2,6 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { cast } from '../cast.ts'
+
 import { DocumentRequestError } from '../../src/client/editor/document-client.ts'
 import type { DocumentClient } from '../../src/client/editor/document-client.ts'
 import { createSession, TestOnly } from '../../src/client/editor/session.ts'
@@ -25,7 +27,7 @@ beforeEach(() => {
 })
 
 function session(): ReturnType<typeof createSession> {
-  return createSession(client as unknown as DocumentClient)
+  return createSession(cast<DocumentClient>(client))
 }
 
 describe('defaultTemplate', () => {
@@ -81,7 +83,7 @@ describe('load', () => {
 
   it('accepts a custom template', async () => {
     client.read.mockRejectedValue(new DocumentRequestError(404, 'Document not found'))
-    const custom = createSession(client as unknown as DocumentClient, () => 'custom')
+    const custom = createSession(cast<DocumentClient>(client), () => 'custom')
 
     await expect(custom.load('fresh.md')).resolves.toBe('custom')
   })

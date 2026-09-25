@@ -2,6 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { cast } from '../cast.ts'
+
 import { createFilesClient, FilesRequestError } from '../../src/client/files/files-client.ts'
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -11,7 +13,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 function client(): ReturnType<typeof createFilesClient> {
-  return createFilesClient(fetchMock as unknown as typeof fetch, '/api')
+  return createFilesClient(cast<typeof fetch>(fetchMock), '/api')
 }
 
 beforeEach(() => {

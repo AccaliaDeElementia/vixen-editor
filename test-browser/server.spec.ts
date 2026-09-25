@@ -2,6 +2,8 @@
 
 import { expect, test } from '@playwright/test'
 
+import { stringFieldOf } from './json.ts'
+
 test('the built entry point boots and answers its health check', async ({ request }) => {
   const res = await request.get('/api/health')
 
@@ -76,7 +78,7 @@ test('round-trips a document through the real process', async ({ request }) => {
 
   const created = await request.post('/api/files/documents', { data: { path: id, content: '# booted' } })
   expect(created.status()).toBe(201)
-  const { etag } = (await created.json()) as { etag: string }
+  const etag = await stringFieldOf(created, 'etag')
 
   const written = await request.put(`/api/documents/${id}`, {
     data: { content: '# edited' },
@@ -91,7 +93,7 @@ test('round-trips a document through the real process', async ({ request }) => {
   const trashed = await request.delete(`/api/files/entries/${id}`)
   expect(trashed.status()).toBe(200)
 
-  const { trashId } = (await trashed.json()) as { trashId: string }
+  const trashId = await stringFieldOf(trashed, 'trashId')
   expect((await request.delete(`/api/trash/${trashId}`)).status()).toBe(204)
 })
 
@@ -99,7 +101,7 @@ test('rejects a stale save against the real process', async ({ request }) => {
   const id = `stale-${String(Date.now())}.md`
 
   const created = await request.post('/api/files/documents', { data: { path: id, content: '# first' } })
-  const { etag } = (await created.json()) as { etag: string }
+  const etag = await stringFieldOf(created, 'etag')
   await request.put(`/api/documents/${id}`, { data: { content: '# theirs' }, headers: { 'if-match': etag } })
 
   const stale = await request.put(`/api/documents/${id}`, {

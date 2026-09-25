@@ -35,7 +35,6 @@ export default [
     rules: {
       /* Tests assert on values the types cannot narrow, and arrange deliberately
          invalid input to prove validation rejects it. */
-      '@typescript-eslint/no-unsafe-type-assertion': 'off',
       '@typescript-eslint/no-magic-numbers': 'off',
 
       /* `let subject: T` assigned in beforeEach is the standard fixture pattern;

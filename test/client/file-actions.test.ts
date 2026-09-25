@@ -7,6 +7,9 @@ import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
+import type { Dialogs } from '../../src/client/files/dialogs.ts'
+import type { FilesClient } from '../../src/client/files/files-client.ts'
+import { cast } from '../cast.ts'
 
 const { trashActionOf } = TestOnly
 
@@ -84,7 +87,7 @@ let client: ReturnType<typeof fakeClient>
 let dialogs: ReturnType<typeof fakeDialogs>
 
 async function start(pathname = '/doc/'): Promise<void> {
-  await initFileTree({ root: document, pathname, client: client as never, dialogs: dialogs as never })
+  await initFileTree({ root: document, pathname, client: cast<FilesClient>(client), dialogs: cast<Dialogs>(dialogs) })
 }
 
 function rowFor(entryPath: string): HTMLElement {

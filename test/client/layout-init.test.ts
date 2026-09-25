@@ -2,6 +2,8 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { cast } from '../cast.ts'
+
 import {
   MAX_EXPLORER_FRACTION,
   MIN_EXPLORER_PX,
@@ -36,14 +38,14 @@ function page(): HTMLElement {
 
 function fakeView(innerWidth = VIEWPORT): Window {
   const listeners = new Map<string, EventListener>()
-  return {
+  return cast<Window>({
     innerWidth,
     addEventListener: (type: string, listener: EventListener) => listeners.set(type, listener),
     dispatchEvent: (event: Event) => {
       listeners.get(event.type)?.(event)
       return true
     },
-  } as unknown as Window
+  })
 }
 
 function app(): HTMLElement {

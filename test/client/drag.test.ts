@@ -7,6 +7,9 @@ import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR } from '../../src/client/files/tree-view.ts'
+import type { Dialogs } from '../../src/client/files/dialogs.ts'
+import type { FilesClient } from '../../src/client/files/files-client.ts'
+import { cast } from '../cast.ts'
 
 const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf } = TestOnly
 
@@ -69,7 +72,12 @@ function page(): void {
 }
 
 async function start(open: string[] = ['archive', 'journal']): Promise<void> {
-  await initFileTree({ root: document, pathname: '/doc/', client: client as never, dialogs: dialogs as never })
+  await initFileTree({
+    root: document,
+    pathname: '/doc/',
+    client: cast<FilesClient>(client),
+    dialogs: cast<Dialogs>(dialogs),
+  })
   for (const folder of open) rowFor(folder).click()
 }
 

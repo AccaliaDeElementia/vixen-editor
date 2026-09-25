@@ -2,6 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { cast } from '../cast.ts'
+
 import { createDocumentClient, DocumentRequestError } from '../../src/client/editor/document-client.ts'
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -19,7 +21,7 @@ function noContent(etag = '"e2"'): Response {
 }
 
 function client(): ReturnType<typeof createDocumentClient> {
-  return createDocumentClient(fetchMock as unknown as typeof fetch, '/api')
+  return createDocumentClient(cast<typeof fetch>(fetchMock), '/api')
 }
 
 beforeEach(() => {

@@ -2,6 +2,8 @@
 
 import { expect, test, type Page } from '@playwright/test'
 
+import { stringFieldOf } from './json.ts'
+
 const RIBBON = '.ribbon'
 const EXPLORER = '#explorer'
 const WORKSPACE = '.workspace'
@@ -15,8 +17,9 @@ interface Box {
 
 async function boxOf(page: Page, selector: string): Promise<Box> {
   const found = await page.locator(selector).boundingBox()
-  expect(found, `${selector} should be laid out`).not.toBeNull()
-  return found as Box
+  if (found === null) throw new Error(`${selector} should be laid out, but has no bounding box`)
+
+  return found
 }
 
 async function openLayout(page: Page, width = 1200, height = 700): Promise<void> {
@@ -303,7 +306,7 @@ test('the trash actions are distinguishable by sight and by tooltip', async ({ p
   const name = `bin-${String(Date.now())}.md`
   await request.post('/api/files/documents', { data: { path: name } })
   const trashed = await request.delete(`/api/files/entries/${name}`)
-  const { trashId } = (await trashed.json()) as { trashId: string }
+  const trashId = await stringFieldOf(trashed, 'trashId')
 
   await page.goto('/doc/')
   await page.locator('.tree__row[data-kind="trash-root"]').click()

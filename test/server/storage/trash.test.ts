@@ -10,6 +10,7 @@ import { createFsDocumentStore, type DocumentStore } from '../../../src/server/s
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import { DocumentNotFoundError, EntryExistsError } from '../../../src/server/storage/store-errors.ts'
 import { TestOnly } from '../../../src/server/storage/trash.ts'
+import { isRecord } from '../../../src/shared/guards.ts'
 
 const { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
 
@@ -33,7 +34,8 @@ function trashPath(...parts: string[]): string {
 // leave both the ordering and the tie-break asserted below untested.
 async function redate(entryId: string, deletedAt: string): Promise<void> {
   const file = trashPath(entryId, TRASH_META_NAME)
-  const meta = JSON.parse(await fs.readFile(file, 'utf8')) as Record<string, unknown>
+  const meta: unknown = JSON.parse(await fs.readFile(file, 'utf8'))
+  if (!isRecord(meta)) throw new Error(`${file} does not hold an object`)
 
   await fs.writeFile(file, JSON.stringify({ ...meta, deletedAt }), 'utf8')
 }

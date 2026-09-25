@@ -6,6 +6,8 @@ import { initFileTree } from '../../src/client/files/index.ts'
 import { readOpenFolders } from '../../src/client/files/open-folders.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
+import type { FilesClient } from '../../src/client/files/files-client.ts'
+import { cast } from '../cast.ts'
 
 const SAMPLE = parseTree({
   tree: [
@@ -49,7 +51,7 @@ function fakeClient(overrides: { tree?: unknown; trash?: unknown } = {}): {
 }
 
 async function start(pathname = '/doc/', client = fakeClient()): Promise<void> {
-  await initFileTree({ root: document, pathname, client: client as never })
+  await initFileTree({ root: document, pathname, client: cast<FilesClient>(client) })
 }
 
 function rows(): HTMLElement[] {

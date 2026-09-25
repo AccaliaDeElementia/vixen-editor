@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { isRecord } from '../../../src/shared/guards.ts'
 
 let root: string
 let store: DocumentStore
@@ -27,7 +28,7 @@ afterEach(async () => {
 async function fieldOf(res: Response, key: string): Promise<unknown> {
   const body: unknown = await res.json()
 
-  return typeof body === 'object' && body !== null && key in body ? (body as Record<string, unknown>)[key] : undefined
+  return isRecord(body) ? body[key] : undefined
 }
 
 async function codeOf(res: Response): Promise<unknown> {
