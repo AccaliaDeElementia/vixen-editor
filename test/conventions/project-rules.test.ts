@@ -3,11 +3,12 @@
 import { readFileSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { TestOnly as safePathTestOnly } from '../../src/server/storage/safe-path.ts'
+import { isRecord } from '../../src/shared/guards.ts'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -148,6 +149,59 @@ describe('every source file belongs to exactly one typecheck project', () => {
       .filter(({ path, projects: matched }) => matched.length !== (path.startsWith(SHARED) ? 2 : 1))
 
     expect(misfiled).toStrictEqual([])
+  })
+})
+
+/* A relaxation covers code nobody has written yet, so unlike a suppression at a
+   line it never comes back into review. Naming the approved set here makes a
+   fourth a two-file edit. Every entry is scoped to tests or tooling. */
+const APPROVED_RELAXATIONS = [
+  { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/no-magic-numbers' },
+  { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/promise-function-async' },
+  { files: ['*.config.ts'], rule: '@typescript-eslint/no-magic-numbers' },
+]
+
+interface Relaxation {
+  files: string[]
+  rule: string
+}
+
+function relaxationsIn(block: unknown): Relaxation[] {
+  if (!isRecord(block) || !isRecord(block.rules)) return []
+  const files = Array.isArray(block.files) ? block.files.filter((f): f is string => typeof f === 'string') : []
+
+  return Object.entries(block.rules)
+    .filter(([, setting]) => setting === 'off')
+    .map(([rule]) => ({ files, rule }))
+}
+
+function describeRelaxation({ files, rule }: Relaxation): string {
+  return `${files.join(',')} -> ${rule}`
+}
+
+describe('every eslint relaxation is one that was approved', () => {
+  let relaxations: Relaxation[] = []
+
+  beforeAll(async () => {
+    const module: unknown = await import(pathToFileURL(path.join(REPO_ROOT, 'eslint.config.js')).href)
+    const loaded = isRecord(module) ? module.default : undefined
+    relaxations = Array.isArray(loaded) ? loaded.flatMap(relaxationsIn) : []
+  })
+
+  it('finds the config at all, so the checks below are not vacuous', () => {
+    expect(relaxations.length).toBeGreaterThan(0)
+  })
+
+  it('matches the approved list, so a new one cannot land unreviewed', () => {
+    expect(relaxations.map(describeRelaxation).toSorted((a, b) => a.localeCompare(b))).toStrictEqual(
+      APPROVED_RELAXATIONS.map(describeRelaxation).toSorted((a, b) => a.localeCompare(b)),
+    )
+  })
+
+  it('leaves shipped code with none, which is what the list is protecting', () => {
+    const shipped = relaxations.filter(({ files }) => files.some((pattern) => pattern.startsWith('src/')))
+
+    expect(shipped.map(describeRelaxation)).toStrictEqual([])
   })
 })
 

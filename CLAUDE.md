@@ -960,7 +960,8 @@ The resolution is a composition root plus a guard:
   inertly. Node 26 honours it and esbuild preserves it through bundling. One
   `v8 ignore` covers the guarded call. Add logic here and coverage will demand a
   test for it.
-- **`src/client/main.ts` stays excluded**, at one line. A browser bundle has no
+- **`src/client/main.ts` stays excluded**, and stays a mount list: three
+  imports and three argument-free calls, no branches and no values chosen. A browser bundle has no
   `import.meta.main`, and the only way to make it inertly importable would be a
   guard that changes behaviour — silently doing nothing when `#editor` is absent
   instead of reporting it. That is a coverage trick, not a design improvement,
@@ -1024,5 +1025,9 @@ if any does not.
   here uses `:filter` syntax — that is the only path reaching `jstransformer`'s
   dynamic `require`.
 - **`eslint-config-love` is strict by design** and expects local relaxation.
-  Three rules are relaxed project-wide, each justified in `eslint.config.js`.
-  Prefer fixing the code over adding a fourth.
+  **Shipped code takes none**: every relaxation in `eslint.config.js` is scoped
+  to `test/**`, `test-browser/**` or a config file, and `test/conventions/`
+  fails the gate on one that is not on its approved list. A relaxation covers
+  code nobody has written yet, so unlike a suppression at a line it never comes
+  back into review — prefer fixing the code, then an inline suppression with a
+  rationale, and treat a new relaxation as the last resort.

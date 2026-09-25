@@ -16,10 +16,9 @@ export default [
     languageOptions: {
       ...love.languageOptions,
       parserOptions: {
-        // eslint-config-love sets parserOptions.project = true, which resolves
-        // only the nearest tsconfig.json and so misses the split server/client
-        // projects. Listing a .ts file here as well would be an error, because
-        // every .ts file is already covered by tsconfig.json.
+        /* Widened from love's `projectService: true` so this file is linted too.
+           Only `*.js` may be listed: allowDefaultProject errors on a file that a
+           tsconfig already covers, which every .ts file here is. */
         projectService: {
           allowDefaultProject: ['*.js'],
         },
@@ -33,22 +32,22 @@ export default [
   {
     files: ['test/**/*.ts', 'test-browser/**/*.ts'],
     rules: {
-      /* Tests assert on values the types cannot narrow, and arrange deliberately
-         invalid input to prove validation rejects it. */
+      /* Boundary cases are the numbers. A test naming every off-by-one it probes
+         would bury the case it is making. Shipped code has no such exemption. */
       '@typescript-eslint/no-magic-numbers': 'off',
 
       'max-nested-callbacks': ['error', MAX_NESTED_CALLBACKS],
 
-      /* Test helpers returning promises read better without the async ceremony. */
+      /* Unsatisfiable with require-await and return-await, which are both on:
+         `() => Promise.resolve(x)` trips this rule, `async () => x` trips
+         require-await, `async () => Promise.resolve(x)` trips return-await, and
+         `async () => await Promise.resolve(x)` is the same thing spelled longer. */
       '@typescript-eslint/promise-function-async': 'off',
     },
   },
   {
     files: ['src/**/*.ts', 'scripts/**/*.ts'],
     rules: {
-      /* A `TestOnly` container is a module's test-visible surface, not its
-         contract. Shipping code that imported one would make it contract by
-         use, which is the conflation the container exists to end. */
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
@@ -64,9 +63,9 @@ export default [
     },
   },
   {
-    files: ['*.config.ts', 'test-browser/playwright.config.ts', 'scripts/**/*.ts'],
+    files: ['*.config.ts'],
     rules: {
-      /* Ports, timeouts and threshold percentages are self-describing in context. */
+      /* `thresholds: { 100: true }` is vitest's shape, where the number is the key. */
       '@typescript-eslint/no-magic-numbers': 'off',
     },
   },

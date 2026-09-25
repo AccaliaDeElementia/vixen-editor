@@ -25,8 +25,8 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
-function move(from: string, to: string): Promise<RelinkOutcome> {
-  return store.move({ from, to })
+async function move(from: string, to: string): Promise<RelinkOutcome> {
+  return await store.move({ from, to })
 }
 
 async function rewrittenBy(from: string, to: string): Promise<string[]> {

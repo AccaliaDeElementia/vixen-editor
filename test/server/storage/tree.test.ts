@@ -16,11 +16,11 @@ const OVER_NAME_MAX = 'a'.repeat(300)
 let root = ''
 let outside = ''
 
-function write(relative: string, content = ''): Promise<void> {
+async function write(relative: string, content = ''): Promise<void> {
   const target = path.join(root, relative)
-  return fs.mkdir(path.dirname(target), { recursive: true }).then(async () => {
-    await fs.writeFile(target, content)
-  })
+
+  await fs.mkdir(path.dirname(target), { recursive: true })
+  await fs.writeFile(target, content)
 }
 
 function names(entries: readonly TreeEntry[]): string[] {
