@@ -2,10 +2,6 @@
 
 import type { EntryMove } from './doc-path.ts'
 
-// The file tree and the editor are mounted independently and never see each
-// other, so a move reaches the editor as an event on the shared root. The
-// name and the shape live here once, because two copies of an event name
-// fail silently: the listener simply never runs.
 const DOCUMENT_MOVED = 'vixen:document-moved'
 
 export interface DocumentMoved extends EntryMove {

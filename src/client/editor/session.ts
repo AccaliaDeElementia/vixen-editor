@@ -36,10 +36,6 @@ export function createSession(client: DocumentClient, template: (id: string) => 
       }
     },
 
-    // A move leaves the content untouched, so the etag is still the right one
-    // for the bytes on disk — only the name it is filed under changed. If the
-    // move also repaired links, the etag is stale and the save answers 412,
-    // which is the correct loud outcome rather than a silent overwrite.
     rename(from: string, to: string): void {
       const etag = etags.get(from)
       etags.delete(from)

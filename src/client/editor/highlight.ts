@@ -14,8 +14,6 @@ const DANGER = '#e74c3c'
 
 const vixenHighlightStyle = HighlightStyle.define([
   { tag: tags.heading, color: WHITE, fontWeight: '700' },
-  // The `#`, `*` and backtick markers. CodeMirror's bundled defaultHighlightStyle
-  // renders these near-black, which is invisible on a dark surface.
   { tag: tags.processingInstruction, color: MUTED },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strong, fontWeight: '700' },

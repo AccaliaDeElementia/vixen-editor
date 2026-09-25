@@ -53,9 +53,7 @@ export function writePreferences(preferences: ExplorerPreferences, storage: Stor
 
   try {
     storage.setItem(PREFERENCES_KEY, JSON.stringify(preferences))
-  } catch {
-    // A blocked or full quota costs a remembered width, not a working editor.
-  }
+  } catch {}
 }
 
 export const TestOnly = { DEFAULT_PREFERENCES, PREFERENCES_KEY }
