@@ -21,7 +21,7 @@ function styleFor(tag: Tag): string {
 
   const rules = vixenHighlightStyle.module?.getRules() ?? ''
   const selector = className.split(' ').at(-1) ?? ''
-  const match = new RegExp(`\\.${selector}\\s*\\{([^}]*)\\}`, 'u').exec(rules)
+  const match = new RegExp(`\\.${selector}\\s*\\{([^\\}]*)\\}`, 'v').exec(rules)
   return match?.[1] ?? ''
 }
 
@@ -52,7 +52,7 @@ describe('vixenHighlightStyle', () => {
   })
 
   it('keeps every colour it defines off the dark background', () => {
-    const nearBlack = /#(?:0{3,6}|1[0-9a-f]|2[0-2])/u
+    const nearBlack = /#(?:0{3,6}|1[0-9a-f]|2[0-2])/v
     const rules = vixenHighlightStyle.module?.getRules() ?? ''
 
     expect(rules).not.toMatch(nearBlack)

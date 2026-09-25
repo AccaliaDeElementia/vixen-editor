@@ -26,7 +26,7 @@ describe('computeEtag', () => {
   })
 
   it('is a quoted strong validator, as HTTP requires of an ETag', () => {
-    expect(computeEtag('# hello')).toMatch(/^"[0-9a-f]{64}"$/u)
+    expect(computeEtag('# hello')).toMatch(/^"[0-9a-f]{64}"$/v)
   })
 
   it('distinguishes unicode content that differs only in normalisation', () => {

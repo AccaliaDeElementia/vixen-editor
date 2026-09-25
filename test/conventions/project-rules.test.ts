@@ -15,22 +15,22 @@ const SOURCE_DIRECTORIES = ['src', 'scripts', 'test', 'test-browser']
 const ROOT_SOURCE_FILES = ['vitest.config.ts', 'eslint.config.js']
 
 const TYPECHECK_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json']
-const SOURCE_EXTENSION = /\.(?:ts|js)$/u
+const SOURCE_EXTENSION = /\.(?:ts|js)$/v
 
 const DIRECTIVE = "'use sanity'"
 const DEFAULT_EXPORT_ALLOWLIST = ['eslint.config.js', 'test-browser/playwright.config.ts', 'vitest.config.ts']
 
 const SCANNER = 'test/conventions/project-rules.test.ts'
 
-const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmu
-const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^}]*)\}/gmu
+const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmv
+const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}/gmv
 
 const ATOMIC_WRITE = 'src/server/storage/atomic-write.ts'
-const DIRECT_WRITE = /\bwriteFile\(/u
+const DIRECT_WRITE = /\bwriteFile\(/v
 
-const SUPPRESSION = /eslint-disable|v8 ignore/u
-const CLOSES_COVERAGE_REGION = /v8 ignore (?:stop|end)/u
-const RATIONALE = /--\s*\S/u
+const SUPPRESSION = /eslint-disable|v8 ignore/v
+const CLOSES_COVERAGE_REGION = /v8 ignore (?:stop|end)/v
+const RATIONALE = /--\s*\S/v
 
 interface SourceFile {
   relativePath: string
@@ -121,7 +121,7 @@ describe('rule 3: default exports are confined to tooling configuration', () => 
 
 describe('every source file belongs to exactly one typecheck project', () => {
   function includesOf(configPath: string): string[] {
-    const withoutLineComments = readFileSync(path.join(REPO_ROOT, configPath), 'utf8').replace(/^\s*\/\/.*$/gmu, '')
+    const withoutLineComments = readFileSync(path.join(REPO_ROOT, configPath), 'utf8').replace(/^\s*\/\/.*$/gmv, '')
     const parsed: unknown = JSON.parse(withoutLineComments)
     if (typeof parsed !== 'object' || parsed === null) return []
     const { include } = parsed as { include?: unknown }
@@ -130,7 +130,7 @@ describe('every source file belongs to exactly one typecheck project', () => {
 
   function matches(pattern: string, filePath: string): boolean {
     if (!pattern.includes('*')) return pattern === filePath
-    const prefix = pattern.replace(/\*\*\/\*\.ts$/u, '')
+    const prefix = pattern.replace(/\*\*\/\*\.ts$/v, '')
     return filePath.startsWith(prefix) && filePath.endsWith('.ts')
   }
 
@@ -182,16 +182,16 @@ function compare(a: string, b: string): number {
   return a.localeCompare(b)
 }
 const WHOLE_MODULE = '*'
-const RUNTIME_EXPORT = /^export\s+(?:async\s+)?(?:function|const|class)\s+(?<name>\w+)/gmu
-const TYPE_EXPORT = /^export\s+(?:interface|type)\s/u
+const RUNTIME_EXPORT = /^export\s+(?:async\s+)?(?:function|const|class)\s+(?<name>\w+)/gmv
+const TYPE_EXPORT = /^export\s+(?:interface|type)\s/v
 
 function runtimeExportsIn(contents: string): string[] {
   return [...contents.matchAll(RUNTIME_EXPORT)].map((match) => match.groups?.name ?? '').filter((name) => name !== '')
 }
 
 const IMPORT_CLAUSE =
-  /^import\s+(?:type\s+)?(?<first>\{[^}]*\}|\*\s+as\s+\w+|\w+)?\s*(?:,\s*(?<second>\{[^}]*\}))?\s*from\s*'(?<from>[^']*)'/gmu
-const REEXPORT_FROM = /^export\s+(?:type\s+)?\{(?<names>[^}]*)\}\s*from\s*'(?<from>[^']*)'/gmu
+  /^import\s+(?:type\s+)?(?<first>\{[^\}]*\}|\*\s+as\s+\w+|\w+)?\s*(?:,\s*(?<second>\{[^\}]*\}))?\s*from\s*'(?<from>[^']*)'/gmv
+const REEXPORT_FROM = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}\s*from\s*'(?<from>[^']*)'/gmv
 
 function resolveSpecifier(importer: string, specifier: string): string | null {
   if (!specifier.startsWith('.')) return null
@@ -208,17 +208,17 @@ function resolveSpecifier(importer: string, specifier: string): string | null {
 
 function localNamesIn(clause: string): string[] {
   return clause
-    .replaceAll(/[{}]/gu, '')
+    .replaceAll(/[\{\}]/gv, '')
     .split(',')
     .map(
       (entry) =>
         entry
           .trim()
-          .replace(/^type\s+/u, '')
-          .split(/\s+as\s+/u)[0]
+          .replace(/^type\s+/v, '')
+          .split(/\s+as\s+/v)[0]
           ?.trim() ?? '',
     )
-    .filter((name) => /^\w+$/u.test(name))
+    .filter((name) => /^\w+$/v.test(name))
 }
 
 function namesInClause(clause: string | undefined): string[] {
@@ -278,10 +278,10 @@ function exportedNamesIn(contents: string): string[] {
         (entry) =>
           entry
             .trim()
-            .split(/\s+as\s+/u)
+            .split(/\s+as\s+/v)
             .at(-1) ?? '',
       )
-      .filter((name) => /^\w+$/u.test(name)),
+      .filter((name) => /^\w+$/v.test(name)),
   )
 
   return [...declared, ...rebound].filter((name) => name !== '')
@@ -420,8 +420,8 @@ describe('every store write goes through the atomic helpers', () => {
 })
 
 describe('the documented name rules match the ones the validator applies', () => {
-  const NAME_RULE_TABLE = /Rejected in a path segment[\s\S]*?\n\n`\//u
-  const DOCUMENTED = /^\| `(?<reason>[^`]+)`\s*\|/gmu
+  const NAME_RULE_TABLE = /Rejected in a path segment[\s\S]*?\n\n`\//v
+  const DOCUMENTED = /^\| `(?<reason>[^`]+)`\s*\|/gmv
 
   function documentedReasons(guide: string): string[] {
     const table = NAME_RULE_TABLE.exec(guide)?.[0] ?? ''
@@ -458,9 +458,9 @@ describe('the documented error codes match the ones the server emits', () => {
   }
 
   const CODE_PATTERNS: readonly RegExp[] = [
-    /refuse\(c, (?<status>HTTP_[A-Z_]+), '(?<code>[A-Z_]+)'/gu,
-    /status: (?<status>HTTP_[A-Z_]+),\s*\n?\s*code: '(?<code>[A-Z_]+)'/gu,
-    /code: '(?<code>[A-Z_]+)' \},\s*(?<status>HTTP_[A-Z_]+)/gu,
+    /refuse\(c, (?<status>HTTP_[A-Z_]+), '(?<code>[A-Z_]+)'/gv,
+    /status: (?<status>HTTP_[A-Z_]+),\s*\n?\s*code: '(?<code>[A-Z_]+)'/gv,
+    /code: '(?<code>[A-Z_]+)' \},\s*(?<status>HTTP_[A-Z_]+)/gv,
   ]
 
   function emittedCodes(source: string): Map<string, string> {
@@ -479,7 +479,7 @@ describe('the documented error codes match the ones the server emits', () => {
   function documentedCodes(guide: string): Map<string, string> {
     const found = new Map<string, string>()
 
-    for (const match of guide.matchAll(/^\|\s*`(?<code>[A-Z_]+)`\s*\|\s*(?<status>\d{3})\s*\|/gmu)) {
+    for (const match of guide.matchAll(/^\|\s*`(?<code>[A-Z_]+)`\s*\|\s*(?<status>\d{3})\s*\|/gmv)) {
       const { code, status } = match.groups ?? {}
       if (code !== undefined && status !== undefined) found.set(code, status)
     }

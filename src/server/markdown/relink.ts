@@ -16,8 +16,8 @@ interface Reading {
   suffix: string
 }
 
-const NOT_A_STORE_PATH = /^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|\/)/u
-const SUFFIX_START = /[#?]/u
+const NOT_A_STORE_PATH = /^(?:[a-zA-Z][a-zA-Z0-9+.\-]*:|\/)/v
+const SUFFIX_START = /[#?]/v
 const EXPLICITLY_RELATIVE = './'
 
 export function movedPath(moves: readonly PathMove[], entryPath: string): string {

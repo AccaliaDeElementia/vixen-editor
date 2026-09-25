@@ -24,11 +24,6 @@ export default [
     },
     rules: {
       ...love.rules,
-
-      /* Relaxed: the v flag changes character-class and case-folding semantics.
-         These patterns are deliberately ASCII-only, so it risks behaviour change
-         for no benefit. */
-      'require-unicode-regexp': 'off',
     },
   },
   {

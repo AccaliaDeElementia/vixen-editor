@@ -17,7 +17,7 @@ function isAbsent(error: unknown): boolean {
 }
 
 function defaultTemplate(id: string): string {
-  const name = id.slice(id.lastIndexOf('/') + PAST_SEPARATOR).replace(/\.[^./]+$/u, '')
+  const name = id.slice(id.lastIndexOf('/') + PAST_SEPARATOR).replace(/\.[^.\/]+$/v, '')
   return `# ${name}\n\nTODO: start writing.\n`
 }
 

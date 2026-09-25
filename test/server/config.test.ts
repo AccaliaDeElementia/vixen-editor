@@ -97,7 +97,7 @@ describe('loadConfig', () => {
   })
 
   it('names the offending variable in the error message', () => {
-    expect(() => loadConfig({ PORT: 'abc' })).toThrow(/PORT/)
+    expect(() => loadConfig({ PORT: 'abc' })).toThrow(/PORT/v)
   })
 
   it('rejects an unknown LOG_LEVEL', () => {
@@ -113,7 +113,7 @@ describe('loadConfig', () => {
   })
 
   it('reports every invalid variable at once', () => {
-    expect(() => loadConfig({ PORT: 'abc', LOG_LEVEL: 'verbose' })).toThrow(/PORT[\s\S]*LOG_LEVEL/)
+    expect(() => loadConfig({ PORT: 'abc', LOG_LEVEL: 'verbose' })).toThrow(/PORT[\s\S]*LOG_LEVEL/v)
   })
 
   it('defaults to process.env when called with no argument', () => {

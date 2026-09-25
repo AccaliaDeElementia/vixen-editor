@@ -58,7 +58,7 @@ describe('read', () => {
   })
 
   it('names the missing document in the error', async () => {
-    await expect(store.read('missing.md')).rejects.toThrow(/missing\.md/)
+    await expect(store.read('missing.md')).rejects.toThrow(/missing\.md/v)
   })
 
   it('throws DocumentNotFoundError when the id names a directory', async () => {
@@ -181,7 +181,7 @@ describe('createDocument', () => {
   it('names the taken path in the error', async () => {
     await store.createDocument('notes.md', 'original')
 
-    await expect(store.createDocument('notes.md', 'x')).rejects.toThrow(/notes\.md/)
+    await expect(store.createDocument('notes.md', 'x')).rejects.toThrow(/notes\.md/v)
   })
 
   it('refuses a path occupied by a directory', async () => {

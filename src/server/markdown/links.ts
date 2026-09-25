@@ -14,9 +14,9 @@ interface LinkDestination {
 const DESTINATION_TOKENS = new Set(['resourceDestinationString', 'definitionDestinationString'])
 
 // CommonMark: a backslash escapes any ASCII punctuation character.
-const BACKSLASH_ESCAPE = /\\(?<punctuation>[!-/:-@[-`{-~])/gu
-const PERCENT_RUN = /(?:%[0-9A-Fa-f]{2})+/gu
-const CHARACTER_REFERENCE = /^&(?:#\d+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/u
+const BACKSLASH_ESCAPE = /\\(?<punctuation>[!-\/:-@\[-`\{-~])/gv
+const PERCENT_RUN = /(?:%[0-9A-Fa-f]{2})+/gv
+const CHARACTER_REFERENCE = /^&(?:#\d+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/v
 
 const PRECEDING_CHARACTER = 1
 

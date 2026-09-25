@@ -23,7 +23,7 @@ const TRASH_META_NAME = 'meta.json'
 
 const TRASH_PAYLOAD_NAME = 'payload'
 
-const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv
 
 const SORT_EQUAL = 0
 

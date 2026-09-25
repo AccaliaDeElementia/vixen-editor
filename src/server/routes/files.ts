@@ -36,10 +36,10 @@ const moveBodySchema = z.object({
 const documentBodySchema = z.object({ path: z.string().min(NON_EMPTY), content: z.string().optional() })
 
 const HEX = 16
-const UNSAFE_IN_QUOTED_FILENAME = /[^A-Za-z0-9._-]+/gu
+const UNSAFE_IN_QUOTED_FILENAME = /[^A-Za-z0-9._\-]+/gv
 
 // RFC 5987 attr-char is narrower than what encodeURIComponent leaves alone.
-const NOT_ATTR_CHAR = /['()*]/gu
+const NOT_ATTR_CHAR = /['\(\)*]/gv
 
 function archiveName(subtree: string): string {
   const leaf = path.posix.basename(subtree)

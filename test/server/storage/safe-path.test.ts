@@ -140,7 +140,7 @@ describe('resolveDocumentPath', () => {
   })
 
   it('reports the rejected id in the error message', () => {
-    expect(() => resolveDocumentPath(ROOT, '../secrets.md')).toThrow(/\.\.\/secrets\.md/)
+    expect(() => resolveDocumentPath(ROOT, '../secrets.md')).toThrow(/\.\.\/secrets\.md/v)
   })
 
   it('does not disclose the document root in the error message reachable by a caller', () => {
@@ -163,7 +163,7 @@ describe('resolveEntryPath', () => {
   })
 
   it('names the permitted extensions in the error', () => {
-    expect(() => resolveEntryPath(ROOT, 'notes.zip', DOCUMENT_EXTENSIONS)).toThrow(/\.md/)
+    expect(() => resolveEntryPath(ROOT, 'notes.zip', DOCUMENT_EXTENSIONS)).toThrow(/\.md/v)
   })
 
   it('accepts every listed image extension', () => {

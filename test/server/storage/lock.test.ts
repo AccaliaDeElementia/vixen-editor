@@ -110,7 +110,7 @@ describe('acquire timeout', () => {
     const first = gate()
     const running = writes.run(first.hold)
 
-    await expect(writes.run(immediately(undefined))).rejects.toThrow(/5ms/u)
+    await expect(writes.run(immediately(undefined))).rejects.toThrow(/5ms/v)
 
     first.open()
     await running

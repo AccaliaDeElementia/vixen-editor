@@ -52,7 +52,7 @@ test('serves the self-hosted icon font', async ({ request }) => {
 
 test('serves the compiled stylesheet at the path the page asks for', async ({ request }) => {
   const page = await (await request.get('/')).text()
-  const href = /<link[^>]+rel="stylesheet"[^>]+href="(?<href>\/assets[^"]+)"/u.exec(page)?.groups?.href
+  const href = /<link[^>]+rel="stylesheet"[^>]+href="(?<href>\/assets[^"]+)"/v.exec(page)?.groups?.href
 
   expect(href).toBe('/assets/main.css')
 
@@ -63,7 +63,7 @@ test('serves the compiled stylesheet at the path the page asks for', async ({ re
 
 test('serves the built client bundle at the path the page asks for', async ({ request }) => {
   const page = await (await request.get('/')).text()
-  const src = /<script[^>]+src="(?<src>[^"]+)"/u.exec(page)?.groups?.src
+  const src = /<script[^>]+src="(?<src>[^"]+)"/v.exec(page)?.groups?.src
 
   expect(src).toBe('/assets/main.js')
 

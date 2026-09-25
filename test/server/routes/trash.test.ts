@@ -45,7 +45,7 @@ describe('DELETE /api/files/entries/:path', () => {
     const res = await remove('notes.md')
 
     expect(res.status).toBe(200)
-    await expect(fieldOf(res, 'trashId')).resolves.toMatch(/^[0-9a-f-]{36}$/u)
+    await expect(fieldOf(res, 'trashId')).resolves.toMatch(/^[0-9a-f\-]{36}$/v)
   })
 
   it('takes the document out of the listing', async () => {
@@ -118,7 +118,7 @@ describe('GET /api/trash', () => {
     const entries = await fieldOf(res, 'entries')
 
     expect(entries).toMatchObject([{ originalPath: 'notes.md', kind: 'document' }])
-    expect(entries).toMatchObject([{ deletedAt: expect.stringMatching(/^\d{4}-/u) as unknown }])
+    expect(entries).toMatchObject([{ deletedAt: expect.stringMatching(/^\d{4}-/v) as unknown }])
   })
 })
 

@@ -18,14 +18,14 @@ export const UPLOAD_EXTENSIONS: readonly string[] = [...DOCUMENT_EXTENSIONS, ...
 // CJK character three, so a short-looking name can still exceed it.
 const MAX_NAME_BYTES = 255
 
-const CONTROL = /\p{Cc}/u
+const CONTROL = /\p{Cc}/v
 
-const INVISIBLE_EXCEPT_JOINER = /(?!\u200D)\p{Cf}/u
+const INVISIBLE_EXCEPT_JOINER = /(?!\u200D)\p{Cf}/v
 
 // A well-formed emoji ZWJ sequence: pictographs joined through the joiner, with
 // skin-tone modifiers and variation selectors allowed between them.
 const EMOJI_ZWJ_SEQUENCE =
-  /\p{Extended_Pictographic}(?:[\p{Emoji_Modifier}\uFE0F]*\u200D\p{Extended_Pictographic})+[\p{Emoji_Modifier}\uFE0F]*/gu
+  /\p{Extended_Pictographic}(?:[\p{Emoji_Modifier}\uFE0F]*\u200D\p{Extended_Pictographic})+[\p{Emoji_Modifier}\uFE0F]*/gv
 
 const ZERO_WIDTH_JOINER = '\u200D'
 

@@ -270,7 +270,7 @@ test('a rejected name stays in the dialog to be corrected', async ({ page, reque
   await page.locator('#file-dialog-entry').fill(name)
   await page.locator('#file-dialog-confirm').click()
 
-  await expect(page.locator('#file-dialog-error')).toHaveText(/exists/i)
+  await expect(page.locator('#file-dialog-error')).toHaveText(/exists/iv)
   await expect(page.locator('#file-dialog')).toBeVisible()
 
   await page.locator('#file-dialog-cancel').click()
@@ -319,7 +319,7 @@ test('the trash actions are distinguishable by sight and by tooltip', async ({ p
   expect(restoreBox?.width ?? 0).toBeGreaterThan(0)
   expect(purgeBox?.width ?? 0).toBeGreaterThan(0)
 
-  await expect(purge).toHaveClass(/tree__action--danger/)
+  await expect(purge).toHaveClass(/tree__action--danger/v)
 
   await request.delete(`/api/trash/${trashId}`)
 })
@@ -395,7 +395,7 @@ test('a real drag shows the drop affordance only where a drop is legal', async (
   await page.mouse.down()
   await trash.hover()
 
-  await expect(trash).not.toHaveClass(/tree__row--drop/)
+  await expect(trash).not.toHaveClass(/tree__row--drop/v)
   await page.mouse.up()
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -421,7 +421,7 @@ test('the name field does not look like a login to a password manager', async ({
       for (const attribute of ['id', 'name', 'class', 'for', 'placeholder', 'aria-label']) {
         const value = element.getAttribute(attribute)
         if (value === null) continue
-        const squashed = value.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const squashed = value.toLowerCase().replace(/[^a-z0-9]/gv, '')
         const hit = tokens.filter((token) => squashed.includes(token))
         if (hit.length > 0) found.push(`${attribute}="${value}" -> ${hit.join(',')}`)
       }

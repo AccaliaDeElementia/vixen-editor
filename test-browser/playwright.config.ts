@@ -11,7 +11,7 @@ const BASE_URL = `http://127.0.0.1:${String(PORT)}`
 const ci = process.env.CI !== undefined
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..')
-const LIFECYCLE = /store\.lifecycle\.ts$/u
+const LIFECYCLE = /store\.lifecycle\.ts$/v
 
 export default defineConfig({
   testDir: '.',
@@ -24,8 +24,8 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'setup', testMatch: LIFECYCLE, grep: /@setup/u, teardown: 'cleanup' },
-    { name: 'cleanup', testMatch: LIFECYCLE, grep: /@teardown/u },
+    { name: 'setup', testMatch: LIFECYCLE, grep: /@setup/v, teardown: 'cleanup' },
+    { name: 'cleanup', testMatch: LIFECYCLE, grep: /@teardown/v },
     { name: 'chromium', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
   ],
   webServer: {

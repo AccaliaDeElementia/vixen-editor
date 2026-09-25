@@ -6,16 +6,16 @@ import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
 
-const NOT_HEADING_MARKER = /[^#]/gu
+const NOT_HEADING_MARKER = /[^#]/gv
 const WHOLE_MATCH = 0
 const WITHOUT_TRAILING_COLON = -1
 const NO_DELIMITER = 0
 const CODEMIRROR_FIRST_LINE = 1
 const NEXT_LINE = 1
 
-const ATX_HEADING = /^ {0,3}#{1,6}(?: |$)/
-const CODE_FENCE = /^ {0,3}(?:`{3,}|~{3,})/
-const CALLOUT_MARKER = /(?<![A-Za-z0-9_])(?:TODO|FIXME|NOTE):/gu
+const ATX_HEADING = /^ {0,3}#{1,6}(?: |$)/v
+const CODE_FENCE = /^ {0,3}(?:`{3,}|~{3,})/v
+const CALLOUT_MARKER = /(?<![A-Za-z0-9_])(?:TODO|FIXME|NOTE):/gv
 
 function headingDecoration(level: number): Decoration {
   return Decoration.line({ class: `cm-vixen-heading cm-vixen-heading-${String(level)}` })

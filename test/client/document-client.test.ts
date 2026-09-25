@@ -104,7 +104,7 @@ describe('read', () => {
   it('surfaces the server error message', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: 'Document not found' }, 404))
 
-    await expect(client().read('missing.md')).rejects.toThrow(/Document not found/)
+    await expect(client().read('missing.md')).rejects.toThrow(/Document not found/v)
   })
 
   it('falls back to the status text when the body is not json', async () => {

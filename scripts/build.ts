@@ -25,7 +25,7 @@ export async function buildClient(): Promise<void> {
     outfile: 'public/assets/main.js',
     bundle: true,
     format: 'esm',
-    target: 'es2022',
+    target: 'es2024',
     platform: 'browser',
     minify: production,
     sourcemap: true,

@@ -71,7 +71,7 @@ function afterPrologue(text: string): string {
 function isSvg(bytes: Uint8Array): boolean {
   const head = new TextDecoder('utf8').decode(bytes.subarray(SEQUENCE_START, SVG_HEAD_BYTES))
 
-  return /^<svg[\s/>]/i.test(afterPrologue(head))
+  return /^<svg[\s\/>]/iv.test(afterPrologue(head))
 }
 
 const SIGNATURES: Readonly<Record<string, (bytes: Uint8Array) => boolean>> = {

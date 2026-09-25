@@ -9,7 +9,7 @@ const CREDENTIAL_TOKENS = ['login', 'username', 'user', 'email', 'mail', 'passwo
 const ATTRIBUTES = ['id', 'name', 'class', 'for', 'placeholder', 'aria-label']
 
 function squash(value: string): string {
-  return value.toLowerCase().replaceAll(/[^a-z0-9]/gu, '')
+  return value.toLowerCase().replaceAll(/[^a-z0-9]/gv, '')
 }
 
 export function credentialTokensIn(value: string): string[] {
@@ -26,7 +26,7 @@ function offendingAttributes(html: string): string[] {
   const found: string[] = []
 
   for (const attribute of ATTRIBUTES) {
-    const pattern = new RegExp(`${attribute}="([^"]*)"`, 'gu')
+    const pattern = new RegExp(`${attribute}="([^"]*)"`, 'gv')
     for (const match of html.matchAll(pattern)) {
       const value = match[1] ?? ''
       const tokens = credentialTokensIn(value)

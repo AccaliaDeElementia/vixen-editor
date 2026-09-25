@@ -8,7 +8,7 @@ const RENAME_FILE: PathMove[] = [{ from: 'journal/a.md', to: 'journal/renamed.md
 const MOVE_FOLDER: PathMove[] = [{ from: 'journal', to: 'archive' }]
 
 function destinationIn(markdown: string): string {
-  return /\]\((?<destination>[^)]*)\)/u.exec(markdown)?.groups?.destination ?? ''
+  return /\]\((?<destination>[^\)]*)\)/v.exec(markdown)?.groups?.destination ?? ''
 }
 
 describe('movedPath', () => {

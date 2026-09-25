@@ -64,7 +64,7 @@ describe('rendering', () => {
   })
 
   it('names the missing template in the error', () => {
-    expect(() => createTemplateRenderer(templatesDir).render('missing')).toThrow(/missing/)
+    expect(() => createTemplateRenderer(templatesDir).render('missing')).toThrow(/missing/v)
   })
 
   it('surfaces a malformed template rather than reporting it as missing', async () => {
