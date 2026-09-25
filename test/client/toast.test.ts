@@ -6,7 +6,7 @@ import { createToast, TestOnly } from '../../src/client/layout/toast.ts'
 
 const { TOAST_ERROR_MS, TOAST_VISIBLE_MS } = TestOnly
 
-let root: HTMLElement
+let root: HTMLElement = document.createElement('div')
 
 function page({ withStatus = true } = {}): HTMLElement {
   const container = document.createElement('div')

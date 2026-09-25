@@ -10,8 +10,8 @@ import { buildApp } from '../../src/server/app.ts'
 import { applyDebugFilter } from '../../src/server/logging.ts'
 import { createFsDocumentStore } from '../../src/server/storage/fs-store.ts'
 
-let root: string
-let lines: string[]
+let root = ''
+let lines: string[] = []
 
 // `debug` writes through its own sink rather than console, and every instance
 // that does not set its own falls through to the shared one. Swapping that is

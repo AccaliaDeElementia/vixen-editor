@@ -10,7 +10,7 @@ import { createTemplateRenderer, TestOnly } from '../../src/server/templates.ts'
 
 const { TemplateNotFoundError } = TestOnly
 
-let templatesDir: string
+let templatesDir = ''
 
 async function writeTemplate(name: string, body: string): Promise<void> {
   await fs.writeFile(path.join(templatesDir, `${name}.pug`), body)

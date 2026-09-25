@@ -14,9 +14,9 @@ import { ArchiveTooLargeError, DocumentNotFoundError } from '../../../src/server
 
 const GENEROUS = { maxBytes: 1_000_000, maxEntries: 1000 }
 
-let root: string
-let store: DocumentStore
-let outside: string
+let root = ''
+let store: DocumentStore = createFsDocumentStore('')
+let outside = ''
 
 beforeEach(async () => {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-archive-'))

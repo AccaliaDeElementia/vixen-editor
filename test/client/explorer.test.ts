@@ -17,7 +17,7 @@ const { clampExplorerWidth, readExplorerState, setExplorerOpen } = TestOnly
 
 const VIEWPORT = 1000
 
-let root: HTMLElement
+let root: HTMLElement = document.createElement('div')
 
 function page(): HTMLElement {
   document.body.innerHTML = `

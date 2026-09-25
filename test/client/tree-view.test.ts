@@ -27,7 +27,7 @@ const SAMPLE = parseTree({
   ],
 })
 
-let tree: HTMLElement
+let tree: HTMLElement = document.createElement('ul')
 
 function render(overrides: Partial<TreeViewModel> = {}): void {
   const model: TreeViewModel = { nodes: SAMPLE, trash: [], open: new Set(), selected: null, ...overrides }

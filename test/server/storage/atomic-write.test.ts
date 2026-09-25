@@ -18,7 +18,7 @@ const { temporaryBeside } = TestOnly
 
 const MAX_NAME_BYTES = 255
 
-let base: string
+let base = ''
 
 function at(name: string): string {
   return path.join(base, name)

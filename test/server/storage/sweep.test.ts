@@ -11,7 +11,7 @@ import { sweepTemporaries } from '../../../src/server/storage/sweep.ts'
 
 const { temporaryBeside } = TestOnly
 
-let root: string
+let root = ''
 
 async function write(entryPath: string, content = 'x'): Promise<void> {
   await fs.mkdir(path.join(root, path.dirname(entryPath)), { recursive: true })

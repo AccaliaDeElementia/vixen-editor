@@ -15,8 +15,8 @@ const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as co
 
 const output: string[] = []
 
-let root: string
-let store: DocumentStore
+let root = ''
+let store: DocumentStore = createFsDocumentStore('')
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-silence-'))

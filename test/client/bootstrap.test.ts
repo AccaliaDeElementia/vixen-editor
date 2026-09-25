@@ -9,9 +9,9 @@ import type { Session } from '../../src/client/editor/session.ts'
 
 const { MissingMountError, bootstrap } = TestOnly
 
-let root: HTMLElement
-let saved: Array<{ id: string; content: string }>
-let renamed: Array<{ from: string; to: string }>
+let root: HTMLElement = document.createElement('div')
+let saved: Array<{ id: string; content: string }> = []
+let renamed: Array<{ from: string; to: string }> = []
 
 function page({ withMount = true, withStatus = true } = {}): HTMLElement {
   const container = document.createElement('div')

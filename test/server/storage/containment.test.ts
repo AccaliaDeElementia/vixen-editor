@@ -12,7 +12,7 @@ const OVER_NAME_MAX = 'a'.repeat(300)
 
 const ROOT = path.resolve('/srv/vixen/docs')
 
-let base: string
+let base = ''
 
 beforeEach(async () => {
   base = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-containment-'))

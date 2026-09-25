@@ -6,7 +6,7 @@ import { cast } from '../cast.ts'
 
 import { createFilesClient, FilesRequestError } from '../../src/client/files/files-client.ts'
 
-let fetchMock: ReturnType<typeof vi.fn>
+let fetchMock: ReturnType<typeof vi.fn> = vi.fn()
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })

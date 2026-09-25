@@ -13,9 +13,9 @@ import { createWriteLock } from '../../../src/server/storage/lock.ts'
 import { failingStore } from '../failing-store.ts'
 import { gate } from '../gate.ts'
 
-let root: string
-let store: DocumentStore
-let app: Hono
+let root = ''
+let store: DocumentStore = createFsDocumentStore('')
+let app: Hono = buildApp({ store })
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-routes-'))

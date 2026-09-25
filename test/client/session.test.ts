@@ -10,20 +10,24 @@ import { createSession, TestOnly } from '../../src/client/editor/session.ts'
 
 const { defaultTemplate } = TestOnly
 
-let client: {
+function fakeClient(): {
   list: ReturnType<typeof vi.fn>
   read: ReturnType<typeof vi.fn>
   create: ReturnType<typeof vi.fn>
   save: ReturnType<typeof vi.fn>
   remove: ReturnType<typeof vi.fn>
+} {
+  return { list: vi.fn(), read: vi.fn(), create: vi.fn(), save: vi.fn(), remove: vi.fn() }
 }
+
+let client: ReturnType<typeof fakeClient> = fakeClient()
 
 function loaded(content: string, etag = '"e1"'): { content: string; etag: string } {
   return { content, etag }
 }
 
 beforeEach(() => {
-  client = { list: vi.fn(), read: vi.fn(), create: vi.fn(), save: vi.fn(), remove: vi.fn() }
+  client = fakeClient()
 })
 
 function session(): ReturnType<typeof createSession> {

@@ -11,7 +11,7 @@ import { createFsDocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { moveEntry } from '../../../src/server/storage/move.ts'
 import { relinkAfterMove, type RelinkOutcome } from '../../../src/server/storage/relink-store.ts'
 
-let root: string
+let root = ''
 
 async function write(id: string, content: string): Promise<void> {
   await fs.mkdir(path.join(root, path.dirname(id)), { recursive: true })

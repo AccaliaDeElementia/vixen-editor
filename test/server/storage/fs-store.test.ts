@@ -29,9 +29,9 @@ const DEEP_DOCUMENT = `${DEEP_FOLDER}/notes.md`
 const CREATABLE_PARENT = Array.from({ length: 20 }, () => 'd'.repeat(200)).join('/')
 const OVERLONG_LEAF = `${'l'.repeat(200)}.md`
 
-let root: string
-let outside: string
-let store: DocumentStore
+let root = ''
+let outside = ''
+let store: DocumentStore = createFsDocumentStore('')
 
 beforeEach(async () => {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-'))

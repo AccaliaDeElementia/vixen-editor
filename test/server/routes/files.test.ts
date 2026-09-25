@@ -12,9 +12,9 @@ import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { FOLDER_INDEX_NAME } from '../../../src/shared/documents.ts'
 
-let root: string
-let store: DocumentStore
-let app: Hono
+let root = ''
+let store: DocumentStore = createFsDocumentStore('')
+let app: Hono = buildApp({ store })
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-files-'))

@@ -18,7 +18,7 @@ const { readExplorerState } = explorerTestOnly
 const VIEWPORT = 1000
 const EXPLORER_LEFT = 64
 
-let root: HTMLElement
+let root: HTMLElement = document.createElement('div')
 
 function page(): HTMLElement {
   document.body.innerHTML = `

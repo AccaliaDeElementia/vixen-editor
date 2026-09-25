@@ -11,9 +11,9 @@ import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { isRecord } from '../../../src/shared/guards.ts'
 
-let root: string
-let store: DocumentStore
-let app: Hono
+let root = ''
+let store: DocumentStore = createFsDocumentStore('')
+let app: Hono = buildApp({ store })
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-trash-routes-'))

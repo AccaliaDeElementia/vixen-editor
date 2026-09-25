@@ -37,7 +37,7 @@ interface SourceFile {
   contents: string
 }
 
-let sources: SourceFile[]
+let sources: SourceFile[] = []
 
 async function collect(directory: string): Promise<string[]> {
   const entries = await fs.readdir(path.join(REPO_ROOT, directory), { withFileTypes: true })

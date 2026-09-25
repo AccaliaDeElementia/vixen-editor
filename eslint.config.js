@@ -37,10 +37,6 @@ export default [
          invalid input to prove validation rejects it. */
       '@typescript-eslint/no-magic-numbers': 'off',
 
-      /* `let subject: T` assigned in beforeEach is the standard fixture pattern;
-         initialising at the declaration would be dead work overwritten per test. */
-      '@typescript-eslint/init-declarations': 'off',
-
       'max-nested-callbacks': ['error', MAX_NESTED_CALLBACKS],
 
       /* Test helpers returning promises read better without the async ceremony. */

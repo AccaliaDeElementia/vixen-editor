@@ -83,8 +83,8 @@ function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<
   }
 }
 
-let client: ReturnType<typeof fakeClient>
-let dialogs: ReturnType<typeof fakeDialogs>
+let client: ReturnType<typeof fakeClient> = fakeClient()
+let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
 
 async function start(pathname = '/doc/'): Promise<void> {
   await initFileTree({ root: document, pathname, client: cast<FilesClient>(client), dialogs: cast<Dialogs>(dialogs) })

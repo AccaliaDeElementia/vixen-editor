@@ -64,8 +64,26 @@ interface FakeClient {
   purge: ReturnType<typeof vi.fn>
 }
 
-let client: FakeClient
-let dialogs: { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<typeof vi.fn> }
+function fakeClient(): FakeClient {
+  return {
+    tree: vi.fn().mockResolvedValue(SAMPLE),
+    trash: vi.fn().mockResolvedValue([TRASHED]),
+    createDocument: vi.fn().mockResolvedValue(undefined),
+    createFolder: vi.fn().mockResolvedValue(undefined),
+    upload: vi.fn().mockResolvedValue('uploaded.png'),
+    move: vi.fn().mockResolvedValue(undefined),
+    remove: vi.fn().mockResolvedValue(undefined),
+    restore: vi.fn().mockResolvedValue(undefined),
+    purge: vi.fn().mockResolvedValue(undefined),
+  }
+}
+
+function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<typeof vi.fn> } {
+  return { prompt: vi.fn().mockResolvedValue(true), confirm: vi.fn().mockResolvedValue(true) }
+}
+
+let client: FakeClient = fakeClient()
+let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
 
 function page(): void {
   document.body.innerHTML = '<aside id="explorer"><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
@@ -140,18 +158,8 @@ function statusText(): string {
 beforeEach(() => {
   localStorage.clear()
   page()
-  client = {
-    tree: vi.fn().mockResolvedValue(SAMPLE),
-    trash: vi.fn().mockResolvedValue([TRASHED]),
-    createDocument: vi.fn().mockResolvedValue(undefined),
-    createFolder: vi.fn().mockResolvedValue(undefined),
-    upload: vi.fn().mockResolvedValue('uploaded.png'),
-    move: vi.fn().mockResolvedValue(undefined),
-    remove: vi.fn().mockResolvedValue(undefined),
-    restore: vi.fn().mockResolvedValue(undefined),
-    purge: vi.fn().mockResolvedValue(undefined),
-  }
-  dialogs = { prompt: vi.fn().mockResolvedValue(true), confirm: vi.fn().mockResolvedValue(true) }
+  client = fakeClient()
+  dialogs = fakeDialogs()
 })
 
 describe('containerOf', () => {

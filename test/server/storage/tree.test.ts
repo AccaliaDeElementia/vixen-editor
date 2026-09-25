@@ -13,8 +13,8 @@ import { classifyFile, readTree, type FolderEntry, type TreeEntry } from '../../
 
 const OVER_NAME_MAX = 'a'.repeat(300)
 
-let root: string
-let outside: string
+let root = ''
+let outside = ''
 
 function write(relative: string, content = ''): Promise<void> {
   const target = path.join(root, relative)

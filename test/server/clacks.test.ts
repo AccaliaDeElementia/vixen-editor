@@ -16,11 +16,11 @@ import { failingStore } from './failing-store.ts'
 const { createApp } = mainTestOnly
 const { CLACKS_HEADER, CLACKS_VALUE } = appTestOnly
 
-let workspace: string
-let publicDir: string
-let docsRoot: string
-let templatesDir: string
-let store: DocumentStore
+let workspace = ''
+let publicDir = ''
+let docsRoot = ''
+let templatesDir = ''
+let store: DocumentStore = createFsDocumentStore('')
 
 beforeEach(async () => {
   workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-clacks-'))

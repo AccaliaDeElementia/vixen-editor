@@ -21,10 +21,10 @@ const { ConfigError } = configTestOnly
 const { APP_TITLE, DEFAULT_PUBLIC_DIR, createApp, defaultRuntime } = mainTestOnly
 const { temporaryBeside } = atomicWriteTestOnly
 
-let workspace: string
-let publicDir: string
-let docsRoot: string
-let templatesDir: string
+let workspace = ''
+let publicDir = ''
+let docsRoot = ''
+let templatesDir = ''
 
 beforeEach(async () => {
   workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-main-'))

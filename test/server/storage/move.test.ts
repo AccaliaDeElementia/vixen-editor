@@ -13,8 +13,8 @@ import { DocumentNotFoundError, EntryExistsError, InvalidMoveError } from '../..
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
-let root: string
-let store: DocumentStore
+let root = ''
+let store: DocumentStore = createFsDocumentStore('')
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-move-'))

@@ -14,8 +14,8 @@ import { isRecord } from '../../../src/shared/guards.ts'
 
 const { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
 
-let root: string
-let store: DocumentStore
+let root = ''
+let store: DocumentStore = createFsDocumentStore('')
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-trash-'))
