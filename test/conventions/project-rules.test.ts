@@ -137,14 +137,14 @@ describe('every source file belongs to exactly one typecheck project', () => {
   it('leaves no src file unchecked, and only shared code checked twice', () => {
     const projects = TYPECHECK_PROJECTS.map((configPath) => ({ configPath, includes: includesOf(configPath) }))
 
+    const filedUnder = (relativePath: string): string[] =>
+      projects
+        .filter(({ includes }) => includes.some((pattern) => matches(pattern, relativePath)))
+        .map(({ configPath }) => configPath)
+
     const misfiled = sources
       .filter((source) => source.relativePath.startsWith('src/'))
-      .map((source) => ({
-        path: source.relativePath,
-        projects: projects
-          .filter(({ includes }) => includes.some((pattern) => matches(pattern, source.relativePath)))
-          .map(({ configPath }) => configPath),
-      }))
+      .map((source) => ({ path: source.relativePath, projects: filedUnder(source.relativePath) }))
       .filter(({ path, projects: matched }) => matched.length !== (path.startsWith(SHARED) ? 2 : 1))
 
     expect(misfiled).toStrictEqual([])

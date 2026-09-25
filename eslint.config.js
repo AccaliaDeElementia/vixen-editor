@@ -2,6 +2,10 @@
 
 import love from 'eslint-config-love'
 
+/* describe > describe > it.each > callback is four deep by construction, so the
+   shallowest clamp a test can meet is four rather than love's three. */
+const MAX_NESTED_CALLBACKS = 4
+
 export default [
   {
     ignores: ['dist/**', 'coverage/**', 'node_modules/**', 'deploy/**', 'public/assets/**', 'test-results/**'],
@@ -38,8 +42,7 @@ export default [
          initialising at the declaration would be dead work overwritten per test. */
       '@typescript-eslint/init-declarations': 'off',
 
-      /* describe > describe > it.each > callback is four deep by construction. */
-      'max-nested-callbacks': 'off',
+      'max-nested-callbacks': ['error', MAX_NESTED_CALLBACKS],
 
       /* Test helpers returning promises read better without the async ceremony. */
       '@typescript-eslint/promise-function-async': 'off',
