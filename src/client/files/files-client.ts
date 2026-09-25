@@ -1,6 +1,7 @@
 'use sanity'
 
 import { parseTrash, parseTree, STORE_ROOT, type TrashNode, type TreeNode } from './tree-model.ts'
+import { stringsIn } from '../json.ts'
 import { isRecord } from '../../shared/guards.ts'
 
 export interface FilesClient {
@@ -29,10 +30,6 @@ export class FilesRequestError extends Error {
     this.code = code
     this.paths = paths
   }
-}
-
-function stringsIn(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []
 }
 
 async function failureOf(response: Response): Promise<FilesRequestError> {

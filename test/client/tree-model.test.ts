@@ -2,7 +2,14 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { ancestorsOf, folderPathsIn, parseTrash, parseTree } from '../../src/client/files/tree-model.ts'
+import {
+  ancestorsOf,
+  folderPathsIn,
+  joinPath,
+  parentOf,
+  parseTrash,
+  parseTree,
+} from '../../src/client/files/tree-model.ts'
 
 describe('parseTree', () => {
   it('reads a flat document', () => {
@@ -136,5 +143,29 @@ describe('folderPathsIn', () => {
 
   it('lists nothing for a flat tree of documents', () => {
     expect(folderPathsIn(parseTree({ tree: [{ name: 'a.md', path: 'a.md', kind: 'document' }] }))).toStrictEqual([])
+  })
+})
+
+describe('joinPath', () => {
+  it('joins onto a directory', () => {
+    expect(joinPath('archive', 'notes.md')).toBe('archive/notes.md')
+  })
+
+  it('returns the bare name at the root', () => {
+    expect(joinPath('', 'notes.md')).toBe('notes.md')
+  })
+})
+
+describe('parentOf', () => {
+  it('drops the last segment', () => {
+    expect(parentOf('journal/2026/a.md')).toBe('journal/2026')
+  })
+
+  it('returns the store root for a top-level entry', () => {
+    expect(parentOf('notes.md')).toBe('')
+  })
+
+  it('agrees with the last ancestor, which is what it replaced at two call sites', () => {
+    expect(parentOf('journal/2026/a.md')).toBe(ancestorsOf('journal/2026/a.md').at(-1))
   })
 })

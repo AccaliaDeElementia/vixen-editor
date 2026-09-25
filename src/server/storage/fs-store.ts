@@ -9,7 +9,7 @@ import { createLogger } from '../logging.ts'
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './atomic-write.ts'
 import { isAtOrInside, nullWhenAbsent, realpathOrNull } from './containment.ts'
-import { etagOf } from './etag.ts'
+import { computeEtag } from './etag.ts'
 import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from './lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
 import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
@@ -142,11 +142,11 @@ export function createFsDocumentStore(
         await assertResolvesInsideRoot(root, id, target)
 
         const current = await readDocument(id, target)
-        if (etagOf(current) !== expectedEtag) throw new ConcurrentModificationError(id)
+        if (computeEtag(current) !== expectedEtag) throw new ConcurrentModificationError(id)
 
         await replaceFileAtomic(target, content)
         logStore('updated %s (%d bytes)', id, content.length)
-        return etagOf(content)
+        return computeEtag(content)
       })
     },
 
@@ -166,7 +166,7 @@ export function createFsDocumentStore(
           throw asExistsError(id, error)
         }
         logStore('created %s (%d bytes)', id, content.length)
-        return etagOf(content)
+        return computeEtag(content)
       })
     },
 
@@ -187,7 +187,7 @@ export function createFsDocumentStore(
         }
         await createFileAtomic(path.join(target, FOLDER_INDEX_NAME), indexContent)
         logStore('created folder %s', folderPath)
-        return etagOf(indexContent)
+        return computeEtag(indexContent)
       })
     },
 

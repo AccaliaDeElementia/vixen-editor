@@ -8,7 +8,7 @@ import { initFileTree } from '../../src/client/files/index.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR } from '../../src/client/files/tree-view.ts'
 
-const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf, joinInto } = TestOnly
+const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf } = TestOnly
 
 const SAMPLE = parseTree({
   tree: [
@@ -182,16 +182,6 @@ describe('canMoveInto', () => {
     ['a folder whose name merely starts the same', 'journal', 'journal-archive', true],
   ])('%s', (_label, source, directory, expected) => {
     expect(canMoveInto(source, directory)).toBe(expected)
-  })
-})
-
-describe('joinInto', () => {
-  it('joins onto a directory', () => {
-    expect(joinInto('archive', 'notes.md')).toBe('archive/notes.md')
-  })
-
-  it('returns the bare name at the root', () => {
-    expect(joinInto('', 'notes.md')).toBe('notes.md')
   })
 })
 

@@ -1,10 +1,11 @@
 'use sanity'
 
+import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
 import { archiveUrlFor, FilesRequestError, type FilesClient } from './files-client.ts'
-import { STORE_ROOT } from './tree-model.ts'
+import { joinPath } from './tree-model.ts'
 
 const ACTION_SELECTORS = {
   newDocument: '#new-document',
@@ -35,14 +36,6 @@ export interface ActionContext {
   reveal: () => void
 }
 
-function joinPath(directory: string, name: string): string {
-  return directory === STORE_ROOT ? name : `${directory}/${name}`
-}
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : 'unknown error'
-}
-
 function correctable(error: unknown): string | null {
   return error instanceof FilesRequestError && isCorrectableInDialog(error.code) ? error.message : null
 }
@@ -66,7 +59,7 @@ function runnerFor(context: ActionContext): (work: () => Promise<void>) => void 
         await work()
         await context.refresh()
       } catch (error) {
-        context.toast.error(describe(error))
+        context.toast.error(errorMessage(error))
       }
     })()
   }
@@ -87,7 +80,7 @@ function bindUpload(context: ActionContext, run: (work: () => Promise<void>) => 
            a rejected file does not discard the rest; the server's write lock
            serialises them regardless of what the client does */
         await context.client.upload(context.targetDirectory(), file).catch((error: unknown) => {
-          context.toast.error(`${file.name}: ${describe(error)}`)
+          context.toast.error(`${file.name}: ${errorMessage(error)}`)
         })
       }
     })

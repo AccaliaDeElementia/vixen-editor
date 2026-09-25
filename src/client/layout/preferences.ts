@@ -1,5 +1,6 @@
 'use sanity'
 
+import { stringsIn } from '../json.ts'
 import { isRecord } from '../../shared/guards.ts'
 
 const PREFERENCES_KEY = 'vixen-editor:explorer'
@@ -24,15 +25,11 @@ function widthFrom(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
 }
 
-function pathsFrom(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []
-}
-
 function parse(raw: string): ExplorerPreferences {
   const value: unknown = JSON.parse(raw)
   if (!isRecord(value) || typeof value.open !== 'boolean') return DEFAULT_PREFERENCES
 
-  return { widthPx: widthFrom(value.widthPx), open: value.open, openFolders: pathsFrom(value.openFolders) }
+  return { widthPx: widthFrom(value.widthPx), open: value.open, openFolders: stringsIn(value.openFolders) }
 }
 
 export function readPreferences(storage: Storage | null = defaultStorage()): ExplorerPreferences {

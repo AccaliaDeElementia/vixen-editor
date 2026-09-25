@@ -47,7 +47,7 @@ function documentIdsOf(body: unknown): string[] {
   return body.documents.filter((entry): entry is string => typeof entry === 'string')
 }
 
-function etagOf(response: Response): string {
+function etagHeaderOf(response: Response): string {
   return response.headers.get('etag') ?? ''
 }
 
@@ -79,7 +79,7 @@ export function createDocumentClient(fetchImpl: typeof fetch = globalThis.fetch,
       const response = await fetchImpl(`${documentsUrl}/${encodeDocumentId(id)}`, { method: 'GET' })
       if (!response.ok) await throwRequestError(response)
 
-      return { content: await response.text(), etag: etagOf(response) }
+      return { content: await response.text(), etag: etagHeaderOf(response) }
     },
 
     async create(id: string, content: string): Promise<string> {
@@ -101,7 +101,7 @@ export function createDocumentClient(fetchImpl: typeof fetch = globalThis.fetch,
       })
       if (!response.ok) await throwRequestError(response)
 
-      return etagOf(response)
+      return etagHeaderOf(response)
     },
 
     async remove(entryPath: string): Promise<void> {

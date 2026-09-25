@@ -5,6 +5,7 @@ import { basicSetup } from 'codemirror'
 
 import { docUrlFor, documentIdFromPath, pathAfterMove } from '../doc-path.ts'
 import { onDocumentMoved } from '../document-moved.ts'
+import { errorMessage } from '../error-message.ts'
 
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
@@ -14,10 +15,6 @@ import { createSession, type Session } from './session.ts'
 
 const MOUNT_SELECTOR = '#editor'
 const SAVE_KEY = 'Mod-s'
-
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : 'unknown error'
-}
 
 interface BootstrapOptions {
   root?: ParentNode
@@ -65,7 +62,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
         setStatus(`Saved ${target}`)
       })
       .catch((error: unknown) => {
-        toast.error(`Save failed: ${describeError(error)}`)
+        toast.error(`Save failed: ${errorMessage(error)}`)
       })
     return true
   }
@@ -99,9 +96,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
 
 export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise<EditorView | null> {
   return await bootstrap(options).catch((error: unknown) => {
-    createToast(options.root ?? document).show(`Failed to start: ${describeError(error)}`)
+    createToast(options.root ?? document).show(`Failed to start: ${errorMessage(error)}`)
     return null
   })
 }
 
-export const TestOnly = { MissingMountError, bootstrap, describeError }
+export const TestOnly = { MissingMountError, bootstrap }

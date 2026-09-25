@@ -3,9 +3,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { hasErrorCode, toError } from '../errors.ts'
-
-const ABSENT_CODES = ['ENOENT', 'ENOTDIR'] as const
+import { ABSENT_CODES, hasErrorCode, toError } from '../errors.ts'
 
 export function isAtOrInside(root: string, target: string): boolean {
   return target === root || target.startsWith(root + path.sep)

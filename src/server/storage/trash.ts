@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { ABSENT_CODES } from '../errors.ts'
 import { createLogger } from '../logging.ts'
 
 import { createFileAtomic } from './atomic-write.ts'
@@ -23,8 +24,6 @@ const TRASH_META_NAME = 'meta.json'
 const TRASH_PAYLOAD_NAME = 'payload'
 
 const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-const ABSENT_CODES = ['ENOENT', 'ENOTDIR'] as const
 
 export interface TrashEntry {
   id: string

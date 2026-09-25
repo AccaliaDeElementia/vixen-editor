@@ -7,7 +7,7 @@ import { announceDocumentMoved } from '../../src/client/document-moved.ts'
 import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 
-const { MissingMountError, bootstrap, describeError } = TestOnly
+const { MissingMountError, bootstrap } = TestOnly
 
 let root: HTMLElement
 let saved: Array<{ id: string; content: string }>
@@ -57,16 +57,6 @@ beforeEach(() => {
 afterEach(() => {
   document.body.innerHTML = ''
   vi.restoreAllMocks()
-})
-
-describe('describeError', () => {
-  it('uses the message of a real error', () => {
-    expect(describeError(new Error('boom'))).toBe('boom')
-  })
-
-  it('falls back for a non-error value', () => {
-    expect(describeError('a string')).toBe('unknown error')
-  })
 })
 
 describe('bootstrap', () => {

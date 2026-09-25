@@ -64,6 +64,16 @@ export function parseTrash(payload: unknown): TrashNode[] {
   return payload.entries.flatMap((entry: unknown) => parseTrashNode(entry) ?? [])
 }
 
+export function parentOf(entryPath: string): string {
+  const cut = entryPath.lastIndexOf('/')
+
+  return cut === -1 ? STORE_ROOT : entryPath.slice(0, cut)
+}
+
+export function joinPath(directory: string, name: string): string {
+  return directory === STORE_ROOT ? name : `${directory}/${name}`
+}
+
 export function ancestorsOf(entryPath: string): FolderPath[] {
   const segments = entryPath.split('/')
   segments.pop()

@@ -1,12 +1,13 @@
 'use sanity'
 
 import type { DocumentMoved } from '../document-moved.ts'
+import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
-import { STORE_ROOT } from './tree-model.ts'
+import { joinPath, parentOf, STORE_ROOT } from './tree-model.ts'
 
 type OnceRebuilt = () => void
 
@@ -27,22 +28,8 @@ interface DragContext {
   announce: (moved: DocumentMoved) => void
 }
 
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : 'unknown error'
-}
-
 function basenameOf(entryPath: string): string {
   return entryPath.slice(entryPath.lastIndexOf('/') + 1)
-}
-
-function parentOf(entryPath: string): string {
-  const cut = entryPath.lastIndexOf('/')
-
-  return cut === -1 ? STORE_ROOT : entryPath.slice(0, cut)
-}
-
-function joinInto(directory: string, name: string): string {
-  return directory === STORE_ROOT ? name : `${directory}/${name}`
 }
 
 function containerOf(row: VisibleRow | undefined): DropDirectory | null {
@@ -81,7 +68,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   }
 
   async function moveInto(from: string, directory: string): Promise<DestinationPath | null> {
-    const to = joinInto(directory, basenameOf(from))
+    const to = joinPath(directory, basenameOf(from))
     if (to === from) return null
 
     context.announce({ from, to, rewritten: await context.client.move(from, to) })
@@ -94,7 +81,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
       /* eslint-disable-next-line no-await-in-loop -- one request per file, so a
          rejected file does not discard the rest of the drop */
       await context.client.upload(directory, file).catch((error: unknown) => {
-        context.toast.error(`${file.name}: ${describe(error)}`)
+        context.toast.error(`${file.name}: ${errorMessage(error)}`)
       })
     }
   }
@@ -106,7 +93,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
         await context.refresh()
         after?.()
       } catch (error) {
-        context.toast.error(describe(error))
+        context.toast.error(errorMessage(error))
       }
     })()
   }
@@ -173,4 +160,4 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   })
 }
 
-export const TestOnly = { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf, joinInto }
+export const TestOnly = { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf }

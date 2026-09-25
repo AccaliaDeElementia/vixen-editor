@@ -4,7 +4,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
-import { etagOf } from '../storage/etag.ts'
+import { computeEtag } from '../storage/etag.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 
 import { invalidBody, preconditionRequired, toErrorResponse } from './error-response.ts'
@@ -25,7 +25,7 @@ export function documentRoutes(store: DocumentStore): Hono {
     const id = c.req.param('id')
     try {
       const content = await store.read(id)
-      return c.text(content, HTTP_OK, { 'content-type': MARKDOWN_CONTENT_TYPE, etag: etagOf(content) })
+      return c.text(content, HTTP_OK, { 'content-type': MARKDOWN_CONTENT_TYPE, etag: computeEtag(content) })
     } catch (error) {
       return toErrorResponse(c, error)
     }
