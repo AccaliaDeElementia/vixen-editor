@@ -1,8 +1,7 @@
 'use sanity'
 
 import { FOLDER_INDEX_NAME } from '../shared/documents.ts'
-
-const DOC_PREFIX = '/doc/'
+import { DOC_PREFIX } from '../shared/doc-url.ts'
 
 function decodeSegment(segment: string): string {
   try {

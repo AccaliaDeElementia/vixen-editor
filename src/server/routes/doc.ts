@@ -3,10 +3,9 @@
 import { Hono } from 'hono'
 
 import { classifyFile } from '../storage/tree.ts'
+import { DOC_PREFIX } from '../../shared/doc-url.ts'
 
 const HTTP_FOUND = 302
-
-const DOC_PREFIX = '/doc/'
 
 function folderRedirectTarget(rest: string): string | null {
   if (rest === '' || rest.endsWith('/')) return null
