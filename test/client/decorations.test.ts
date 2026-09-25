@@ -1,8 +1,10 @@
 'use sanity'
 
 import { EditorState } from '@codemirror/state'
-import type { DecorationSet } from '@codemirror/view'
+import type { Decoration, DecorationSet } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
+
+import { isRecord } from '../../src/shared/guards.ts'
 
 import { vixenDecorations, TestOnly } from '../../src/client/editor/decorations.ts'
 
@@ -14,11 +16,17 @@ interface FlatDecoration {
   class: string
 }
 
+function classOf(decoration: Decoration): string {
+  const spec: unknown = decoration.spec
+
+  return isRecord(spec) && typeof spec.class === 'string' ? spec.class : ''
+}
+
 function flatten(set: DecorationSet): FlatDecoration[] {
   const out: FlatDecoration[] = []
   const iter = set.iter()
   while (iter.value !== null) {
-    out.push({ from: iter.from, to: iter.to, class: String(iter.value.spec.class) })
+    out.push({ from: iter.from, to: iter.to, class: classOf(iter.value) })
     iter.next()
   }
   return out
