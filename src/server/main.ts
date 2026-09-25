@@ -13,6 +13,8 @@ import { createFsDocumentStore } from './storage/fs-store.ts'
 import { createWriteLock } from './storage/lock.ts'
 import { sweepTemporaries } from './storage/sweep.ts'
 import { createTemplateRenderer } from './templates.ts'
+import { archiveUrlFor } from '../shared/api.ts'
+import { STORE_ROOT } from '../shared/store-path.ts'
 
 const logStartup = createLogger('main', 'startServer')
 
@@ -29,7 +31,7 @@ function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono
   app.use(CLIENT_BUNDLE_ROUTE, serveStatic({ root: publicDir }))
   app.route(
     '/',
-    docRoutes(() => templates.render(EDITOR_TEMPLATE, { title: APP_TITLE })),
+    docRoutes(() => templates.render(EDITOR_TEMPLATE, { title: APP_TITLE, archiveUrl: archiveUrlFor(STORE_ROOT) })),
   )
 
   return app

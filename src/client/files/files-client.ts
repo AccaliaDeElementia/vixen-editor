@@ -1,7 +1,7 @@
 'use sanity'
 
 import { parseTrash, parseTree, type TrashNode, type TreeNode } from './tree-model.ts'
-import { STORE_ROOT } from '../../shared/store-path.ts'
+import { API_PREFIX } from '../../shared/api.ts'
 import { stringsIn } from '../json.ts'
 import { isRecord } from '../../shared/guards.ts'
 
@@ -47,13 +47,10 @@ function encodePath(entryPath: string): string {
   return entryPath.split('/').map(encodeURIComponent).join('/')
 }
 
-export function archiveUrlFor(directory: string, baseUrl = '/api'): string {
-  return directory === STORE_ROOT
-    ? `${baseUrl}/files/archive`
-    : `${baseUrl}/files/archive?path=${encodeURIComponent(directory)}`
-}
-
-export function createFilesClient(fetchImpl: typeof fetch = globalThis.fetch, baseUrl = '/api'): FilesClient {
+export function createFilesClient(
+  fetchImpl: typeof fetch = globalThis.fetch,
+  baseUrl: string = API_PREFIX,
+): FilesClient {
   async function send(url: string, init: RequestInit): Promise<Response> {
     const response = await fetchImpl(url, init)
     if (!response.ok) throw await failureOf(response)

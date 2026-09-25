@@ -203,20 +203,6 @@ describe('failures', () => {
   })
 })
 
-describe('archiveUrlFor', () => {
-  it('addresses the whole store with no query', async () => {
-    const { archiveUrlFor } = await import('../../src/client/files/files-client.ts')
-
-    expect(archiveUrlFor('')).toBe('/api/files/archive')
-  })
-
-  it('addresses a subtree by query, encoding it', async () => {
-    const { archiveUrlFor } = await import('../../src/client/files/files-client.ts')
-
-    expect(archiveUrlFor('my folder/2026')).toBe('/api/files/archive?path=my%20folder%2F2026')
-  })
-})
-
 describe('move', () => {
   it('posts the source and the destination', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))

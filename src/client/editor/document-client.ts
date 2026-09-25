@@ -1,5 +1,7 @@
 'use sanity'
 
+import { API_PREFIX } from '../../shared/api.ts'
+
 import { isRecord } from '../../shared/guards.ts'
 
 const HTTP_SERVICE_UNAVAILABLE = 503
@@ -57,7 +59,10 @@ async function createdEtagOf(response: Response): Promise<string> {
   return isRecord(body) && typeof body.etag === 'string' ? body.etag : ''
 }
 
-export function createDocumentClient(fetchImpl: typeof fetch = globalThis.fetch, baseUrl = '/api'): DocumentClient {
+export function createDocumentClient(
+  fetchImpl: typeof fetch = globalThis.fetch,
+  baseUrl: string = API_PREFIX,
+): DocumentClient {
   const documentsUrl = `${baseUrl}/documents`
 
   async function retrying(url: string, init: RequestInit): Promise<Response> {

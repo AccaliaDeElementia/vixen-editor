@@ -4,7 +4,8 @@ import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
-import { archiveUrlFor, FilesRequestError, type FilesClient } from './files-client.ts'
+import { FilesRequestError, type FilesClient } from './files-client.ts'
+import { archiveUrlFor } from '../../shared/api.ts'
 import { joinPath } from '../../shared/store-path.ts'
 
 const ACTION_SELECTORS = {

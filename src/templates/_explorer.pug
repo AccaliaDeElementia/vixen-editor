@@ -6,7 +6,7 @@ aside.explorer#explorer(aria-label='File browser')
       span.icon(aria-hidden='true') create_new_folder
     button.explorer__action#upload-file(type='button' aria-label='Upload' title='Upload')
       span.icon(aria-hidden='true') upload_file
-    a.explorer__action#download-archive(href='/api/files/archive' aria-label='Download archive' title='Download archive')
+    a.explorer__action#download-archive(href=archiveUrl aria-label='Download archive' title='Download archive')
       span.icon(aria-hidden='true') folder_zip
     button.explorer__action#delete-entry(type='button' aria-label='Delete' title='Delete')
       span.icon(aria-hidden='true') delete

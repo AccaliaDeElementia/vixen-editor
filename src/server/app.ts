@@ -9,6 +9,7 @@ import { documentRoutes } from './routes/documents.ts'
 import { fileRoutes } from './routes/files.ts'
 import { trashRoutes } from './routes/trash.ts'
 import type { DocumentStore } from './storage/fs-store.ts'
+import { API_PREFIX } from '../shared/api.ts'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
@@ -40,10 +41,10 @@ export function buildApp({ store, limits = DEFAULT_LIMITS }: AppDependencies): H
     return c.json({ error: 'Internal server error', code: 'INTERNAL' }, HTTP_INTERNAL_SERVER_ERROR)
   })
 
-  app.get('/api/health', (c) => c.json({ status: 'ok' }))
-  app.route('/api/documents', documentRoutes(store))
-  app.route('/api/files', fileRoutes(store, limits))
-  app.route('/api/trash', trashRoutes(store))
+  app.get(`${API_PREFIX}/health`, (c) => c.json({ status: 'ok' }))
+  app.route(`${API_PREFIX}/documents`, documentRoutes(store))
+  app.route(`${API_PREFIX}/files`, fileRoutes(store, limits))
+  app.route(`${API_PREFIX}/trash`, trashRoutes(store))
 
   return app
 }
