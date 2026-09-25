@@ -173,8 +173,6 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   async function load(): Promise<void> {
     ;[nodes, trash] = await Promise.all([client.tree(), client.trash()])
 
-    // Revealing the open document comes before pruning, so an ancestor that no
-    // longer exists is dropped rather than accumulating in storage.
     openFolders(ancestorsOf(openDocument))
     draw(pruneOpenFolders([...folderPathsIn(nodes), TRASH_PATH]))
   }

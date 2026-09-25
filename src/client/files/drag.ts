@@ -52,8 +52,6 @@ function containerOf(row: VisibleRow | undefined): DropDirectory | null {
   return row.kind === 'folder' ? row.path : parentOf(row.path)
 }
 
-// Moving a folder into itself or into its own descendant is not a move, so the
-// drop affordance never appears; the server's INVALID_MOVE is the backstop.
 function canMoveInto(source: string, directory: string): boolean {
   return directory !== source && !directory.startsWith(`${source}/`)
 }

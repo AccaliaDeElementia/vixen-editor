@@ -168,8 +168,8 @@ describe('containerOf', () => {
   })
 
   it.each([
-    ['the trash pseudo-folder', { path: TRASH_PATH, expandable: true, kind: 'trash' as const }],
-    ['a deleted entry', { path: 'gone.md', expandable: false, kind: 'trashed' as const }],
+    ['the trash pseudo-folder', { path: TRASH_PATH, expandable: true, kind: 'trash-root' as const }],
+    ['a deleted entry', { path: 'gone.md', expandable: false, kind: 'trash-entry' as const }],
   ])('refuses drops onto %s, which is not a place in the store', (_label, row) => {
     expect(containerOf(row)).toBeNull()
   })

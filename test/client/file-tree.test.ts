@@ -158,6 +158,12 @@ describe('revealing the open document', () => {
 
     expect([...readOpenFolders()]).toContain('journal/2026')
   })
+
+  it('does not persist an ancestor the tree does not have, so a stale url cannot accumulate', async () => {
+    await start('/doc/ghost/vanished.md')
+
+    expect([...readOpenFolders()]).not.toContain('ghost')
+  })
 })
 
 describe('remembering open folders', () => {

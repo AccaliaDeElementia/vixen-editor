@@ -26,8 +26,6 @@ export function openFolders(paths: Iterable<string>): void {
   writeOpenFolders(folders)
 }
 
-// Folders get deleted and renamed while their paths sit in storage, so the set
-// is reconciled against the tree on load rather than growing without bound.
 export function pruneOpenFolders(known: readonly string[]): Set<string> {
   const survivors = new Set([...readOpenFolders()].filter((entryPath) => known.includes(entryPath)))
   writeOpenFolders(survivors)

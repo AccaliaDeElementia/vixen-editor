@@ -20,16 +20,14 @@ export interface VisibleRow {
   kind: RowKind
 }
 
-// `trash` is the pseudo-folder itself and `trashed` one of its entries: the
-// two literals the union cannot tell apart on its own.
-type RowKind = EntryKind | 'trash' | 'trashed'
+type RowKind = EntryKind | 'trash-root' | 'trash-entry'
 
 interface StoreRow extends VisibleRow {
   kind: EntryKind
 }
 
 export function isStoreRow(row: VisibleRow | undefined): row is StoreRow {
-  return row !== undefined && row.kind !== 'trash' && row.kind !== 'trashed'
+  return row !== undefined && row.kind !== 'trash-root' && row.kind !== 'trash-entry'
 }
 
 export interface TreeViewModel {
@@ -67,7 +65,7 @@ function label(text: string): HTMLElement {
 
 interface RowOptions {
   path: string
-  kind: EntryKind | 'trash'
+  kind: EntryKind | 'trash-root'
   draggable?: boolean
   name: string
   depth: number
@@ -93,7 +91,7 @@ function row(options: RowOptions): HTMLElement {
 
   element.append(
     twisty(options.expanded),
-    icon(ENTRY_ICONS[options.kind === 'trash' ? 'folder' : options.kind], options.kind),
+    icon(ENTRY_ICONS[options.kind === 'trash-root' ? 'folder' : options.kind], options.kind),
     label(options.name),
   )
 
@@ -200,8 +198,8 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
 function renderTrash(model: TreeViewModel): Rendered {
   const expanded = model.open.has(TRASH_PATH)
   const name = `Trash (${String(model.trash.length)})`
-  const element = item(row({ path: TRASH_PATH, kind: 'trash', name, depth: 0, expanded, selected: false }))
-  const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash' }]
+  const element = item(row({ path: TRASH_PATH, kind: 'trash-root', name, depth: 0, expanded, selected: false }))
+  const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash-root' }]
 
   if (!expanded) return { items: [element], visible }
 
@@ -219,7 +217,7 @@ function renderTrash(model: TreeViewModel): Rendered {
     deleted.title = `Deleted ${entry.deletedAt}`
     deleted.append(trashActions(entry))
     children.append(item(deleted))
-    visible.push({ path: entry.originalPath, expandable: false, kind: 'trashed' })
+    visible.push({ path: entry.originalPath, expandable: false, kind: 'trash-entry' })
   }
   element.append(children)
 

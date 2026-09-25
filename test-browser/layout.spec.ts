@@ -99,7 +99,7 @@ test('the file browser lists what the store holds', async ({ page, request }) =>
   const row = page.locator(`.tree__row[data-path="${folder}"]`)
   await expect(row).toBeVisible()
   await expect(row).toHaveAttribute('aria-expanded', 'false')
-  await expect(page.locator('.tree__row[data-kind="trash"]')).toBeVisible()
+  await expect(page.locator('.tree__row[data-kind="trash-root"]')).toBeVisible()
 
   await request.delete(`/api/files/entries/${folder}`)
 })
@@ -307,7 +307,7 @@ test('the trash actions are distinguishable by sight and by tooltip', async ({ p
   const { trashId } = (await trashed.json()) as { trashId: string }
 
   await page.goto('/doc/')
-  await page.locator('.tree__row[data-kind="trash"]').click()
+  await page.locator('.tree__row[data-kind="trash-root"]').click()
 
   const restore = page.locator(`[data-action="restore"][data-trash-id="${trashId}"]`)
   const purge = page.locator(`[data-action="purge"][data-trash-id="${trashId}"]`)
@@ -395,7 +395,7 @@ test('a real drag shows the drop affordance only where a drop is legal', async (
 
   await page.goto('/doc/')
   const source = page.locator(`.tree__row[data-path="${folder}"]`)
-  const trash = page.locator('.tree__row[data-kind="trash"]')
+  const trash = page.locator('.tree__row[data-kind="trash-root"]')
 
   await source.hover()
   await page.mouse.down()
