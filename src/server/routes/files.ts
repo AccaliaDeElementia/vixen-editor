@@ -26,7 +26,6 @@ const folderBodySchema = z.object({ path: z.string().min(1) })
 const moveBodySchema = z.object({
   from: z.string().min(1),
   to: z.string().min(1),
-  allowOverwrite: z.boolean().optional(),
 })
 const documentBodySchema = z.object({ path: z.string().min(1), content: z.string().optional() })
 
@@ -105,9 +104,9 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     '/moves',
     zValidator('json', moveBodySchema, (result, c) => (result.success ? undefined : invalidBody(c))),
     async (c) => {
-      const { from, to, allowOverwrite = false } = c.req.valid('json')
+      const { from, to } = c.req.valid('json')
       try {
-        return c.json(await store.move({ from, to, allowOverwrite }))
+        return c.json(await store.move({ from, to }))
       } catch (error) {
         return toErrorResponse(c, error)
       }

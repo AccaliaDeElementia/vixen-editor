@@ -216,27 +216,16 @@ describe('archiveUrlFor', () => {
 })
 
 describe('move', () => {
-  it('posts the source, the destination and the overwrite flag', async () => {
+  it('posts the source and the destination', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
 
-    await client().move('notes.md', 'archive/notes.md', false)
+    await client().move('notes.md', 'archive/notes.md')
 
     expect(fetchMock).toHaveBeenCalledWith('/api/files/moves', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ from: 'notes.md', to: 'archive/notes.md', allowOverwrite: false }),
+      body: JSON.stringify({ from: 'notes.md', to: 'archive/notes.md' }),
     })
-  })
-
-  it('carries the overwrite flag when the caller has confirmed', async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
-
-    await client().move('a.md', 'b/a.md', true)
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/files/moves',
-      expect.objectContaining({ body: JSON.stringify({ from: 'a.md', to: 'b/a.md', allowOverwrite: true }) }),
-    )
   })
 
   it('surfaces the colliding paths of a refused overwrite', async () => {
@@ -244,7 +233,7 @@ describe('move', () => {
       jsonResponse({ error: 'Would overwrite', code: 'WOULD_OVERWRITE', paths: ['b/a.md'] }, 409),
     )
 
-    await expect(client().move('a.md', 'b/a.md', false)).rejects.toMatchObject({
+    await expect(client().move('a.md', 'b/a.md')).rejects.toMatchObject({
       code: 'WOULD_OVERWRITE',
       paths: ['b/a.md'],
     })
@@ -257,7 +246,7 @@ describe('move', () => {
   it('reports the paths whose links were repaired', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ rewritten: ['a.md', 'b.md'], failed: [] }))
 
-    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual(['a.md', 'b.md'])
+    await expect(client().move('x.md', 'y.md')).resolves.toStrictEqual(['a.md', 'b.md'])
   })
 
   it.each([
@@ -266,18 +255,18 @@ describe('move', () => {
   ])('reports nothing for %s', async (_label, body) => {
     fetchMock.mockResolvedValue(jsonResponse(body))
 
-    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual([])
+    await expect(client().move('x.md', 'y.md')).resolves.toStrictEqual([])
   })
 
   it('drops entries that are not strings', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ rewritten: ['a.md', 7, null] }))
 
-    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual(['a.md'])
+    await expect(client().move('x.md', 'y.md')).resolves.toStrictEqual(['a.md'])
   })
 
   it('reports nothing when the body is not JSON at all', async () => {
     fetchMock.mockResolvedValue(new Response('', { status: 200 }))
 
-    await expect(client().move('x.md', 'y.md', false)).resolves.toStrictEqual([])
+    await expect(client().move('x.md', 'y.md')).resolves.toStrictEqual([])
   })
 })

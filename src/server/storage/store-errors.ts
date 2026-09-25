@@ -61,16 +61,6 @@ export class InvalidMoveError extends Error {
   }
 }
 
-export class WouldOverwriteError extends Error {
-  override readonly name = 'WouldOverwriteError'
-  readonly paths: readonly string[]
-
-  constructor(paths: readonly string[]) {
-    super(`Would overwrite ${String(paths.length)} existing path(s)`)
-    this.paths = paths
-  }
-}
-
 export class ArchiveTooLargeError extends Error {
   override readonly name = 'ArchiveTooLargeError'
   readonly unit: string

@@ -473,29 +473,24 @@ describe('POST /api/files/moves', () => {
     await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
   })
 
-  it('returns 409 with the colliding paths rather than overwriting', async () => {
+  it('refuses an occupied destination rather than replacing it', async () => {
     await store.createDocument('notes.md', '# mine')
     await store.createDocument('archive/notes.md', '# theirs')
 
     const res = await post('moves', { from: 'notes.md', to: 'archive/notes.md' })
-    const body: unknown = await res.json()
 
     expect(res.status).toBe(409)
-    expect(body).toStrictEqual({
-      error: 'Would overwrite existing files',
-      code: 'WOULD_OVERWRITE',
-      paths: ['archive/notes.md'],
-    })
+    await expect(codeOf(res)).resolves.toBe('ALREADY_EXISTS')
   })
 
-  it('overwrites once the caller confirms, which is the repeat of the same request', async () => {
+  it('leaves both documents where they were when it refuses', async () => {
     await store.createDocument('notes.md', '# mine')
     await store.createDocument('archive/notes.md', '# theirs')
 
-    const res = await post('moves', { from: 'notes.md', to: 'archive/notes.md', allowOverwrite: true })
+    await post('moves', { from: 'notes.md', to: 'archive/notes.md' })
 
-    expect(res.status).toBe(200)
-    await expect(store.read('archive/notes.md')).resolves.toBe('# mine')
+    await expect(store.read('notes.md')).resolves.toBe('# mine')
+    await expect(store.read('archive/notes.md')).resolves.toBe('# theirs')
   })
 
   it('returns 409 for a folder moved into its own descendant', async () => {
@@ -526,7 +521,6 @@ describe('POST /api/files/moves', () => {
   it.each([
     ['no destination', { from: 'notes.md' }],
     ['no source', { to: 'notes.md' }],
-    ['a non-boolean overwrite flag', { from: 'a.md', to: 'b.md', allowOverwrite: 'yes' }],
   ])('rejects a body with %s', async (_label, body) => {
     const res = await post('moves', body)
 

@@ -455,20 +455,21 @@ existence is managed in one place.
 
 ### Moving
 
-Overwrite checks are **per file and recursive**: two directories merge, so
-only the leaves where something non-mergeable already sits are losses. A move
-that would lose nothing simply happens; one that would lose something returns
-`WOULD_OVERWRITE` **naming every path**, so the client can show them rather
-than asking a vague question.
+**A move puts an entry where nothing is.** An occupied destination is
+`ALREADY_EXISTS`, and the user deletes or renames what is in the way. That is
+one `rename`, so a move is atomic and costs nothing in bytes however large the
+subtree.
 
-Overwritten files go to the trash first, so a mistaken confirmation is
-recoverable, and a failure while trashing leaves the move itself untouched.
+Merging two folders and replacing an occupied path are deliberately **not**
+supported. Neither was ever asked for: both fell out of checking collisions
+per file and recursively, and that check is where every hard case in this file
+came from — two tree walks, a trash pass over the losers, and an invariant
+about mergeable directories that only a comment held. A confirmation that
+trashes a subtree also has a blast radius the dialog cannot usefully show.
 
-**A merge into an existing folder is not atomic.** A move to a path that does
-not exist is one `rename`; merging moves entries individually and can
-partially complete. The write lock stops other callers interleaving, but
-serialisation is not atomicity — a crash mid-merge leaves a partial state.
-`EXDEV` is an error, never a copy that half-succeeds.
+Both are additive to bring back after the MVP, and a behaviour change to
+remove once anyone relies on them, which is why they go now rather than
+later.
 
 A rename may not change what a file claims to be: the raw route types a
 response from the extension alone, so `notes.md` cannot become `notes.svg`.
@@ -578,7 +579,6 @@ the UI reacts to; the message is what it shows when it has nothing better.
 | `NOT_FOUND`             | 404    |                                            |
 | `ALREADY_EXISTS`        | 409    |                                            |
 | `INVALID_MOVE`          | 409    |                                            |
-| `WOULD_OVERWRITE`       | 409    | `paths`                                    |
 | `CONFLICT`              | 412    |                                            |
 | `TOO_LARGE`             | 413    | `unit`, `limit`, `measured` for an archive |
 | `EMPTY_CONTENT`         | 422    |                                            |

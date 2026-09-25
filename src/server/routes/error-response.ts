@@ -15,7 +15,6 @@ import {
   EmptyContentError,
   EntryExistsError,
   InvalidMoveError,
-  WouldOverwriteError,
 } from '../storage/store-errors.ts'
 
 const HTTP_BAD_REQUEST = 400
@@ -88,12 +87,6 @@ export function toErrorResponse(c: Context, error: unknown): Response {
 
   if (error instanceof InvalidMoveError) {
     return refuse(c, HTTP_CONFLICT, 'INVALID_MOVE', { error: error.message })
-  }
-  if (error instanceof WouldOverwriteError) {
-    return refuse(c, HTTP_CONFLICT, 'WOULD_OVERWRITE', {
-      error: 'Would overwrite existing files',
-      paths: error.paths,
-    })
   }
   if (error instanceof ArchiveTooLargeError) {
     return refuse(c, HTTP_CONTENT_TOO_LARGE, 'TOO_LARGE', {

@@ -9,11 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import type { RelinkOutcome } from '../../../src/server/storage/relink-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
-import {
-  DocumentNotFoundError,
-  InvalidMoveError,
-  WouldOverwriteError,
-} from '../../../src/server/storage/store-errors.ts'
+import { DocumentNotFoundError, EntryExistsError, InvalidMoveError } from '../../../src/server/storage/store-errors.ts'
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
@@ -29,12 +25,12 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
-function move(from: string, to: string, allowOverwrite = false): Promise<RelinkOutcome> {
-  return store.move({ from, to, allowOverwrite })
+function move(from: string, to: string): Promise<RelinkOutcome> {
+  return store.move({ from, to })
 }
 
-async function rewrittenBy(from: string, to: string, allowOverwrite = false): Promise<string[]> {
-  return (await move(from, to, allowOverwrite)).rewritten
+async function rewrittenBy(from: string, to: string): Promise<string[]> {
+  return (await move(from, to)).rewritten
 }
 
 async function exists(...parts: string[]): Promise<boolean> {
@@ -42,12 +38,6 @@ async function exists(...parts: string[]): Promise<boolean> {
     .stat(path.join(root, ...parts))
     .then(() => true)
     .catch(() => false)
-}
-
-async function overwritePathsOf(attempt: Promise<unknown>): Promise<readonly string[]> {
-  return await attempt
-    .then((): readonly string[] => [])
-    .catch((error: unknown) => (error instanceof WouldOverwriteError ? error.paths : []))
 }
 
 // The store has to enumerate documents *before* it moves anything: a document
@@ -175,161 +165,6 @@ describe('moving', () => {
   })
 })
 
-describe('merging folders', () => {
-  it('merges into an existing folder when nothing collides', async () => {
-    await store.createFolder('archive', '# archive')
-    await store.createFolder('journal', '# journal')
-    await store.createDocument('journal/entry.md', '# entry')
-    // Both folders were seeded with an index, which would otherwise be the
-    // one genuine collision and make this a test about overwriting instead.
-    await store.trash('journal/index.md')
-
-    await move('journal', 'archive')
-
-    await expect(store.read('archive/entry.md')).resolves.toBe('# entry')
-    await expect(store.read('archive/index.md')).resolves.toContain('# archive')
-  })
-
-  it('leaves files the destination already had that the source did not', async () => {
-    await store.createFolder('archive', '# archive')
-    await store.createDocument('archive/kept.md', '# kept')
-    await store.createFolder('journal', '# journal')
-    await store.createDocument('journal/entry.md', '# entry')
-    await store.trash('journal/index.md')
-
-    await move('journal', 'archive')
-
-    await expect(store.read('archive/kept.md')).resolves.toBe('# kept')
-  })
-
-  it('removes the source folder once merged', async () => {
-    await store.createFolder('archive', '# archive')
-    await store.createFolder('journal', '# journal')
-    await store.trash('journal/index.md')
-    await store.createDocument('journal/entry.md', '# entry')
-
-    await move('journal', 'archive')
-
-    expect(await exists('journal')).toBe(false)
-  })
-
-  it('merges nested folders that both already exist', async () => {
-    await store.createFolder('archive/2026', '# archive 2026')
-    await store.createFolder('journal/2026', '# journal 2026')
-    await store.createDocument('journal/2026/entry.md', '# entry')
-    await store.trash('journal/2026/index.md')
-
-    await move('journal', 'archive')
-
-    await expect(store.read('archive/2026/entry.md')).resolves.toBe('# entry')
-    await expect(store.read('archive/2026/index.md')).resolves.toContain('# archive 2026')
-  })
-})
-
-describe('refusing to overwrite', () => {
-  it('reports a colliding file rather than replacing it', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
-
-    await expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(WouldOverwriteError)
-  })
-
-  it('leaves both files untouched when it refuses', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
-
-    await expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(WouldOverwriteError)
-    await expect(store.read('notes.md')).resolves.toBe('# mine')
-    await expect(store.read('archive/notes.md')).resolves.toBe('# theirs')
-  })
-
-  it('names exactly which paths would be lost, so the dialog can show them', async () => {
-    await store.createFolder('archive', '# archive')
-    await store.createDocument('archive/a.md', '# theirs a')
-    await store.createDocument('archive/b.md', '# theirs b')
-    await store.createFolder('journal', '# journal')
-    await store.createDocument('journal/a.md', '# mine a')
-    await store.createDocument('journal/b.md', '# mine b')
-    await store.createDocument('journal/c.md', '# mine c')
-
-    const paths = await overwritePathsOf(move('journal', 'archive'))
-
-    expect([...paths].sort((a, b) => a.localeCompare(b))).toStrictEqual([
-      'archive/a.md',
-      'archive/b.md',
-      'archive/index.md',
-    ])
-  })
-
-  it('reports a file that would replace a folder', async () => {
-    await store.createFolder('archive/notes.md', '# oddly named folder')
-    await store.createDocument('notes.md', '# mine')
-
-    const paths = await overwritePathsOf(move('notes.md', 'archive/notes.md'))
-
-    expect(paths).toStrictEqual(['archive/notes.md'])
-  })
-
-  it('reports a folder that would replace a file', async () => {
-    await store.createDocument('archive/journal', '# not really a folder').catch(() => undefined)
-    await fs.mkdir(path.join(root, 'archive'), { recursive: true })
-    await fs.writeFile(path.join(root, 'archive', 'journal'), 'occupied')
-    await store.createFolder('journal', '# journal')
-
-    const paths = await overwritePathsOf(move('journal', 'archive/journal'))
-
-    expect(paths).toStrictEqual(['archive/journal'])
-  })
-})
-
-describe('confirmed overwrite', () => {
-  it('replaces the colliding file when the caller allows it', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
-
-    await move('notes.md', 'archive/notes.md', true)
-
-    await expect(store.read('archive/notes.md')).resolves.toBe('# mine')
-  })
-
-  it('puts the replaced file in the trash, so a mistaken confirmation is recoverable', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
-
-    await move('notes.md', 'archive/notes.md', true)
-
-    const trashed = await store.listTrash()
-    expect(trashed).toMatchObject([{ originalPath: 'archive/notes.md' }])
-    await expect(store.restore(trashed[0]?.id ?? '')).rejects.toThrow()
-  })
-
-  it('keeps the replaced content in the trash entry', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
-
-    await move('notes.md', 'archive/notes.md', true)
-    const [entry] = await store.listTrash()
-    await store.trash('archive/notes.md')
-    await store.restore(entry?.id ?? '')
-
-    await expect(store.read('archive/notes.md')).resolves.toBe('# theirs')
-  })
-
-  it('trashes only the colliding leaves of a merge', async () => {
-    await store.createFolder('archive', '# archive')
-    await store.createDocument('archive/a.md', '# theirs a')
-    await store.createDocument('archive/kept.md', '# kept')
-    await store.createFolder('journal', '# journal')
-    await store.createDocument('journal/a.md', '# mine a')
-
-    await move('journal', 'archive', true)
-
-    await expect(store.read('archive/a.md')).resolves.toBe('# mine a')
-    await expect(store.read('archive/kept.md')).resolves.toBe('# kept')
-    await expect(store.listTrash()).resolves.toHaveLength(2)
-  })
-})
-
 describe('rejecting impossible moves', () => {
   it('refuses to move a folder into its own descendant', async () => {
     await store.createFolder('journal', '# journal')
@@ -370,5 +205,43 @@ describe('rejecting impossible moves', () => {
     await fs.writeFile(path.join(root, 'payload.zip'), 'x')
 
     await expect(move('payload.zip', 'archive.zip')).rejects.toThrow(InvalidPathError)
+  })
+})
+
+// A move puts an entry where nothing is. Merging two folders and replacing an
+// occupied path are both post-MVP: the user deletes or renames what is in the
+// way, which is one visible act rather than a confirmation with a blast radius.
+describe('an occupied destination', () => {
+  it('refuses rather than replacing a file', async () => {
+    await store.createDocument('notes.md', '# mine')
+    await store.createDocument('archive/notes.md', '# theirs')
+
+    await expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(EntryExistsError)
+  })
+
+  it('refuses rather than merging two folders', async () => {
+    await store.createFolder('journal', '# journal')
+    await store.createFolder('archive/journal', '# other')
+
+    await expect(move('journal', 'archive/journal')).rejects.toThrow(EntryExistsError)
+  })
+
+  it('leaves both sides untouched when it refuses', async () => {
+    await store.createDocument('notes.md', '# mine')
+    await store.createDocument('archive/notes.md', '# theirs')
+
+    await expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(EntryExistsError)
+
+    await expect(store.read('notes.md')).resolves.toBe('# mine')
+    await expect(store.read('archive/notes.md')).resolves.toBe('# theirs')
+  })
+
+  it('trashes nothing, so no recovery is needed', async () => {
+    await store.createDocument('notes.md', '# mine')
+    await store.createDocument('archive/notes.md', '# theirs')
+
+    await move('notes.md', 'archive/notes.md').catch(() => undefined)
+
+    await expect(store.listTrash()).resolves.toStrictEqual([])
   })
 })

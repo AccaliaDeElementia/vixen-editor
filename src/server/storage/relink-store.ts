@@ -17,14 +17,7 @@ export interface RelinkOutcome {
 }
 
 function holderOfEachPath(documentIds: readonly string[], moves: readonly PathMove[]): Map<string, string> {
-  const holders = new Map<string, string>()
-
-  for (const id of documentIds) {
-    const current = movedPath(moves, id)
-    if (current !== id || !holders.has(current)) holders.set(current, id)
-  }
-
-  return holders
+  return new Map(documentIds.map((id) => [movedPath(moves, id), id]))
 }
 
 // Every form this repairs — inline link, image, reference definition — needs

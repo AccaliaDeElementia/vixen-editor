@@ -4,7 +4,7 @@ import type { DocumentMoved } from '../document-moved.ts'
 import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
-import { FilesRequestError, type FilesClient } from './files-client.ts'
+import type { FilesClient } from './files-client.ts'
 import { rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
 
 const DRAG_MIME = 'application/x-vixen-path'
@@ -81,22 +81,9 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     const to = joinInto(directory, basenameOf(from))
     if (to === from) return null
 
-    try {
-      context.announce({ from, to, rewritten: await context.client.move(from, to, false) })
-      return to
-    } catch (error) {
-      if (!(error instanceof FilesRequestError) || error.code !== 'WOULD_OVERWRITE') throw error
+    context.announce({ from, to, rewritten: await context.client.move(from, to) })
 
-      const confirmed = await context.dialogs.confirm({
-        title: 'Replace existing files?',
-        message: `These go to the trash: ${error.paths.join(', ')}`,
-        confirmLabel: 'Replace',
-      })
-      if (!confirmed) return null
-
-      context.announce({ from, to, rewritten: await context.client.move(from, to, true) })
-      return to
-    }
+    return to
   }
 
   async function uploadAll(files: readonly File[], directory: string): Promise<void> {

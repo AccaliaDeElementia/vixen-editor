@@ -28,18 +28,18 @@ async function documentIds(): Promise<string[]> {
 
 // The move itself, then the repair — the order the store does it in, because a
 // document has to be read at the path it now occupies.
-async function moveThenRelink(from: string, to: string, allowOverwrite = false): Promise<RelinkOutcome> {
+async function moveThenRelink(from: string, to: string): Promise<RelinkOutcome> {
   const before = await documentIds()
   await fs.mkdir(path.join(root, path.dirname(to)), { recursive: true })
-  await moveEntry(root, { from, to, allowOverwrite })
+  await moveEntry(root, { from, to })
 
   const moves: PathMove[] = [{ from, to }]
 
   return await relinkAfterMove(root, before, moves)
 }
 
-async function rewrittenBy(from: string, to: string, allowOverwrite = false): Promise<string[]> {
-  return (await moveThenRelink(from, to, allowOverwrite)).rewritten
+async function rewrittenBy(from: string, to: string): Promise<string[]> {
+  return (await moveThenRelink(from, to)).rewritten
 }
 
 beforeEach(async () => {
@@ -115,25 +115,6 @@ describe('relinkAfterMove', () => {
     await write('a.md', '[x](journal/a.md)')
 
     await expect(rewrittenBy('journal/a.md', 'archive/a.md')).resolves.toStrictEqual(['a.md', 'b.md'])
-  })
-
-  // An overwrite leaves two ids naming one path, and the holder must be the
-  // document that moved. Both enumeration orders are tested because picking
-  // whichever id arrived first is right in one of them and wrong in the other.
-  it.each([
-    ['the replaced document is enumerated first', 'z.md', 'sub/a.md', ['sub/a.md', 'z.md']],
-    ['the moving document is enumerated first', 'a.md', 'sub/z.md', ['a.md', 'sub/z.md']],
-  ])('relinks the winner of an overwrite when %s', async (_name, from, to, expectedIds) => {
-    await write('img/p.png', 'x')
-    await write(from, '![p](img/p.png)')
-    await write(to, '![p](../img/p.png)')
-
-    expect(await documentIds()).toStrictEqual(expectedIds)
-
-    const rewritten = await rewrittenBy(from, to, true)
-
-    expect(rewritten).toStrictEqual([to])
-    await expect(read(to)).resolves.toBe('![p](../img/p.png)')
   })
 })
 

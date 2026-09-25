@@ -1,6 +1,5 @@
 'use sanity'
 
-import type { Stats } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -8,75 +7,15 @@ import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './safe-path.ts'
-import { InvalidMoveError, WouldOverwriteError } from './store-errors.ts'
+import { EntryExistsError, InvalidMoveError } from './store-errors.ts'
 import { classifyFile } from './tree.ts'
-import { entryKindOf, moveToTrash, type TrashKind } from './trash.ts'
+import { entryKindOf, type TrashKind } from './trash.ts'
 
 const logMove = createLogger('storage/move')
 
 export interface MoveRequest {
   from: string
   to: string
-  allowOverwrite: boolean
-}
-
-interface Pair {
-  fromTarget: string
-  toTarget: string
-  toPath: string
-}
-
-async function statOrNull(target: string): Promise<Stats | null> {
-  return await nullWhenAbsent(async () => await fs.stat(target))
-}
-
-// Walks the two trees together and records the destination paths that a move
-// would destroy. Two directories merge, so only the leaves where something
-// non-mergeable already sits are losses.
-async function collectCollisions(at: Pair, found: string[]): Promise<void> {
-  const toStats = await statOrNull(at.toTarget)
-  if (toStats === null) return
-
-  const fromStats = await statOrNull(at.fromTarget)
-  if (fromStats === null || !fromStats.isDirectory() || !toStats.isDirectory()) {
-    found.push(at.toPath)
-    return
-  }
-
-  for (const child of await fs.readdir(at.fromTarget)) {
-    /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk is
-       inherently sequential, and fanning out with Promise.all would risk
-       exhausting file descriptors on a deep document tree for no real gain */
-    await collectCollisions(
-      {
-        fromTarget: path.join(at.fromTarget, child),
-        toTarget: path.join(at.toTarget, child),
-        toPath: `${at.toPath}/${child}`,
-      },
-      found,
-    )
-  }
-}
-
-async function moveInto(fromTarget: string, toTarget: string): Promise<void> {
-  const toStats = await statOrNull(toTarget)
-
-  if (toStats === null) {
-    await fs.mkdir(path.dirname(toTarget), { recursive: true })
-    await fs.rename(fromTarget, toTarget)
-    return
-  }
-
-  // Reaching here means both sides are directories, because every collision
-  // that was not a mergeable directory has already been moved to the trash.
-  for (const child of await fs.readdir(fromTarget)) {
-    /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk is
-       inherently sequential, and fanning out with Promise.all would risk
-       exhausting file descriptors on a deep document tree for no real gain */
-    await moveInto(path.join(fromTarget, child), path.join(toTarget, child))
-  }
-
-  await fs.rmdir(fromTarget)
 }
 
 function assertKindSurvives(from: string, to: string, fromKind: TrashKind): void {
@@ -88,11 +27,9 @@ function assertKindSurvives(from: string, to: string, fromKind: TrashKind): void
 }
 
 export async function moveEntry(root: string, request: MoveRequest): Promise<void> {
-  const { from, to, allowOverwrite } = request
+  const { from, to } = request
   if (from === '' || to === '') throw new InvalidPathError('', 'must not be the document root')
 
-  // Only the destination is a name the client chose; the source has to match
-  // whatever is already on disk, decomposed or not.
   assertNormalisedName(to)
 
   const fromTarget = resolveFolderPath(root, from)
@@ -103,17 +40,11 @@ export async function moveEntry(root: string, request: MoveRequest): Promise<voi
 
   assertKindSurvives(from, to, await entryKindOf(from, fromTarget))
 
-  const collisions: string[] = []
-  await collectCollisions({ fromTarget, toTarget, toPath: to }, collisions)
-  if (collisions.length > 0 && !allowOverwrite) throw new WouldOverwriteError(collisions)
+  const occupant = await nullWhenAbsent(async () => await fs.stat(toTarget))
+  if (occupant !== null) throw new EntryExistsError(to)
 
-  for (const collision of collisions) {
-    /* eslint-disable-next-line no-await-in-loop -- the write lock is held for the
-       whole move, so these run one at a time regardless; sequencing them keeps
-       a failure from leaving some entries trashed and others half-trashed */
-    await moveToTrash(root, collision)
-  }
+  await fs.mkdir(path.dirname(toTarget), { recursive: true })
+  await fs.rename(fromTarget, toTarget)
 
-  await moveInto(fromTarget, toTarget)
-  logMove('moved %s to %s, replacing %d', from, to, collisions.length)
+  logMove('moved %s to %s', from, to)
 }

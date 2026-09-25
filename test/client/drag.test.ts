@@ -198,7 +198,7 @@ describe('moving by drag', () => {
     drag('notes.md', rowFor('archive'))
 
     await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md', false)
+      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
     })
   })
 
@@ -208,7 +208,7 @@ describe('moving by drag', () => {
     drag('notes.md', rowFor('archive/old.md'))
 
     await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md', false)
+      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
     })
   })
 
@@ -218,11 +218,11 @@ describe('moving by drag', () => {
     drag('journal', rowFor('archive'))
 
     await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalledWith('journal', 'archive/journal', false)
+      expect(client.move).toHaveBeenCalledWith('journal', 'archive/journal')
     })
   })
 
-  it('never asks to overwrite on the first attempt', async () => {
+  it('asks nothing, because an occupied destination is simply refused', async () => {
     await start()
 
     drag('notes.md', rowFor('archive'))
@@ -230,7 +230,7 @@ describe('moving by drag', () => {
     await vi.waitFor(() => {
       expect(client.move).toHaveBeenCalled()
     })
-    expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md', false)
+    expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
     expect(dialogs.confirm).not.toHaveBeenCalled()
   })
 
@@ -303,66 +303,6 @@ describe('showing where the entry went', () => {
   })
 })
 
-describe('confirming an overwrite', () => {
-  beforeEach(() => {
-    client.move
-      .mockRejectedValueOnce(new FilesRequestError(409, 'Would overwrite', 'WOULD_OVERWRITE', ['archive/notes.md']))
-      .mockResolvedValueOnce(undefined)
-  })
-
-  it('asks, listing exactly what would be lost', async () => {
-    await start()
-
-    drag('notes.md', rowFor('archive'))
-
-    await vi.waitFor(() => {
-      expect(dialogs.confirm).toHaveBeenCalled()
-    })
-    const request: unknown = dialogs.confirm.mock.calls[0]?.[0]
-    const message = typeof request === 'object' && request !== null && 'message' in request ? request.message : ''
-
-    expect(message).toContain('archive/notes.md')
-  })
-
-  it('repeats the request with the flag once confirmed', async () => {
-    await start()
-
-    drag('notes.md', rowFor('archive'))
-
-    await vi.waitFor(() => {
-      expect(client.move).toHaveBeenLastCalledWith('notes.md', 'archive/notes.md', true)
-    })
-  })
-
-  it('leaves everything alone when declined', async () => {
-    dialogs.confirm.mockResolvedValue(false)
-    await start()
-
-    drag('notes.md', rowFor('archive'))
-
-    await vi.waitFor(() => {
-      expect(dialogs.confirm).toHaveBeenCalled()
-    })
-    expect(client.move).toHaveBeenCalledTimes(1)
-  })
-
-  it('reveals the destination once the replacement goes through', async () => {
-    await start([])
-    client.tree.mockResolvedValue(MOVED)
-
-    drag('notes.md', rowFor('archive'))
-
-    await vi.waitFor(() => {
-      expect(client.move).toHaveBeenLastCalledWith('notes.md', 'archive/notes.md', true)
-    })
-    await vi.waitFor(() => {
-      expect(rows().some((row) => row.getAttribute('aria-selected') === 'true')).toBe(true)
-    })
-  })
-})
-
-// The tree background is not a row. Before the index became nullable this
-// path existed but had no branch to count, so nothing exercised it.
 describe('a drag that does not start on a row', () => {
   it('carries nothing, so a later drop has no source to move', async () => {
     await start()
@@ -570,6 +510,32 @@ describe('drops that carry nothing usable', () => {
 
     await vi.waitFor(() => {
       expect(statusText()).toContain('unknown error')
+    })
+  })
+})
+
+// An occupied destination now refuses, so the only thing left to check is
+// that a move which succeeds still reveals where the entry went.
+describe('after a move succeeds', () => {
+  it('reveals the destination', async () => {
+    await start([])
+    client.tree.mockResolvedValue(MOVED)
+
+    drag('notes.md', rowFor('archive'))
+
+    await vi.waitFor(() => {
+      expect(rowFor('archive/notes.md')).toBeDefined()
+    })
+  })
+
+  it('reports a refusal to the user rather than failing silently', async () => {
+    client.move.mockRejectedValue(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS', []))
+    await start()
+
+    drag('notes.md', rowFor('archive'))
+
+    await vi.waitFor(() => {
+      expect(statusText()).toContain('Already exists')
     })
   })
 })
