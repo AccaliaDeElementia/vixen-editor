@@ -42,11 +42,10 @@ export function createSession(client: DocumentClient, template: (id: string) => 
       if (etag !== undefined) etags.set(to, etag)
     },
 
-    // A document with no etag was never on the server, so the first save has to
-    // create it; every later save carries the etag the previous one returned.
     async save(id: string, content: string): Promise<void> {
       const etag = etags.get(id)
-      const next = etag === undefined ? await client.create(id, content) : await client.save(id, content, etag)
+      const neverReachedTheServer = etag === undefined
+      const next = neverReachedTheServer ? await client.create(id, content) : await client.save(id, content, etag)
 
       etags.set(id, next)
     },

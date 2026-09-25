@@ -15,9 +15,13 @@ const ACTION_SELECTORS = {
   reveal: '#reveal-document',
 } as const
 
-// Codes the user can act on by editing what they typed. Anything else is a
-// failure they cannot fix from inside the dialog, so it goes to the toast.
-const CORRECTABLE = new Set(['ALREADY_EXISTS', 'INVALID_PATH', 'EMPTY_CONTENT'])
+const CORRECTABLE_IN_DIALOG = ['ALREADY_EXISTS', 'INVALID_PATH', 'EMPTY_CONTENT'] as const
+
+type CorrectableInDialog = (typeof CORRECTABLE_IN_DIALOG)[number]
+
+function isCorrectableInDialog(code: string): code is CorrectableInDialog {
+  return CORRECTABLE_IN_DIALOG.some((correctable) => correctable === code)
+}
 
 export interface ActionContext {
   root: ParentNode
@@ -39,7 +43,7 @@ function describe(error: unknown): string {
 }
 
 function correctable(error: unknown): string | null {
-  return error instanceof FilesRequestError && CORRECTABLE.has(error.code) ? error.message : null
+  return error instanceof FilesRequestError && isCorrectableInDialog(error.code) ? error.message : null
 }
 
 async function createVia(create: (entryPath: string) => Promise<void>, entryPath: string): Promise<string | null> {

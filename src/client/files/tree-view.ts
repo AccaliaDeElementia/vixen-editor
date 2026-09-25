@@ -23,10 +23,18 @@ export interface VisibleRow {
   kind: RowKind
 }
 
-// 'trash' is the pseudo-folder itself and 'trashed' one of its entries. Both
-// look like rows and neither is a place in the store, so the distinction has
-// to survive into what the controller works from.
+// `trash` is the pseudo-folder itself and `trashed` one of its entries. Both
+// render as rows and neither names a place in the store, which is why
+// `isStoreRow` exists rather than the two-clause test it replaces.
 type RowKind = EntryKind | 'trash' | 'trashed'
+
+interface StoreRow extends VisibleRow {
+  kind: EntryKind
+}
+
+export function isStoreRow(row: VisibleRow | undefined): row is StoreRow {
+  return row !== undefined && row.kind !== 'trash' && row.kind !== 'trashed'
+}
 
 export interface TreeViewModel {
   nodes: readonly TreeNode[]

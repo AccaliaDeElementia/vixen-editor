@@ -3,9 +3,8 @@
 const TOAST_SELECTOR = '#status'
 const TOAST_VISIBLE_MS = 2500
 
-// A failure is something to act on, so it outstays a confirmation that only
-// says the expected thing happened.
-const TOAST_ERROR_MS = 10000
+const ERROR_OUTSTAYS_INFO_BY = 4
+const TOAST_ERROR_MS = TOAST_VISIBLE_MS * ERROR_OUTSTAYS_INFO_BY
 
 export interface Toast {
   show: (message: string) => void

@@ -5,7 +5,7 @@ import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
 import type { FilesClient } from './files-client.ts'
-import { rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
+import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
 
 const DRAG_MIME = 'application/x-vixen-path'
 const DROP_TARGET_CLASS = 'tree__row--drop'
@@ -42,7 +42,7 @@ function joinInto(directory: string, name: string): string {
 // are rows but not places in the store, so they take no drops at all.
 function containerOf(row: VisibleRow | undefined): string | null {
   if (row === undefined) return ''
-  if (row.kind === 'trash' || row.kind === 'trashed') return null
+  if (!isStoreRow(row)) return null
 
   return row.kind === 'folder' ? row.path : parentOf(row.path)
 }
@@ -113,7 +113,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   tree.addEventListener('dragstart', (event) => {
     const index = rowIndexOf(tree, event.target)
     const row = index === null ? undefined : context.rowAt(index)
-    if (row === undefined || row.kind === 'trash' || row.kind === 'trashed') return
+    if (!isStoreRow(row)) return
 
     dragging = row.path
     event.dataTransfer?.setData(DRAG_MIME, row.path)
