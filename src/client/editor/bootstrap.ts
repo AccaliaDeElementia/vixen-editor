@@ -10,6 +10,7 @@ import { errorMessage } from '../error-message.ts'
 import { isBlank } from '../../shared/content.ts'
 
 import { createAutosave } from './autosave.ts'
+import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
 import { createToast } from '../layout/toast.ts'
@@ -64,6 +65,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
       const target = documentId
       try {
         await session.save(target, content)
+        rememberCaret(target, view.state.selection.main.head)
       } catch (error) {
         toast.error(`Save failed: ${errorMessage(error)}`)
         throw error
@@ -86,6 +88,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   }
 
   onDocumentMoved(root, ({ from, to, rewritten }) => {
+    caretsFollowMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId)
 
     if (moved !== documentId) {
@@ -101,10 +104,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   })
 
   const initial = await session.load(documentId)
+  const caret = recallCaret(documentId, initial.length)
   const view = new EditorView({
     parent: mount,
     state: createEditorState({
       doc: initial,
+      selection: { anchor: caret },
       extensions: [
         basicSetup,
         keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
@@ -115,6 +120,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     }),
   })
   autosave.reset(initial)
+  view.dispatch({ effects: EditorView.scrollIntoView(caret) })
 
   guardUnload({
     unsaved: () => autosave.state() !== 'clean',

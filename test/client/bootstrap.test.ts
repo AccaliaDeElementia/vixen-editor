@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../cast.ts'
 
+import { recallCaret, rememberCaret } from '../../src/client/editor/carets.ts'
+
 import { announceDocumentMoved } from '../../src/client/document-moved.ts'
 import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
@@ -15,6 +17,8 @@ let root: HTMLElement = document.createElement('div')
 let saved: Array<{ id: string; content: string }> = []
 let renamed: Array<{ from: string; to: string }> = []
 let rescued: Array<{ id: string; content: string }> = []
+
+const LONG_ENOUGH = 5000
 
 function page({ withMount = true, withStatus = true } = {}): HTMLElement {
   const container = document.createElement('div')
@@ -54,6 +58,7 @@ function statusText(container: ParentNode): string {
 }
 
 beforeEach(() => {
+  localStorage.clear()
   saved = []
   renamed = []
   rescued = []
@@ -430,5 +435,61 @@ describe('leaving the page with the buffer dirty', () => {
     leave()
 
     expect(rescued).toStrictEqual([])
+  })
+})
+
+describe('the caret across a reload', () => {
+  async function open(pathname: string): Promise<EditorView> {
+    return await bootstrap({ root, pathname, session: fakeSession() })
+  }
+
+  it('opens at the top when nothing is remembered', async () => {
+    const view = await open('/doc/notes.md')
+
+    expect(view.state.selection.main.head).toBe(0)
+  })
+
+  it('opens where the caret was left', async () => {
+    rememberCaret('notes.md', 5)
+
+    const view = await open('/doc/notes.md')
+
+    expect(view.state.selection.main.head).toBe(5)
+  })
+
+  it('clamps a caret past the end, because the document may have shrunk elsewhere', async () => {
+    rememberCaret('notes.md', 5000)
+
+    const view = await open('/doc/notes.md')
+
+    expect(view.state.selection.main.head).toBe(view.state.doc.length)
+  })
+
+  it('records the caret on a save, so a crash costs only the edits since', async () => {
+    const view = await open('/doc/notes.md')
+    view.dispatch({ changes: { from: 0, insert: 'extra ' }, selection: { anchor: 4 } })
+
+    await pressSave(view)
+
+    expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(4)
+  })
+
+  it('records nothing when the save failed, so the position still matches what is stored', async () => {
+    const session = fakeSession({ save: () => Promise.reject(new Error('server exploded')) })
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session })
+    view.dispatch({ changes: { from: 0, insert: 'extra ' }, selection: { anchor: 4 } })
+
+    await pressSave(view)
+
+    expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(0)
+  })
+
+  it('carries the caret to the new path when the document moves', async () => {
+    rememberCaret('notes.md', 5)
+    await open('/doc/notes.md')
+
+    announceDocumentMoved(root, { from: 'notes.md', to: 'archive/notes.md', rewritten: [] })
+
+    expect(recallCaret('archive/notes.md', LONG_ENOUGH)).toBe(5)
   })
 })

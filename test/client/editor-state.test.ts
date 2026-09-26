@@ -51,3 +51,13 @@ describe('createEditorState', () => {
     expect(decorations.size).toBe(1)
   })
 })
+
+describe('the initial selection', () => {
+  it('starts at the top when none is given', () => {
+    expect(createEditorState({ doc: '# notes\n\nbody' }).selection.main.head).toBe(0)
+  })
+
+  it('opens at the caret it was handed, so a remembered position survives the reload', () => {
+    expect(createEditorState({ doc: '# notes\n\nbody', selection: { anchor: 9 } }).selection.main.head).toBe(9)
+  })
+})
