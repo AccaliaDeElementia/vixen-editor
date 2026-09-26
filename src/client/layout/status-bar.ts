@@ -55,6 +55,7 @@ export function createStatusBar(root: ParentNode): StatusBar {
   const wordCountElement = root.querySelector(WORD_COUNT_SELECTOR)
 
   let written = false
+  let previous: SaveState | null = null
   let onSecondRun = false
 
   function labelFor(state: SaveState): string {
@@ -82,13 +83,17 @@ export function createStatusBar(root: ParentNode): StatusBar {
 
   return {
     showPath(displayPath: string): void {
+      written = false
+      previous = null
+      if (labelElement !== null) labelElement.textContent = NOTHING_TO_SAY
       if (pathElement === null) return
 
       pathElement.textContent = displayPath === STORE_ROOT ? ROOT_LABEL : displayPath
     },
 
     showSaveState(state: SaveState, dueAt: number | null): void {
-      written ||= state === 'saving'
+      written ||= previous === 'saving' && state === 'clean'
+      previous = state
 
       if (labelElement !== null) labelElement.textContent = labelFor(state)
 

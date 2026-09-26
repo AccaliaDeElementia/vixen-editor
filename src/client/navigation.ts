@@ -45,6 +45,8 @@ export interface Navigator {
 interface InterceptOptions {
   navigation?: Navigation | undefined
   open: (pathname: string) => Promise<void>
+  mayLeave?: (() => boolean) | undefined
+  settle?: (() => Promise<boolean>) | undefined
   onSettled?: (() => void) | undefined
 }
 
@@ -57,9 +59,32 @@ const NOWHERE_TO_GO: Navigator = {
 
 function shouldHandle(event: NavigateEvent): boolean {
   if (!event.canIntercept || event.hashChange || event.downloadRequest !== null) return false
-  if (event.formData !== null) return false
+  if (event.formData !== null || event.navigationType === 'reload') return false
 
   return isAppPath(new URL(event.destination.url).pathname)
+}
+
+function blocks(options: InterceptOptions, event: NavigateEvent): boolean {
+  if (options.mayLeave === undefined || options.settle === undefined) return false
+
+  return !options.mayLeave() && event.cancelable
+}
+
+function ignoreOutcome(result: NavigationResult): void {
+  void result.committed?.catch(() => undefined)
+}
+
+function resume(navigation: Navigation, event: NavigateEvent): void {
+  const { navigationType: how } = event
+
+  if (how === 'traverse') {
+    ignoreOutcome(navigation.traverseTo(event.destination.key))
+
+    return
+  }
+
+  const history: NavigationHistoryBehavior = how === 'replace' ? 'replace' : 'push'
+  ignoreOutcome(navigation.navigate(event.destination.url, { history }))
 }
 
 export function interceptNavigation(options: InterceptOptions): Navigator {
@@ -68,6 +93,15 @@ export function interceptNavigation(options: InterceptOptions): Navigator {
 
   navigation.addEventListener('navigate', (event) => {
     if (!shouldHandle(event)) return
+
+    if (blocks(options, event)) {
+      event.preventDefault()
+      void options.settle?.().then((proceed) => {
+        if (proceed) resume(navigation, event)
+      })
+
+      return
+    }
 
     const { pathname } = new URL(event.destination.url)
     event.intercept({

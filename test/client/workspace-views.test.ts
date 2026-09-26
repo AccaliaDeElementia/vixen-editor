@@ -7,6 +7,9 @@ import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.t
 import type { Session } from '../../src/client/editor/session.ts'
 
 import { cast } from '../cast.ts'
+import type { EditorView } from '@codemirror/view'
+import type { Dialogs } from '../../src/client/files/dialogs.ts'
+import { DocumentRequestError } from '../../src/client/editor/document-client.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 
 import { openEditor, page, recorded, sessionRecording, statusText, type Recorded } from './editor-fixtures.ts'
@@ -330,6 +333,132 @@ describe('navigating away from a document', () => {
     })
 
     expect(document.title).toBe('other.md')
+  })
+})
+
+describe('leaving a document with unsaved changes', () => {
+  interface Driver {
+    view: EditorView
+    go: (url: string) => void
+    asked: string[]
+  }
+
+  async function editing(overrides: Partial<Session>, answer: boolean): Promise<Driver> {
+    const handlers = new Map<string, (event?: unknown) => void>()
+    const asked: string[] = []
+
+    const view = await bootstrap({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession(overrides),
+      dialogs: cast<Dialogs>({
+        confirm: (request: { message: string }) => {
+          asked.push(request.message)
+          return Promise.resolve(answer)
+        },
+      }),
+      navigation: cast<Navigation>({
+        addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+        canGoBack: false,
+        canGoForward: false,
+        back: () => undefined,
+        forward: () => undefined,
+        navigate: () => ({}),
+        traverseTo: () => ({}),
+      }),
+    })
+
+    return {
+      view,
+      asked,
+      go: (url: string) => {
+        handlers.get('navigate')?.({
+          canIntercept: true,
+          cancelable: true,
+          navigationType: 'push',
+          hashChange: false,
+          downloadRequest: null,
+          formData: null,
+          preventDefault: () => undefined,
+          destination: { url: new URL(url, 'https://example.test').href, key: 'k' },
+          intercept: (intercepted: { handler: () => Promise<void> }) => intercepted.handler(),
+        })
+      },
+    }
+  }
+
+  it('saves before going, so the edit is not lost on the way out', async () => {
+    const driver = await editing({}, true)
+    driver.view.dispatch({ changes: { from: 0, insert: 'edited ' } })
+
+    driver.go('/doc/other.md')
+
+    await vi.waitFor(() => {
+      expect(record.saved).toStrictEqual([{ id: 'notes.md', content: 'edited # notes.md' }])
+    })
+  })
+
+  it('asks nothing when the save lands', async () => {
+    const driver = await editing({}, true)
+    driver.view.dispatch({ changes: { from: 0, insert: 'edited ' } })
+
+    driver.go('/doc/other.md')
+
+    await vi.waitFor(() => {
+      expect(record.saved.length).toBeGreaterThan(0)
+    })
+    expect(driver.asked).toStrictEqual([])
+  })
+
+  it('says what stopped the save, and that leaving discards the changes', async () => {
+    const driver = await editing({ save: () => Promise.reject(new DocumentRequestError(412, 'Conflict')) }, false)
+    driver.view.dispatch({ changes: { from: 0, insert: 'edited ' } })
+
+    driver.go('/doc/other.md')
+
+    await vi.waitFor(() => {
+      expect(driver.asked).toStrictEqual([
+        'It changed on disk since it was loaded. Leaving now discards the changes you made.',
+      ])
+    })
+  })
+
+  it('blocks an empty buffer without asking the server, because the store refuses it', async () => {
+    const driver = await editing({}, false)
+    driver.view.dispatch({ changes: { from: 0, to: driver.view.state.doc.length, insert: '   ' } })
+
+    driver.go('/doc/other.md')
+
+    await vi.waitFor(() => {
+      expect(driver.asked).toStrictEqual(['Empty documents are not stored. Leaving now discards the changes you made.'])
+    })
+    expect(record.saved).toStrictEqual([])
+  })
+
+  it('discards the changes when the user says go, or the resumed navigation blocks again', async () => {
+    const driver = await editing({ save: () => Promise.reject(new DocumentRequestError(412, 'Conflict')) }, true)
+    driver.view.dispatch({ changes: { from: 0, insert: 'edited ' } })
+
+    driver.go('/doc/other.md')
+
+    await vi.waitFor(() => {
+      expect(driver.asked.length).toBe(1)
+    })
+    await vi.waitFor(() => {
+      expect(root.querySelector('#save-label')?.textContent).toBe('')
+    })
+  })
+
+  it('stays on the document when the user declines', async () => {
+    const driver = await editing({ save: () => Promise.reject(new DocumentRequestError(412, 'Conflict')) }, false)
+    driver.view.dispatch({ changes: { from: 0, insert: 'edited ' } })
+
+    driver.go('/doc/other.md')
+
+    await vi.waitFor(() => {
+      expect(driver.asked.length).toBe(1)
+    })
+    expect(driver.view.state.doc.toString()).toBe('edited # notes.md')
   })
 })
 

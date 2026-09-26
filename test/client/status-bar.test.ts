@@ -233,3 +233,41 @@ describe('markup that does not match', () => {
     }).not.toThrow()
   })
 })
+
+describe('showing a different path', () => {
+  it('forgets that anything was saved, because it was saved to the previous document', () => {
+    const root = page()
+    const status = bar(root)
+
+    status.showSaveState('saving', null)
+    status.showSaveState('clean', null)
+    status.showPath('other.md')
+
+    expect(textOf(root, '#save-label')).toBe('')
+  })
+
+  it('says saved again once the new document has been written', () => {
+    const root = page()
+    const status = bar(root)
+
+    status.showPath('other.md')
+    status.showSaveState('saving', null)
+    status.showSaveState('clean', null)
+
+    expect(textOf(root, '#save-label')).toBe(SAVED_LABEL)
+  })
+})
+
+describe('a save that was attempted but refused', () => {
+  it('does not claim the document is saved once the buffer goes clean again', () => {
+    const root = page()
+    const status = bar(root)
+
+    status.showSaveState('pending', Date.now() + 1000)
+    status.showSaveState('saving', null)
+    status.showSaveState('failed', null)
+    status.showSaveState('clean', null)
+
+    expect(textOf(root, '#save-label')).toBe('')
+  })
+})

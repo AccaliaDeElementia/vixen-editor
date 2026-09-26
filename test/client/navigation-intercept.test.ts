@@ -12,6 +12,8 @@ interface FakeNavigation {
   settle: () => void
   back: ReturnType<typeof vi.fn>
   forward: ReturnType<typeof vi.fn>
+  navigate: ReturnType<typeof vi.fn>
+  traverseTo: ReturnType<typeof vi.fn>
   canGoBack: boolean
   canGoForward: boolean
 }
@@ -19,6 +21,7 @@ interface FakeNavigation {
 interface Attempt {
   intercepted: boolean
   handled: string[]
+  blocked: boolean
 }
 
 let opened: string[] = []
@@ -34,19 +37,26 @@ function fakeNavigation(): FakeNavigation {
     settle: () => handlers.get('navigatesuccess')?.(new Event('navigatesuccess')),
     back: vi.fn(),
     forward: vi.fn(),
+    navigate: vi.fn(() => ({})),
+    traverseTo: vi.fn(() => ({})),
     canGoBack: false,
     canGoForward: false,
   }
 }
 
 function navigateEvent(url: string, overrides: Record<string, unknown> = {}): { event: unknown; attempt: Attempt } {
-  const attempt: Attempt = { intercepted: false, handled: [] }
+  const attempt: Attempt = { intercepted: false, handled: [], blocked: false }
   const event = {
     canIntercept: true,
+    cancelable: true,
+    navigationType: 'push',
+    preventDefault: () => {
+      attempt.blocked = true
+    },
     hashChange: false,
     downloadRequest: null,
     formData: null,
-    destination: { url: new URL(url, 'https://example.test').href },
+    destination: { url: new URL(url, 'https://example.test').href, key: 'entry-key' },
     intercept: (options: { handler: () => Promise<void> }) => {
       attempt.intercepted = true
       void options.handler().then(() => attempt.handled.push(url))
@@ -215,5 +225,147 @@ describe('a browser without the Navigation API', () => {
       navigator.back()
       navigator.forward()
     }).not.toThrow()
+  })
+})
+
+describe('leaving a document that will not save', () => {
+  interface Blocking {
+    navigation: FakeNavigation
+    settled: () => void
+  }
+
+  function blocking(mayLeave: boolean, proceed: boolean): Blocking {
+    const navigation = fakeNavigation()
+    const decision: PromiseWithResolvers<boolean> = Promise.withResolvers()
+
+    interceptNavigation({
+      navigation: cast<Navigation>(navigation),
+      open: async (pathname: string) => {
+        opened.push(pathname)
+        await Promise.resolve()
+      },
+      mayLeave: () => mayLeave,
+      settle: async () => await decision.promise,
+    })
+
+    return {
+      navigation,
+      settled: () => {
+        decision.resolve(proceed)
+      },
+    }
+  }
+
+  it('stops the navigation before the address moves', async () => {
+    const { navigation } = blocking(false, false)
+    const { event, attempt } = navigateEvent('/doc/other.md')
+
+    navigation.fire(event)
+    await Promise.resolve()
+
+    expect({ blocked: attempt.blocked, intercepted: attempt.intercepted, opened }).toStrictEqual({
+      blocked: true,
+      intercepted: false,
+      opened: [],
+    })
+  })
+
+  it('stays put when the user chooses to stay', async () => {
+    const { navigation, settled } = blocking(false, false)
+    const { event } = navigateEvent('/doc/other.md')
+    navigation.fire(event)
+
+    settled()
+    await vi.waitFor(() => {
+      expect(navigation.navigate).not.toHaveBeenCalled()
+    })
+
+    expect(opened).toStrictEqual([])
+  })
+
+  it('goes once the user says go, rather than leaving them stuck', async () => {
+    const { navigation, settled } = blocking(false, true)
+    const { event } = navigateEvent('/doc/other.md')
+    navigation.fire(event)
+
+    settled()
+
+    await vi.waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledWith('https://example.test/doc/other.md', { history: 'push' })
+    })
+  })
+
+  it('goes back to the same history entry rather than pushing a new one', async () => {
+    const { navigation, settled } = blocking(false, true)
+    const { event } = navigateEvent('/doc/other.md', { navigationType: 'traverse' })
+    navigation.fire(event)
+
+    settled()
+
+    await vi.waitFor(() => {
+      expect(navigation.traverseTo).toHaveBeenCalledWith('entry-key')
+    })
+  })
+
+  it('replaces rather than pushes when that is what was asked for', async () => {
+    const { navigation, settled } = blocking(false, true)
+    const { event } = navigateEvent('/doc/other.md', { navigationType: 'replace' })
+    navigation.fire(event)
+
+    settled()
+
+    await vi.waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledWith('https://example.test/doc/other.md', { history: 'replace' })
+    })
+  })
+
+  it('swallows a resumed navigation that is itself refused, rather than leaving a loose rejection', async () => {
+    const { navigation, settled } = blocking(false, true)
+    navigation.navigate.mockReturnValue({ committed: Promise.reject(new Error('cancelled')) })
+    const { event } = navigateEvent('/doc/other.md')
+    navigation.fire(event)
+
+    settled()
+
+    await vi.waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledTimes(1)
+    })
+    await Promise.resolve()
+  })
+
+  it('does not block when there is nothing to settle', () => {
+    const { navigation } = blocking(true, true)
+    const { event, attempt } = navigateEvent('/doc/other.md')
+
+    navigation.fire(event)
+
+    expect({ blocked: attempt.blocked, intercepted: attempt.intercepted }).toStrictEqual({
+      blocked: false,
+      intercepted: true,
+    })
+  })
+
+  it('cannot block a navigation the browser will not cancel, so it takes it', () => {
+    const { navigation } = blocking(false, true)
+    const { event, attempt } = navigateEvent('/doc/other.md', { cancelable: false })
+
+    navigation.fire(event)
+
+    expect({ blocked: attempt.blocked, intercepted: attempt.intercepted }).toStrictEqual({
+      blocked: false,
+      intercepted: true,
+    })
+  })
+})
+
+describe('a reload', () => {
+  it('is left to the browser, which beforeunload already guards', () => {
+    const navigation = fakeNavigation()
+    listening(navigation)
+    const { event, attempt } = navigateEvent('/doc/a.md', { navigationType: 'reload' })
+
+    navigation.fire(event)
+
+    expect({ intercepted: attempt.intercepted, opened }).toStrictEqual({ intercepted: false, opened: [] })
   })
 })

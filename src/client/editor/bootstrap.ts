@@ -27,6 +27,8 @@ import { createWorkspace } from '../layout/workspace.ts'
 
 import { createSession, type LoadedDocument, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
+import { describeRefusal } from './leaving.ts'
+import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 
 const MOUNT_SELECTOR = '#editor'
 const SAVE_KEY = 'Mod-s'
@@ -43,6 +45,7 @@ interface BootstrapOptions {
   reopen?: () => void
   openUrl?: (url: string) => void
   navigation?: Navigation
+  dialogs?: Dialogs
 }
 
 type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }
@@ -158,13 +161,16 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   })
 
   let caretPosition = TOP_OF_DOCUMENT
+  let lastRefusal: unknown = null
 
   async function writeDocument(content: string): Promise<void> {
     const target = documentId()
     try {
       await session.save(target, content)
+      lastRefusal = null
       rememberCaret(target, caretPosition)
     } catch (error) {
+      lastRefusal = error
       toast.error(`Save failed: ${errorMessage(error)}`)
       throw error
     }
@@ -325,9 +331,29 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     listen: options.listenForUnload,
   })
 
+  const dialogs = options.dialogs ?? createDialogs(root)
+
+  async function settleBeforeLeaving(): Promise<boolean> {
+    await autosave.flush()
+
+    const refusal = describeRefusal(autosave.state(), lastRefusal)
+    if (refusal === null) return true
+
+    const leaveAnyway = await dialogs.confirm({
+      title: `${documentId()} could not be saved`,
+      message: `${refusal} Leaving now discards the changes you made.`,
+      confirmLabel: 'Discard and leave',
+    })
+    if (leaveAnyway) autosave.reset(view.state.doc.toString())
+
+    return leaveAnyway
+  }
+
   const navigator = interceptNavigation({
     navigation: options.navigation ?? globalThis.navigation,
     open: openPath,
+    mayLeave: () => autosave.state() === 'clean',
+    settle: settleBeforeLeaving,
     onSettled: () => {
       refreshHistoryButtons(root, navigator)
     },
