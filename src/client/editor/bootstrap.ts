@@ -4,10 +4,10 @@ import type { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
-import { displayPathFromPath, docUrlFor, namesFolderIndex, pathAfterMove } from '../doc-path.ts'
+import { displayPathFromPath, docUrlFor, documentIdFromPath, namesFolderIndex, pathAfterMove } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
-import { openDocumentIn } from '../navigation.ts'
+import { interceptNavigation, openDocumentIn, type Navigator } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 
 import { isBlank } from '../../shared/content.ts'
@@ -42,6 +42,7 @@ interface BootstrapOptions {
   files?: FilesClient
   reopen?: () => void
   openUrl?: (url: string) => void
+  navigation?: Navigation
 }
 
 type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }
@@ -100,6 +101,31 @@ function wiringFor(options: BootstrapOptions): Wiring {
   }
 }
 
+const BACK_SELECTOR = '#nav-back'
+const FORWARD_SELECTOR = '#nav-forward'
+
+function setEnabled(root: ParentNode, selector: string, enabled: boolean): void {
+  const button = root.querySelector<HTMLButtonElement>(selector)
+  if (button === null) return
+
+  button.disabled = !enabled
+  button.setAttribute('aria-disabled', String(!enabled))
+}
+
+function refreshHistoryButtons(root: ParentNode, navigator: Navigator): void {
+  setEnabled(root, BACK_SELECTOR, navigator.canGoBack())
+  setEnabled(root, FORWARD_SELECTOR, navigator.canGoForward())
+}
+
+function bindHistoryButtons(root: ParentNode, navigator: Navigator): void {
+  root.querySelector(BACK_SELECTOR)?.addEventListener('click', () => {
+    navigator.back()
+  })
+  root.querySelector(FORWARD_SELECTOR)?.addEventListener('click', () => {
+    navigator.forward()
+  })
+}
+
 class MissingMountError extends Error {
   override readonly name = 'MissingMountError'
 
@@ -108,7 +134,7 @@ class MissingMountError extends Error {
   }
 }
 
-async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | null> {
+async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   const { root, pathname, session, navigate, files, reopen, openUrl } = wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
 
@@ -124,49 +150,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   }
 
   const documentId = (): string => openDocument.path()
-  const shownPath = displayPathFromPath(pathname)
-
+  const statusBar = createStatusBar(root)
   const workspace = createWorkspace(root, {
     focusDocument: () => {
       view.focus()
     },
   })
-  workspace.show('pending', shownPath)
-
-  function showMissing(entryPath: string): void {
-    workspace.show('missing', shownPath)
-    createMissingView({ root, client: files, toast, reopen }).offer(entryPath)
-  }
-
-  const trashEntryId = trashEntryIdFromPath(pathname)
-  if (trashEntryId !== null) {
-    createDeletedView({
-      root,
-      client: files,
-      toast,
-      openUrl,
-      reveal: (at) => {
-        workspace.show('deleted', at)
-      },
-    }).offer(trashEntryId)
-
-    return null
-  }
-
-  if (classifyFile(documentId()) === 'image') {
-    createImageView({
-      root,
-      reveal: (at) => {
-        workspace.show('image', at)
-      },
-      onBroken: showMissing,
-    }).offer(documentId())
-
-    return null
-  }
-
-  const statusBar = createStatusBar(root)
-  statusBar.showPath(shownPath)
 
   let caretPosition = TOP_OF_DOCUMENT
 
@@ -202,6 +191,114 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     return true
   }
 
+  function stateFor(doc: string, caret: number): EditorState {
+    return createEditorState({
+      doc,
+      selection: { anchor: caret },
+      extensions: [
+        basicSetup,
+        EditorView.lineWrapping,
+        keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
+        EditorView.updateListener.of((update) => {
+          caretPosition = caretIn(update.state)
+          if (!update.docChanged) return
+
+          const content = update.state.doc.toString()
+          autosave.changed(content)
+          statusBar.showWordCount(content)
+        }),
+      ],
+    })
+  }
+
+  const view = new EditorView({ parent: mount, state: stateFor('', TOP_OF_DOCUMENT) })
+
+  const deletedView = createDeletedView({
+    root,
+    client: files,
+    toast,
+    openUrl,
+    reveal: (at) => {
+      workspace.show('deleted', at)
+    },
+  })
+
+  const missingView = createMissingView({ root, client: files, toast, reopen })
+
+  function emptyTheBuffer(): void {
+    view.setState(stateFor('', TOP_OF_DOCUMENT))
+    autosave.reset('')
+    statusBar.showWordCount('')
+  }
+
+  function showMissing(entryPath: string, shown: string): void {
+    emptyTheBuffer()
+    workspace.show('missing', shown)
+    missingView.offer(entryPath)
+  }
+
+  const imageView = createImageView({
+    root,
+    reveal: (at) => {
+      workspace.show('image', at)
+    },
+    onBroken: (entryPath) => {
+      showMissing(entryPath, entryPath)
+    },
+  })
+
+  async function showDocument(entryPath: string, shown: string, isFolderIndex: boolean): Promise<void> {
+    const outcome = await loadOrReport(session, entryPath)
+    if (!outcome.reached) {
+      emptyTheBuffer()
+      reportUnreachable(root, shown, outcome.error)
+      workspace.show('unreachable', shown)
+
+      return
+    }
+
+    const { document: loaded } = outcome
+    const { content: initial, stored } = loaded
+    if (!stored && !isFolderIndex) {
+      showMissing(entryPath, shown)
+
+      return
+    }
+
+    const caret = recallCaret(entryPath, initial.length)
+    caretPosition = caret
+    view.setState(stateFor(initial, caret))
+    autosave.reset(initial)
+    statusBar.showWordCount(initial)
+    view.dispatch({ effects: EditorView.scrollIntoView(caret) })
+    workspace.show('document', shown)
+    setStatus(`Editing ${entryPath} — press Ctrl/Cmd+S to save`)
+  }
+
+  async function openPath(target: string): Promise<void> {
+    const shown = displayPathFromPath(target)
+    workspace.show('pending', shown)
+    statusBar.showPath(shown)
+
+    const trashEntryId = trashEntryIdFromPath(target)
+    if (trashEntryId !== null) {
+      emptyTheBuffer()
+      deletedView.offer(trashEntryId)
+
+      return
+    }
+
+    openDocument.commit(documentIdFromPath(target))
+    if (classifyFile(documentId()) === 'image') {
+      emptyTheBuffer()
+      imageView.offer(documentId())
+
+      return
+    }
+
+    await showDocument(documentId(), shown, namesFolderIndex(target))
+  }
+
   onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId())
@@ -219,49 +316,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     }
   })
 
-  const outcome = await loadOrReport(session, documentId())
-  if (!outcome.reached) {
-    reportUnreachable(root, shownPath, outcome.error)
-    workspace.show('unreachable', shownPath)
-
-    return null
-  }
-
-  const { document: loaded } = outcome
-  const { content: initial, stored } = loaded
-  if (!stored && !namesFolderIndex(pathname)) {
-    showMissing(documentId())
-
-    return null
-  }
-
-  const caret = recallCaret(documentId(), initial.length)
-  caretPosition = caret
-  const view = new EditorView({
-    parent: mount,
-    state: createEditorState({
-      doc: initial,
-      selection: { anchor: caret },
-      extensions: [
-        basicSetup,
-        EditorView.lineWrapping,
-        keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
-        EditorView.updateListener.of((update) => {
-          caretPosition = caretIn(update.state)
-          if (!update.docChanged) return
-
-          const content = update.state.doc.toString()
-          autosave.changed(content)
-          statusBar.showWordCount(content)
-        }),
-      ],
-    }),
-  })
-  autosave.reset(initial)
-  statusBar.showWordCount(initial)
-  view.dispatch({ effects: EditorView.scrollIntoView(caret) })
-  workspace.show('document', shownPath)
-
   guardUnload({
     unsaved: () => autosave.state() !== 'clean',
     rescue: () => {
@@ -271,7 +325,17 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     listen: options.listenForUnload,
   })
 
-  setStatus(`Editing ${documentId()} — press Ctrl/Cmd+S to save`)
+  const navigator = interceptNavigation({
+    navigation: options.navigation ?? globalThis.navigation,
+    open: openPath,
+    onSettled: () => {
+      refreshHistoryButtons(root, navigator)
+    },
+  })
+  bindHistoryButtons(root, navigator)
+
+  await openPath(pathname)
+  refreshHistoryButtons(root, navigator)
 
   return view
 }

@@ -130,6 +130,10 @@ describe('what the save state says', () => {
 })
 
 describe('the countdown to the next save', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
   it('runs only while a save is pending', () => {
     const root = page()
 

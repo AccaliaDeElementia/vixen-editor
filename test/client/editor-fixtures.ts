@@ -18,7 +18,14 @@ export function recorded(): Recorded {
 }
 
 const WORKSPACE = `
+  <nav>
+    <button type="button" id="nav-back" disabled aria-disabled="true"></button>
+    <button type="button" id="nav-forward" disabled aria-disabled="true"></button>
+  </nav>
   <span id="status"></span>
+  <p><span id="save-label"></span><span id="save-countdown"></span></p>
+  <p id="open-path"></p>
+  <p id="word-count"></p>
   <div id="editor"></div>
   <section class="view" id="view-pending" tabindex="-1" hidden></section>
   <section class="view" id="view-image" tabindex="-1" hidden>
@@ -68,10 +75,7 @@ export function sessionRecording(into: Recorded, overrides: Partial<Session> = {
 }
 
 export async function openEditor(options: Parameters<typeof bootstrap>[0] = {}): Promise<EditorView> {
-  const view = await bootstrap(options)
-  if (view === null) throw new Error('expected the editor to open')
-
-  return view
+  return await bootstrap(options)
 }
 
 export function statusText(container: ParentNode): string {

@@ -1093,18 +1093,25 @@ if any does not.
 
 ## Browser support
 
-**The floor is Chrome 119, Firefox 133, Safari 17.4.** It is measured rather
+**The floor is Chrome 119, Firefox 147, Safari 26.2.** It is measured rather
 than assumed — `@mdn/browser-compat-data` is the source — and each column is
 anchored to the feature that sets it, so the number can be re-derived instead
 of remembered:
 
-| Feature                         | Sets                                 | Shipped             |
-| ------------------------------- | ------------------------------------ | ------------------- |
-| `Promise.withResolvers`         | Chrome 119, Firefox 121, Safari 17.4 | Oct 2023 – Mar 2024 |
-| `fetch(…, { keepalive: true })` | Firefox 133                          | Nov 2024            |
+| Feature                         | Sets                                   | Shipped             |
+| ------------------------------- | -------------------------------------- | ------------------- |
+| Navigation API                  | Chrome 105, Firefox 147, Safari 26.2   | Dec 2025 – Jan 2026 |
+| `Promise.withResolvers`         | Chrome 119                             | Oct 2023            |
+| `fetch(…, { keepalive: true })` | superseded by the Navigation API floor | Nov 2024            |
 
 The ES2024 target and its RegExp `v` flag ask only for Chrome 112 / Firefox 116
 / Safari 17, so the language level is no longer what binds.
+
+**The Navigation API is the expensive one, and it was chosen deliberately.**
+`popstate` is not cancellable — the URL has already changed by the time it
+fires — so "save before leaving" on Back cannot be honoured with it at all,
+and `navigation.canGoBack` is the only way to keep the ribbon's Back and
+Forward buttons truthful rather than plausible. No fallback provides either.
 
 **A hard floor breaks a feature; a soft one degrades it, and they are worth
 telling apart.** `Promise.withResolvers` is hard: below it, opening any file
