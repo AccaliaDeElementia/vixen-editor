@@ -1,20 +1,28 @@
 'use sanity'
 
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIRequestContext } from '@playwright/test'
 
 function newDocument(name: string): string {
   return `/doc/${name}`
 }
 
-test('mounts the editor', async ({ page }) => {
-  await page.goto(newDocument('mounts.md'))
+// A named document that is not stored now opens the missing view rather than a
+// template, so a spec that wants an editor has to create the document first.
+async function given(request: APIRequestContext, name: string, content = '# seed'): Promise<string> {
+  await request.post('/api/files/documents', { data: { path: name, content } })
+
+  return newDocument(name)
+}
+
+test('mounts the editor', async ({ page, request }) => {
+  await page.goto(await given(request, 'mounts.md'))
 
   await expect(page.locator('.cm-editor')).toBeVisible()
   await expect(page.locator('#status')).toContainText('mounts.md')
 })
 
-test('renders a heading decoration with real geometry', async ({ page }) => {
-  await page.goto(newDocument('heading.md'))
+test('renders a heading decoration with real geometry', async ({ page, request }) => {
+  await page.goto(await given(request, 'heading.md'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('# a heading')
@@ -28,8 +36,8 @@ test('renders a heading decoration with real geometry', async ({ page }) => {
   expect(box?.width ?? 0).toBeGreaterThan(0)
 })
 
-test('renders a marker decoration inline', async ({ page }) => {
-  await page.goto(newDocument('marker.md'))
+test('renders a marker decoration inline', async ({ page, request }) => {
+  await page.goto(await given(request, 'marker.md'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('TODO: something')
@@ -39,8 +47,8 @@ test('renders a marker decoration inline', async ({ page }) => {
   await expect(marker).toHaveText('TODO:')
 })
 
-test('a heading renders taller than body text', async ({ page }) => {
-  await page.goto(newDocument('sizing.md'))
+test('a heading renders taller than body text', async ({ page, request }) => {
+  await page.goto(await given(request, 'sizing.md'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('# heading\nplain body text')
@@ -51,10 +59,10 @@ test('a heading renders taller than body text', async ({ page }) => {
   expect(headingBox?.height ?? 0).toBeGreaterThan(bodyBox?.height ?? 0)
 })
 
-test('persists a document across a reload', async ({ page }) => {
+test('persists a document across a reload', async ({ page, request }) => {
   const doc = `persist-${String(Date.now())}.md`
 
-  await page.goto(newDocument(doc))
+  await page.goto(await given(request, doc))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('# persisted content')
@@ -64,4 +72,49 @@ test('persists a document across a reload', async ({ page }) => {
   await page.reload()
 
   await expect(page.locator('.cm-content')).toContainText('# persisted content')
+})
+
+test('the editor has real geometry after being revealed from hidden', async ({ page, request }) => {
+  await page.goto(await given(request, 'revealed.md'))
+
+  const editor = page.locator('#editor')
+  await expect(editor).toBeVisible()
+
+  const content = page.locator('.cm-content')
+  const box = await content.boundingBox()
+
+  expect(box?.width ?? 0).toBeGreaterThan(0)
+  expect(box?.height ?? 0).toBeGreaterThan(0)
+})
+
+test('a long line wraps instead of scrolling the editor sideways', async ({ page, request }) => {
+  await page.goto(await given(request, 'wrapping.md'))
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Control+a')
+  await page.keyboard.type('lorem ipsum dolor sit amet '.repeat(40))
+
+  const overflow = await page.locator('.cm-scroller').evaluate((el) => el.scrollWidth - el.clientWidth)
+
+  expect(overflow).toBeLessThanOrEqual(1)
+})
+
+test('a path that names nothing reports itself as missing', async ({ page }) => {
+  await page.goto('/doc/definitely/not/here.md')
+
+  await expect(page.locator('#view-missing')).toBeVisible()
+  await expect(page.locator('#missing-path')).toHaveText('definitely/not/here.md')
+  await expect(page.locator('#editor')).toBeHidden()
+})
+
+test('a folder with no index still opens an editable buffer', async ({ page }) => {
+  await page.goto('/doc/')
+
+  await expect(page.locator('#editor')).toBeVisible()
+  await expect(page.locator('#view-missing')).toBeHidden()
+})
+
+test('the title names the last two path segments', async ({ page, request }) => {
+  await page.goto(await given(request, 'titled.md'))
+
+  await expect(page).toHaveTitle('titled.md')
 })

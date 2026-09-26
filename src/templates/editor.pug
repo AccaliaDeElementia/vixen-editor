@@ -2,5 +2,18 @@ extends layout
 
 block content
   section.workspace(aria-label='Editor')
-    #editor
+    #editor(hidden)
+    section.view#view-pending(tabindex='-1' aria-label='Loading' hidden)
+      p.view__message Loading…
+    section.view#view-missing(tabindex='-1' aria-label='Not found' hidden)
+      h1.view__title Not found
+      p.view__message
+        | Nothing is stored at
+        |
+        code.view__path#missing-path
+    section.view#view-unreachable(tabindex='-1' aria-label='Unreachable' hidden)
+      h1.view__title Cannot reach the server
+      p.view__message#unreachable-reason
+      p.view__actions
+        button.view__action#unreachable-retry(type='button' data-default-action) Try again
     .toasts#status(role='status' aria-live='polite' aria-atomic='false')

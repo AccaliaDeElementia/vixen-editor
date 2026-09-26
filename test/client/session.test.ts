@@ -56,7 +56,7 @@ describe('load', () => {
   it('returns the stored document', async () => {
     client.read.mockResolvedValue(loaded('# stored'))
 
-    await expect(session().load('notes.md')).resolves.toBe('# stored')
+    await expect(session().load('notes.md')).resolves.toStrictEqual({ content: '# stored', stored: true })
   })
 
   it('requests the document by id', async () => {
@@ -70,13 +70,22 @@ describe('load', () => {
   it('falls back to a template when the document does not exist', async () => {
     client.read.mockRejectedValue(new DocumentRequestError(404, 'Document not found'))
 
-    await expect(session().load('fresh.md')).resolves.toBe(defaultTemplate('fresh.md'))
+    await expect(session().load('fresh.md')).resolves.toStrictEqual({
+      content: defaultTemplate('fresh.md'),
+      stored: false,
+    })
   })
 
   it('rethrows a non-404 request error', async () => {
     client.read.mockRejectedValue(new DocumentRequestError(500, 'boom'))
 
     await expect(session().load('notes.md')).rejects.toThrow(DocumentRequestError)
+  })
+
+  it('says the document was stored, so the caller can tell a 404 from a new file', async () => {
+    client.read.mockResolvedValue(loaded('# stored'))
+
+    await expect(session().load('notes.md')).resolves.toHaveProperty('stored', true)
   })
 
   it('rethrows an unexpected error', async () => {
@@ -89,7 +98,7 @@ describe('load', () => {
     client.read.mockRejectedValue(new DocumentRequestError(404, 'Document not found'))
     const custom = createSession(cast<DocumentClient>(client), () => 'custom')
 
-    await expect(custom.load('fresh.md')).resolves.toBe('custom')
+    await expect(custom.load('fresh.md')).resolves.toStrictEqual({ content: 'custom', stored: false })
   })
 })
 

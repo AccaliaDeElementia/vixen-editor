@@ -422,3 +422,67 @@
   border-color: $danger;
   color: $danger;
 }
+
+// A class setting display beats the UA sheet’s [hidden] rule, so hiding has to
+// be restated here or every view paints at once.
+.view[hidden] {
+  display: none;
+}
+
+.view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-sm;
+  padding: $space-md;
+  text-align: center;
+  color: $body-color;
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
+  }
+}
+
+.view__title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.view__message {
+  margin: 0;
+  color: $muted;
+}
+
+.view__path {
+  color: $body-color;
+  word-break: break-all;
+}
+
+.view__actions {
+  display: flex;
+  gap: $space-sm;
+  margin: 0;
+}
+
+.view__action {
+  padding: 0.45em 1.1em;
+  border: 1px solid $border;
+  border-radius: $radius;
+  background: $surface;
+  color: $body-color;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: $primary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+  }
+}

@@ -2,7 +2,14 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { docUrlFor, documentIdFromPath, pathAfterMove } from '../../src/client/doc-path.ts'
+import {
+  displayPathFromPath,
+  docUrlFor,
+  documentIdFromPath,
+  namesFolderIndex,
+  pathAfterMove,
+  titleFor,
+} from '../../src/client/doc-path.ts'
 
 describe('documentIdFromPath', () => {
   it('reads the document from the path', () => {
@@ -85,5 +92,61 @@ describe('pathAfterMove', () => {
 
   it('leaves a sibling that merely shares a prefix alone', () => {
     expect(pathAfterMove(FOLDER, 'journal2/a.md')).toBe('journal2/a.md')
+  })
+})
+
+describe('displayPathFromPath', () => {
+  it.each([
+    ['/doc/notes.md', 'notes.md'],
+    ['/doc/journal/a.md', 'journal/a.md'],
+    ['/doc/journal/', 'journal'],
+    ['/doc/journal/2026/', 'journal/2026'],
+    ['/doc/', ''],
+    ['/doc/photo.png', 'photo.png'],
+  ])('reads %s as %s, the path as the user sees it', (pathname, expected) => {
+    expect(displayPathFromPath(pathname)).toBe(expected)
+  })
+
+  it('does not append the folder index the loader needs', () => {
+    expect(displayPathFromPath('/doc/journal/')).not.toContain('index.md')
+  })
+})
+
+describe('namesFolderIndex', () => {
+  it('is true for a folder url, which may legitimately have no index yet', () => {
+    expect(namesFolderIndex('/doc/journal/')).toBe(true)
+  })
+
+  it('is true at the doc root', () => {
+    expect(namesFolderIndex('/doc/')).toBe(true)
+  })
+
+  it('is false for a named document, so a typo is reported rather than created', () => {
+    expect(namesFolderIndex('/doc/journal/a.md')).toBe(false)
+  })
+})
+
+describe('titleFor', () => {
+  it.each([
+    ['notes.md', 'notes.md'],
+    ['journal/a.md', 'journal/a.md'],
+    ['journal/2026/a.md', '2026/a.md'],
+    ['journal', 'journal'],
+    ['journal/2026', 'journal/2026'],
+    ['photo.png', 'photo.png'],
+  ])('titles %s as %s', (displayPath, expected) => {
+    expect(titleFor(displayPath)).toBe(expected)
+  })
+
+  it('keeps the extension, because notes.md and notes.txt are different documents', () => {
+    expect(titleFor('notes.txt')).toBe('notes.txt')
+  })
+
+  it('grows no further than two segments, however deep the path', () => {
+    expect(titleFor('a/b/c/d/e.md')).toBe('d/e.md')
+  })
+
+  it('has nothing to say at the store root, so the rendered title stands', () => {
+    expect(titleFor('')).toBe('')
   })
 })

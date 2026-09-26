@@ -139,8 +139,10 @@ test('a document row is a real link to its document view', async ({ page, reques
   await request.delete(`/api/files/entries/${name}`)
 })
 
-test('saving surfaces a toast that then fades', async ({ page }) => {
-  await page.goto(`/doc/toast-${String(Date.now())}.md`)
+test('saving surfaces a toast that then fades', async ({ page, request }) => {
+  const name = `toast-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# seed' } })
+  await page.goto(`/doc/${name}`)
   await expect(page.locator('.cm-editor')).toBeVisible()
 
   const toast = page.locator('#status .toast')

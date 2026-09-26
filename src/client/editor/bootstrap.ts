@@ -1,9 +1,10 @@
 'use sanity'
 
+import type { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
-import { docUrlFor, documentIdFromPath, pathAfterMove } from '../doc-path.ts'
+import { displayPathFromPath, docUrlFor, documentIdFromPath, namesFolderIndex, pathAfterMove } from '../doc-path.ts'
 import { onDocumentMoved } from '../document-moved.ts'
 import { errorMessage } from '../error-message.ts'
 
@@ -14,12 +15,15 @@ import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
 import { createToast } from '../layout/toast.ts'
+import { createWorkspace } from '../layout/workspace.ts'
 
-import { createSession, type Session } from './session.ts'
+import { createSession, type LoadedDocument, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 
 const MOUNT_SELECTOR = '#editor'
 const SAVE_KEY = 'Mod-s'
+const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
+const TOP_OF_DOCUMENT = 0
 
 interface BootstrapOptions {
   root?: ParentNode
@@ -27,6 +31,28 @@ interface BootstrapOptions {
   session?: Session
   navigate?: (url: string) => void
   listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => void
+}
+
+type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }
+
+async function loadOrReport(session: Session, id: string): Promise<LoadOutcome> {
+  try {
+    return { reached: true, document: await session.load(id) }
+  } catch (error) {
+    return { reached: false, error }
+  }
+}
+
+function reportUnreachable(root: ParentNode, at: string, error: unknown): void {
+  const reason = root.querySelector(UNREACHABLE_REASON_SELECTOR)
+  if (reason === null) return
+
+  const subject = at === '' ? 'The store' : at
+  reason.textContent = `${subject} could not be loaded: ${errorMessage(error)}`
+}
+
+function caretIn(state: EditorState): number {
+  return state.selection.main.head
 }
 
 function replaceAddress(url: string): void {
@@ -41,7 +67,7 @@ class MissingMountError extends Error {
   }
 }
 
-async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
+async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | null> {
   const root = options.root ?? document
   const pathname = options.pathname ?? window.location.pathname
   const session = options.session ?? createSession(createDocumentClient())
@@ -59,19 +85,29 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
 
   const navigate = options.navigate ?? replaceAddress
   let documentId = documentIdFromPath(pathname)
+  const shownPath = displayPathFromPath(pathname)
 
-  const autosave = createAutosave({
-    async save(content: string): Promise<void> {
-      const target = documentId
-      try {
-        await session.save(target, content)
-        rememberCaret(target, view.state.selection.main.head)
-      } catch (error) {
-        toast.error(`Save failed: ${errorMessage(error)}`)
-        throw error
-      }
+  const workspace = createWorkspace(root, {
+    focusDocument: () => {
+      view.focus()
     },
   })
+  workspace.show('pending', shownPath)
+
+  let caretPosition = TOP_OF_DOCUMENT
+
+  async function writeDocument(content: string): Promise<void> {
+    const target = documentId
+    try {
+      await session.save(target, content)
+      rememberCaret(target, caretPosition)
+    } catch (error) {
+      toast.error(`Save failed: ${errorMessage(error)}`)
+      throw error
+    }
+  }
+
+  const autosave = createAutosave({ save: writeDocument })
 
   const save = (): boolean => {
     const target = documentId
@@ -103,8 +139,24 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     }
   })
 
-  const initial = await session.load(documentId)
+  const outcome = await loadOrReport(session, documentId)
+  if (!outcome.reached) {
+    reportUnreachable(root, shownPath, outcome.error)
+    workspace.show('unreachable', shownPath)
+
+    return null
+  }
+
+  const { document: loaded } = outcome
+  const { content: initial, stored } = loaded
+  if (!stored && !namesFolderIndex(pathname)) {
+    workspace.show('missing', shownPath)
+
+    return null
+  }
+
   const caret = recallCaret(documentId, initial.length)
+  caretPosition = caret
   const view = new EditorView({
     parent: mount,
     state: createEditorState({
@@ -112,8 +164,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
       selection: { anchor: caret },
       extensions: [
         basicSetup,
+        EditorView.lineWrapping,
         keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
         EditorView.updateListener.of((update) => {
+          caretPosition = caretIn(update.state)
           if (update.docChanged) autosave.changed(update.state.doc.toString())
         }),
       ],
@@ -121,6 +175,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   })
   autosave.reset(initial)
   view.dispatch({ effects: EditorView.scrollIntoView(caret) })
+  workspace.show('document', shownPath)
 
   guardUnload({
     unsaved: () => autosave.state() !== 'clean',
@@ -132,6 +187,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   })
 
   setStatus(`Editing ${documentId} — press Ctrl/Cmd+S to save`)
+
   return view
 }
 
