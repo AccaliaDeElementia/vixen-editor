@@ -14,6 +14,7 @@ function page(): HTMLElement {
     <section class="workspace">
       <div id="editor" hidden></div>
       <section class="view" id="view-pending" tabindex="-1" hidden></section>
+      <section class="view" id="view-image" tabindex="-1" hidden></section>
       <section class="view" id="view-missing" tabindex="-1" hidden>
         <code id="missing-path"></code>
       </section>
@@ -47,6 +48,7 @@ describe('which view is on screen', () => {
   it.each<[WorkspaceView, string]>([
     ['pending', 'view-pending'],
     ['document', 'editor'],
+    ['image', 'view-image'],
     ['missing', 'view-missing'],
     ['deleted', 'view-deleted'],
     ['unreachable', 'view-unreachable'],
@@ -197,6 +199,7 @@ describe('markup that does not match', () => {
     expect(VIEW_ELEMENTS.map(([view]) => view)).toStrictEqual([
       'pending',
       'document',
+      'image',
       'missing',
       'deleted',
       'unreachable',

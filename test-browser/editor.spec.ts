@@ -214,3 +214,51 @@ test('a trash entry that is no longer there says so', async ({ page }) => {
   await expect(page.locator('#deleted-what')).toContainText('already have been restored or purged')
   await expect(page.locator('#deleted-actions')).toBeHidden()
 })
+
+// A complete 1x1 PNG: a signature and IHDR alone decode nowhere, so a truncated
+// one reaches the browser and then fails, which reads as a missing image.
+const PNG_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64',
+)
+
+async function storedImage(request: APIRequestContext, name: string, directory = ''): Promise<string> {
+  const stored = await request.post('/api/files/uploads', {
+    multipart: { path: directory, file: { name, mimeType: 'image/png', buffer: PNG_BYTES } },
+  })
+  expect(stored.status()).toBe(201)
+
+  return `/doc/${await stringFieldOf(stored, 'path')}`
+}
+
+test('an image path shows the image rather than failing to start', async ({ page, request }) => {
+  const name = `shown-${String(Date.now())}.png`
+
+  await page.goto(await storedImage(request, name))
+
+  await expect(page.locator('#view-image')).toBeVisible()
+  await expect(page.locator('#image-path')).toHaveText(name)
+  await expect(page.locator('#editor')).toBeHidden()
+  await expect(page.locator('#status .toast')).toHaveCount(0)
+})
+
+test('an image offers to download itself under its own name', async ({ page, request }) => {
+  const name = `download-${String(Date.now())}.png`
+
+  await page.goto(await storedImage(request, name, 'pictures'))
+
+  const link = page.locator('#image-download')
+  await expect(link).toHaveAttribute('href', `/api/files/raw/pictures/${name}`)
+  await expect(link).toHaveAttribute('download', name)
+})
+
+test('an image that is not there reports itself as missing', async ({ page }) => {
+  const name = `absent-${String(Date.now())}.png`
+
+  await page.goto(`/doc/${name}`)
+
+  await expect(page.locator('#view-missing')).toBeVisible()
+  await expect(page.locator('#missing-path')).toHaveText(name)
+  await expect(page.locator('#missing-create')).toBeHidden()
+  await expect(page.locator('#missing-upload')).toBeVisible()
+})

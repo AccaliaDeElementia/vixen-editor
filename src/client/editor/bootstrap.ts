@@ -5,6 +5,7 @@ import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
 import { displayPathFromPath, docUrlFor, documentIdFromPath, namesFolderIndex, pathAfterMove } from '../doc-path.ts'
+import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
 import { errorMessage } from '../error-message.ts'
 
@@ -18,6 +19,7 @@ import { trashEntryIdFromPath } from '../../shared/page-urls.ts'
 import { createToast } from '../layout/toast.ts'
 import { createFilesClient, type FilesClient } from '../files/files-client.ts'
 import { createDeletedView } from '../layout/deleted-view.ts'
+import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createWorkspace } from '../layout/workspace.ts'
@@ -129,6 +131,11 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   })
   workspace.show('pending', shownPath)
 
+  function showMissing(entryPath: string): void {
+    workspace.show('missing', shownPath)
+    createMissingView({ root, client: files, toast, reopen }).offer(entryPath)
+  }
+
   const trashEntryId = trashEntryIdFromPath(pathname)
   if (trashEntryId !== null) {
     createDeletedView({
@@ -140,6 +147,18 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
         workspace.show('deleted', at)
       },
     }).offer(trashEntryId)
+
+    return null
+  }
+
+  if (classifyFile(documentId) === 'image') {
+    createImageView({
+      root,
+      reveal: (at) => {
+        workspace.show('image', at)
+      },
+      onBroken: showMissing,
+    }).offer(documentId)
 
     return null
   }
@@ -209,14 +228,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   const { document: loaded } = outcome
   const { content: initial, stored } = loaded
   if (!stored && !namesFolderIndex(pathname)) {
-    const missingView = createMissingView({
-      root,
-      client: files,
-      toast,
-      reopen,
-    })
-    workspace.show('missing', shownPath)
-    missingView.offer(documentId)
+    showMissing(documentId)
 
     return null
   }

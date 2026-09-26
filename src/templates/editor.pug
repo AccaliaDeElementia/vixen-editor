@@ -9,6 +9,12 @@ block content
         span.statusbar__countdown#save-countdown(aria-hidden='true')
       p.statusbar__words#word-count
     #editor(hidden)
+    section.view.view--fill#view-image(tabindex='-1' aria-label='Image' hidden)
+      .image__chrome
+        p.image__path#image-path
+        a.view__action#image-download(download data-default-action) Download
+      .image__frame
+        img.image__file#image-file(alt='')
     section.view#view-pending(tabindex='-1' aria-label='Loading' hidden)
       p.view__message Loading…
     section.view#view-missing(tabindex='-1' aria-label='Not found' hidden)

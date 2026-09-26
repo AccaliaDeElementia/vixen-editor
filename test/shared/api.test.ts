@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { API_PREFIX, archiveUrlFor } from '../../src/shared/api.ts'
+import { API_PREFIX, archiveUrlFor, rawUrlFor } from '../../src/shared/api.ts'
 import { STORE_ROOT } from '../../src/shared/store-path.ts'
 
 describe('API_PREFIX', () => {
@@ -26,5 +26,23 @@ describe('archiveUrlFor', () => {
 
   it('builds under whatever prefix it is given, which is what makes the default a default', () => {
     expect(archiveUrlFor(STORE_ROOT, '/elsewhere')).toBe('/elsewhere/files/archive')
+  })
+})
+
+describe('rawUrlFor', () => {
+  it('mirrors the store path, so the preview transform stays a prefix', () => {
+    expect(rawUrlFor('journal/photo.png')).toBe('/api/files/raw/journal/photo.png')
+  })
+
+  it('encodes each segment without encoding the separators', () => {
+    expect(rawUrlFor('my journal/a b.png')).toBe('/api/files/raw/my%20journal/a%20b.png')
+  })
+
+  it('keeps a hash out of the path, which would otherwise truncate the request', () => {
+    expect(rawUrlFor('notes #1.png')).toBe('/api/files/raw/notes%20%231.png')
+  })
+
+  it('takes the same base url override the archive builder does', () => {
+    expect(rawUrlFor('photo.png', '/elsewhere')).toBe('/elsewhere/files/raw/photo.png')
   })
 })

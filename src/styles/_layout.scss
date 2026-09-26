@@ -600,3 +600,45 @@
   color: $muted;
   font-size: $font-size-sm;
 }
+
+.view--fill {
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  text-align: left;
+}
+
+.image__chrome {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  padding: $space-xs $space-sm;
+  border-bottom: 1px solid $border;
+  background: $gray-900;
+}
+
+.image__path {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: $body-color;
+  font-size: $font-size-sm;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image__frame {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: $space-md;
+}
+
+.image__file {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}

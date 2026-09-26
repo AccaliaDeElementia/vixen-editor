@@ -17,42 +17,36 @@ export function recorded(): Recorded {
   return { saved: [], renamed: [], rescued: [] }
 }
 
+const WORKSPACE = `
+  <span id="status"></span>
+  <div id="editor"></div>
+  <section class="view" id="view-pending" tabindex="-1" hidden></section>
+  <section class="view" id="view-image" tabindex="-1" hidden>
+    <p id="image-path"></p>
+    <a id="image-download" download></a>
+    <img id="image-file" alt="">
+  </section>
+  <section class="view" id="view-missing" tabindex="-1" hidden>
+    <code id="missing-path"></code>
+  </section>
+  <section class="view" id="view-deleted" tabindex="-1" hidden>
+    <p id="deleted-what"></p>
+    <p id="deleted-actions"><button type="button" id="deleted-restore">Restore</button></p>
+    <p id="deleted-blocked" hidden></p>
+  </section>
+  <section class="view" id="view-unreachable" tabindex="-1" hidden>
+    <p id="unreachable-reason"></p>
+  </section>`
+
 export function page({ withMount = true, withStatus = true } = {}): HTMLElement {
   const container = document.createElement('div')
-  if (withStatus) {
-    const status = document.createElement('span')
-    status.id = 'status'
-    container.append(status)
-  }
-  if (withMount) {
-    const mount = document.createElement('div')
-    mount.id = 'editor'
-    container.append(mount)
-  }
-  for (const view of ['pending', 'missing', 'deleted', 'unreachable']) {
-    const section = document.createElement('section')
-    section.id = `view-${view}`
-    section.tabIndex = -1
-    section.hidden = true
-    container.append(section)
-  }
-  const missingPath = document.createElement('code')
-  missingPath.id = 'missing-path'
-  container.querySelector('#view-missing')?.append(missingPath)
+  container.innerHTML = WORKSPACE
 
-  const reason = document.createElement('p')
-  reason.id = 'unreachable-reason'
-  container.querySelector('#view-unreachable')?.append(reason)
-
-  const deleted = container.querySelector('#view-deleted')
-  deleted?.insertAdjacentHTML(
-    'afterbegin',
-    `<p id="deleted-what"></p>
-     <p id="deleted-actions"><button type="button" id="deleted-restore">Restore</button></p>
-     <p id="deleted-blocked" hidden></p>`,
-  )
+  if (!withMount) container.querySelector('#editor')?.remove()
+  if (!withStatus) container.querySelector('#status')?.remove()
 
   document.body.append(container)
+
   return container
 }
 

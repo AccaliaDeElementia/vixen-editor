@@ -172,3 +172,53 @@ describe('a trash entry url', () => {
     await expect(bootstrap({ root, pathname: '/trash/entry-1', session: fakeSession(), files })).resolves.toBeNull()
   })
 })
+
+describe('an image path', () => {
+  function shown(): string[] {
+    return [...root.querySelectorAll<HTMLElement>('#editor, [id^="view-"]')]
+      .filter((element) => element.hidden === false)
+      .map((element) => element.id)
+  }
+
+  it('is never asked of the documents api, which refuses it with a 400 rather than a 404', async () => {
+    const loaded: string[] = []
+    const session = fakeSession({
+      load: (id: string) => {
+        loaded.push(id)
+        return Promise.resolve({ content: '', stored: true })
+      },
+    })
+
+    await bootstrap({ root, pathname: '/doc/journal/photo.png', session })
+
+    expect(loaded).toStrictEqual([])
+  })
+
+  it('opens no editor, because an image is not a buffer', async () => {
+    await expect(bootstrap({ root, pathname: '/doc/photo.png', session: fakeSession() })).resolves.toBeNull()
+  })
+
+  it('shows the image once it has loaded', async () => {
+    await bootstrap({ root, pathname: '/doc/journal/photo.png', session: fakeSession() })
+
+    root.querySelector('#image-file')?.dispatchEvent(new Event('load'))
+
+    expect(shown()).toStrictEqual(['view-image'])
+  })
+
+  it('falls through to the missing view when the image will not load', async () => {
+    await bootstrap({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
+
+    root.querySelector('#image-file')?.dispatchEvent(new Event('error'))
+
+    expect(shown()).toStrictEqual(['view-missing'])
+  })
+
+  it('names the broken image as the missing path', async () => {
+    await bootstrap({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
+
+    root.querySelector('#image-file')?.dispatchEvent(new Event('error'))
+
+    expect(root.querySelector('#missing-path')?.textContent).toBe('journal/gone.png')
+  })
+})
