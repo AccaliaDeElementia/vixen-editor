@@ -44,7 +44,7 @@ function fakeSession(overrides: Partial<Session> = {}): Session {
 }
 
 function statusText(container: ParentNode): string {
-  return container.querySelector('#status')?.textContent ?? ''
+  return [...container.querySelectorAll('#status .toast')].at(-1)?.textContent ?? ''
 }
 
 beforeEach(() => {

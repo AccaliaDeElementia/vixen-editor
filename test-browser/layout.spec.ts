@@ -143,11 +143,11 @@ test('saving surfaces a toast that then fades', async ({ page }) => {
   await page.goto(`/doc/toast-${String(Date.now())}.md`)
   await expect(page.locator('.cm-editor')).toBeVisible()
 
-  const status = page.locator('#status')
-  await expect(status).toHaveAttribute('data-visible', 'true')
-  await expect(status).toContainText('Editing')
+  const toast = page.locator('#status .toast')
+  await expect(toast).toBeVisible()
+  await expect(toast).toContainText('Editing')
 
-  await expect(status).toHaveAttribute('data-visible', 'false', { timeout: 5000 })
+  await expect(toast).toHaveCount(0, { timeout: 5000 })
 })
 
 async function explorerWidth(page: Page): Promise<number> {
@@ -481,12 +481,12 @@ test('a rejected upload tells the user why', async ({ page }) => {
     buffer: Buffer.from('not a document'),
   })
 
-  await expect(page.locator('#status')).toBeVisible()
-  await expect(page.locator('#status')).toContainText('payload.zip')
-  await expect(page.locator('#status')).toHaveAttribute('data-severity', 'error')
+  const failure = page.locator('#status .toast[data-severity="error"]')
+  await expect(failure).toBeVisible()
+  await expect(failure).toContainText('payload.zip')
 })
 
-test('a rejected drop reports, and the report is not overwritten', async ({ page }) => {
+test('a rejected drop reports beside the editor status rather than replacing it', async ({ page }) => {
   await page.goto('/doc/')
   // Wait for the editor to have written its own status, or the race that hid
   // the failure originally would not be reproduced.
@@ -500,8 +500,8 @@ test('a rejected drop reports, and the report is not overwritten', async ({ page
       ?.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
   })
 
-  await expect(page.locator('#status')).toContainText('payload.zip')
-  await expect(page.locator('#status')).toHaveAttribute('data-visible', 'true')
+  await expect(page.locator('#status .toast[data-severity="error"]')).toContainText('payload.zip')
+  await expect(page.locator('#status .toast')).toHaveCount(2)
 })
 
 test('an upload whose bytes contradict its extension tells the user why', async ({ page }) => {

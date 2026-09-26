@@ -152,7 +152,7 @@ function treeElement(): HTMLElement {
 }
 
 function statusText(): string {
-  return document.querySelector('#status')?.textContent ?? ''
+  return [...document.querySelectorAll('#status .toast')].at(-1)?.textContent ?? ''
 }
 
 beforeEach(() => {

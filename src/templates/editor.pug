@@ -3,4 +3,4 @@ extends layout
 block content
   section.workspace(aria-label='Editor')
     #editor
-    output.toast#status(role='status' aria-live='polite' data-visible='false')
+    .toasts#status(role='status' aria-live='polite' aria-atomic='false')
