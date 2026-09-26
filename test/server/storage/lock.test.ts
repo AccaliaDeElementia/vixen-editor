@@ -1,6 +1,6 @@
 'use sanity'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { createWriteLock, LockTimeoutError, type WriteLock } from '../../../src/server/storage/lock.ts'
 import { gate } from '../gate.ts'
@@ -157,6 +157,26 @@ describe('acquire timeout', () => {
     await running
 
     await expect(writes.run(immediately('free'))).resolves.toBe('free')
+  })
+
+  it('cancels the timeout of a waiter it granted, so a finished write leaves nothing pending', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const writes = lock(GENEROUS_MS)
+      const first = gate()
+      const order: string[] = []
+
+      const running = writes.run(first.hold)
+      const queued = writes.run(recording(order, 'queued'))
+
+      first.open()
+      await Promise.all([running, queued])
+
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('takes a per-call timeout in place of the default', async () => {

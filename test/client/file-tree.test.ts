@@ -69,7 +69,10 @@ function rowFor(entryPath: string): HTMLElement {
 }
 
 function press(entryPath: string, key: string): void {
-  rowFor(entryPath).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  const row = rowFor(entryPath)
+
+  row.focus()
+  row.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
 }
 
 beforeEach(() => {
@@ -270,13 +273,12 @@ describe('keyboard navigation', () => {
     expect(document.activeElement).toBe(rowFor('journal'))
   })
 
-  it('stays put at the end of the tree', async () => {
+  it('stays put at the end of the tree rather than wrapping to the top', async () => {
     await start()
 
     press(TRASH_PATH, 'ArrowDown')
 
-    expect(document.activeElement).not.toBe(rowFor('journal'))
-    expect(rows().at(-1)?.dataset.path).toBe(TRASH_PATH)
+    expect(document.activeElement).toBe(rowFor(TRASH_PATH))
   })
 
   it('stays put at the top of the tree rather than wrapping to the bottom', async () => {
@@ -284,7 +286,7 @@ describe('keyboard navigation', () => {
 
     press('journal', 'ArrowUp')
 
-    expect(document.activeElement).not.toBe(rowFor(TRASH_PATH))
+    expect(document.activeElement).toBe(rowFor('journal'))
   })
 
   it('expands a closed folder with the right arrow', async () => {
