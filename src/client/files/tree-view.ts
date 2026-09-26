@@ -3,6 +3,7 @@
 import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
 
 import { docUrlFor } from '../doc-path.ts'
+import { trashUrlFor } from '../../shared/page-urls.ts'
 
 import type { TrashNode, TreeNode } from './tree-model.ts'
 import type { EntryKind } from '../../shared/documents.ts'
@@ -21,6 +22,7 @@ export interface VisibleRow {
   path: string
   expandable: boolean
   kind: RowKind
+  opens: string | null
 }
 
 type RowKind = EntryKind | 'trash-root' | 'trash-entry'
@@ -174,7 +176,7 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
       const href = docUrlFor(node.path)
       const options = { path: node.path, kind: node.kind, name: node.name, depth, expanded: null, selected, href }
       items.push(item(row({ ...options, draggable: true })))
-      visible.push({ path: node.path, expandable: false, kind: node.kind })
+      visible.push({ path: node.path, expandable: false, kind: node.kind, opens: href })
       continue
     }
 
@@ -183,7 +185,7 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
       row({ path: node.path, kind: 'folder', name: node.name, depth, expanded, selected, draggable: true }),
     )
     items.push(element)
-    visible.push({ path: node.path, expandable: true, kind: 'folder' })
+    visible.push({ path: node.path, expandable: true, kind: 'folder', opens: null })
 
     if (!expanded) continue
 
@@ -207,13 +209,14 @@ function renderTrash(model: TreeViewModel): Rendered {
   const element = item(
     row({ path: TRASH_PATH, kind: 'trash-root', name, depth: ROOT_DEPTH, expanded, selected: false }),
   )
-  const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash-root' }]
+  const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash-root', opens: null }]
 
   if (!expanded) return { items: [element], visible }
 
   const children = group()
   for (const entry of model.trash) {
     const { id, originalPath, kind, deletedAt } = entry
+    const href = trashUrlFor(id)
     const deleted = row({
       path: originalPath,
       kind,
@@ -221,12 +224,13 @@ function renderTrash(model: TreeViewModel): Rendered {
       depth: TRASH_ENTRY_DEPTH,
       expanded: null,
       selected: false,
+      href,
     })
     deleted.dataset.trashId = id
     deleted.title = `Deleted ${deletedAt}`
     deleted.append(trashActions(entry))
     children.append(item(deleted))
-    visible.push({ path: originalPath, expandable: false, kind: 'trash-entry' })
+    visible.push({ path: originalPath, expandable: false, kind: 'trash-entry', opens: href })
   }
   element.append(children)
 

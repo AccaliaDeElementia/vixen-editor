@@ -1,0 +1,239 @@
+'use sanity'
+
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { initFileTree } from '../../src/client/files/index.ts'
+import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
+import type { FilesClient } from '../../src/client/files/files-client.ts'
+import type { TrashNode } from '../../src/client/files/tree-model.ts'
+
+import { cast } from '../cast.ts'
+
+const SAMPLE = [
+  { name: 'journal', path: 'journal', kind: 'folder' as const, children: [] },
+  { name: 'notes.md', path: 'notes.md', kind: 'document' as const },
+  { name: 'photo.png', path: 'photo.png', kind: 'image' as const },
+]
+
+const TRASHED: TrashNode = {
+  id: 'aaaa',
+  originalPath: 'gone.md',
+  kind: 'document',
+  deletedAt: '2026-01-01T00:00:00.000Z',
+}
+
+let host: HTMLElement = document.createElement('div')
+let opened: string[] = []
+
+function page(): HTMLElement {
+  document.body.innerHTML = ''
+  const created = document.createElement('div')
+  created.innerHTML =
+    '<aside id="explorer"><button id="open-selected"></button><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
+  document.body.append(created)
+
+  return created
+}
+
+function fakeClient(): { tree: ReturnType<typeof vi.fn>; trash: ReturnType<typeof vi.fn> } {
+  return {
+    tree: vi.fn().mockResolvedValue(SAMPLE),
+    trash: vi.fn().mockResolvedValue([TRASHED]),
+  }
+}
+
+async function start(pathname = '/doc/'): Promise<void> {
+  await initFileTree({
+    root: host,
+    pathname,
+    client: cast<FilesClient>(fakeClient()),
+    navigate: (url: string) => {
+      opened.push(url)
+    },
+  })
+}
+
+function rowFor(entryPath: string): HTMLElement {
+  const row = [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].find(
+    (candidate) => candidate.dataset.path === entryPath,
+  )
+  if (row === undefined) throw new Error(`no row for ${entryPath}`)
+
+  return row
+}
+
+function click(entryPath: string, init: MouseEventInit = {}): MouseEvent {
+  const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init })
+  rowFor(entryPath).dispatchEvent(event)
+
+  return event
+}
+
+function doubleClick(entryPath: string): void {
+  rowFor(entryPath).dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }))
+}
+
+function selectedPaths(): Array<string | undefined> {
+  return [...document.querySelectorAll<HTMLElement>('[aria-selected="true"]')].map((row) => row.dataset.path)
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  opened = []
+  host = page()
+})
+
+describe('a plain click', () => {
+  it('selects a document without opening it', async () => {
+    await start()
+
+    click('notes.md')
+
+    expect({ opened, selected: selectedPaths() }).toStrictEqual({ opened: [], selected: ['notes.md'] })
+  })
+
+  it('selects an image on the same terms', async () => {
+    await start()
+
+    click('photo.png')
+
+    expect({ opened, selected: selectedPaths() }).toStrictEqual({ opened: [], selected: ['photo.png'] })
+  })
+
+  it('moves the selection rather than adding to it', async () => {
+    await start()
+
+    click('notes.md')
+    click('photo.png')
+
+    expect(selectedPaths()).toStrictEqual(['photo.png'])
+  })
+})
+
+describe('a double click', () => {
+  it('opens the document', async () => {
+    await start()
+
+    doubleClick('notes.md')
+
+    expect(opened).toStrictEqual(['/doc/notes.md'])
+  })
+
+  it('opens an image at its own url, which the image view answers', async () => {
+    await start()
+
+    doubleClick('photo.png')
+
+    expect(opened).toStrictEqual(['/doc/photo.png'])
+  })
+
+  it('opens a trash entry by its id, not by the path it used to have', async () => {
+    await start()
+    rowFor(TRASH_PATH).click()
+
+    doubleClick('gone.md')
+
+    expect(opened).toStrictEqual(['/trash/aaaa'])
+  })
+
+  it('does nothing on a folder, which a single click already toggles', async () => {
+    await start()
+
+    doubleClick('journal')
+
+    expect(opened).toStrictEqual([])
+  })
+
+  it('ignores a double click that did not land on a row', async () => {
+    await start()
+
+    host.querySelector('#file-tree')?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }))
+
+    expect(opened).toStrictEqual([])
+  })
+})
+
+describe('a click the browser should handle', () => {
+  it.each([
+    ['ctrl, which opens a tab', { ctrlKey: true }],
+    ['cmd, which opens a tab on a mac', { metaKey: true }],
+    ['shift, which opens a window', { shiftKey: true }],
+    ['alt, which downloads', { altKey: true }],
+  ])('leaves a click with %s alone', async (_case, init) => {
+    await start()
+
+    expect(click('notes.md', init).defaultPrevented).toBe(false)
+  })
+
+  it('does not navigate in this tab either, because the browser is doing it', async () => {
+    await start()
+
+    click('notes.md', { ctrlKey: true })
+
+    expect(opened).toStrictEqual([])
+  })
+})
+
+describe('Enter', () => {
+  function press(entryPath: string): void {
+    rowFor(entryPath).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+  }
+
+  it('opens a document, the keyboard equivalent of a double click', async () => {
+    await start()
+
+    press('notes.md')
+
+    expect(opened).toStrictEqual(['/doc/notes.md'])
+  })
+
+  it('toggles a folder rather than opening anything', async () => {
+    await start()
+
+    press('journal')
+
+    expect(opened).toStrictEqual([])
+  })
+})
+
+describe('the Open selected action', () => {
+  function pressOpen(): void {
+    host.querySelector<HTMLButtonElement>('#open-selected')?.click()
+  }
+
+  it('opens whatever a single click selected', async () => {
+    await start()
+    click('notes.md')
+
+    pressOpen()
+
+    expect(opened).toStrictEqual(['/doc/notes.md'])
+  })
+
+  it('opens a trash entry the same way, by its id', async () => {
+    await start()
+    rowFor(TRASH_PATH).click()
+    click('gone.md')
+
+    pressOpen()
+
+    expect(opened).toStrictEqual(['/trash/aaaa'])
+  })
+
+  it('does nothing for a selected folder, which has nothing to open', async () => {
+    await start()
+    click('journal')
+
+    pressOpen()
+
+    expect(opened).toStrictEqual([])
+  })
+
+  it('does nothing when the selection names no visible row', async () => {
+    await start('/doc/absent.md')
+
+    pressOpen()
+
+    expect(opened).toStrictEqual([])
+  })
+})

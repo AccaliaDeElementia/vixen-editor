@@ -17,6 +17,7 @@ const ACTION_SELECTORS = {
   download: '#download-archive',
   remove: '#delete-entry',
   reveal: '#reveal-document',
+  openSelected: '#open-selected',
 } as const
 
 const CORRECTABLE_IN_DIALOG = ['ALREADY_EXISTS', 'INVALID_PATH', 'EMPTY_CONTENT'] as const
@@ -36,6 +37,7 @@ export interface ActionContext {
   selectionPath: () => string | null
   refresh: () => Promise<void>
   reveal: () => void
+  openSelected: () => void
 }
 
 function correctable(error: unknown): string | null {
@@ -124,6 +126,7 @@ export function bindActions(context: ActionContext): void {
   })
 
   on(ACTION_SELECTORS.reveal, context.reveal)
+  on(ACTION_SELECTORS.openSelected, context.openSelected)
 
   on(ACTION_SELECTORS.remove, () => {
     const entryPath = context.selectionPath()

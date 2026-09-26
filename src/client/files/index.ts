@@ -19,11 +19,20 @@ interface FileTreeOptions {
   pathname?: string
   client?: FilesClient
   dialogs?: Dialogs
+  navigate?: (url: string) => void
 }
 
 const NEXT_ROW = 1
 const PREVIOUS_ROW = -1
 const LAST_ANCESTOR = -1
+
+function opensElsewhere(event: MouseEvent): boolean {
+  return event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+}
+
+function assignLocation(url: string): void {
+  window.location.assign(url)
+}
 
 interface Mounted {
   tree: HTMLElement
@@ -31,6 +40,7 @@ interface Mounted {
   client: FilesClient
   dialogs: Dialogs
   openDocument: OpenDocument
+  navigate: (url: string) => void
 }
 
 export async function initFileTree(options: FileTreeOptions = {}): Promise<void> {
@@ -44,10 +54,11 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<void>
     client: options.client ?? createFilesClient(),
     dialogs: options.dialogs ?? createDialogs(root),
     openDocument: openDocumentIn(root, options.pathname),
+    navigate: options.navigate ?? assignLocation,
   })
 }
 
-async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounted): Promise<void> {
+async function runFileTree({ tree, root, client, dialogs, openDocument, navigate }: Mounted): Promise<void> {
   const toast = createToast(root)
   let nodes: readonly TreeNode[] = []
   let trash: readonly TrashNode[] = []
@@ -57,6 +68,21 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
 
   function rows(): HTMLElement[] {
     return [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
+  }
+
+  function markSelected(entryPath: string): void {
+    selected = entryPath
+    for (const element of rows()) element.setAttribute('aria-selected', String(element.dataset.path === entryPath))
+
+    updateArchiveLink(root, targetDirectory())
+  }
+
+  function openRow(current: VisibleRow): boolean {
+    if (current.opens === null) return false
+
+    navigate(current.opens)
+
+    return true
   }
 
   function draw(next: ReadonlySet<string>, focusPath?: string): void {
@@ -120,7 +146,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   // Enter on a file is left to the browser: the row is a real link, so the
   // navigation, and opening it in a new tab, come for free.
   function activate(current: VisibleRow): boolean {
-    if (!current.expandable) return false
+    if (!current.expandable) return openRow(current)
 
     toggle(current.path)
     return true
@@ -143,15 +169,27 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
     const current = index === null ? undefined : visible[index]
     if (current === undefined) return
 
-    const { path } = current
-    selected = path
     if (!current.expandable) {
-      draw(open)
+      if (opensElsewhere(event)) return
+
+      event.preventDefault()
+      markSelected(current.path)
       return
     }
 
+    const { path } = current
     event.preventDefault()
-    toggle(current.path)
+    selected = path
+    toggle(path)
+  })
+
+  tree.addEventListener('dblclick', (event) => {
+    const index = rowIndexOf(tree, event.target)
+    const current = index === null ? undefined : visible[index]
+    if (current === undefined || current.expandable) return
+
+    event.preventDefault()
+    openRow(current)
   })
 
   tree.addEventListener('keydown', (event) => {
@@ -190,6 +228,10 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
     selectionPath: () => (visible.some((row) => row.path === selected) ? selected : null),
     refresh: load,
     reveal,
+    openSelected: () => {
+      const row = visible.find((candidate) => candidate.path === selected)
+      if (row !== undefined) openRow(row)
+    },
   }
   bindActions(context)
   bindTrashActions(context, tree)

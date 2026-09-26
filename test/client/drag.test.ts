@@ -164,14 +164,22 @@ beforeEach(() => {
 
 describe('containerOf', () => {
   it.each([
-    ['a folder takes drops into itself', { path: 'journal', expandable: true, kind: 'folder' as const }, 'journal'],
     [
-      'a document takes drops beside it',
-      { path: 'journal/a.md', expandable: false, kind: 'document' as const },
+      'a folder takes drops into itself',
+      { path: 'journal', expandable: true, kind: 'folder' as const, opens: null },
       'journal',
     ],
-    ['a root document targets the root', { path: 'a.md', expandable: false, kind: 'document' as const }, ''],
-    ['an image behaves like a document', { path: 'p.png', expandable: false, kind: 'image' as const }, ''],
+    [
+      'a document takes drops beside it',
+      { path: 'journal/a.md', expandable: false, kind: 'document' as const, opens: null },
+      'journal',
+    ],
+    [
+      'a root document targets the root',
+      { path: 'a.md', expandable: false, kind: 'document' as const, opens: null },
+      '',
+    ],
+    ['an image behaves like a document', { path: 'p.png', expandable: false, kind: 'image' as const, opens: null }, ''],
   ])('%s', (_label, row, expected) => {
     expect(containerOf(row)).toBe(expected)
   })
@@ -181,8 +189,8 @@ describe('containerOf', () => {
   })
 
   it.each([
-    ['the trash pseudo-folder', { path: TRASH_PATH, expandable: true, kind: 'trash-root' as const }],
-    ['a deleted entry', { path: 'gone.md', expandable: false, kind: 'trash-entry' as const }],
+    ['the trash pseudo-folder', { path: TRASH_PATH, expandable: true, kind: 'trash-root' as const, opens: null }],
+    ['a deleted entry', { path: 'gone.md', expandable: false, kind: 'trash-entry' as const, opens: null }],
   ])('refuses drops onto %s, which is not a place in the store', (_label, row) => {
     expect(containerOf(row)).toBeNull()
   })

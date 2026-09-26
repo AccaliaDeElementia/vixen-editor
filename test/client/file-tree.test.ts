@@ -236,13 +236,13 @@ describe('clicking', () => {
     expect(paths()).not.toContain('journal/2026/september.md')
   })
 
-  it('leaves a document click to the browser, because the row is a real link', async () => {
+  it('selects a document rather than opening it, because a misclick is cheap and an open is not', async () => {
     await start()
     const event = new MouseEvent('click', { bubbles: true, cancelable: true })
 
     rowFor('notes.md').dispatchEvent(event)
 
-    expect(event.defaultPrevented).toBe(false)
+    expect(event.defaultPrevented).toBe(true)
   })
 
   it('ignores a click that did not land on a row', async () => {
@@ -364,13 +364,13 @@ describe('keyboard navigation', () => {
     expect(paths()).toContain('journal/entry.md')
   })
 
-  it('leaves Enter on a document to the browser, so the link is followed', async () => {
+  it('opens a document on Enter, which is the keyboard equivalent of a double click', async () => {
     await start()
     const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
 
     rowFor('notes.md').dispatchEvent(event)
 
-    expect(event.defaultPrevented).toBe(false)
+    expect(event.defaultPrevented).toBe(true)
   })
 
   it('ignores a key it does not handle', async () => {

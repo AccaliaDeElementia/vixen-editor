@@ -126,16 +126,30 @@ test('a folder opens on click and its contents appear below it, indented by labe
   await request.delete(`/api/files/entries/${folder}`)
 })
 
-test('a document row is a real link to its document view', async ({ page, request }) => {
+test('a document row stays a real link, so the browser can open it its own way', async ({ page, request }) => {
   const name = `link-${String(Date.now())}.md`
   await request.post('/api/files/documents', { data: { path: name } })
 
   await page.goto('/doc/')
-  await page.locator(`.tree__row[data-path="${name}"]`).click()
 
-  await expect(page).toHaveURL(`/doc/${name}`)
-  await expect(page.locator('#status')).toContainText(name)
+  await expect(page.locator(`.tree__row[data-path="${name}"]`)).toHaveAttribute('href', `/doc/${name}`)
 
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a modified click opens a tab rather than being swallowed', async ({ page, request }) => {
+  const name = `newtab-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# in a new tab' } })
+  await page.goto('/doc/')
+
+  const opened = page.context().waitForEvent('page')
+  await page.locator(`.tree__row[data-path="${name}"]`).click({ modifiers: ['ControlOrMeta'] })
+  const tab = await opened
+
+  await expect(tab).toHaveURL(`/doc/${name}`)
+  expect(new URL(page.url()).pathname).toBe('/doc/')
+
+  await tab.close()
   await request.delete(`/api/files/entries/${name}`)
 })
 
@@ -542,4 +556,44 @@ test('dragging the open document follows it in the address bar and keeps saving'
   expect(await moved.text()).toContain('edited')
 
   await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a single click selects a document without opening it', async ({ page, request }) => {
+  const name = `select-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# seed' } })
+  await page.goto('/doc/')
+
+  const row = page.locator(`[role="treeitem"][data-path="${name}"]`)
+  await row.click()
+
+  await expect(row).toHaveAttribute('aria-selected', 'true')
+  expect(new URL(page.url()).pathname).toBe('/doc/')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a double click opens it', async ({ page, request }) => {
+  const name = `open-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# opened by double click' } })
+  await page.goto('/doc/')
+
+  await page.locator(`[role="treeitem"][data-path="${name}"]`).dblclick()
+
+  await expect(page.locator('.cm-content')).toContainText('# opened by double click')
+  expect(new URL(page.url()).pathname).toBe(`/doc/${name}`)
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('the toolbar opens whatever is selected', async ({ page, request }) => {
+  const name = `toolbar-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# opened from the toolbar' } })
+  await page.goto('/doc/')
+
+  await page.locator(`[role="treeitem"][data-path="${name}"]`).click()
+  await page.locator('#open-selected').click()
+
+  await expect(page.locator('.cm-content')).toContainText('# opened from the toolbar')
+
+  await request.delete(`/api/files/entries/${name}`)
 })

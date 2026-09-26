@@ -249,8 +249,14 @@ describe('the trash pseudo-folder', () => {
     render({ trash: [entry], open: new Set([TRASH_PATH]) })
     const deleted = tree.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')
 
-    expect(deleted?.hasAttribute('href')).toBe(false)
     expect(deleted?.title).toContain('2026-01-01')
+  })
+
+  it('opens the entry by its id, because its old path may name a live document again', () => {
+    render({ trash: [entry], open: new Set([TRASH_PATH]) })
+    const deleted = tree.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')
+
+    expect(deleted?.getAttribute('href')).toBe('/trash/aaaa')
   })
 
   it('shows the kind of the deleted entry', () => {
