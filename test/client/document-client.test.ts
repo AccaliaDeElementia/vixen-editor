@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../cast.ts'
 
-import { createDocumentClient, DocumentRequestError } from '../../src/client/editor/document-client.ts'
+import { createDocumentClient, DocumentRequestError, WHILE_LEAVING } from '../../src/client/editor/document-client.ts'
 
 let fetchMock: ReturnType<typeof vi.fn> = vi.fn()
 
@@ -263,5 +263,42 @@ describe('defaults', () => {
 
     expect(globalFetch).toHaveBeenCalledWith('/api/documents', expect.objectContaining({ method: 'GET' }))
     vi.unstubAllGlobals()
+  })
+})
+
+describe('sending while the page is leaving', () => {
+  const savingNotes = {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'if-match': '"e1"' },
+    body: JSON.stringify({ content: '# body' }),
+  }
+
+  it('sends a keepalive PUT that still carries the precondition sendBeacon could not', async () => {
+    fetchMock.mockResolvedValue(noContent())
+
+    await client().save('notes.md', '# body', '"e1"', WHILE_LEAVING)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/notes.md', { ...savingNotes, keepalive: true })
+  })
+
+  it('marks a create keepalive too, for a document with no etag yet', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ etag: '"e9"' }, 201))
+
+    await client().create('fresh.md', '# body', WHILE_LEAVING)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/files/documents', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ path: 'fresh.md', content: '# body' }),
+      keepalive: true,
+    })
+  })
+
+  it('leaves an ordinary save unmarked, so a slow one can still be cancelled', async () => {
+    fetchMock.mockResolvedValue(noContent())
+
+    await client().save('notes.md', '# body', '"e1"')
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/notes.md', savingNotes)
   })
 })

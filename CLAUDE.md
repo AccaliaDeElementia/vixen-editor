@@ -1063,6 +1063,45 @@ not reach for tricks that only work as a non-root user. Suppressions should stay
 rare, and every one must carry a rationale — `test/conventions/` fails the gate
 if any does not.
 
+## Browser support
+
+**The floor is Chrome 119, Firefox 133, Safari 17.4.** It is measured rather
+than assumed — `@mdn/browser-compat-data` is the source — and each column is
+anchored to the feature that sets it, so the number can be re-derived instead
+of remembered:
+
+| Feature                         | Sets                                 | Shipped             |
+| ------------------------------- | ------------------------------------ | ------------------- |
+| `Promise.withResolvers`         | Chrome 119, Firefox 121, Safari 17.4 | Oct 2023 – Mar 2024 |
+| `fetch(…, { keepalive: true })` | Firefox 133                          | Nov 2024            |
+
+The ES2024 target and its RegExp `v` flag ask only for Chrome 112 / Firefox 116
+/ Safari 17, so the language level is no longer what binds.
+
+**A hard floor breaks a feature; a soft one degrades it, and they are worth
+telling apart.** `Promise.withResolvers` is hard: below it, opening any file
+dialog throws. `keepalive` is soft: Firefox below 133 ignores the flag, so the
+unload save is quietly dropped and the `beforeunload` prompt is all that
+protects the buffer. Say which kind you are adding.
+
+**Before MVP there are no users, so raising the floor is the cheap lever.**
+Reach for it _before_ contorting code to fit the current one. A deprecated API
+kept alive for a browser window that closed years ago costs suppressions,
+comments and review attention for as long as the code lives, and buys nobody
+anything — `beforeunload`'s `returnValue` was exactly that trade, and it was
+refused.
+
+**Announce it when you reach for it.** Raising the floor is a product decision
+wearing a technical hat, so it is surfaced in the reply that makes it, the way
+a new comment or suppression is: name the feature, the versions, and what
+breaks below them. The human pushes back if it is too aggressive.
+
+That last rule exists because this has already slipped through twice.
+`Promise.withResolvers` moved Chrome from 112 to 119 in a commit about
+suppressions, and `keepalive` moved Firefox from 121 to 133 in the next one.
+Neither was noticed until the floor was being written down, and neither was a
+decision anyone made on purpose.
+
 ## Toolchain notes
 
 - **TypeScript 6.0.3, not 7.** TS 7.0 ships no programmatic compiler API, and

@@ -7,12 +7,15 @@ import { docUrlFor, documentIdFromPath, pathAfterMove } from '../doc-path.ts'
 import { onDocumentMoved } from '../document-moved.ts'
 import { errorMessage } from '../error-message.ts'
 
+import { isBlank } from '../../shared/content.ts'
+
 import { createAutosave } from './autosave.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
 import { createToast } from '../layout/toast.ts'
 
 import { createSession, type Session } from './session.ts'
+import { guardUnload } from './unload.ts'
 
 const MOUNT_SELECTOR = '#editor'
 const SAVE_KEY = 'Mod-s'
@@ -22,6 +25,7 @@ interface BootstrapOptions {
   pathname?: string
   session?: Session
   navigate?: (url: string) => void
+  listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => void
 }
 
 function replaceAddress(url: string): void {
@@ -111,6 +115,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     }),
   })
   autosave.reset(initial)
+
+  guardUnload({
+    unsaved: () => autosave.state() !== 'clean',
+    rescue: () => {
+      const content = view.state.doc.toString()
+      if (!isBlank(content)) session.saveOnUnload(documentId, content)
+    },
+    listen: options.listenForUnload,
+  })
 
   setStatus(`Editing ${documentId} — press Ctrl/Cmd+S to save`)
   return view

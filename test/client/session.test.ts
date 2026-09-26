@@ -214,3 +214,57 @@ describe('rename', () => {
     expect(client.create).toHaveBeenCalledWith('elsewhere.md', '# new')
   })
 })
+
+describe('saveOnUnload', () => {
+  it('sends the save as keepalive, or the browser cancels it on the way out', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.save.mockResolvedValue('"next"')
+    const active = session()
+    await active.load('notes.md')
+
+    active.saveOnUnload('notes.md', '# leaving')
+
+    expect(client.save).toHaveBeenCalledWith('notes.md', '# leaving', '"abc"', { keepalive: true })
+  })
+
+  it('creates a document that never reached the server, which is the one most likely to be lost', async () => {
+    client.read.mockRejectedValue(new DocumentRequestError(404, 'Document not found'))
+    client.create.mockResolvedValue('"fresh"')
+    const active = session()
+    await active.load('fresh.md')
+
+    active.saveOnUnload('fresh.md', '# leaving')
+
+    expect(client.create).toHaveBeenCalledWith('fresh.md', '# leaving', { keepalive: true })
+  })
+
+  it('records the new etag, so staying after Cancel does not make the next save conflict', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.save.mockResolvedValue('"survived"')
+    const active = session()
+    await active.load('notes.md')
+
+    active.saveOnUnload('notes.md', '# leaving')
+    await vi.waitFor(() => {
+      expect(client.save).toHaveBeenCalledTimes(1)
+    })
+    await active.save('notes.md', '# still here')
+
+    expect(client.save).toHaveBeenLastCalledWith('notes.md', '# still here', '"survived"')
+  })
+
+  it('swallows a rejection, because nothing is left to report it to', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.save.mockRejectedValue(new DocumentRequestError(412, 'Conflict'))
+    const active = session()
+    await active.load('notes.md')
+
+    expect(() => {
+      active.saveOnUnload('notes.md', '# leaving')
+    }).not.toThrow()
+
+    await vi.waitFor(() => {
+      expect(client.save).toHaveBeenCalledTimes(1)
+    })
+  })
+})

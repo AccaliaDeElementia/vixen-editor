@@ -21,11 +21,17 @@ interface LoadedDocument {
   etag: string
 }
 
+interface SendOptions {
+  keepalive: boolean
+}
+
+export const WHILE_LEAVING: SendOptions = { keepalive: true }
+
 export interface DocumentClient {
   list: () => Promise<string[]>
   read: (id: string) => Promise<LoadedDocument>
-  create: (id: string, content: string) => Promise<string>
-  save: (id: string, content: string, etag: string) => Promise<string>
+  create: (id: string, content: string, options?: SendOptions) => Promise<string>
+  save: (id: string, content: string, etag: string, options?: SendOptions) => Promise<string>
   remove: (entryPath: string) => Promise<void>
 }
 
@@ -87,22 +93,24 @@ export function createDocumentClient(
       return { content: await response.text(), etag: etagHeaderOf(response) }
     },
 
-    async create(id: string, content: string): Promise<string> {
+    async create(id: string, content: string, options?: SendOptions): Promise<string> {
       const response = await retrying(`${baseUrl}/files/documents`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ path: id, content }),
+        ...options,
       })
       if (!response.ok) await throwRequestError(response)
 
       return await createdEtagOf(response)
     },
 
-    async save(id: string, content: string, etag: string): Promise<string> {
+    async save(id: string, content: string, etag: string, options?: SendOptions): Promise<string> {
       const response = await retrying(`${documentsUrl}/${encodeDocumentId(id)}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', 'if-match': etag },
         body: JSON.stringify({ content }),
+        ...options,
       })
       if (!response.ok) await throwRequestError(response)
 

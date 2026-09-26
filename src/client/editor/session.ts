@@ -2,13 +2,14 @@
 
 import { PAST_SEPARATOR } from '../../shared/sequences.ts'
 
-import { DocumentRequestError, type DocumentClient } from './document-client.ts'
+import { DocumentRequestError, WHILE_LEAVING, type DocumentClient } from './document-client.ts'
 
 const HTTP_NOT_FOUND = 404
 
 export interface Session {
   load: (id: string) => Promise<string>
   save: (id: string, content: string) => Promise<void>
+  saveOnUnload: (id: string, content: string) => void
   rename: (from: string, to: string) => void
 }
 
@@ -50,6 +51,20 @@ export function createSession(client: DocumentClient, template: (id: string) => 
       const next = neverReachedTheServer ? await client.create(id, content) : await client.save(id, content, etag)
 
       etags.set(id, next)
+    },
+
+    saveOnUnload(id: string, content: string): void {
+      const etag = etags.get(id)
+      const neverReachedTheServer = etag === undefined
+      const sending = neverReachedTheServer
+        ? client.create(id, content, WHILE_LEAVING)
+        : client.save(id, content, etag, WHILE_LEAVING)
+
+      void sending
+        .then((next) => {
+          etags.set(id, next)
+        })
+        .catch(() => undefined)
     },
   }
 }

@@ -3,6 +3,8 @@
 import type { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { cast } from '../cast.ts'
+
 import { announceDocumentMoved } from '../../src/client/document-moved.ts'
 import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
@@ -12,6 +14,7 @@ const { MissingMountError, bootstrap } = TestOnly
 let root: HTMLElement = document.createElement('div')
 let saved: Array<{ id: string; content: string }> = []
 let renamed: Array<{ from: string; to: string }> = []
+let rescued: Array<{ id: string; content: string }> = []
 
 function page({ withMount = true, withStatus = true } = {}): HTMLElement {
   const container = document.createElement('div')
@@ -36,6 +39,9 @@ function fakeSession(overrides: Partial<Session> = {}): Session {
       saved.push({ id, content })
       return Promise.resolve()
     },
+    saveOnUnload: (id: string, content: string) => {
+      rescued.push({ id, content })
+    },
     rename: (from: string, to: string) => {
       renamed.push({ from, to })
     },
@@ -50,6 +56,7 @@ function statusText(container: ParentNode): string {
 beforeEach(() => {
   saved = []
   renamed = []
+  rescued = []
   document.body.innerHTML = ''
   root = page()
 })
@@ -350,5 +357,78 @@ describe('bootstrap follows a document that moves underneath it', () => {
     announceDocumentMoved(root, { from: 'journal', to: 'archive', rewritten: ['elsewhere.md'] })
 
     expect(statusText(root)).not.toContain('reload')
+  })
+})
+
+describe('leaving the page with the buffer dirty', () => {
+  interface Leaving {
+    view: EditorView
+    leave: () => BeforeUnloadEvent
+  }
+
+  async function opened(pathname = '/doc/notes.md'): Promise<Leaving> {
+    let handler: (event: BeforeUnloadEvent) => void = () => undefined
+    const view = await bootstrap({
+      root,
+      pathname,
+      session: fakeSession(),
+      listenForUnload: (registered) => {
+        handler = registered
+      },
+    })
+
+    return {
+      view,
+      leave: () => {
+        const event = cast<BeforeUnloadEvent>(new Event('beforeunload', { cancelable: true }))
+        handler(event)
+
+        return event
+      },
+    }
+  }
+
+  function type(view: EditorView, text: string): void {
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } })
+  }
+
+  it('prompts, because an autosave window may still be running', async () => {
+    const { view, leave } = await opened()
+
+    type(view, '# edited')
+
+    expect(leave().defaultPrevented).toBe(true)
+  })
+
+  it('does not prompt when nothing has been typed', async () => {
+    const { leave } = await opened()
+
+    expect(leave().defaultPrevented).toBe(false)
+  })
+
+  it('sends the buffer as a last attempt, under the document it is currently editing', async () => {
+    const { view, leave } = await opened()
+
+    type(view, '# edited')
+    leave()
+
+    expect(rescued).toStrictEqual([{ id: 'notes.md', content: '# edited' }])
+  })
+
+  it('still prompts for a buffer emptied to nothing, which is a change that cannot be saved', async () => {
+    const { view, leave } = await opened()
+
+    type(view, '   ')
+
+    expect(leave().defaultPrevented).toBe(true)
+  })
+
+  it('sends nothing for that empty buffer, because the store refuses it', async () => {
+    const { view, leave } = await opened()
+
+    type(view, '   ')
+    leave()
+
+    expect(rescued).toStrictEqual([])
   })
 })
