@@ -63,6 +63,13 @@ function uploadedFile(body: Record<string, unknown>): File | null {
   return file instanceof File ? file : null
 }
 
+function storedName(body: Record<string, unknown>, file: File): string | null {
+  const { filename } = body
+
+  if (filename === undefined) return file.name
+  return typeof filename === 'string' ? filename : null
+}
+
 function targetDirectory(body: Record<string, unknown>): string | null {
   const { path: directory } = body
 
@@ -133,11 +140,14 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     const directory = targetDirectory(body)
     if (file === null || directory === null) return invalidBody(c)
 
+    const name = storedName(body, file)
+    if (name === null) return invalidBody(c)
+
     const bytes = new Uint8Array(await file.arrayBuffer())
     if (bytes.length > limits.uploadMaxBytes) return payloadTooLarge(c, limits.uploadMaxBytes)
 
     try {
-      const stored = await store.createUpload(directory, file.name, bytes)
+      const stored = await store.createUpload(directory, name, bytes)
       return c.json({ path: stored }, HTTP_CREATED)
     } catch (error) {
       return toErrorResponse(c, error)

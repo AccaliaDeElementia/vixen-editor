@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { contentMatchesExtension } from '../../../src/server/storage/signatures.ts'
+import { contentMatchesExtension, detectedFormat } from '../../../src/server/storage/signatures.ts'
 
 function bytes(...values: number[]): Uint8Array {
   return Uint8Array.from(values)
@@ -87,5 +87,32 @@ describe('svg', () => {
     const padded = text(`<!--${' '.repeat(4096)}--><svg></svg>`)
 
     expect(contentMatchesExtension('drawing.svg', padded)).toBe(false)
+  })
+})
+
+describe('detectedFormat', () => {
+  it.each([
+    ['png', PNG, '.png'],
+    ['jpeg', JPEG, '.jpg'],
+    ['gif87a', GIF87, '.gif'],
+    ['gif89a', GIF89, '.gif'],
+    ['webp', WEBP, '.webp'],
+    ['svg', text('<svg xmlns="http://www.w3.org/2000/svg"></svg>'), '.svg'],
+  ])('names the format of %s, so a rename can be offered', (_case, content, extension) => {
+    expect(detectedFormat(content)).toBe(extension)
+  })
+
+  it('reports jpeg under its canonical extension, not the alias', () => {
+    expect(detectedFormat(JPEG)).not.toBe('.jpeg')
+  })
+
+  it('recognises nothing in content that is not an image at all', () => {
+    expect(detectedFormat(HTML)).toBeNull()
+  })
+
+  it('agrees with the matcher, or a rejection could offer a name that is refused', () => {
+    const detected = detectedFormat(PNG)
+
+    expect(detected === null ? false : contentMatchesExtension(`photo${detected}`, PNG)).toBe(true)
   })
 })

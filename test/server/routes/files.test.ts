@@ -252,6 +252,15 @@ async function upload(
   return await target.request('/api/files/uploads', { method: 'POST', body: form })
 }
 
+async function uploadNamed(sentAs: string, storeAs: unknown, bytes: Uint8Array<ArrayBuffer>): Promise<Response> {
+  const form = new FormData()
+  form.append('file', new File([bytes], sentAs))
+  if (storeAs instanceof Blob) form.append('filename', storeAs)
+  else if (typeof storeAs === 'string') form.append('filename', storeAs)
+
+  return await app.request('/api/files/uploads', { method: 'POST', body: form })
+}
+
 describe('POST /api/files/uploads', () => {
   it('stores an upload and reports the path it landed at', async () => {
     const res = await upload('photo.png', PNG_BYTES, 'journal')
@@ -527,5 +536,59 @@ describe('POST /api/files/moves', () => {
 
     expect(res.status).toBe(400)
     await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+  })
+})
+
+describe('POST /api/files/uploads with a chosen name', () => {
+  it('stores under the name the client asked for, not the one the file carried', async () => {
+    const res = await uploadNamed('IMG_0042.png', 'header.png', PNG_BYTES)
+
+    expect(res.status).toBe(201)
+    await expect(res.json()).resolves.toStrictEqual({ path: 'header.png' })
+  })
+
+  it('validates the chosen name exactly as it validates the file’s own', async () => {
+    const res = await uploadNamed('photo.png', '../escape.png', PNG_BYTES)
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+  })
+
+  it('still checks the bytes against the chosen extension', async () => {
+    const res = await uploadNamed('photo.png', 'photo.gif', PNG_BYTES)
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('CONTENT_MISMATCH')
+  })
+
+  it('rejects a filename field that is not text', async () => {
+    const res = await uploadNamed('photo.png', new File([PNG_BYTES], 'nested.png'), PNG_BYTES)
+
+    expect(res.status).toBe(400)
+    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+  })
+})
+
+describe('a rejected upload says what the bytes actually are', () => {
+  it('names the format, so the client can offer the corrected name', async () => {
+    const res = await upload('photo.jpg', PNG_BYTES)
+
+    await expect(res.json()).resolves.toStrictEqual({
+      error: 'Content does not match the file extension',
+      code: 'CONTENT_MISMATCH',
+      detected: '.png',
+    })
+  })
+
+  it('reports no format when the bytes are not an image at all', async () => {
+    const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
+
+    const res = await upload('photo.png', html)
+
+    await expect(res.json()).resolves.toStrictEqual({
+      error: 'Content does not match the file extension',
+      code: 'CONTENT_MISMATCH',
+      detected: null,
+    })
   })
 })

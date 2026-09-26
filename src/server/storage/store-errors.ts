@@ -23,9 +23,12 @@ export class ConcurrentModificationError extends Error {
 
 export class ContentMismatchError extends Error {
   override readonly name = 'ContentMismatchError'
+  readonly detected: string | null
 
-  constructor(entryPath: string) {
-    super(`Content does not match the extension: ${entryPath}`)
+  constructor(entryPath: string, detected: string | null) {
+    const looksLike = detected === null ? 'is not a recognised image' : `looks like a ${detected} file`
+    super(`Content does not match the extension: ${entryPath} ${looksLike}`)
+    this.detected = detected
   }
 }
 

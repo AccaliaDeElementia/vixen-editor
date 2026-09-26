@@ -743,25 +743,39 @@ magic bytes. The SVG check is structural, not a parse — proving an SVG is
 well-formed XML proves nothing about safety, because a hostile SVG is
 well-formed. What a signature check can catch is a renamed file.
 
+**A rejection says what the bytes actually are.** `CONTENT_MISMATCH` carries
+`detected` — the extension the signatures recognised, or `null` for something
+that is not an image at all — so the client can offer the corrected name rather
+than only reporting a refusal. `detectedFormat` and `contentMatchesExtension`
+read the same ordered signature list, because a rejection that suggested a name
+the next upload would refuse is worse than no suggestion.
+
+**Upload takes an optional `filename`.** Absent, the stored name comes from the
+`File`, as before. It adds no attack surface — `file.name` was already
+caller-controlled and already travelled this path, so naming the field changes
+who spells it, not what is validated. It exists so that storing under a chosen
+name is one request: upload-then-move is two writes that can half-fail, leaving
+a stray file under the wrong name.
+
 ## API errors
 
 Every error body is `{ error, code }`, and some carry more. The code is what
 the UI reacts to; the message is what it shows when it has nothing better.
 
-| Code                    | Status | Also carries                               |
-| ----------------------- | ------ | ------------------------------------------ |
-| `INVALID_PATH`          | 400    |                                            |
-| `BAD_REQUEST`           | 400    |                                            |
-| `CONTENT_MISMATCH`      | 400    |                                            |
-| `NOT_FOUND`             | 404    |                                            |
-| `ALREADY_EXISTS`        | 409    |                                            |
-| `INVALID_MOVE`          | 409    |                                            |
-| `CONFLICT`              | 412    |                                            |
-| `TOO_LARGE`             | 413    | `unit`, `limit`, `measured` for an archive |
-| `EMPTY_CONTENT`         | 422    |                                            |
-| `PRECONDITION_REQUIRED` | 428    |                                            |
-| `BUSY`                  | 503    | `Retry-After` header                       |
-| `INTERNAL`              | 500    |                                            |
+| Code                    | Status | Also carries                                  |
+| ----------------------- | ------ | --------------------------------------------- |
+| `INVALID_PATH`          | 400    |                                               |
+| `BAD_REQUEST`           | 400    |                                               |
+| `CONTENT_MISMATCH`      | 400    | `detected`, the format the bytes actually are |
+| `NOT_FOUND`             | 404    |                                               |
+| `ALREADY_EXISTS`        | 409    |                                               |
+| `INVALID_MOVE`          | 409    |                                               |
+| `CONFLICT`              | 412    |                                               |
+| `TOO_LARGE`             | 413    | `unit`, `limit`, `measured` for an archive    |
+| `EMPTY_CONTENT`         | 422    |                                               |
+| `PRECONDITION_REQUIRED` | 428    |                                               |
+| `BUSY`                  | 503    | `Retry-After` header                          |
+| `INTERNAL`              | 500    |                                               |
 
 **Every refusal is logged** through one funnel in `routes/error-response.ts`,
 with method, path, status and code. A 4xx is returned rather than thrown, so

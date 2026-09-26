@@ -66,12 +66,6 @@ const STATUS_AND_CODE_ONLY: readonly SimpleMapping[] = [
     message: 'Document changed since it was loaded',
   },
   {
-    type: ContentMismatchError,
-    status: HTTP_BAD_REQUEST,
-    code: 'CONTENT_MISMATCH',
-    message: 'Content does not match the file extension',
-  },
-  {
     type: EmptyContentError,
     status: HTTP_UNPROCESSABLE_CONTENT,
     code: 'EMPTY_CONTENT',
@@ -83,6 +77,12 @@ export function toErrorResponse(c: Context, error: unknown): Response {
   const simple = STATUS_AND_CODE_ONLY.find(({ type }) => error instanceof type)
   if (simple !== undefined) return refuse(c, simple.status, simple.code, { error: simple.message })
 
+  if (error instanceof ContentMismatchError) {
+    return refuse(c, HTTP_BAD_REQUEST, 'CONTENT_MISMATCH', {
+      error: 'Content does not match the file extension',
+      detected: error.detected,
+    })
+  }
   if (error instanceof InvalidMoveError) {
     return refuse(c, HTTP_CONFLICT, 'INVALID_MOVE', { error: error.message })
   }

@@ -74,18 +74,37 @@ function isSvg(bytes: Uint8Array): boolean {
   return /^<svg[\s\/>]/iv.test(afterPrologue(head))
 }
 
-const SIGNATURES: Readonly<Record<string, (bytes: Uint8Array) => boolean>> = {
-  '.png': isPng,
-  '.jpg': isJpeg,
-  '.jpeg': isJpeg,
-  '.gif': isGif,
-  '.webp': isWebp,
-  '.svg': isSvg,
+interface Signature {
+  extension: string
+  matches: (bytes: Uint8Array) => boolean
+}
+
+// Ordered, because detection returns the first match; the formats are disjoint
+// at their magic bytes, so the order is not load bearing between them.
+const SIGNATURES: readonly Signature[] = [
+  { extension: '.png', matches: isPng },
+  { extension: '.jpg', matches: isJpeg },
+  { extension: '.gif', matches: isGif },
+  { extension: '.webp', matches: isWebp },
+  { extension: '.svg', matches: isSvg },
+]
+
+const CANONICAL_EXTENSION: Readonly<Record<string, string>> = { '.jpeg': '.jpg' }
+
+function signatureFor(entryPath: string): Signature | undefined {
+  const extension = extensionOf(entryPath)
+  const { [extension]: canonical } = CANONICAL_EXTENSION
+  const wanted = canonical ?? extension
+
+  return SIGNATURES.find((candidate) => candidate.extension === wanted)
 }
 
 export function contentMatchesExtension(entryPath: string, bytes: Uint8Array): boolean {
-  const extension = extensionOf(entryPath)
-  const { [extension]: check } = SIGNATURES
+  const signature = signatureFor(entryPath)
 
-  return check === undefined || check(bytes)
+  return signature === undefined || signature.matches(bytes)
+}
+
+export function detectedFormat(bytes: Uint8Array): string | null {
+  return SIGNATURES.find((signature) => signature.matches(bytes))?.extension ?? null
 }

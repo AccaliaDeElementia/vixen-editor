@@ -26,7 +26,7 @@ import {
   resolveFolderPath,
   UPLOAD_EXTENSIONS,
 } from './safe-path.ts'
-import { contentMatchesExtension } from './signatures.ts'
+import { contentMatchesExtension, detectedFormat } from './signatures.ts'
 import {
   ABSENT_ON_READ_CODES,
   asDocumentError,
@@ -199,7 +199,9 @@ export function createFsDocumentStore(
       const target = resolveEntryPath(root, entryPath, UPLOAD_EXTENSIONS)
 
       if (bytes.length === EMPTY) throw new EmptyContentError(entryPath)
-      if (!contentMatchesExtension(entryPath, bytes)) throw new ContentMismatchError(entryPath)
+      if (!contentMatchesExtension(entryPath, bytes)) {
+        throw new ContentMismatchError(entryPath, detectedFormat(bytes))
+      }
 
       return await lock.run(async () => {
         const parent = path.dirname(target)
