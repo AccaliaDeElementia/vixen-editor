@@ -1,6 +1,7 @@
 'use sanity'
 
 import { EMPTY } from '../../shared/sequences.ts'
+import { classifyFile, UPLOAD_EXTENSIONS } from '../../shared/documents.ts'
 import { serially } from '../../shared/serially.ts'
 
 import type { Dirent } from 'node:fs'
@@ -24,7 +25,6 @@ import {
   resolveDocumentPath,
   resolveEntryPath,
   resolveFolderPath,
-  UPLOAD_EXTENSIONS,
 } from './safe-path.ts'
 import { contentMatchesExtension, detectedFormat } from './signatures.ts'
 import {
@@ -35,7 +35,7 @@ import {
   ContentMismatchError,
   EmptyContentError,
 } from './store-errors.ts'
-import { classifyFile, readTree, type TreeEntry } from './tree.ts'
+import { readTree, type TreeEntry } from './tree.ts'
 import { moveToTrash, purgeFromTrash, readTrash, restoreFromTrash, type TrashEntry } from './trash.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 import { isBlank } from '../../shared/content.ts'

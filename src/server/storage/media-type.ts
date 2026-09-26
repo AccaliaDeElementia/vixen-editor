@@ -1,6 +1,6 @@
 'use sanity'
 
-import { extensionOf } from './safe-path.ts'
+import { extensionOf } from '../../shared/documents.ts'
 
 const MEDIA_TYPES: Readonly<Record<string, string>> = {
   '.md': 'text/markdown; charset=utf-8',

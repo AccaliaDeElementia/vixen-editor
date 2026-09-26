@@ -4,7 +4,7 @@ import { PAST_SEPARATOR } from '../../shared/sequences.ts'
 
 import { Hono } from 'hono'
 
-import { classifyFile } from '../storage/tree.ts'
+import { classifyFile } from '../../shared/documents.ts'
 import { DOC_PREFIX } from '../../shared/doc-url.ts'
 
 const HTTP_FOUND = 302

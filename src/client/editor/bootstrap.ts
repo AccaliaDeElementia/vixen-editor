@@ -15,6 +15,8 @@ import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
 import { createToast } from '../layout/toast.ts'
+import { createFilesClient, type FilesClient } from '../files/files-client.ts'
+import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
@@ -32,6 +34,8 @@ interface BootstrapOptions {
   session?: Session
   navigate?: (url: string) => void
   listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => void
+  files?: FilesClient
+  reopen?: () => void
 }
 
 type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }
@@ -60,6 +64,30 @@ function replaceAddress(url: string): void {
   window.history.replaceState(null, '', url)
 }
 
+function reloadPage(): void {
+  window.location.reload()
+}
+
+interface Wiring {
+  root: ParentNode
+  pathname: string
+  session: Session
+  navigate: (url: string) => void
+  files: FilesClient
+  reopen: () => void
+}
+
+function wiringFor(options: BootstrapOptions): Wiring {
+  return {
+    root: options.root ?? document,
+    pathname: options.pathname ?? window.location.pathname,
+    session: options.session ?? createSession(createDocumentClient()),
+    navigate: options.navigate ?? replaceAddress,
+    files: options.files ?? createFilesClient(),
+    reopen: options.reopen ?? reloadPage,
+  }
+}
+
 class MissingMountError extends Error {
   override readonly name = 'MissingMountError'
 
@@ -69,9 +97,7 @@ class MissingMountError extends Error {
 }
 
 async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | null> {
-  const root = options.root ?? document
-  const pathname = options.pathname ?? window.location.pathname
-  const session = options.session ?? createSession(createDocumentClient())
+  const { root, pathname, session, navigate, files, reopen } = wiringFor(options)
 
   const toast = createToast(root)
   const setStatus = (text: string): void => {
@@ -84,7 +110,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     throw new MissingMountError(MOUNT_SELECTOR)
   }
 
-  const navigate = options.navigate ?? replaceAddress
   let documentId = documentIdFromPath(pathname)
   const shownPath = displayPathFromPath(pathname)
 
@@ -160,7 +185,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   const { document: loaded } = outcome
   const { content: initial, stored } = loaded
   if (!stored && !namesFolderIndex(pathname)) {
+    const missingView = createMissingView({
+      root,
+      client: files,
+      toast,
+      reopen,
+    })
     workspace.show('missing', shownPath)
+    missingView.offer(documentId)
 
     return null
   }
@@ -213,4 +245,4 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
   })
 }
 
-export const TestOnly = { MissingMountError, bootstrap }
+export const TestOnly = { MissingMountError, bootstrap, reloadPage }

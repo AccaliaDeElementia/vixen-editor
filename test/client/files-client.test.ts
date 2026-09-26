@@ -5,11 +5,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cast } from '../cast.ts'
 
 import { createFilesClient, FilesRequestError } from '../../src/client/files/files-client.ts'
+import { isRecord } from '../../src/shared/guards.ts'
 
 let fetchMock: ReturnType<typeof vi.fn> = vi.fn()
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+}
+
+function bodyOf(mock: ReturnType<typeof vi.fn>): FormData | null {
+  const init: unknown = mock.mock.calls.at(-1)?.at(1)
+  if (!isRecord(init)) return null
+
+  return init.body instanceof FormData ? init.body : null
 }
 
 function client(): ReturnType<typeof createFilesClient> {
@@ -254,5 +262,27 @@ describe('move', () => {
     fetchMock.mockResolvedValue(new Response('', { status: 200 }))
 
     await expect(client().move('x.md', 'y.md')).resolves.toStrictEqual([])
+  })
+})
+
+describe('upload to a chosen name', () => {
+  it('sends the filename the caller asked for, so a 404 can be filled in one request', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ path: 'journal/photo.png' }, 201))
+
+    await client().upload('journal', new File(['x'], 'IMG_0042.png'), 'photo.png')
+
+    const body = bodyOf(fetchMock)
+
+    expect(body?.get('filename')).toBe('photo.png')
+  })
+
+  it('sends no filename when the caller does not choose one', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ path: 'journal/IMG_0042.png' }, 201))
+
+    await client().upload('journal', new File(['x'], 'IMG_0042.png'))
+
+    const body = bodyOf(fetchMock)
+
+    expect(body?.has('filename')).toBe(false)
   })
 })

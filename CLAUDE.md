@@ -254,6 +254,20 @@ a check, so the cost of getting it wrong compounds.
 **For anything added to this file:** quote it, and say why it is policy
 rather than a comment, a test name, or nothing at all.
 
+**This is unconditional, and it is the whole review.** Every comment the change
+adds gets quoted: a one-liner, one that seems obviously justified, one added in
+passing while fixing something else. Nothing fails when a comment is wrong, so
+the reply is the only place it can be challenged. **Say so explicitly when a
+change adds none** — "no new comments" is a claim a reviewer can check against
+the diff, where saying nothing is indistinguishable from having skipped the
+step.
+
+Skipping it has a signature worth recognising: comments here have been found
+stale, self-cancelling or merely restating the code only when unrelated work
+brought the file back into view much later, and each had been added in a commit
+whose reply did not quote it. The cost is a line; the alternative is a claim
+nobody reads again until it is false.
+
 The second matters more than it looks, because this file is the sanctioned
 way out of writing a comment — which makes it the lever you will reach for
 when the rule above blocks you. It has been reached for at that scale before:

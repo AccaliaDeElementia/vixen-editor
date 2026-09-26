@@ -2,6 +2,8 @@
 
 import path from 'node:path'
 
+import { DOCUMENT_EXTENSIONS, extensionOf } from '../../shared/documents.ts'
+
 import { joinPath } from '../../shared/store-path.ts'
 
 export class InvalidPathError extends Error {
@@ -11,10 +13,6 @@ export class InvalidPathError extends Error {
     super(`Invalid path ${JSON.stringify(value)}: ${reason}`)
   }
 }
-
-export const DOCUMENT_EXTENSIONS: readonly string[] = ['.md', '.txt']
-export const IMAGE_EXTENSIONS: readonly string[] = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']
-export const UPLOAD_EXTENSIONS: readonly string[] = [...DOCUMENT_EXTENSIONS, ...IMAGE_EXTENSIONS]
 
 // NAME_MAX on Linux is 255 *bytes*, not characters: an emoji costs four and a
 // CJK character three, so a short-looking name can still exceed it.
@@ -33,10 +31,6 @@ const ZERO_WIDTH_JOINER = '\u200D'
 
 function segmentsOf(value: string): string[] {
   return value.split('/')
-}
-
-export function extensionOf(value: string): string {
-  return path.posix.extname(value).toLowerCase()
 }
 
 function byteLength(name: string): number {

@@ -448,3 +448,14 @@ describe('the caret across a reload', () => {
     expect(recallCaret('archive/notes.md', LONG_ENOUGH)).toBe(5)
   })
 })
+
+describe('the default way back to a page whose document now exists', () => {
+  it('reloads, because the document is created by a request the editor did not make', () => {
+    const reload = vi.fn<() => void>()
+    vi.spyOn(window, 'location', 'get').mockReturnValue(cast<Location>({ reload }))
+
+    TestOnly.reloadPage()
+
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+})

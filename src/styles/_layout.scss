@@ -554,3 +554,48 @@
     animation: none;
   }
 }
+
+.view__subtitle {
+  margin: 0 0 $space-xs;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.view__restore {
+  width: min(32rem, 100%);
+  text-align: left;
+}
+
+.restore {
+  display: flex;
+  flex-direction: column;
+  gap: $space-xs;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.restore__entry {
+  display: flex;
+  align-items: baseline;
+  gap: $space-xs;
+  padding: $space-xs;
+  border: 1px solid $border;
+  border-radius: $radius;
+  background: $surface;
+}
+
+.restore__what {
+  flex: 1;
+  min-width: 0;
+}
+
+.restore__when {
+  color: $muted;
+  font-size: $font-size-sm;
+}
+
+.restore__blocked {
+  color: $muted;
+  font-size: $font-size-sm;
+}

@@ -8,7 +8,7 @@ import { createLogger } from '../logging.ts'
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { EntryExistsError, InvalidMoveError } from './store-errors.ts'
-import { classifyFile } from './tree.ts'
+import { classifyFile } from '../../shared/documents.ts'
 import { entryKindOf } from './trash.ts'
 import type { EntryKind } from '../../shared/documents.ts'
 

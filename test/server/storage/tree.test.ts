@@ -9,7 +9,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { planArchive } from '../../../src/server/storage/archive.ts'
-import { classifyFile, readTree, type FolderEntry, type TreeEntry } from '../../../src/server/storage/tree.ts'
+import { readTree, type FolderEntry, type TreeEntry } from '../../../src/server/storage/tree.ts'
 
 const OVER_NAME_MAX = 'a'.repeat(300)
 
@@ -47,20 +47,6 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await fs.rm(path.dirname(root), { recursive: true, force: true })
-})
-
-describe('classifyFile', () => {
-  it.each([
-    ['markdown', 'notes.md', 'document'],
-    ['plain text', 'notes.txt', 'document'],
-    ['png', 'photo.png', 'image'],
-    ['svg', 'diagram.svg', 'image'],
-    ['an uppercase extension', 'PHOTO.JPEG', 'image'],
-    ['an unlisted extension', 'archive.zip', null],
-    ['no extension', 'README', null],
-  ])('%s', (_label, name, expected) => {
-    expect(classifyFile(name)).toBe(expected)
-  })
 })
 
 describe('readTree', () => {
@@ -231,9 +217,6 @@ describe('readTree', () => {
 })
 
 describe('a folder deleted while the walk is in progress', () => {
-  // The deletion is real, not a mocked error: `stat` runs just before the
-  // recursive `readdir`, so removing the folder there reproduces the race
-  // exactly rather than approximating it.
   function removeAfterStatOf(name: string): void {
     const realStat = fs.stat.bind(fs)
 

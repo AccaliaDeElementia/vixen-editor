@@ -18,6 +18,7 @@ const GIF87 = text('GIF87a........')
 const GIF89 = text('GIF89a........')
 const WEBP = text('RIFF____WEBPVP8 ')
 const HTML = text('<!doctype html><html><body>hi</body></html>')
+const SVG = text('<svg xmlns="http://www.w3.org/2000/svg"></svg>')
 
 describe('accepts content that matches its extension', () => {
   it.each([
@@ -97,7 +98,7 @@ describe('detectedFormat', () => {
     ['gif87a', GIF87, '.gif'],
     ['gif89a', GIF89, '.gif'],
     ['webp', WEBP, '.webp'],
-    ['svg', text('<svg xmlns="http://www.w3.org/2000/svg"></svg>'), '.svg'],
+    ['svg', SVG, '.svg'],
   ])('names the format of %s, so a rename can be offered', (_case, content, extension) => {
     expect(detectedFormat(content)).toBe(extension)
   })
@@ -109,10 +110,21 @@ describe('detectedFormat', () => {
   it('recognises nothing in content that is not an image at all', () => {
     expect(detectedFormat(HTML)).toBeNull()
   })
+})
 
-  it('agrees with the matcher, or a rejection could offer a name that is refused', () => {
-    const detected = detectedFormat(PNG)
+describe('the formats do not overlap', () => {
+  const CANONICAL_EXTENSIONS = ['.png', '.jpg', '.gif', '.webp', '.svg']
 
-    expect(detected === null ? false : contentMatchesExtension(`photo${detected}`, PNG)).toBe(true)
+  it.each([
+    ['png', PNG],
+    ['jpeg', JPEG],
+    ['gif87a', GIF87],
+    ['gif89a', GIF89],
+    ['webp', WEBP],
+    ['svg', SVG],
+  ])('%s bytes satisfy exactly one extension, and it is the one detection reports', (_case, content) => {
+    const accepting = CANONICAL_EXTENSIONS.filter((extension) => contentMatchesExtension(`file${extension}`, content))
+
+    expect(accepting).toStrictEqual([detectedFormat(content)])
   })
 })

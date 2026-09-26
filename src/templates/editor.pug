@@ -17,6 +17,13 @@ block content
         | Nothing is stored at
         |
         code.view__path#missing-path
+      p.view__actions
+        button.view__action#missing-create(type='button' data-default-action) Create it
+        button.view__action#missing-upload(type='button') Upload a file
+        input#missing-upload-input(type='file' hidden aria-hidden='true' tabindex='-1')
+      section.view__restore#missing-restore(hidden aria-label='Restore from trash')
+        h2.view__subtitle From the trash
+        ul.restore#missing-restore-list
     section.view#view-unreachable(tabindex='-1' aria-label='Unreachable' hidden)
       h1.view__title Cannot reach the server
       p.view__message#unreachable-reason

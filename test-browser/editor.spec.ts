@@ -6,23 +6,21 @@ function newDocument(name: string): string {
   return `/doc/${name}`
 }
 
-// A named document that is not stored now opens the missing view rather than a
-// template, so a spec that wants an editor has to create the document first.
-async function given(request: APIRequestContext, name: string, content = '# seed'): Promise<string> {
+async function storedDocument(request: APIRequestContext, name: string, content = '# seed'): Promise<string> {
   await request.post('/api/files/documents', { data: { path: name, content } })
 
   return newDocument(name)
 }
 
 test('mounts the editor', async ({ page, request }) => {
-  await page.goto(await given(request, 'mounts.md'))
+  await page.goto(await storedDocument(request, 'mounts.md'))
 
   await expect(page.locator('.cm-editor')).toBeVisible()
   await expect(page.locator('#status')).toContainText('mounts.md')
 })
 
 test('renders a heading decoration with real geometry', async ({ page, request }) => {
-  await page.goto(await given(request, 'heading.md'))
+  await page.goto(await storedDocument(request, 'heading.md'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('# a heading')
@@ -37,7 +35,7 @@ test('renders a heading decoration with real geometry', async ({ page, request }
 })
 
 test('renders a marker decoration inline', async ({ page, request }) => {
-  await page.goto(await given(request, 'marker.md'))
+  await page.goto(await storedDocument(request, 'marker.md'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('TODO: something')
@@ -48,7 +46,7 @@ test('renders a marker decoration inline', async ({ page, request }) => {
 })
 
 test('a heading renders taller than body text', async ({ page, request }) => {
-  await page.goto(await given(request, 'sizing.md'))
+  await page.goto(await storedDocument(request, 'sizing.md'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('# heading\nplain body text')
@@ -62,7 +60,7 @@ test('a heading renders taller than body text', async ({ page, request }) => {
 test('persists a document across a reload', async ({ page, request }) => {
   const doc = `persist-${String(Date.now())}.md`
 
-  await page.goto(await given(request, doc))
+  await page.goto(await storedDocument(request, doc))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('# persisted content')
@@ -75,7 +73,7 @@ test('persists a document across a reload', async ({ page, request }) => {
 })
 
 test('the editor has real geometry after being revealed from hidden', async ({ page, request }) => {
-  await page.goto(await given(request, 'revealed.md'))
+  await page.goto(await storedDocument(request, 'revealed.md'))
 
   const editor = page.locator('#editor')
   await expect(editor).toBeVisible()
@@ -88,7 +86,7 @@ test('the editor has real geometry after being revealed from hidden', async ({ p
 })
 
 test('a long line wraps instead of scrolling the editor sideways', async ({ page, request }) => {
-  await page.goto(await given(request, 'wrapping.md'))
+  await page.goto(await storedDocument(request, 'wrapping.md'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('lorem ipsum dolor sit amet '.repeat(40))
@@ -114,20 +112,20 @@ test('a folder with no index still opens an editable buffer', async ({ page }) =
 })
 
 test('the title names the last two path segments', async ({ page, request }) => {
-  await page.goto(await given(request, 'titled.md'))
+  await page.goto(await storedDocument(request, 'titled.md'))
 
   await expect(page).toHaveTitle('titled.md')
 })
 
 test('the status bar names the open path and counts its words', async ({ page, request }) => {
-  await page.goto(await given(request, 'status.md', '# one two three'))
+  await page.goto(await storedDocument(request, 'status.md', '# one two three'))
 
   await expect(page.locator('#open-path')).toHaveText('status.md')
   await expect(page.locator('#word-count')).toHaveText('4 words')
 })
 
 test('the word count follows what is typed', async ({ page, request }) => {
-  await page.goto(await given(request, 'counting.md', 'seed'))
+  await page.goto(await storedDocument(request, 'counting.md', 'seed'))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('alpha beta gamma')
@@ -136,7 +134,7 @@ test('the word count follows what is typed', async ({ page, request }) => {
 })
 
 test('an edit starts a countdown bar that shrinks', async ({ page, request }) => {
-  await page.goto(await given(request, 'countdown.md', 'seed'))
+  await page.goto(await storedDocument(request, 'countdown.md', 'seed'))
   await page.locator('.cm-content').click()
   await page.keyboard.type(' edited')
 
@@ -150,7 +148,7 @@ test('an edit starts a countdown bar that shrinks', async ({ page, request }) =>
 })
 
 test('a further edit restarts the countdown rather than letting it run down', async ({ page, request }) => {
-  await page.goto(await given(request, 'restart.md', 'seed'))
+  await page.goto(await storedDocument(request, 'restart.md', 'seed'))
   await page.locator('.cm-content').click()
   await page.keyboard.type(' first')
 
@@ -164,4 +162,29 @@ test('a further edit restarts the countdown rather than letting it run down', as
   await page.keyboard.type(' second')
 
   await expect.poll(width, { timeout: 2000 }).toBeGreaterThan(shrunk)
+})
+
+test('a missing document offers to create it, and creating it opens the editor', async ({ page }) => {
+  const name = `created-${String(Date.now())}.md`
+  await page.goto(`/doc/${name}`)
+
+  await expect(page.locator('#view-missing')).toBeVisible()
+  await page.locator('#missing-create').click()
+
+  await expect(page.locator('#editor')).toBeVisible()
+  await expect(page.locator('#open-path')).toHaveText(name)
+})
+
+test('a trashed document is offered back at the path it came from', async ({ page, request }) => {
+  const name = `trashed-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# rescued' } })
+  await request.delete(`/api/files/entries/${name}`)
+
+  await page.goto(`/doc/${name}`)
+
+  const restore = page.locator('#missing-restore-list button')
+  await expect(restore).toBeVisible()
+  await restore.click()
+
+  await expect(page.locator('.cm-content')).toContainText('# rescued')
 })

@@ -10,7 +10,7 @@ export interface FilesClient {
   trash: () => Promise<TrashNode[]>
   createDocument: (entryPath: string) => Promise<void>
   createFolder: (folderPath: string) => Promise<void>
-  upload: (directory: string, file: File) => Promise<string>
+  upload: (directory: string, file: File, filename?: string) => Promise<string>
   move: (from: string, to: string) => Promise<string[]>
   remove: (entryPath: string) => Promise<void>
   restore: (entryId: string) => Promise<void>
@@ -87,10 +87,11 @@ export function createFilesClient(
       await postJson(`${baseUrl}/files/folders`, { path: folderPath })
     },
 
-    async upload(directory: string, file: File): Promise<string> {
+    async upload(directory: string, file: File, filename?: string): Promise<string> {
       const form = new FormData()
       form.append('file', file)
       form.append('path', directory)
+      if (filename !== undefined) form.append('filename', filename)
 
       const created: unknown = await send(`${baseUrl}/files/uploads`, { method: 'POST', body: form }).then(
         async (response): Promise<unknown> => await response.json(),

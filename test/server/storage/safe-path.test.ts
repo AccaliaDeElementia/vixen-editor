@@ -2,14 +2,13 @@
 
 import path from 'node:path'
 
+import { DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS } from '../../../src/shared/documents.ts'
+
 import { describe, expect, it } from 'vitest'
 
 import { toError } from '../../../src/server/errors.ts'
 
 import {
-  DOCUMENT_EXTENSIONS,
-  extensionOf,
-  IMAGE_EXTENSIONS,
   assertNormalisedName,
   InvalidPathError,
   isAllowedName,
@@ -41,19 +40,6 @@ const REJECTED_FOLDER_PATHS: ReadonlyArray<readonly [string, string]> = [
   ['a trailing slash', 'notes/'],
   ['a control character', 'notes\u0007'],
 ]
-
-describe('extensionOf', () => {
-  it.each([
-    ['a simple extension', 'notes.md', '.md'],
-    ['the last of several dots', 'release.notes.md', '.md'],
-    ['a nested path', 'journal/2026/photo.png', '.png'],
-    ['no extension at all', 'notes', ''],
-    ['an uppercase extension, folded down', 'PHOTO.PNG', '.png'],
-    ['a mixed-case extension, folded down', 'Notes.Md', '.md'],
-  ])('%s', (_label, value, expected) => {
-    expect(extensionOf(value)).toBe(expected)
-  })
-})
 
 describe('resolveDocumentPath', () => {
   describe('accepts legitimate document ids', () => {

@@ -7,8 +7,8 @@ import path from 'node:path'
 import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
-import { DOCUMENT_EXTENSIONS, extensionOf, IMAGE_EXTENSIONS, isAllowedName } from './safe-path.ts'
-import type { FileKind } from '../../shared/documents.ts'
+import { isAllowedName } from './safe-path.ts'
+import { classifyFile, type FileKind } from '../../shared/documents.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
 
@@ -31,14 +31,6 @@ interface FileEntry {
 }
 
 export type TreeEntry = FolderEntry | FileEntry
-
-export function classifyFile(name: string): FileKind | null {
-  const extension = extensionOf(name)
-  if (DOCUMENT_EXTENSIONS.includes(extension)) return 'document'
-  if (IMAGE_EXTENSIONS.includes(extension)) return 'image'
-
-  return null
-}
 
 const FOLDER_RANK = 0
 const FILE_RANK = 1

@@ -4,7 +4,7 @@ import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
 
 import { Buffer } from 'node:buffer'
 
-import { extensionOf } from './safe-path.ts'
+import { extensionOf } from '../../shared/documents.ts'
 
 const SVG_HEAD_BYTES = 1024
 
@@ -79,8 +79,6 @@ interface Signature {
   matches: (bytes: Uint8Array) => boolean
 }
 
-// Ordered, because detection returns the first match; the formats are disjoint
-// at their magic bytes, so the order is not load bearing between them.
 const SIGNATURES: readonly Signature[] = [
   { extension: '.png', matches: isPng },
   { extension: '.jpg', matches: isJpeg },

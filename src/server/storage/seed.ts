@@ -4,7 +4,7 @@ import { SEQUENCE_START } from '../../shared/sequences.ts'
 
 import path from 'node:path'
 
-import { extensionOf } from './safe-path.ts'
+import { extensionOf } from '../../shared/documents.ts'
 
 function seed(name: string): string {
   return `# ${name}\n\nTODO: start writing.\n`

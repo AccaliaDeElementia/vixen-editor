@@ -11,7 +11,7 @@ import { createFileAtomic } from './atomic-write.ts'
 import { nullWhenAbsent } from './containment.ts'
 import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { asDocumentError, DocumentNotFoundError, EntryExistsError } from './store-errors.ts'
-import { classifyFile } from './tree.ts'
+import { classifyFile } from '../../shared/documents.ts'
 import { isRecord } from '../../shared/guards.ts'
 import type { EntryKind } from '../../shared/documents.ts'
 
