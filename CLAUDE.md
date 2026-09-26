@@ -93,6 +93,24 @@ A comment is justified in exactly two cases:
    _always_ carry a human-readable rationale explaining what prompted the
    suppression. A bare suppression is not acceptable.
 
+#### One form per purpose
+
+**A tooling suppression uses `/* */`.** Always, including a one-line one, so
+the rationale it must carry has somewhere to go.
+
+**Everything else uses `//`.** Always. A non-suppression `/* */` block is a
+mistake, not a matter of taste.
+
+This is not formatting. A block comment is _the shape of a suppression
+rationale_, and a suppression rationale is the one comment this rule waves
+through on sight. Prose wearing that shape reads as already-justified and
+stops being read as prose at all — which is how a batch of them accumulated
+here across two commits, each one looking like something that had already
+passed review.
+
+Keeping the forms apart makes the two kinds distinguishable at a glance, and
+makes "is this justified?" a question that gets asked again.
+
 Design rationale is not an external fact. If the reason a `StateField` was
 chosen over a `ViewPlugin` matters, the test that would fail under the other
 choice is the place to record it.
