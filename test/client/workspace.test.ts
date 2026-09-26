@@ -17,6 +17,7 @@ function page(): HTMLElement {
       <section class="view" id="view-missing" tabindex="-1" hidden>
         <code id="missing-path"></code>
       </section>
+      <section class="view" id="view-deleted" tabindex="-1" hidden></section>
       <section class="view" id="view-unreachable" tabindex="-1" hidden>
         <button type="button" id="unreachable-retry" data-default-action>Try again</button>
       </section>
@@ -47,6 +48,7 @@ describe('which view is on screen', () => {
     ['pending', 'view-pending'],
     ['document', 'editor'],
     ['missing', 'view-missing'],
+    ['deleted', 'view-deleted'],
     ['unreachable', 'view-unreachable'],
   ])('shows only the %s view', (view, id) => {
     const root = page()
@@ -192,6 +194,12 @@ describe('markup that does not match', () => {
   })
 
   it('names one element per view, so a renamed id fails here rather than silently', () => {
-    expect(VIEW_ELEMENTS.map(([view]) => view)).toStrictEqual(['pending', 'document', 'missing', 'unreachable'])
+    expect(VIEW_ELEMENTS.map(([view]) => view)).toStrictEqual([
+      'pending',
+      'document',
+      'missing',
+      'deleted',
+      'unreachable',
+    ])
   })
 })

@@ -24,6 +24,12 @@ block content
       section.view__restore#missing-restore(hidden aria-label='Restore from trash')
         h2.view__subtitle From the trash
         ul.restore#missing-restore-list
+    section.view#view-deleted(tabindex='-1' aria-label='Deleted' hidden)
+      h1.view__title In the trash
+      p.view__message#deleted-what
+      p.view__actions#deleted-actions
+        button.view__action#deleted-restore(type='button' data-default-action) Restore
+      p.view__message#deleted-blocked(hidden)
     section.view#view-unreachable(tabindex='-1' aria-label='Unreachable' hidden)
       h1.view__title Cannot reach the server
       p.view__message#unreachable-reason

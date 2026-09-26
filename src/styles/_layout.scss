@@ -1,6 +1,13 @@
 @use 'sass:color';
 @use 'tokens' as *;
 
+// Any class setting `display` outranks the UA sheet's [hidden] rule, so a
+// hidden element with one keeps painting; !important is how that is closed
+// once for every element rather than per class.
+[hidden] {
+  display: none !important;
+}
+
 .app {
   display: grid;
   grid-template-columns: $ribbon-width var(--explorer-width, #{$explorer-default-width}) 1fr;
@@ -421,12 +428,6 @@
 .toast[data-severity='error'] {
   border-color: $danger;
   color: $danger;
-}
-
-// A class setting display beats the UA sheet’s [hidden] rule, so hiding has to
-// be restated here or every view paints at once.
-.view[hidden] {
-  display: none;
 }
 
 .view {

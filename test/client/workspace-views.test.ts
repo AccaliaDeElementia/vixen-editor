@@ -1,9 +1,12 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
+
+import { cast } from '../cast.ts'
+import type { FilesClient } from '../../src/client/files/files-client.ts'
 
 import { openEditor, page, recorded, sessionRecording, statusText, type Recorded } from './editor-fixtures.ts'
 
@@ -11,6 +14,8 @@ const { bootstrap } = TestOnly
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
+
+const NOW = '2026-09-01T10:00:00.000Z'
 
 function fakeSession(overrides: Partial<Session> = {}): Session {
   return sessionRecording(record, overrides)
@@ -125,5 +130,45 @@ describe('long lines', () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
 
     expect(view.contentDOM.classList.contains('cm-lineWrapping')).toBe(true)
+  })
+})
+
+describe('a trash entry url', () => {
+  function shown(): string[] {
+    return [...root.querySelectorAll<HTMLElement>('#editor, [id^="view-"]')]
+      .filter((element) => element.hidden === false)
+      .map((element) => element.id)
+  }
+
+  it('shows the deleted view rather than trying to load a document', async () => {
+    const trash = [{ id: 'entry-1', originalPath: 'journal/a.md', kind: 'document' as const, deletedAt: NOW }]
+    const files = cast<FilesClient>({ trash: () => Promise.resolve(trash), tree: () => Promise.resolve([]) })
+
+    await bootstrap({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
+
+    await vi.waitFor(() => {
+      expect(shown()).toStrictEqual(['view-deleted'])
+    })
+  })
+
+  it('asks the session for nothing, because a trash entry is not a document', async () => {
+    const loaded: string[] = []
+    const session = fakeSession({
+      load: (id: string) => {
+        loaded.push(id)
+        return Promise.resolve({ content: '', stored: true })
+      },
+    })
+    const files = cast<FilesClient>({ trash: () => Promise.resolve([]), tree: () => Promise.resolve([]) })
+
+    await bootstrap({ root, pathname: '/trash/entry-1', session, files })
+
+    expect(loaded).toStrictEqual([])
+  })
+
+  it('opens no editor, so nothing can autosave into a deleted entry', async () => {
+    const files = cast<FilesClient>({ trash: () => Promise.resolve([]), tree: () => Promise.resolve([]) })
+
+    await expect(bootstrap({ root, pathname: '/trash/entry-1', session: fakeSession(), files })).resolves.toBeNull()
   })
 })

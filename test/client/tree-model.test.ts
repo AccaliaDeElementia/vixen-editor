@@ -2,7 +2,15 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { ancestorsOf, folderPathsIn, parentOf, parseTrash, parseTree } from '../../src/client/files/tree-model.ts'
+import {
+  ancestorsOf,
+  entryPathsIn,
+  folderPathsIn,
+  parentOf,
+  parseTrash,
+  parseTree,
+  type TreeNode,
+} from '../../src/client/files/tree-model.ts'
 
 describe('parseTree', () => {
   it('reads a flat document', () => {
@@ -150,5 +158,25 @@ describe('parentOf', () => {
 
   it('agrees with the last ancestor, which is what it replaced at two call sites', () => {
     expect(parentOf('journal/2026/a.md')).toBe(ancestorsOf('journal/2026/a.md').at(-1))
+  })
+})
+
+describe('entryPathsIn', () => {
+  it('lists documents as well as folders, because a deleted document can be blocked too', () => {
+    const tree: TreeNode[] = [
+      { name: 'notes.md', path: 'notes.md', kind: 'document' },
+      {
+        name: 'journal',
+        path: 'journal',
+        kind: 'folder',
+        children: [{ name: 'a.md', path: 'journal/a.md', kind: 'document' }],
+      },
+    ]
+
+    expect(entryPathsIn(tree)).toStrictEqual(['notes.md', 'journal', 'journal/a.md'])
+  })
+
+  it('finds nothing in an empty tree', () => {
+    expect(entryPathsIn([])).toStrictEqual([])
   })
 })

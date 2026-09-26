@@ -459,3 +459,14 @@ describe('the default way back to a page whose document now exists', () => {
     expect(reload).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('the default way to a different page', () => {
+  it('assigns the location, because a restored document lives at a path the editor is not on', () => {
+    const assign = vi.fn<(url: string) => void>()
+    vi.spyOn(window, 'location', 'get').mockReturnValue(cast<Location>({ assign }))
+
+    TestOnly.openPage('/doc/journal/a.md')
+
+    expect(assign).toHaveBeenCalledWith('/doc/journal/a.md')
+  })
+})

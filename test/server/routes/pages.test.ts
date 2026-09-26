@@ -2,11 +2,11 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { docRoutes, TestOnly } from '../../../src/server/routes/doc.ts'
+import { pageRoutes, TestOnly } from '../../../src/server/routes/pages.ts'
 
 const { DOC_PREFIX, folderRedirectTarget } = TestOnly
 
-const app = docRoutes(() => '<html lang="en"><body><div id="editor"></div></body></html>')
+const app = pageRoutes(() => '<html lang="en"><body><div id="editor"></div></body></html>')
 
 describe('folderRedirectTarget', () => {
   it.each([
@@ -82,5 +82,26 @@ describe('GET /doc/**', () => {
     const res = await app.request('/doc/notes.md')
 
     expect(res.headers.get('content-type')).toContain('text/html')
+  })
+})
+
+describe('GET /trash/:entryId', () => {
+  it('renders the shell, so the client can show the deleted entry', async () => {
+    const res = await app.request('/trash/0d5caef1-147f-45bf-8546-270886fcaa8f')
+
+    expect(res.status).toBe(200)
+    await expect(res.text()).resolves.toContain('id="editor"')
+  })
+
+  it('does not redirect it the way an extensionless document path is redirected', async () => {
+    const res = await app.request('/trash/0d5caef1')
+
+    expect(res.status).not.toBe(302)
+  })
+
+  it('has nothing to render without an entry id', async () => {
+    const res = await app.request('/trash/')
+
+    expect(res.status).toBe(404)
   })
 })

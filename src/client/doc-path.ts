@@ -2,7 +2,7 @@
 
 import { SEQUENCE_START } from '../shared/sequences.ts'
 import { FOLDER_INDEX_NAME } from '../shared/documents.ts'
-import { DOC_PREFIX } from '../shared/doc-url.ts'
+import { DOC_PREFIX } from '../shared/page-urls.ts'
 
 const TITLE_SEGMENTS = 2
 const LAST_SEGMENT = -1

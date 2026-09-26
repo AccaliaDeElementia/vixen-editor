@@ -2,6 +2,8 @@
 
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
+import { stringFieldOf } from './json.ts'
+
 function newDocument(name: string): string {
   return `/doc/${name}`
 }
@@ -187,4 +189,28 @@ test('a trashed document is offered back at the path it came from', async ({ pag
   await restore.click()
 
   await expect(page.locator('.cm-content')).toContainText('# rescued')
+})
+
+test('a trash entry url shows what was deleted and offers it back', async ({ page, request }) => {
+  const name = `deleted-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# gone' } })
+  const trashId = await stringFieldOf(await request.delete(`/api/files/entries/${name}`), 'trashId')
+
+  await page.goto(`/trash/${trashId}`)
+
+  await expect(page.locator('#view-deleted')).toBeVisible()
+  await expect(page.locator('#deleted-what')).toContainText(`The file ${name} was deleted`)
+  await expect(page).toHaveTitle(name)
+
+  await page.locator('#deleted-restore').click()
+
+  await expect(page.locator('.cm-content')).toContainText('# gone')
+})
+
+test('a trash entry that is no longer there says so', async ({ page }) => {
+  await page.goto('/trash/0d5caef1-147f-45bf-8546-270886fcaa8f')
+
+  await expect(page.locator('#view-deleted')).toBeVisible()
+  await expect(page.locator('#deleted-what')).toContainText('already have been restored or purged')
+  await expect(page.locator('#deleted-actions')).toBeHidden()
 })

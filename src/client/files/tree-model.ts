@@ -83,3 +83,7 @@ export function ancestorsOf(entryPath: string): FolderPath[] {
 export function folderPathsIn(nodes: readonly TreeNode[]): string[] {
   return nodes.flatMap((node) => (node.kind === 'folder' ? [node.path, ...folderPathsIn(node.children)] : []))
 }
+
+export function entryPathsIn(nodes: readonly TreeNode[]): string[] {
+  return nodes.flatMap((node) => (node.kind === 'folder' ? [node.path, ...entryPathsIn(node.children)] : [node.path]))
+}

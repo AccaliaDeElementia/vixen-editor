@@ -14,8 +14,10 @@ import { createAutosave } from './autosave.ts'
 import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
+import { trashEntryIdFromPath } from '../../shared/page-urls.ts'
 import { createToast } from '../layout/toast.ts'
 import { createFilesClient, type FilesClient } from '../files/files-client.ts'
+import { createDeletedView } from '../layout/deleted-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createWorkspace } from '../layout/workspace.ts'
@@ -36,6 +38,7 @@ interface BootstrapOptions {
   listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => void
   files?: FilesClient
   reopen?: () => void
+  openUrl?: (url: string) => void
 }
 
 type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }
@@ -68,6 +71,10 @@ function reloadPage(): void {
   window.location.reload()
 }
 
+function openPage(url: string): void {
+  window.location.assign(url)
+}
+
 interface Wiring {
   root: ParentNode
   pathname: string
@@ -75,6 +82,7 @@ interface Wiring {
   navigate: (url: string) => void
   files: FilesClient
   reopen: () => void
+  openUrl: (url: string) => void
 }
 
 function wiringFor(options: BootstrapOptions): Wiring {
@@ -85,6 +93,7 @@ function wiringFor(options: BootstrapOptions): Wiring {
     navigate: options.navigate ?? replaceAddress,
     files: options.files ?? createFilesClient(),
     reopen: options.reopen ?? reloadPage,
+    openUrl: options.openUrl ?? openPage,
   }
 }
 
@@ -97,7 +106,7 @@ class MissingMountError extends Error {
 }
 
 async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | null> {
-  const { root, pathname, session, navigate, files, reopen } = wiringFor(options)
+  const { root, pathname, session, navigate, files, reopen, openUrl } = wiringFor(options)
 
   const toast = createToast(root)
   const setStatus = (text: string): void => {
@@ -119,6 +128,21 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     },
   })
   workspace.show('pending', shownPath)
+
+  const trashEntryId = trashEntryIdFromPath(pathname)
+  if (trashEntryId !== null) {
+    createDeletedView({
+      root,
+      client: files,
+      toast,
+      openUrl,
+      reveal: (at) => {
+        workspace.show('deleted', at)
+      },
+    }).offer(trashEntryId)
+
+    return null
+  }
 
   const statusBar = createStatusBar(root)
   statusBar.showPath(shownPath)
@@ -245,4 +269,4 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
   })
 }
 
-export const TestOnly = { MissingMountError, bootstrap, reloadPage }
+export const TestOnly = { MissingMountError, bootstrap, openPage, reloadPage }

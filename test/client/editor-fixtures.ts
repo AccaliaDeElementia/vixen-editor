@@ -29,7 +29,7 @@ export function page({ withMount = true, withStatus = true } = {}): HTMLElement 
     mount.id = 'editor'
     container.append(mount)
   }
-  for (const view of ['pending', 'missing', 'unreachable']) {
+  for (const view of ['pending', 'missing', 'deleted', 'unreachable']) {
     const section = document.createElement('section')
     section.id = `view-${view}`
     section.tabIndex = -1
@@ -43,6 +43,14 @@ export function page({ withMount = true, withStatus = true } = {}): HTMLElement 
   const reason = document.createElement('p')
   reason.id = 'unreachable-reason'
   container.querySelector('#view-unreachable')?.append(reason)
+
+  const deleted = container.querySelector('#view-deleted')
+  deleted?.insertAdjacentHTML(
+    'afterbegin',
+    `<p id="deleted-what"></p>
+     <p id="deleted-actions"><button type="button" id="deleted-restore">Restore</button></p>
+     <p id="deleted-blocked" hidden></p>`,
+  )
 
   document.body.append(container)
   return container

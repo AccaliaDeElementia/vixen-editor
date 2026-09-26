@@ -8,7 +8,7 @@ import type { Hono } from 'hono'
 import { buildApp } from './app.ts'
 import { loadConfig, type Config } from './config.ts'
 import { applyDebugFilter, createLogger } from './logging.ts'
-import { docRoutes } from './routes/doc.ts'
+import { pageRoutes } from './routes/pages.ts'
 import { createFsDocumentStore } from './storage/fs-store.ts'
 import { createWriteLock } from './storage/lock.ts'
 import { sweepTemporaries } from './storage/sweep.ts'
@@ -31,7 +31,7 @@ function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono
   app.use(CLIENT_BUNDLE_ROUTE, serveStatic({ root: publicDir }))
   app.route(
     '/',
-    docRoutes(() => templates.render(EDITOR_TEMPLATE, { title: APP_TITLE, archiveUrl: archiveUrlFor(STORE_ROOT) })),
+    pageRoutes(() => templates.render(EDITOR_TEMPLATE, { title: APP_TITLE, archiveUrl: archiveUrlFor(STORE_ROOT) })),
   )
 
   return app
