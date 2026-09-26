@@ -111,6 +111,68 @@ passed review.
 Keeping the forms apart makes the two kinds distinguishable at a glance, and
 makes "is this justified?" a question that gets asked again.
 
+#### A firing rule is a defect report about the code
+
+A suppression is the one comment this file waves through on sight, which is
+exactly what makes it the one most worth resisting. Before writing one, treat
+the rule as having found something real, and look **wider than the line it
+points at** — the line is where the rule noticed, rarely where the problem is.
+
+1. **Ask what the rule objects to in the code's own terms.** A rule name is a
+   symptom, not a diagnosis.
+2. **Look for the same rule firing elsewhere.** Several sites sharing a
+   rationale are one missing abstraction wearing several hats, and the
+   rationale being copyable is the tell.
+3. **Try the restructuring.** Extract the helper, name the intermediate, split
+   the function, change the return type, replace the loop. Suppressions
+   removed this way here have twice turned out to be sitting on top of live
+   bugs that the suppression was hiding.
+4. **Only then suppress**, when no practical restructuring avoids it, and say
+   in the rationale what was tried and why it did not work.
+
+A suppression that survives this is usually one where the rule asks for the
+opposite of the requirement — serialising where it wants concurrency, say.
+Saying so is what marks it permanent rather than pending.
+
+#### A rationale expires, and nothing announces it
+
+The gate re-checks the code around a suppression forever, and never re-checks
+the claim that justified it. Some claims cannot expire: `NAME_MAX` is 255
+whatever happens next. The dangerous shape is **"nothing available can express
+this"**, because that is a statement about the toolchain rather than about the
+code, and the toolchain moves underneath it in silence.
+
+Both `promise/avoid-new` suppressions in `src/` said exactly that, about a
+dialog's close event and about a mutex waiter, and both were true when
+written. The ES2024 bump shipped `Promise.withResolvers` — precisely the
+deferred they were hand-rolling — and neither was revisited until a rule about
+suppressions was being written months later.
+
+So these changes carry an obligation to re-read the suppressions they could
+reach, **in the same commit that makes them**:
+
+| The change                                   | What it can retire                                  |
+| -------------------------------------------- | --------------------------------------------------- |
+| a language or runtime target bump            | "no existing construct can express this"            |
+| a dependency or lint-config update           | a rule that changed shape, or stopped firing at all |
+| restructuring the code a suppression sits in | the condition the rule was objecting to             |
+| deleting code                                | a relaxation or suppression that now covers nothing |
+
+**Checking is cheaper than reasoning about it.** Delete the suppression and
+run the gate. Passing means the rationale had expired; failing tells you which
+part is still load bearing. That takes seconds and needs no judgement, so
+reach for it rather than re-reading the claim and deciding whether you still
+believe it.
+
+Relaxations in `eslint.config.js` need the same treatment and get it least
+often, because they sit nowhere near the code they cover and nothing brings
+them back into review. Ones left on for rules with no remaining sites have
+been found here before.
+
+The same expiry applies to an **external-fact comment** whose fact is about a
+tool rather than about the world — what a package defaults to can change with
+a version bump, where a file-format offset cannot.
+
 Design rationale is not an external fact. If the reason a `StateField` was
 chosen over a `ViewPlugin` matters, the test that would fail under the other
 choice is the place to record it.
@@ -183,6 +245,11 @@ a scan months later.
 **For a comment:** quote it, name which justified case it falls under, and
 say what you considered changing in the code instead and why that did not
 work. One line each.
+
+**For a suppression:** quote it, name the rule, and say which restructurings
+were tried and why each failed to remove it. A suppression nobody argued with
+is a suppression nobody checked — and unlike a comment, it also switches off
+a check, so the cost of getting it wrong compounds.
 
 **For anything added to this file:** quote it, and say why it is policy
 rather than a comment, a test name, or nothing at all.
