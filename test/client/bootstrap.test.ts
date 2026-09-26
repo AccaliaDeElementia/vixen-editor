@@ -159,6 +159,8 @@ describe('saving', () => {
 
   it('reports a successful save', async () => {
     const view = await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
+    view.dispatch({ changes: { from: 0, insert: 'extra ' } })
+
     await pressSave(view)
 
     expect(statusText(root)).toBe('Saved notes.md')
@@ -167,10 +169,36 @@ describe('saving', () => {
   it('reports a failed save without throwing', async () => {
     const session = fakeSession({ save: () => Promise.reject(new Error('server exploded')) })
     const view = await bootstrap({ root, pathname: '/doc/notes.md', session })
+    view.dispatch({ changes: { from: 0, insert: 'extra ' } })
 
     await pressSave(view)
 
     expect(statusText(root)).toBe('Save failed: server exploded')
+  })
+
+  it('does not treat moving the caret as an edit', async () => {
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
+    view.dispatch({ selection: { anchor: 1 } })
+
+    await pressSave(view)
+
+    expect(saved).toStrictEqual([])
+  })
+
+  it('writes nothing when the buffer matches what was loaded', async () => {
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
+
+    await pressSave(view)
+
+    expect(saved).toStrictEqual([])
+  })
+
+  it('says so rather than claiming a save that did not happen', async () => {
+    const view = await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
+
+    await pressSave(view)
+
+    expect(statusText(root)).toBe('No changes in notes.md')
   })
 })
 
@@ -213,8 +241,16 @@ async function pressSave(view: EditorView): Promise<void> {
   view.contentDOM.dispatchEvent(
     new KeyboardEvent('keydown', { key: 's', code: 'KeyS', ctrlKey: true, bubbles: true, cancelable: true }),
   )
-  await Promise.resolve()
-  await Promise.resolve()
+  await everyPendingMicrotask()
+}
+
+async function everyPendingMicrotask(): Promise<void> {
+  /* eslint-disable-next-line promise/avoid-new -- a macrotask boundary is not
+     composable from existing promises; it is the thing being created, and
+     reaching one drains every microtask queued behind it */
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve)
+  })
 }
 
 describe('bootstrap follows a document that moves underneath it', () => {

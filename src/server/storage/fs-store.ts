@@ -37,6 +37,7 @@ import {
 import { classifyFile, readTree, type TreeEntry } from './tree.ts'
 import { moveToTrash, purgeFromTrash, readTrash, restoreFromTrash, type TrashEntry } from './trash.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
+import { isBlank } from '../../shared/content.ts'
 import { joinPath } from '../../shared/store-path.ts'
 
 const logStore = createLogger('storage/fs-store')
@@ -60,7 +61,7 @@ export interface DocumentStore {
 }
 
 function assertNotBlank(id: string, content: string): void {
-  if (content.trim() === '') throw new EmptyContentError(id)
+  if (isBlank(content)) throw new EmptyContentError(id)
 }
 
 async function readDocument(id: string, target: string): Promise<string> {

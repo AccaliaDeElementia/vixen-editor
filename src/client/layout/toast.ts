@@ -94,9 +94,6 @@ function createSlot(severity: Severity, initial: string, isOverflow: boolean, go
     }, dwellFor(severity))
   }
 
-  /* Re-showing content on a toast that is already fading has to cancel the
-     fade as well as the timer behind it, or the toast keeps the new text at
-     zero opacity and disappears anyway. */
   function refresh(): void {
     if (element === null) return
 
@@ -160,21 +157,18 @@ function createController(region: HTMLElement): Controller {
     return shown.filter((slot) => slot.severity === 'error').length
   }
 
-  /* An error is admitted over the cap while fewer than MAX_VISIBLE errors are
-     showing, so a burst of failures is never hidden behind routine messages.
-     The stack therefore peaks at twice MAX_VISIBLE. */
   function hasRoomFor(severity: Severity): boolean {
     if (shown.length < MAX_VISIBLE) return true
 
-    return severity === 'error' && shownErrors() < MAX_VISIBLE
+    const failureOverChatter = severity === 'error' && shownErrors() < MAX_VISIBLE
+
+    return failureOverChatter
   }
 
-  /* Errors first, then arrival order, so a queued failure is never held behind
-     routine messages that happened to arrive before it. */
   function promote(): void {
     for (;;) {
-      const failure = queued.findIndex((slot) => slot.severity === 'error')
-      const at = failure === NOT_FOUND ? FROM_THE_FRONT : failure
+      const queuedFailure = queued.findIndex((slot) => slot.severity === 'error')
+      const at = queuedFailure === NOT_FOUND ? FROM_THE_FRONT : queuedFailure
       const next = queued.at(at)
       if (next === undefined || !hasRoomFor(next.severity)) return
 
@@ -196,9 +190,6 @@ function createController(region: HTMLElement): Controller {
       return
     }
 
-    /* The summary is what tells the user messages were dropped, so it is never
-       itself droppable — it goes to the head of the queue, ahead of the
-       messages it is counting. */
     if (slot.isOverflow) {
       queued.unshift(slot)
       return

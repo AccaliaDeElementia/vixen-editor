@@ -152,9 +152,6 @@ describe('every source file belongs to exactly one typecheck project', () => {
   })
 })
 
-/* A relaxation covers code nobody has written yet, so unlike a suppression at a
-   line it never comes back into review. Naming the approved set here makes a
-   fourth a two-file edit. Every entry is scoped to tests or tooling. */
 const APPROVED_RELAXATIONS = [
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/no-magic-numbers' },
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/promise-function-async' },

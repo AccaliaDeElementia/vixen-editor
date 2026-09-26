@@ -7,6 +7,7 @@ import { docUrlFor, documentIdFromPath, pathAfterMove } from '../doc-path.ts'
 import { onDocumentMoved } from '../document-moved.ts'
 import { errorMessage } from '../error-message.ts'
 
+import { createAutosave } from './autosave.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
 import { createToast } from '../layout/toast.ts'
@@ -54,16 +55,29 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   const navigate = options.navigate ?? replaceAddress
   let documentId = documentIdFromPath(pathname)
 
-  const save = (view: EditorView): boolean => {
-    const target = documentId
-    void session
-      .save(target, view.state.doc.toString())
-      .then(() => {
-        setStatus(`Saved ${target}`)
-      })
-      .catch((error: unknown) => {
+  const autosave = createAutosave({
+    async save(content: string): Promise<void> {
+      const target = documentId
+      try {
+        await session.save(target, content)
+      } catch (error) {
         toast.error(`Save failed: ${errorMessage(error)}`)
-      })
+        throw error
+      }
+    },
+  })
+
+  const save = (): boolean => {
+    const target = documentId
+    if (autosave.state() === 'clean') {
+      setStatus(`No changes in ${target}`)
+      return true
+    }
+
+    void autosave.flush().then(() => {
+      if (autosave.state() === 'clean') setStatus(`Saved ${target}`)
+    })
+
     return true
   }
 
@@ -82,13 +96,21 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     }
   })
 
+  const initial = await session.load(documentId)
   const view = new EditorView({
     parent: mount,
     state: createEditorState({
-      doc: await session.load(documentId),
-      extensions: [basicSetup, keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }])],
+      doc: initial,
+      extensions: [
+        basicSetup,
+        keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) autosave.changed(update.state.doc.toString())
+        }),
+      ],
     }),
   })
+  autosave.reset(initial)
 
   setStatus(`Editing ${documentId} — press Ctrl/Cmd+S to save`)
   return view
