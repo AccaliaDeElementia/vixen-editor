@@ -1,6 +1,7 @@
 'use sanity'
 
-import { EMPTY, NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
+import { SEQUENCE_START } from '../../shared/sequences.ts'
+import { directoryOf, isStorePath, resolveDestination } from '../../shared/link-paths.ts'
 
 import path from 'node:path'
 
@@ -16,7 +17,6 @@ interface Reading {
   suffix: string
 }
 
-const NOT_A_STORE_PATH = /^(?:[a-zA-Z][a-zA-Z0-9+.\-]*:|\/)/v
 const SUFFIX_START = /[#?]/v
 const EXPLICITLY_RELATIVE = './'
 
@@ -27,30 +27,6 @@ export function movedPath(moves: readonly PathMove[], entryPath: string): string
   }
 
   return entryPath
-}
-
-function directoryOf(entryPath: string): string {
-  const cut = entryPath.lastIndexOf('/')
-
-  return cut === NOT_FOUND ? '' : entryPath.slice(SEQUENCE_START, cut)
-}
-
-function resolveWithin(directory: string, destination: string): string | null {
-  const segments = directory === '' ? [] : directory.split('/')
-
-  for (const segment of destination.split('/')) {
-    if (segment === '' || segment === '.') continue
-
-    if (segment !== '..') {
-      segments.push(segment)
-      continue
-    }
-
-    if (segments.length === EMPTY) return null
-    segments.pop()
-  }
-
-  return segments.join('/')
 }
 
 function expressRelative(writtenPath: string, directory: string, target: string): string {
@@ -83,14 +59,14 @@ function relinkDestination(
   newDirectory: string,
   moves: readonly PathMove[],
 ): string {
-  if (NOT_A_STORE_PATH.test(destination)) return destination
+  if (!isStorePath(destination)) return destination
 
   let rebased: string | null = null
 
   for (const { pathPart, suffix } of readingsInPrecedenceOrder(destination)) {
     if (pathPart === '') continue
 
-    const oldTarget = resolveWithin(oldDirectory, pathPart)
+    const oldTarget = resolveDestination(oldDirectory, pathPart)
     if (oldTarget === null) continue
 
     const newTarget = movedPath(moves, oldTarget)

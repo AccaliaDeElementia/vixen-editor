@@ -83,3 +83,10 @@
 .cm-vixen-marker-note {
   background: $success;
 }
+
+.cm-vixen-link {
+  color: $info;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+}

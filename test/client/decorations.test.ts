@@ -204,3 +204,60 @@ describe('vixenDecorationField', () => {
     expect(flatten(next.field(vixenDecorationField))).toStrictEqual([])
   })
 })
+
+describe('a markdown link to somewhere in the store', () => {
+  function linksIn(markdown: string): Array<{ destination: string; title: string }> {
+    const found: Array<{ destination: string; title: string }> = []
+    const set = computeDecorations(EditorState.create({ doc: markdown }))
+    const cursor = set.iter()
+
+    while (cursor.value !== null) {
+      const spec: unknown = cursor.value.spec
+      const attributes: unknown = isRecord(spec) ? spec.attributes : null
+      if (isRecord(attributes) && typeof attributes['data-destination'] === 'string') {
+        found.push({
+          destination: attributes['data-destination'],
+          title: typeof attributes.title === 'string' ? attributes.title : '',
+        })
+      }
+      cursor.next()
+    }
+
+    return found
+  }
+
+  it('is marked so the gesture has something to land on', () => {
+    expect(linksIn('see [notes](journal/a.md) for more').map((link) => link.destination)).toStrictEqual([
+      'journal/a.md',
+    ])
+  })
+
+  it('says how to open it, which is the only clue the gesture gets', () => {
+    expect(linksIn('[a](a.md)').at(0)?.title).toBe('Ctrl/Cmd+click to open')
+  })
+
+  it('marks an image destination too, because it opens the same way', () => {
+    expect(linksIn('![p](./photo.png)').map((link) => link.destination)).toStrictEqual(['./photo.png'])
+  })
+
+  it.each([
+    ['an absolute url', '[a](https://example.test/a.md)'],
+    ['a mailto', '[a](mailto:someone@example.test)'],
+    ['a route rather than a document', '[a](/doc/a.md)'],
+    ['an empty destination', '[a]()'],
+  ])('leaves %s unmarked', (_case, markdown) => {
+    expect(linksIn(markdown)).toStrictEqual([])
+  })
+
+  it('marks every link on a line, not just the first', () => {
+    expect(linksIn('[a](a.md) and [b](b.md)').map((link) => link.destination)).toStrictEqual(['a.md', 'b.md'])
+  })
+
+  it('leaves a path inside a fenced block alone, because it is being documented', () => {
+    expect(linksIn('```\n[a](a.md)\n```')).toStrictEqual([])
+  })
+
+  it('tolerates whitespace after the opening bracket', () => {
+    expect(linksIn('[a]( a.md)').map((link) => link.destination)).toStrictEqual(['a.md'])
+  })
+})

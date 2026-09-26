@@ -406,3 +406,51 @@ test('discarding lets the navigation through', async ({ page, request }) => {
   await request.delete(`/api/files/entries/${first}`)
   await request.delete(`/api/files/entries/${second}`)
 })
+
+test('ctrl-clicking a link in the document opens it', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const folder = `links-${stamp}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: `${folder}/target.md`, content: '# the target' } })
+  await request.post('/api/files/documents', {
+    data: { path: `${folder}/source.md`, content: 'see [the target](target.md) for more' },
+  })
+
+  await page.goto(`/doc/${folder}/source.md`)
+
+  const link = page.locator('.cm-vixen-link')
+  await expect(link).toHaveAttribute('title', 'Ctrl/Cmd+click to open')
+
+  await link.click({ modifiers: ['ControlOrMeta'] })
+
+  await expect(page.locator('.cm-content')).toContainText('# the target')
+  expect(new URL(page.url()).pathname).toBe(`/doc/${folder}/target.md`)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a plain click on a link only moves the caret', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const name = `plainlink-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: 'see [a](other.md)' } })
+
+  await page.goto(`/doc/${name}`)
+  await page.locator('.cm-vixen-link').click()
+
+  expect(new URL(page.url()).pathname).toBe(`/doc/${name}`)
+  await expect(page.locator('.cm-content')).toContainText('see [a](other.md)')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('an external link in the document is not decorated', async ({ page, request }) => {
+  const name = `external-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '[out](https://example.test/a.md)' } })
+
+  await page.goto(`/doc/${name}`)
+  await expect(page.locator('.cm-content')).toContainText('example.test')
+
+  await expect(page.locator('.cm-vixen-link')).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${name}`)
+})

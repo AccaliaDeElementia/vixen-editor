@@ -28,6 +28,7 @@ import { createWorkspace } from '../layout/workspace.ts'
 import { createSession, type LoadedDocument, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 import { describeRefusal } from './leaving.ts'
+import { bindLinkClicks } from './link-clicks.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 
 const MOUNT_SELECTOR = '#editor'
@@ -218,6 +219,13 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   }
 
   const view = new EditorView({ parent: mount, state: stateFor('', TOP_OF_DOCUMENT) })
+
+  bindLinkClicks(view.contentDOM, {
+    holder: documentId,
+    open: (entryPath) => {
+      openUrl(docUrlFor(entryPath))
+    },
+  })
 
   const deletedView = createDeletedView({
     root,

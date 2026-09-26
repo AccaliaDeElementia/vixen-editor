@@ -5,6 +5,7 @@ import type { EditorState, Line, Range } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
+import { isStorePath } from '../../shared/link-paths.ts'
 
 const NOT_HEADING_MARKER = /[^#]/gv
 const WHOLE_MATCH = 0
@@ -16,6 +17,9 @@ const NEXT_LINE = 1
 const ATX_HEADING = /^ {0,3}#{1,6}(?: |$)/v
 const CODE_FENCE = /^ {0,3}(?:`{3,}|~{3,})/v
 const CALLOUT_MARKER = /(?<![A-Za-z0-9_])(?:TODO|FIXME|NOTE):/gv
+const INLINE_LINK = /(?<=\]\(\s*)[^\s\)]*/gv
+
+const OPEN_HINT = 'Ctrl/Cmd+click to open'
 
 function headingDecoration(level: number): Decoration {
   return Decoration.line({ class: `cm-vixen-heading cm-vixen-heading-${String(level)}` })
@@ -23,6 +27,13 @@ function headingDecoration(level: number): Decoration {
 
 function markerDecoration(keyword: string): Decoration {
   return Decoration.mark({ class: `cm-vixen-marker cm-vixen-marker-${keyword.toLowerCase()}` })
+}
+
+function linkDecoration(destination: string): Decoration {
+  return Decoration.mark({
+    class: 'cm-vixen-link',
+    attributes: { title: OPEN_HINT, 'data-destination': destination },
+  })
 }
 
 function headingLevelOf(match: string): number {
@@ -84,6 +95,18 @@ function decorateLine(line: Line, ranges: Array<Range<Decoration>>): void {
   for (const marker of line.text.matchAll(CALLOUT_MARKER)) {
     const from = line.from + marker.index
     ranges.push(markerDecoration(keywordOf(marker[WHOLE_MATCH])).range(from, from + marker[WHOLE_MATCH].length))
+  }
+
+  decorateLinks(line, ranges)
+}
+
+function decorateLinks(line: Line, ranges: Array<Range<Decoration>>): void {
+  for (const link of line.text.matchAll(INLINE_LINK)) {
+    const { [WHOLE_MATCH]: destination } = link
+    if (!isStorePath(destination)) continue
+
+    const from = line.from + link.index
+    ranges.push(linkDecoration(destination).range(from, from + destination.length))
   }
 }
 
