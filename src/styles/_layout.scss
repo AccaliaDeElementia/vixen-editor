@@ -486,3 +486,71 @@
     outline-offset: 2px;
   }
 }
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  padding: 0.35em $space-sm;
+  border-bottom: 1px solid $border;
+  background: $gray-900;
+  color: $muted;
+  font-size: $font-size-sm;
+
+  p {
+    margin: 0;
+  }
+}
+
+.statusbar__path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: $body-color;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusbar__save {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.statusbar__countdown {
+  width: 6em;
+  height: 2px;
+  border-radius: 1px;
+  background: $border;
+
+  // A CSS animation restarts only when its name changes, not when a value the
+  // selector ignores changes, so the two runs differ in name and nothing else.
+  @each $run in a, b {
+    &[data-running='#{$run}'] {
+      background: $primary;
+      transform-origin: left center;
+      animation: statusbar-countdown-#{$run} var(--countdown) linear forwards;
+    }
+  }
+}
+
+@each $run in a, b {
+  @keyframes statusbar-countdown-#{$run} {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
+    }
+  }
+}
+
+// The words already carry the state, so the fallback drops the motion rather
+// than replacing it.
+@media (prefers-reduced-motion: reduce) {
+  .statusbar__countdown[data-running] {
+    animation: none;
+  }
+}

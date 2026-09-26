@@ -15,6 +15,7 @@ import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
 import { createToast } from '../layout/toast.ts'
+import { createStatusBar } from '../layout/status-bar.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
 import { createSession, type LoadedDocument, type Session } from './session.ts'
@@ -94,6 +95,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   })
   workspace.show('pending', shownPath)
 
+  const statusBar = createStatusBar(root)
+  statusBar.showPath(shownPath)
+
   let caretPosition = TOP_OF_DOCUMENT
 
   async function writeDocument(content: string): Promise<void> {
@@ -107,7 +111,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     }
   }
 
-  const autosave = createAutosave({ save: writeDocument })
+  const autosave = createAutosave({
+    save: writeDocument,
+    report: (state) => {
+      statusBar.showSaveState(state, autosave.dueAt())
+    },
+  })
 
   const save = (): boolean => {
     const target = documentId
@@ -131,6 +140,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
       session.rename(documentId, moved)
       documentId = moved
       navigate(docUrlFor(moved))
+      statusBar.showPath(moved)
       setStatus(`Now editing ${moved}`)
     }
 
@@ -168,12 +178,17 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
         keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
         EditorView.updateListener.of((update) => {
           caretPosition = caretIn(update.state)
-          if (update.docChanged) autosave.changed(update.state.doc.toString())
+          if (!update.docChanged) return
+
+          const content = update.state.doc.toString()
+          autosave.changed(content)
+          statusBar.showWordCount(content)
         }),
       ],
     }),
   })
   autosave.reset(initial)
+  statusBar.showWordCount(initial)
   view.dispatch({ effects: EditorView.scrollIntoView(caret) })
   workspace.show('document', shownPath)
 

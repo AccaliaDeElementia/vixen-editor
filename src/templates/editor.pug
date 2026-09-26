@@ -2,6 +2,12 @@ extends layout
 
 block content
   section.workspace(aria-label='Editor')
+    .statusbar
+      p.statusbar__path#open-path
+      p.statusbar__save
+        span.statusbar__label#save-label
+        span.statusbar__countdown#save-countdown(aria-hidden='true')
+      p.statusbar__words#word-count
     #editor(hidden)
     section.view#view-pending(tabindex='-1' aria-label='Loading' hidden)
       p.view__message Loading…
