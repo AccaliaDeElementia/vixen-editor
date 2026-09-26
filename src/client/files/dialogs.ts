@@ -65,18 +65,17 @@ function bindEnterToConfirm(parts: Parts): void {
 }
 
 async function settled(dialog: HTMLDialogElement): Promise<string> {
-  /* eslint-disable-next-line promise/avoid-new -- a dialog settles when the
-     user closes it, which is an event in a later frame rather than a value any
-     composition of existing promises can produce */
-  return await new Promise<string>((resolve) => {
-    dialog.addEventListener(
-      'close',
-      () => {
-        resolve(dialog.returnValue)
-      },
-      { once: true },
-    )
-  })
+  const closed = Promise.withResolvers<string>()
+
+  dialog.addEventListener(
+    'close',
+    () => {
+      closed.resolve(dialog.returnValue)
+    },
+    { once: true },
+  )
+
+  return await closed.promise
 }
 
 function reset(parts: Parts, heading: string, confirmLabel: string): void {
@@ -87,8 +86,23 @@ function reset(parts: Parts, heading: string, confirmLabel: string): void {
   confirm.textContent = confirmLabel
 }
 
+async function attempt(parts: Parts, request: PromptRequest): Promise<boolean> {
+  const { dialog, input, error } = parts
+
+  const outcome = await settled(dialog)
+  if (outcome !== CONFIRM_VALUE) return false
+
+  const failure = await request.submit(input.value.trim())
+  if (failure === null) return true
+
+  error.textContent = failure
+  dialog.showModal()
+
+  return await attempt(parts, request)
+}
+
 async function promptWith(parts: Parts, request: PromptRequest): Promise<boolean> {
-  const { dialog, message, field, label, input, error } = parts
+  const { dialog, message, field, label, input } = parts
   const { label: fieldLabel } = request
 
   reset(parts, request.title, request.confirmLabel)
@@ -98,20 +112,7 @@ async function promptWith(parts: Parts, request: PromptRequest): Promise<boolean
   input.value = request.value ?? ''
   dialog.showModal()
 
-  for (;;) {
-    /* eslint-disable-next-line no-await-in-loop -- the loop is the dialog
-       staying open across a rejected name, so each turn waits on the user */
-    const outcome = await settled(dialog)
-    if (outcome !== CONFIRM_VALUE) return false
-
-    /* eslint-disable-next-line no-await-in-loop -- as above: one submission is
-       attempted at a time, because the user makes them one at a time */
-    const failure = await request.submit(input.value.trim())
-    if (failure === null) return true
-
-    error.textContent = failure
-    dialog.showModal()
-  }
+  return await attempt(parts, request)
 }
 
 async function confirmWith(parts: Parts, request: ConfirmRequest): Promise<boolean> {

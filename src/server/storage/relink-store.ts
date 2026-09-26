@@ -7,6 +7,7 @@ import { createLogger } from '../logging.ts'
 import { movedPath, relinkDocument, type PathMove } from '../markdown/relink.ts'
 
 import { replaceFileAtomic } from './atomic-write.ts'
+import { serially } from '../../shared/serially.ts'
 
 const logRelink = createLogger('storage/relink-store')
 const logFailed = createLogger('storage/relink-store', 'failed')
@@ -47,17 +48,14 @@ export async function relinkAfterMove(
   const rewritten: string[] = []
   const failed: string[] = []
 
-  for (const [current, holder] of holderOfEachPath(documentIds, moves)) {
+  await serially(holderOfEachPath(documentIds, moves), async ([current, holder]) => {
     try {
-      /* eslint-disable-next-line no-await-in-loop -- one document at a time, for
-         the same reason the document walk is sequential: fanning out over a large
-         store would hold every file open at once */
       if (await repair(path.join(root, current), holder, moves)) rewritten.push(current)
     } catch (error) {
       failed.push(current)
       logFailed('%s: %O', current, error)
     }
-  }
+  })
 
   logRelink('rewrote %d, failed %d, of %d documents', rewritten.length, failed.length, documentIds.length)
 

@@ -6,21 +6,12 @@ export interface Gate {
 }
 
 export function gate(): Gate {
-  let open = (): void => undefined
-
-  /* eslint-disable-next-line promise/avoid-new -- a gate is a deferred settled
-     by a later call in a different frame; every composition this rule prefers
-     needs the promise to already exist, which is the thing being created */
-  const held = new Promise<void>((resolve) => {
-    open = () => {
-      resolve()
-    }
-  })
+  const held: PromiseWithResolvers<void> = Promise.withResolvers()
 
   return {
     open: () => {
-      open()
+      held.resolve()
     },
-    hold: () => held,
+    hold: () => held.promise,
   }
 }

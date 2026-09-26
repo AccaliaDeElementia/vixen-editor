@@ -1,6 +1,7 @@
 'use sanity'
 
 import { EMPTY } from '../../shared/sequences.ts'
+import { serially } from '../../shared/serially.ts'
 
 import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
@@ -98,20 +99,17 @@ async function collectDocumentIds(dir: string, prefix: string, found: string[]):
   const entries = await readdirOrNull(dir)
   if (entries === null) return
 
-  for (const entry of entries) {
-    if (!isAllowedName(entry.name)) continue
+  await serially(entries, async (entry) => {
+    if (!isAllowedName(entry.name)) return
 
     const id = joinPath(prefix, entry.name)
 
     if (entry.isDirectory()) {
-      /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk is
-         inherently sequential, and fanning out with Promise.all would risk
-         exhausting file descriptors on a deep document tree for no real gain */
       await collectDocumentIds(path.join(dir, entry.name), id, found)
     } else if (isDocumentFile(entry)) {
       found.push(id)
     }
-  }
+  })
 }
 
 export function createFsDocumentStore(

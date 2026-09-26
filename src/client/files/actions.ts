@@ -6,6 +6,7 @@ import type { Toast } from '../layout/toast.ts'
 import type { Dialogs } from './dialogs.ts'
 import { FilesRequestError, type FilesClient } from './files-client.ts'
 import { archiveUrlFor } from '../../shared/api.ts'
+import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
 
 const ACTION_SELECTORS = {
@@ -66,6 +67,14 @@ function runnerFor(context: ActionContext): (work: () => Promise<void>) => void 
   }
 }
 
+async function uploadAll(context: ActionContext, files: readonly File[]): Promise<void> {
+  await serially(files, async (file) => {
+    await context.client.upload(context.targetDirectory(), file).catch((error: unknown) => {
+      context.toast.error(`${file.name}: ${errorMessage(error)}`)
+    })
+  })
+}
+
 function bindUpload(context: ActionContext, run: (work: () => Promise<void>) => void): void {
   const input = context.root.querySelector<HTMLInputElement>(ACTION_SELECTORS.uploadInput)
 
@@ -76,14 +85,7 @@ function bindUpload(context: ActionContext, run: (work: () => Promise<void>) => 
     input.value = ''
 
     run(async () => {
-      for (const file of files) {
-        /* eslint-disable-next-line no-await-in-loop -- one request per file, so
-           a rejected file does not discard the rest; the server's write lock
-           serialises them regardless of what the client does */
-        await context.client.upload(context.targetDirectory(), file).catch((error: unknown) => {
-          context.toast.error(`${file.name}: ${errorMessage(error)}`)
-        })
-      }
+      await uploadAll(context, files)
     })
   })
 }

@@ -9,6 +9,7 @@ import { createLogger } from '../logging.ts'
 
 import { isTemporaryName } from './atomic-write.ts'
 import { nullWhenAbsent } from './containment.ts'
+import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
 
 const logSwept = createLogger('storage/sweep')
@@ -18,27 +19,23 @@ async function sweepDirectory(directory: string, prefix: string, removed: string
   const entries = await nullWhenAbsent(async () => await fs.readdir(directory, { withFileTypes: true }))
   if (entries === null) return
 
-  for (const entry of entries) {
+  await serially(entries, async (entry) => {
     const here = path.join(directory, entry.name)
     const entryPath = joinPath(prefix, entry.name)
 
     if (entry.isDirectory()) {
       if (isTemporaryName(entry.name)) logKept('%s is a directory, so nothing here wrote it', entryPath)
 
-      /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk
-         is inherently sequential, and fanning out would risk exhausting file
-         descriptors on a deep tree for no real gain */
       await sweepDirectory(here, entryPath, removed)
-      continue
+      return
     }
 
     // isFile is false for a symlink, never true for one it points at.
-    if (!entry.isFile() || !isTemporaryName(entry.name)) continue
+    if (!entry.isFile() || !isTemporaryName(entry.name)) return
 
-    /* eslint-disable-next-line no-await-in-loop -- see above */
     await fs.rm(here)
     removed.push(entryPath)
-  }
+  })
 }
 
 export async function sweepTemporaries(docsRoot: string): Promise<string[]> {

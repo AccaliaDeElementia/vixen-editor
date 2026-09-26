@@ -9,6 +9,7 @@ import { createLogger } from '../logging.ts'
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { DOCUMENT_EXTENSIONS, extensionOf, IMAGE_EXTENSIONS, isAllowedName } from './safe-path.ts'
 import type { FileKind } from '../../shared/documents.ts'
+import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
 
 const logEscape = createLogger('storage/tree', 'symlinkEscape')
@@ -123,15 +124,12 @@ async function buildEntry(entry: Dirent, at: Location): Promise<TreeEntry | null
 async function buildEntries(entries: readonly Dirent[], at: Location): Promise<TreeEntry[]> {
   const found: TreeEntry[] = []
 
-  for (const entry of entries) {
-    if (!isAllowedName(entry.name)) continue
+  await serially(entries, async (entry) => {
+    if (!isAllowedName(entry.name)) return
 
-    /* eslint-disable-next-line no-await-in-loop -- a recursive directory walk is
-       inherently sequential, and fanning out with Promise.all would risk
-       exhausting file descriptors on a deep document tree for no real gain */
     const built = await buildEntry(entry, at)
     if (built !== null) found.push(built)
-  }
+  })
 
   return found.sort(compareEntries)
 }

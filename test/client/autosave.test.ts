@@ -3,8 +3,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createAutosave, TestOnly, type Autosave, type SaveState } from '../../src/client/editor/autosave.ts'
+import { serially } from '../../src/shared/serially.ts'
 
 const { CEILING_MS, IDLE_MS } = TestOnly
+
+const ALMOST_A_WINDOW = IDLE_MS - 1
+const EDITS_PAST_THE_CEILING = Math.ceil(CEILING_MS / ALMOST_A_WINDOW)
+const EDITS_SHORT_OF_THE_CEILING = EDITS_PAST_THE_CEILING - 1
+const A_FEW_EDITS = 3
 
 interface Recorded {
   writes: string[]
@@ -24,6 +30,15 @@ function autosaveWith(save: (content: string) => Promise<void>): { autosave: Aut
   })
 
   return { autosave, recorded }
+}
+
+async function typeWithoutPausing(autosave: Autosave, edits: number): Promise<void> {
+  const drafts = Array.from({ length: edits }, (_, n) => `draft ${String(n)}`)
+
+  await serially(drafts, async (draft) => {
+    autosave.changed(draft)
+    await vi.advanceTimersByTimeAsync(ALMOST_A_WINDOW)
+  })
 }
 
 function accepting(): { autosave: Autosave; recorded: Recorded } {
@@ -72,12 +87,7 @@ describe('the idle window', () => {
     const { autosave, recorded } = accepting()
     autosave.reset('')
 
-    for (let n = 0; n < 3; n += 1) {
-      autosave.changed(`draft ${String(n)}`)
-      /* eslint-disable-next-line no-await-in-loop -- the point is successive
-         windows: each edit has to land after the previous one has waited */
-      await vi.advanceTimersByTimeAsync(IDLE_MS - 1)
-    }
+    await typeWithoutPausing(autosave, A_FEW_EDITS)
 
     expect(recorded.writes).toStrictEqual([])
   })
@@ -100,12 +110,7 @@ describe('the ceiling', () => {
     const { autosave, recorded } = accepting()
     autosave.reset('')
 
-    for (let elapsed = 0; elapsed < CEILING_MS; elapsed += IDLE_MS - 1) {
-      autosave.changed(`draft ${String(elapsed)}`)
-      /* eslint-disable-next-line no-await-in-loop -- the point is successive
-         windows: each edit has to land after the previous one has waited */
-      await vi.advanceTimersByTimeAsync(IDLE_MS - 1)
-    }
+    await typeWithoutPausing(autosave, EDITS_PAST_THE_CEILING)
 
     expect(recorded.writes.length).toBeGreaterThan(0)
   })
@@ -114,18 +119,11 @@ describe('the ceiling', () => {
     const { autosave, recorded } = accepting()
     autosave.reset('')
 
-    let elapsed = 0
-    while (elapsed + IDLE_MS - 1 < CEILING_MS) {
-      autosave.changed(`draft ${String(elapsed)}`)
-      /* eslint-disable-next-line no-await-in-loop -- the point is successive
-         windows: each edit has to land after the previous one has waited */
-      await vi.advanceTimersByTimeAsync(IDLE_MS - 1)
-      elapsed += IDLE_MS - 1
-    }
+    await typeWithoutPausing(autosave, EDITS_SHORT_OF_THE_CEILING)
 
     expect(recorded.writes).toStrictEqual([])
 
-    await vi.advanceTimersByTimeAsync(CEILING_MS - elapsed)
+    await vi.advanceTimersByTimeAsync(CEILING_MS - EDITS_SHORT_OF_THE_CEILING * ALMOST_A_WINDOW)
 
     expect(recorded.writes).toHaveLength(1)
   })

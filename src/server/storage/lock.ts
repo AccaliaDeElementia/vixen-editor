@@ -43,25 +43,24 @@ export function createWriteLock(defaultTimeoutMs: number): WriteLock {
       return
     }
 
-    /* eslint-disable-next-line promise/avoid-new -- a mutex waiter is settled by a
-       later release() running in a different call frame, which is the one shape
-       this rule cannot express through composition */
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        waiter.abandoned = true
-        reject(new LockTimeoutError(timeoutMs))
-      }, timeoutMs)
+    const granted: PromiseWithResolvers<void> = Promise.withResolvers()
 
-      const waiter: Waiter = {
-        abandoned: false,
-        grant: () => {
-          clearTimeout(timer)
-          resolve()
-        },
-      }
+    const timer = setTimeout(() => {
+      waiter.abandoned = true
+      granted.reject(new LockTimeoutError(timeoutMs))
+    }, timeoutMs)
 
-      waiting.push(waiter)
-    })
+    const waiter: Waiter = {
+      abandoned: false,
+      grant: () => {
+        clearTimeout(timer)
+        granted.resolve()
+      },
+    }
+
+    waiting.push(waiter)
+
+    await granted.promise
   }
 
   return {

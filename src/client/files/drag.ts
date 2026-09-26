@@ -9,6 +9,7 @@ import type { Dialogs } from './dialogs.ts'
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
 import { parentOf } from './tree-model.ts'
+import { serially } from '../../shared/serially.ts'
 import { joinPath, STORE_ROOT } from '../../shared/store-path.ts'
 
 type OnceRebuilt = () => void
@@ -79,13 +80,11 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   }
 
   async function uploadAll(files: readonly File[], directory: string): Promise<void> {
-    for (const file of files) {
-      /* eslint-disable-next-line no-await-in-loop -- one request per file, so a
-         rejected file does not discard the rest of the drop */
+    await serially(files, async (file) => {
       await context.client.upload(directory, file).catch((error: unknown) => {
         context.toast.error(`${file.name}: ${errorMessage(error)}`)
       })
-    }
+    })
   }
 
   function run(work: () => Promise<OnceRebuilt | undefined>): void {

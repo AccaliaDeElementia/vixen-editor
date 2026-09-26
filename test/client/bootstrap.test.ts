@@ -245,12 +245,11 @@ async function pressSave(view: EditorView): Promise<void> {
 }
 
 async function everyPendingMicrotask(): Promise<void> {
-  /* eslint-disable-next-line promise/avoid-new -- a macrotask boundary is not
-     composable from existing promises; it is the thing being created, and
-     reaching one drains every microtask queued behind it */
-  await new Promise<void>((resolve) => {
-    setTimeout(resolve)
-  })
+  const macrotaskBoundary: PromiseWithResolvers<void> = Promise.withResolvers()
+
+  setTimeout(macrotaskBoundary.resolve)
+
+  await macrotaskBoundary.promise
 }
 
 describe('bootstrap follows a document that moves underneath it', () => {
