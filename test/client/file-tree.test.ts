@@ -36,8 +36,15 @@ const TRASHED: TrashNode = {
   deletedAt: '2026-01-01T00:00:00.000Z',
 }
 
-function page(): void {
-  document.body.innerHTML = '<aside id="explorer"><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
+let host: HTMLElement = document.createElement('div')
+
+function page(): HTMLElement {
+  document.body.innerHTML = ''
+  const host = document.createElement('div')
+  host.innerHTML = '<aside id="explorer"><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
+  document.body.append(host)
+
+  return host
 }
 
 function fakeClient(overrides: { tree?: unknown; trash?: unknown } = {}): {
@@ -51,7 +58,7 @@ function fakeClient(overrides: { tree?: unknown; trash?: unknown } = {}): {
 }
 
 async function start(pathname = '/doc/', client = fakeClient()): Promise<void> {
-  await initFileTree({ root: document, pathname, client: cast<FilesClient>(client) })
+  await initFileTree({ root: host, pathname, client: cast<FilesClient>(client) })
 }
 
 function rows(): HTMLElement[] {
@@ -77,7 +84,7 @@ function press(entryPath: string, key: string): void {
 
 beforeEach(() => {
   localStorage.clear()
-  page()
+  host = page()
 })
 
 describe('loading', () => {
@@ -176,7 +183,7 @@ describe('remembering open folders', () => {
     await start()
     rowFor('journal').click()
 
-    page()
+    host = page()
     await start()
 
     expect(paths()).toContain('journal/entry.md')
@@ -186,7 +193,7 @@ describe('remembering open folders', () => {
     await start()
     rowFor('journal').click()
 
-    page()
+    host = page()
     await start('/doc/', fakeClient({ tree: parseTree({ tree: [] }) }))
 
     expect([...readOpenFolders()]).not.toContain('journal')
@@ -196,7 +203,7 @@ describe('remembering open folders', () => {
     await start()
     rowFor(TRASH_PATH).click()
 
-    page()
+    host = page()
     await start()
 
     expect([...readOpenFolders()]).toContain(TRASH_PATH)
@@ -398,5 +405,24 @@ describe('keyboard navigation', () => {
     press('journal', 'Enter')
 
     expect(document.activeElement).toBe(rowFor('journal'))
+  })
+})
+
+describe('markup with no tree to render', () => {
+  it('declines rather than throwing, the way the dialog does', async () => {
+    const bare = document.createElement('div')
+    document.body.append(bare)
+
+    await expect(initFileTree({ root: bare, client: cast<FilesClient>(fakeClient()) })).resolves.toBeUndefined()
+  })
+
+  it('asks the server for nothing, because there is nowhere to put the answer', async () => {
+    const bare = document.createElement('div')
+    document.body.append(bare)
+    const client = fakeClient()
+
+    await initFileTree({ root: bare, client: cast<FilesClient>(client) })
+
+    expect(client.tree).not.toHaveBeenCalled()
   })
 })

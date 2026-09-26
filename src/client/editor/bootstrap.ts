@@ -4,9 +4,10 @@ import type { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
-import { displayPathFromPath, docUrlFor, documentIdFromPath, namesFolderIndex, pathAfterMove } from '../doc-path.ts'
+import { displayPathFromPath, docUrlFor, namesFolderIndex, pathAfterMove } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
+import { openDocumentIn } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 
 import { isBlank } from '../../shared/content.ts'
@@ -109,6 +110,7 @@ class MissingMountError extends Error {
 
 async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | null> {
   const { root, pathname, session, navigate, files, reopen, openUrl } = wiringFor(options)
+  const openDocument = openDocumentIn(root, pathname)
 
   const toast = createToast(root)
   const setStatus = (text: string): void => {
@@ -121,7 +123,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     throw new MissingMountError(MOUNT_SELECTOR)
   }
 
-  let documentId = documentIdFromPath(pathname)
+  const documentId = (): string => openDocument.path()
   const shownPath = displayPathFromPath(pathname)
 
   const workspace = createWorkspace(root, {
@@ -151,14 +153,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     return null
   }
 
-  if (classifyFile(documentId) === 'image') {
+  if (classifyFile(documentId()) === 'image') {
     createImageView({
       root,
       reveal: (at) => {
         workspace.show('image', at)
       },
       onBroken: showMissing,
-    }).offer(documentId)
+    }).offer(documentId())
 
     return null
   }
@@ -169,7 +171,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   let caretPosition = TOP_OF_DOCUMENT
 
   async function writeDocument(content: string): Promise<void> {
-    const target = documentId
+    const target = documentId()
     try {
       await session.save(target, content)
       rememberCaret(target, caretPosition)
@@ -187,7 +189,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   })
 
   const save = (): boolean => {
-    const target = documentId
+    const target = documentId()
     if (autosave.state() === 'clean') {
       setStatus(`No changes in ${target}`)
       return true
@@ -202,22 +204,22 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
 
   onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
-    const moved = pathAfterMove({ from, to }, documentId)
+    const moved = pathAfterMove({ from, to }, documentId())
 
-    if (moved !== documentId) {
-      session.rename(documentId, moved)
-      documentId = moved
+    if (moved !== documentId()) {
+      session.rename(documentId(), moved)
+      openDocument.commit(moved)
       navigate(docUrlFor(moved))
       statusBar.showPath(moved)
       setStatus(`Now editing ${moved}`)
     }
 
-    if (rewritten.includes(documentId)) {
-      toast.error(`${documentId} changed on disk — reload to see the repaired links`)
+    if (rewritten.includes(documentId())) {
+      toast.error(`${documentId()} changed on disk — reload to see the repaired links`)
     }
   })
 
-  const outcome = await loadOrReport(session, documentId)
+  const outcome = await loadOrReport(session, documentId())
   if (!outcome.reached) {
     reportUnreachable(root, shownPath, outcome.error)
     workspace.show('unreachable', shownPath)
@@ -228,12 +230,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
   const { document: loaded } = outcome
   const { content: initial, stored } = loaded
   if (!stored && !namesFolderIndex(pathname)) {
-    showMissing(documentId)
+    showMissing(documentId())
 
     return null
   }
 
-  const caret = recallCaret(documentId, initial.length)
+  const caret = recallCaret(documentId(), initial.length)
   caretPosition = caret
   const view = new EditorView({
     parent: mount,
@@ -264,12 +266,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView | n
     unsaved: () => autosave.state() !== 'clean',
     rescue: () => {
       const content = view.state.doc.toString()
-      if (!isBlank(content)) session.saveOnUnload(documentId, content)
+      if (!isBlank(content)) session.saveOnUnload(documentId(), content)
     },
     listen: options.listenForUnload,
   })
 
-  setStatus(`Editing ${documentId} — press Ctrl/Cmd+S to save`)
+  setStatus(`Editing ${documentId()} — press Ctrl/Cmd+S to save`)
 
   return view
 }

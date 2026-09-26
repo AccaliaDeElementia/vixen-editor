@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TestOnly } from '../../src/client/files/actions.ts'
 import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
+import { openDocumentIn } from '../../src/client/navigation.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
 import type { Dialogs } from '../../src/client/files/dialogs.ts'
@@ -32,8 +33,12 @@ const TRASHED: TrashNode = {
   deletedAt: '2026-01-01T00:00:00.000Z',
 }
 
-function page(): void {
-  document.body.innerHTML = `
+let host: HTMLElement = document.createElement('div')
+
+function page(): HTMLElement {
+  document.body.innerHTML = ''
+  const created = document.createElement('div')
+  created.innerHTML = `
     <aside id="explorer">
       <div id="toolbar">
         <button id="new-document"></button>
@@ -47,6 +52,9 @@ function page(): void {
       <ul id="file-tree" role="tree"></ul>
     </aside>
     <div id="status"></div>`
+  document.body.append(created)
+
+  return created
 }
 
 interface FakeClient {
@@ -87,7 +95,7 @@ let client: ReturnType<typeof fakeClient> = fakeClient()
 let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
 
 async function start(pathname = '/doc/'): Promise<void> {
-  await initFileTree({ root: document, pathname, client: cast<FilesClient>(client), dialogs: cast<Dialogs>(dialogs) })
+  await initFileTree({ root: host, pathname, client: cast<FilesClient>(client), dialogs: cast<Dialogs>(dialogs) })
 }
 
 function rowFor(entryPath: string): HTMLElement {
@@ -108,7 +116,7 @@ function statusText(): string {
 
 beforeEach(() => {
   localStorage.clear()
-  page()
+  host = page()
   client = fakeClient()
   dialogs = fakeDialogs()
 })
@@ -435,5 +443,28 @@ describe('reporting odd failures', () => {
       expect(client.tree).toHaveBeenCalledTimes(2)
     })
     expect(client.upload).not.toHaveBeenCalled()
+  })
+})
+
+describe('revealing a document that has moved since the page loaded', () => {
+  it('goes to where it is now, not to where it was when the tree mounted', async () => {
+    await start('/doc/journal/entry.md')
+    openDocumentIn(host).commit('notes.md')
+
+    press('#reveal-document')
+
+    expect(rowFor('notes.md').getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('expands the ancestors of the new path rather than the old one', async () => {
+    await start('/doc/notes.md')
+    openDocumentIn(host).commit('journal/entry.md')
+    rowFor('journal').click()
+
+    press('#reveal-document')
+
+    expect([...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].map((row) => row.dataset.path)).toContain(
+      'journal/entry.md',
+    )
   })
 })

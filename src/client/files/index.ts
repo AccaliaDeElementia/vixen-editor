@@ -1,6 +1,6 @@
 'use sanity'
 
-import { documentIdFromPath } from '../doc-path.ts'
+import { openDocumentIn, type OpenDocument } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 import { announceDocumentMoved } from '../document-moved.ts'
 import { createToast } from '../layout/toast.ts'
@@ -30,7 +30,7 @@ interface Mounted {
   root: ParentNode
   client: FilesClient
   dialogs: Dialogs
-  openDocument: string
+  openDocument: OpenDocument
 }
 
 export async function initFileTree(options: FileTreeOptions = {}): Promise<void> {
@@ -43,7 +43,7 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<void>
     root,
     client: options.client ?? createFilesClient(),
     dialogs: options.dialogs ?? createDialogs(root),
-    openDocument: documentIdFromPath(options.pathname ?? window.location.pathname),
+    openDocument: openDocumentIn(root, options.pathname),
   })
 }
 
@@ -53,7 +53,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   let trash: readonly TrashNode[] = []
   let open: ReadonlySet<string> = new Set()
   let visible: VisibleRow[] = []
-  let selected: string | null = openDocument
+  let selected: string | null = openDocument.path()
 
   function rows(): HTMLElement[] {
     return [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
@@ -171,13 +171,13 @@ async function runFileTree({ tree, root, client, dialogs, openDocument }: Mounte
   }
 
   function reveal(): void {
-    revealPath(openDocument)
+    revealPath(openDocument.path())
   }
 
   async function load(): Promise<void> {
     ;[nodes, trash] = await Promise.all([client.tree(), client.trash()])
 
-    openFolders(ancestorsOf(openDocument))
+    openFolders(ancestorsOf(openDocument.path()))
     draw(pruneOpenFolders([...folderPathsIn(nodes), TRASH_PATH]))
   }
 
