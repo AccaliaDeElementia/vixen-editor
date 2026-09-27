@@ -20,6 +20,8 @@ interface LinkDestination {
   value: string
   from: number
   to: number
+  markupFrom: number
+  markupTo: number
   bracketed: boolean
   isImage: boolean
 }
@@ -48,6 +50,8 @@ export function destinationsIn(tree: Tree, markdown: string): LinkDestination[] 
         value: decodeDestination(markdown.slice(from, to)),
         from,
         to,
+        markupFrom: holder.from,
+        markupTo: holder.to,
         bracketed,
         isImage: holder.name === IMAGE_NODE,
       })

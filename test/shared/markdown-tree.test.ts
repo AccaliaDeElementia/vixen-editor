@@ -57,6 +57,22 @@ describe('destinationsIn', () => {
     expect(sliced).toStrictEqual(['my file.md', 'plain.md'])
   })
 
+  it('reports the whole written form, so a renderer can replace it', () => {
+    const markdown = 'before ![alt](pic.png) after'
+
+    const [image] = found(markdown)
+
+    expect(markdown.slice(image?.markupFrom ?? 0, image?.markupTo ?? 0)).toBe('![alt](pic.png)')
+  })
+
+  it('reports the written form of a link, not only of an image', () => {
+    const markdown = 'see [text](a.md) here'
+
+    const [link] = found(markdown)
+
+    expect(markdown.slice(link?.markupFrom ?? 0, link?.markupTo ?? 0)).toBe('[text](a.md)')
+  })
+
   it('says which destinations are images, so a renderer can tell them apart', () => {
     expect(found('[a](doc.md) and ![b](pic.png)').map((d) => d.isImage)).toStrictEqual([false, true])
   })

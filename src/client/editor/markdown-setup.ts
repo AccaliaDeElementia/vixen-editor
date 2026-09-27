@@ -6,6 +6,7 @@ import { VIXEN_MARKDOWN_EXTENSIONS } from '../../shared/markdown-tree.ts'
 import { EditorState, type Extension } from '@codemirror/state'
 
 import { vixenDecorations } from './decorations.ts'
+import { vixenImages } from './images.ts'
 import { vixenDarkSurface, vixenHighlighting } from './highlight.ts'
 
 const START_OF_DOCUMENT = 0
@@ -25,6 +26,7 @@ export function createEditorState(options: CreateEditorStateOptions = {}): Edito
       vixenDarkSurface,
       vixenHighlighting,
       vixenDecorations,
+      vixenImages,
       ...(options.extensions ?? []),
     ],
   })

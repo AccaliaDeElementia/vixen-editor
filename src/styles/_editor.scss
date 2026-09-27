@@ -90,3 +90,10 @@
   text-decoration-style: dotted;
   cursor: pointer;
 }
+
+.cm-vixen-image {
+  display: block;
+  max-width: 100%;
+  max-height: 24em;
+  border-radius: $radius;
+}

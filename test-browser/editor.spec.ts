@@ -3,6 +3,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
+import { DECODABLE_1X1_PNG_BYTES } from './png.ts'
 
 function newDocument(name: string): string {
   return `/doc/${name}`
@@ -215,16 +216,9 @@ test('a trash entry that is no longer there says so', async ({ page }) => {
   await expect(page.locator('#deleted-actions')).toBeHidden()
 })
 
-// A complete 1x1 PNG: a signature and IHDR alone decode nowhere, so a truncated
-// one reaches the browser and then fails, which reads as a missing image.
-const PNG_BYTES = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-  'base64',
-)
-
 async function storedImage(request: APIRequestContext, name: string, directory = ''): Promise<string> {
   const stored = await request.post('/api/files/uploads', {
-    multipart: { path: directory, file: { name, mimeType: 'image/png', buffer: PNG_BYTES } },
+    multipart: { path: directory, file: { name, mimeType: 'image/png', buffer: DECODABLE_1X1_PNG_BYTES } },
   })
   expect(stored.status()).toBe(201)
 
@@ -536,7 +530,7 @@ test('a file dropped from outside is uploaded beside the document and embedded',
       transfer.items.add(new File([bytes], name ?? '', { type: 'image/png' }))
       content.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
     },
-    [dropped, PNG_BYTES.toString('base64')],
+    [dropped, DECODABLE_1X1_PNG_BYTES.toString('base64')],
   )
 
   await expect(page.locator('.cm-content')).toContainText(`![${dropped}](${dropped})`)
