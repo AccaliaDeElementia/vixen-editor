@@ -7,6 +7,7 @@ import { EditorState, type Extension } from '@codemirror/state'
 
 import { vixenDecorations } from './decorations.ts'
 import { vixenImages } from './images.ts'
+import { vixenEditorLabel } from './labelling.ts'
 import { vixenDarkSurface, vixenHighlighting } from './highlight.ts'
 
 const START_OF_DOCUMENT = 0
@@ -27,6 +28,7 @@ export function createEditorState(options: CreateEditorStateOptions = {}): Edito
       vixenHighlighting,
       vixenDecorations,
       vixenImages,
+      vixenEditorLabel,
       ...(options.extensions ?? []),
     ],
   })

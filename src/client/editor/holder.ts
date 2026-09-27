@@ -6,7 +6,7 @@ import type { EditorView } from '@codemirror/view'
 import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 
-const holderPath = Facet.define<string, string>({
+export const holderPath = Facet.define<string, string>({
   combine: (paths) => paths.at(SEQUENCE_START) ?? STORE_ROOT,
 })
 
