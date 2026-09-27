@@ -264,6 +264,48 @@ describe('bootstrap follows a document that moves underneath it', () => {
     )
   })
 
+  it('opens the link the caret is in when Mod-Enter is pressed', async () => {
+    const opened: string[] = []
+    const view = await openEditor({
+      root,
+      pathname: '/doc/journal/notes.md',
+      session: sessionRecording(record, {
+        load: () => Promise.resolve({ content: 'see [the doc](other.md) here', stored: true }),
+      }),
+      openUrl: (url) => {
+        opened.push(url)
+      },
+    })
+
+    view.dispatch({ selection: { anchor: 8 } })
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }),
+    )
+
+    expect(opened).toStrictEqual(['/doc/journal/other.md'])
+  })
+
+  it('leaves Mod-Enter alone when the caret is not in a link', async () => {
+    const opened: string[] = []
+    const view = await openEditor({
+      root,
+      pathname: '/doc/journal/notes.md',
+      session: sessionRecording(record, {
+        load: () => Promise.resolve({ content: 'see [the doc](other.md) here', stored: true }),
+      }),
+      openUrl: (url) => {
+        opened.push(url)
+      },
+    })
+
+    view.dispatch({ selection: { anchor: 1 } })
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }),
+    )
+
+    expect(opened).toStrictEqual([])
+  })
+
   it('rewrites the address bar to the new path', async () => {
     const navigated: string[] = []
     await editing('/doc/notes.md', navigated)

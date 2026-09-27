@@ -97,3 +97,17 @@
   max-height: 24em;
   border-radius: $radius;
 }
+
+.cm-vixen-link-tooltip {
+  padding: 0.3em 0.6em;
+  background: $dark;
+  border: 1px solid $muted;
+  border-radius: $radius;
+  font-size: $font-size-sm;
+}
+
+.cm-vixen-link-tooltip__open {
+  color: $info;
+  text-decoration: underline;
+  white-space: nowrap;
+}

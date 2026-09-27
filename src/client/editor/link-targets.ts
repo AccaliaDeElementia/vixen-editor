@@ -5,6 +5,7 @@ import type { EditorState } from '@codemirror/state'
 
 import { directoryOf, isStorePath, resolveDestination } from '../../shared/link-paths.ts'
 import { destinationsIn } from '../../shared/markdown-tree.ts'
+import { SEQUENCE_START } from '../../shared/sequences.ts'
 
 import { holderOf } from './holder.ts'
 
@@ -39,12 +40,9 @@ function widthOf(link: LinkTarget): number {
 }
 
 export function linkTargetAt(state: EditorState, position: number): LinkTarget | null {
-  const covering = linkTargetsIn(state, state.doc.toString()).filter(
-    (link) => position >= link.markupFrom && position <= link.markupTo,
-  )
+  const widestFirst = linkTargetsIn(state, state.doc.toString())
+    .filter((link) => position >= link.markupFrom && position <= link.markupTo)
+    .sort((first, second) => widthOf(second) - widthOf(first))
 
-  return covering.reduce<LinkTarget | null>(
-    (widest, link) => (widest === null || widthOf(link) > widthOf(widest) ? link : widest),
-    null,
-  )
+  return widestFirst.at(SEQUENCE_START) ?? null
 }

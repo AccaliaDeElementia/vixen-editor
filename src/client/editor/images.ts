@@ -132,3 +132,5 @@ const vixenImageField = StateField.define<DecorationSet>({
 })
 
 export const vixenImages: Extension = [brokenImages, vixenImageField]
+
+export const TestOnly = { altOf }

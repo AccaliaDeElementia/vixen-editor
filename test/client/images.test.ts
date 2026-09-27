@@ -6,6 +6,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createHolderControl } from '../../src/client/editor/holder.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
+import { TestOnly } from '../../src/client/editor/images.ts'
+
+const { altOf } = TestOnly
 
 const IMAGE_SELECTOR = 'img.cm-vixen-image'
 
@@ -135,6 +138,31 @@ describe('what is left as source text', () => {
     const view = editing('```\n![a](./pic.png)\n```\n')
 
     expect(rendered(view)).toHaveLength(0)
+  })
+})
+
+describe('the alt text', () => {
+  it('is what the author wrote between the brackets', () => {
+    expect(altOf('![a cat](pic.png)')).toBe('a cat')
+  })
+
+  it('is empty when the author left it empty', () => {
+    expect(altOf('![](pic.png)')).toBe('')
+  })
+
+  it('is empty rather than absent for markup that is not an image at all', () => {
+    expect(altOf('[a link](doc.md)')).toBe('')
+  })
+})
+
+describe('a pointer on the image', () => {
+  it('reaches the editor, so a click can put the caret in the source', () => {
+    const view = editing('intro\n![a](./pic.png)\ntail\n')
+    const image = rendered(view).at(0)
+
+    const ignored = image?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+
+    expect(ignored).toBe(false)
   })
 })
 
