@@ -10,11 +10,13 @@ const HTTP_CONFLICT = 412
 const TAKE_THEIRS = 'theirs'
 const KEEP_MINE = 'mine'
 const KEEP_BOTH = 'both'
+const MERGE = 'merge'
 
 const RESOLUTIONS = [
   { value: TAKE_THEIRS, label: 'Use the version on disk, discarding my changes' },
   { value: KEEP_MINE, label: 'Overwrite the version on disk with mine' },
   { value: KEEP_BOTH, label: 'Keep mine as a separate document, then use the version on disk' },
+  { value: MERGE, label: 'Merge them here, one change at a time' },
 ]
 
 const COPY_SUFFIX = '-mine'
@@ -31,6 +33,7 @@ export interface ConflictOptions {
   files: FilesClient
   takeTheirs: (content: string) => void
   keepMine: () => Promise<void>
+  merge: (onDisk: string) => void
   announce: (text: string) => void
 }
 
@@ -77,7 +80,7 @@ async function keepBoth(options: ConflictOptions, conflict: Conflict): Promise<b
 }
 
 export async function offerResolution(options: ConflictOptions, conflict: Conflict): Promise<boolean> {
-  const { dialogs, takeTheirs, keepMine } = options
+  const { dialogs, takeTheirs, keepMine, merge } = options
   const { target, theirs } = conflict
 
   const chosen = await dialogs.choose({
@@ -98,9 +101,15 @@ export async function offerResolution(options: ConflictOptions, conflict: Confli
     return true
   }
 
+  if (chosen === MERGE) {
+    merge(theirs)
+
+    return true
+  }
+
   if (chosen !== KEEP_BOTH) return false
 
   return await keepBoth(options, conflict)
 }
 
-export const TestOnly = { KEEP_BOTH, KEEP_MINE, TAKE_THEIRS, copyNameFor }
+export const TestOnly = { KEEP_BOTH, KEEP_MINE, MERGE, TAKE_THEIRS, copyNameFor }

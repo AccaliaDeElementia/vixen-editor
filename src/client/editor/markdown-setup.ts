@@ -4,7 +4,7 @@ import { markdown } from '@codemirror/lang-markdown'
 import { EditorState, type Extension } from '@codemirror/state'
 
 import { vixenDecorations } from './decorations.ts'
-import { vixenHighlighting } from './highlight.ts'
+import { vixenDarkSurface, vixenHighlighting } from './highlight.ts'
 
 const START_OF_DOCUMENT = 0
 
@@ -18,6 +18,6 @@ export function createEditorState(options: CreateEditorStateOptions = {}): Edito
   return EditorState.create({
     doc: options.doc ?? '',
     selection: options.selection ?? { anchor: START_OF_DOCUMENT },
-    extensions: [markdown(), vixenHighlighting, vixenDecorations, ...(options.extensions ?? [])],
+    extensions: [markdown(), vixenDarkSurface, vixenHighlighting, vixenDecorations, ...(options.extensions ?? [])],
   })
 }

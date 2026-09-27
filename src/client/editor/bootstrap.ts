@@ -30,6 +30,7 @@ import { guardUnload } from './unload.ts'
 import { describeRefusal } from './leaving.ts'
 import { watchFreshness } from './freshness.ts'
 import { isConflict, offerResolution } from './conflict.ts'
+import { createMergeControl } from './merging.ts'
 import { bindLinkClicks } from './link-clicks.ts'
 import { bindEntryDrops, bindFileDrops } from './drops.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
@@ -173,6 +174,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   let caretPosition = TOP_OF_DOCUMENT
   let lastRefusal: unknown = null
 
+  const merging = createMergeControl(() => {
+    setStatus(`${documentId()} merged — every change resolved`)
+  })
+
   async function writeDocument(content: string): Promise<void> {
     const target = documentId()
     try {
@@ -214,10 +219,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
       selection: { anchor: caret },
       extensions: [
         basicSetup,
+        merging.inactive,
         EditorView.lineWrapping,
         keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
         EditorView.updateListener.of((update) => {
           caretPosition = caretIn(update.state)
+          merging.endWhenResolved(update.view)
           if (!update.docChanged) return
 
           const content = update.state.doc.toString()
@@ -401,6 +408,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
         takeTheirs: loadIntoBuffer,
         keepMine: async () => {
           await autosave.flush()
+        },
+        merge: (onDisk: string) => {
+          merging.begin(view, onDisk)
+          setStatus(`Merging ${target} — accept or reject each change, then it saves as usual`)
         },
       },
       { target, theirs, mine: view.state.doc.toString() },

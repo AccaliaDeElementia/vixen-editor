@@ -9,7 +9,7 @@ import type { Dialogs } from '../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
 
-const { KEEP_BOTH, KEEP_MINE, TAKE_THEIRS, copyNameFor } = TestOnly
+const { KEEP_BOTH, KEEP_MINE, MERGE, TAKE_THEIRS, copyNameFor } = TestOnly
 
 const CONFLICT = { target: 'journal/notes.md', theirs: '# theirs', mine: '# mine' }
 
@@ -25,6 +25,7 @@ interface Harness {
   createDocument: ReturnType<typeof vi.fn<(entryPath: string, content?: string) => Promise<void>>>
   takeTheirs: ReturnType<typeof vi.fn<(content: string) => void>>
   keepMine: ReturnType<typeof vi.fn<() => Promise<void>>>
+  merge: ReturnType<typeof vi.fn<(onDisk: string) => void>>
   announced: string[]
 }
 
@@ -44,18 +45,21 @@ function harness(chosen: string | null, accepted = true): Harness {
   const createDocument = vi.fn<(entryPath: string, content?: string) => Promise<void>>().mockResolvedValue(undefined)
   const takeTheirs = vi.fn<(content: string) => void>()
   const keepMine = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
+  const merge = vi.fn<(onDisk: string) => void>()
 
   return {
     offers,
     createDocument,
     takeTheirs,
     keepMine,
+    merge,
     announced,
     options: {
       dialogs: cast<Dialogs>({ choose, prompt }),
       files: cast<FilesClient>({ createDocument }),
       takeTheirs,
       keepMine,
+      merge,
       announce: (text: string) => {
         announced.push(text)
       },
@@ -72,12 +76,12 @@ describe('offering the three resolutions', () => {
     expect(offers[0]?.title).toContain('journal/notes.md')
   })
 
-  it('offers exactly the three non-merge resolutions', async () => {
+  it('offers all four resolutions', async () => {
     const { options, offers } = harness(null)
 
     await offerResolution(options, CONFLICT)
 
-    expect(offers[0]?.choices.map((choice) => choice.value)).toStrictEqual([TAKE_THEIRS, KEEP_MINE, KEEP_BOTH])
+    expect(offers[0]?.choices.map((choice) => choice.value)).toStrictEqual([TAKE_THEIRS, KEEP_MINE, KEEP_BOTH, MERGE])
   })
 })
 
@@ -169,14 +173,34 @@ describe('keep both', () => {
   })
 })
 
+describe('merge', () => {
+  it('hands the stored version over to be diffed against the buffer', async () => {
+    const { options, merge } = harness(MERGE)
+
+    await expect(offerResolution(options, CONFLICT)).resolves.toBe(true)
+    expect(merge).toHaveBeenCalledWith('# theirs')
+  })
+
+  it('leaves the buffer and the store alone, because the user resolves it change by change', async () => {
+    const { options, takeTheirs, keepMine, createDocument } = harness(MERGE)
+
+    await offerResolution(options, CONFLICT)
+
+    expect(takeTheirs).not.toHaveBeenCalled()
+    expect(keepMine).not.toHaveBeenCalled()
+    expect(createDocument).not.toHaveBeenCalled()
+  })
+})
+
 describe('dismissing the choice', () => {
   it('changes nothing and reports itself unresolved', async () => {
-    const { options, takeTheirs, keepMine, createDocument } = harness(null)
+    const { options, takeTheirs, keepMine, createDocument, merge } = harness(null)
 
     await expect(offerResolution(options, CONFLICT)).resolves.toBe(false)
     expect(takeTheirs).not.toHaveBeenCalled()
     expect(keepMine).not.toHaveBeenCalled()
     expect(createDocument).not.toHaveBeenCalled()
+    expect(merge).not.toHaveBeenCalled()
   })
 })
 

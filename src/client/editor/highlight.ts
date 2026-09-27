@@ -2,6 +2,7 @@
 
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import type { Extension } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 
 const WHITE = '#ffffff'
@@ -29,5 +30,7 @@ const vixenHighlightStyle = HighlightStyle.define([
 ])
 
 export const vixenHighlighting: Extension = syntaxHighlighting(vixenHighlightStyle)
+
+export const vixenDarkSurface: Extension = EditorView.theme({}, { dark: true })
 
 export const TestOnly = { vixenHighlightStyle }

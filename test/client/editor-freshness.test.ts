@@ -305,6 +305,32 @@ describe('resolving a conflict on a dirty buffer', () => {
     expect(view.state.doc.toString()).toBe('# theirs')
   })
 
+  it('merges by marking the stored version against the buffer in the editor', async () => {
+    const view = await dirtyAgainst('# theirs', choosing('merge'))
+
+    wake()
+
+    await vi.waitFor(() => {
+      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+    })
+    expect(view.dom.querySelector('.cm-deletedChunk')?.textContent).toContain('# theirs')
+    expect(view.state.doc.toString()).toContain('mine')
+  })
+
+  it('says the merge is done once no change is left to decide', async () => {
+    const view = await dirtyAgainst('# theirs', choosing('merge'))
+
+    wake()
+    await vi.waitFor(() => {
+      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+    })
+
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '# theirs' } })
+
+    expect(view.dom.querySelectorAll('.cm-changedLine')).toHaveLength(0)
+    expect(statusText()).toContain('merged')
+  })
+
   it('still reports the collision when the choice is dismissed', async () => {
     await dirtyAgainst('# theirs', choosing(null))
 

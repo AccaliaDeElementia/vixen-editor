@@ -3,6 +3,7 @@
 import { highlightingFor, language } from '@codemirror/language'
 import { EditorState } from '@codemirror/state'
 import { tags, type Tag } from '@lezer/highlight'
+import { EditorView } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
 
 import { vixenHighlighting, TestOnly } from '../../src/client/editor/highlight.ts'
@@ -56,5 +57,11 @@ describe('vixenHighlightStyle', () => {
     const rules = vixenHighlightStyle.module?.getRules() ?? ''
 
     expect(rules).not.toMatch(nearBlack)
+  })
+})
+
+describe('the editor surface', () => {
+  it('declares itself dark, so CodeMirror serves the dark half of its own themes', () => {
+    expect(createEditorState().facet(EditorView.darkTheme)).toBe(true)
   })
 })
