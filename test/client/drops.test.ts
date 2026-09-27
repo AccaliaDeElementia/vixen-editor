@@ -10,8 +10,12 @@ import { cast } from '../cast.ts'
 const { DRAG_KIND_MIME, DRAG_MIME } = TestOnly
 const { draggedEntry, linkFor } = DropTestOnly
 
-function transferWith(entries: Record<string, string>): DataTransfer {
-  return cast<DataTransfer>({ getData: (type: string) => entries[type] ?? '' })
+function transferWith(entries: Record<string, string>, files: File[] = []): DataTransfer {
+  return cast<DataTransfer>({
+    getData: (type: string) => entries[type] ?? '',
+    types: files.length > 0 ? ['Files'] : Object.keys(entries),
+    files,
+  })
 }
 
 describe('the link a dragged entry becomes', () => {

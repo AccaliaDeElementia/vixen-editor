@@ -490,3 +490,31 @@ test('dragging an image inserts an embed rather than a link', async ({ page, req
   await request.delete(`/api/files/entries/${open}`)
   await request.delete(`/api/files/entries/${image}`)
 })
+
+test('a file dropped from outside is uploaded beside the document and embedded', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const folder = `osdrop-${stamp}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: 'here' } })
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await expect(page.locator('.cm-content')).toContainText('here')
+
+  const dropped = `dropped-${stamp}.png`
+  await page.locator('.cm-content').evaluate(
+    (content, [name, base64]) => {
+      const bytes = Uint8Array.from(atob(base64 ?? ''), (character) => character.charCodeAt(0))
+      const transfer = new DataTransfer()
+      transfer.items.add(new File([bytes], name ?? '', { type: 'image/png' }))
+      content.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+    },
+    [dropped, PNG_BYTES.toString('base64')],
+  )
+
+  await expect(page.locator('.cm-content')).toContainText(`![${dropped}](${dropped})`)
+
+  const stored = await request.get(`/api/files/raw/${folder}/${dropped}`)
+  expect(stored.status()).toBe(200)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})

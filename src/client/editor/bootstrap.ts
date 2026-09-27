@@ -29,7 +29,7 @@ import { createSession, type LoadedDocument, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 import { describeRefusal } from './leaving.ts'
 import { bindLinkClicks } from './link-clicks.ts'
-import { bindEntryDrops } from './drops.ts'
+import { bindEntryDrops, bindFileDrops } from './drops.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 
 const MOUNT_SELECTOR = '#editor'
@@ -66,6 +66,10 @@ function reportUnreachable(root: ParentNode, at: string, error: unknown): void {
 
   const subject = at === '' ? 'The store' : at
   reason.textContent = `${subject} could not be loaded: ${errorMessage(error)}`
+}
+
+function startsALine(state: EditorState, position: number | null): boolean {
+  return position === null || position === state.doc.lineAt(position).from
 }
 
 function caretIn(state: EditorState): number {
@@ -221,13 +225,24 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
 
   const view = new EditorView({ parent: mount, state: stateFor('', TOP_OF_DOCUMENT) })
 
-  bindEntryDrops(view.contentDOM, (event) => view.posAtCoords({ x: event.clientX, y: event.clientY }), {
+  const dialogs = options.dialogs ?? createDialogs(root)
+
+  const dropPosition = (event: DragEvent): number | null => view.posAtCoords({ x: event.clientX, y: event.clientY })
+
+  const insertAt = (text: string, at: number | null): void => {
+    const from = at ?? view.state.selection.main.head
+    view.dispatch({ changes: { from, insert: text }, selection: { anchor: from + text.length } })
+    view.focus()
+  }
+
+  bindEntryDrops(view.contentDOM, dropPosition, { holder: documentId, insert: insertAt })
+
+  bindFileDrops(view.contentDOM, dropPosition, (position) => startsALine(view.state, position), {
     holder: documentId,
-    insert: (text, at) => {
-      const from = at ?? view.state.selection.main.head
-      view.dispatch({ changes: { from, insert: text }, selection: { anchor: from + text.length } })
-      view.focus()
-    },
+    client: files,
+    dialogs,
+    toast,
+    insert: insertAt,
   })
 
   bindLinkClicks(view.contentDOM, {
@@ -349,8 +364,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     listen: options.listenForUnload,
   })
 
-  const dialogs = options.dialogs ?? createDialogs(root)
-
   async function settleBeforeLeaving(): Promise<boolean> {
     await autosave.flush()
 
@@ -391,4 +404,4 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
   })
 }
 
-export const TestOnly = { MissingMountError, bootstrap, openPage, reloadPage }
+export const TestOnly = { MissingMountError, bootstrap, openPage, reloadPage, startsALine }
