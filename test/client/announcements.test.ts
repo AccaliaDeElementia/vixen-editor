@@ -5,6 +5,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 
+import type { FilesClient } from '../../src/client/files/files-client.ts'
+
+import { cast } from '../cast.ts'
 import { openEditor, page, recorded, sessionRecording, statusText, type Recorded } from './editor-fixtures.ts'
 
 const { bootstrap } = TestOnly
@@ -21,6 +24,49 @@ beforeEach(() => {
   record = recorded()
   document.body.innerHTML = ''
   root = page()
+})
+
+describe('the first document of an empty workspace', () => {
+  function emptyStore(): FilesClient {
+    return cast<FilesClient>({ tree: () => Promise.resolve([]) })
+  }
+
+  function populatedStore(): FilesClient {
+    return cast<FilesClient>({ tree: () => Promise.resolve([{ name: 'a.md', path: 'a.md', kind: 'document' }]) })
+  }
+
+  async function contentOf(files: FilesClient, pathname: string): Promise<string> {
+    const view = await openEditor({
+      root,
+      pathname,
+      files,
+      session: fakeSession({ load: () => Promise.resolve({ content: '# index\n', stored: false }) }),
+    })
+
+    return view.state.doc.toString()
+  }
+
+  it('starts with a cheatsheet, so the gestures are discoverable at all', async () => {
+    const content = await contentOf(emptyStore(), '/doc/')
+
+    expect(content).toContain('# index')
+    expect(content).toContain('## Keyboard')
+    expect(content).toContain('Ctrl/Cmd + S')
+  })
+
+  it('is the plain template once the store has anything in it', async () => {
+    expect(await contentOf(populatedStore(), '/doc/')).toBe('# index\n')
+  })
+
+  it('is the plain template when the store cannot be read, rather than a guess', async () => {
+    const unreachable = cast<FilesClient>({ tree: () => Promise.reject(new Error('network down')) })
+
+    expect(await contentOf(unreachable, '/doc/')).toBe('# index\n')
+  })
+
+  it('is the plain template for a folder below the root', async () => {
+    expect(await contentOf(emptyStore(), '/doc/journal/')).toBe('# index\n')
+  })
 })
 
 describe('what a screen reader is told when the workspace changes', () => {

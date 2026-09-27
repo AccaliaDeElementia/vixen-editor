@@ -668,3 +668,29 @@
   gap: $space-xs;
   margin-bottom: $space-sm;
 }
+
+.modal__body {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-bottom: $space-sm;
+
+  h3 {
+    font-size: 1rem;
+    margin: $space-sm 0 $space-xs;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.2em $space-sm;
+    margin: 0;
+  }
+
+  dt {
+    color: $muted;
+  }
+
+  dd {
+    margin: 0;
+  }
+}

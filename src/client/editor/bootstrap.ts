@@ -11,6 +11,10 @@ import { interceptNavigation, openDocumentIn, type Navigator } from '../navigati
 import { errorMessage } from '../error-message.ts'
 
 import { isBlank } from '../../shared/content.ts'
+import { directoryOf } from '../../shared/link-paths.ts'
+import { EMPTY } from '../../shared/sequences.ts'
+import { STORE_ROOT } from '../../shared/store-path.ts'
+import { cheatsheet } from '../help.ts'
 
 import { createAutosave } from './autosave.ts'
 import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
@@ -321,6 +325,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     },
   })
 
+  async function withCheatsheetIfNew(template: string, entryPath: string): Promise<string> {
+    if (directoryOf(entryPath) !== STORE_ROOT) return template
+
+    const tree = await files.tree().catch(() => null)
+    if (tree === null || tree.length > EMPTY) return template
+
+    return `${template}\n${cheatsheet()}`
+  }
+
   async function showDocument(entryPath: string, shown: string, isFolderIndex: boolean): Promise<void> {
     const outcome = await loadOrReport(session, entryPath)
     if (!outcome.reached) {
@@ -332,12 +345,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     }
 
     const { document: loaded } = outcome
-    const { content: initial, stored } = loaded
+    const { content: template, stored } = loaded
     if (!stored && !isFolderIndex) {
       showMissing(entryPath, shown)
 
       return
     }
+
+    const initial = stored ? template : await withCheatsheetIfNew(template, entryPath)
 
     const caret = recallCaret(entryPath, initial.length)
     caretPosition = caret

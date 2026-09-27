@@ -70,3 +70,21 @@ test('the missing-document view has no accessibility violations', async ({ page,
 
   await request.delete(`/api/files/entries/${folder}`)
 })
+
+test('the help dialog lists the gestures, and has no accessibility violations', async ({ page, request }) => {
+  const folder = `a11y-help-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await page.locator('#show-help').click()
+  await expect(page.locator('#file-dialog')).toBeVisible()
+
+  await expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + S')
+  await expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + Enter')
+  await expect(page.locator('#file-dialog-cancel')).toBeHidden()
+
+  expect(await violationsOn(page)).toStrictEqual([])
+
+  await page.keyboard.press('Escape')
+  await request.delete(`/api/files/entries/${folder}`)
+})

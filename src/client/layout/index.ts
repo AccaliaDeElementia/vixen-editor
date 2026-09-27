@@ -11,6 +11,10 @@ import {
   TOGGLE_SELECTOR,
   toggleExplorer,
 } from './explorer.ts'
+import { createDialogs } from '../files/dialogs.ts'
+import { HELP_SECTIONS } from '../help.ts'
+
+const HELP_SELECTOR = '#show-help'
 
 const KEYBOARD_STEP_PX = 16
 
@@ -79,6 +83,17 @@ function bindToggle(root: ParentNode, view: Window): void {
   })
 }
 
+function bindHelp(root: ParentNode): void {
+  const help = root.querySelector<HTMLElement>(HELP_SELECTOR)
+  if (help === null) return
+
+  const dialogs = createDialogs(root)
+
+  help.addEventListener('click', () => {
+    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP_SECTIONS })
+  })
+}
+
 function bindViewportResize(root: ParentNode, view: Window): void {
   view.addEventListener('resize', () => {
     applyExplorerState(root, view.innerWidth)
@@ -92,6 +107,7 @@ export function initLayout(options: LayoutOptions = {}): void {
   applyExplorerState(root, view.innerWidth)
   bindResizer(root, view)
   bindToggle(root, view)
+  bindHelp(root)
   bindViewportResize(root, view)
 }
 

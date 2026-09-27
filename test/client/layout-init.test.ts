@@ -24,9 +24,24 @@ function page(): HTMLElement {
   document.body.innerHTML = `
     <div class="app" id="app" data-explorer="open">
       <button id="toggle-explorer" aria-expanded="true" aria-pressed="true"></button>
-      <aside id="explorer">
-        <button id="explorer-resizer" role="separator"></button>
-      </aside>
+      <button id="show-help"></button>
+      <aside id="explorer"></aside>
+      <button id="explorer-resizer" role="separator"></button>
+      <dialog id="file-dialog">
+        <form method="dialog">
+          <h2 id="file-dialog-title"></h2>
+          <p id="file-dialog-message"></p>
+          <p id="file-dialog-field">
+            <label id="file-dialog-label" for="file-dialog-entry"></label>
+            <input id="file-dialog-entry" type="text">
+          </p>
+          <p id="file-dialog-error"></p>
+          <div id="file-dialog-choices" hidden></div>
+          <div id="file-dialog-body" hidden></div>
+          <button id="file-dialog-cancel" type="submit" value="cancel"></button>
+          <button id="file-dialog-confirm" type="submit" value="confirm"></button>
+        </form>
+      </dialog>
     </div>`
   const explorer = document.body.querySelector('#explorer')
   // happy-dom does not lay out, so the geometry the drag maths reads is stubbed.
@@ -239,6 +254,33 @@ describe('the toggle button', () => {
     clickToggle()
 
     expect(widthPx()).toBe(420)
+  })
+})
+
+describe('the help button', () => {
+  it('opens a dialog listing the gestures and shortcuts', () => {
+    initLayout({ root, view: fakeView() })
+
+    root.querySelector<HTMLElement>('#show-help')?.click()
+
+    expect(root.querySelector('#file-dialog-title')?.textContent).toBe('Help')
+    expect([...root.querySelectorAll('#file-dialog-body h3')].map((h) => h.textContent)).toContain('Keyboard')
+  })
+
+  it('offers a single way out', () => {
+    initLayout({ root, view: fakeView() })
+
+    root.querySelector<HTMLElement>('#show-help')?.click()
+
+    expect(root.querySelector('#file-dialog-confirm')?.textContent).toBe('Close')
+  })
+
+  it('does nothing when the page has no help button', () => {
+    document.body.innerHTML = '<div class="app" id="app"></div>'
+
+    expect(() => {
+      initLayout({ root: document.body, view: fakeView() })
+    }).not.toThrow()
   })
 })
 

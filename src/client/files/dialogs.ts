@@ -31,10 +31,22 @@ interface ChooseRequest {
   choices: readonly Choice[]
 }
 
+interface HelpSection {
+  heading: string
+  entries: ReadonlyArray<{ does: string; how: string }>
+}
+
+interface InformRequest {
+  title: string
+  closeLabel: string
+  sections: readonly HelpSection[]
+}
+
 export interface Dialogs {
   prompt: (request: PromptRequest) => Promise<boolean>
   confirm: (request: ConfirmRequest) => Promise<boolean>
   choose: (request: ChooseRequest) => Promise<string | null>
+  inform: (request: InformRequest) => Promise<void>
 }
 
 interface FieldParts {
@@ -51,6 +63,7 @@ interface FrameParts {
   cancel: HTMLElement
   confirm: HTMLElement
   choices: HTMLElement
+  body: HTMLElement
 }
 
 type Parts = FieldParts & FrameParts
@@ -74,12 +87,13 @@ function framePartsOf(root: ParentNode): FrameParts | null {
   const cancel = root.querySelector<HTMLElement>('#file-dialog-cancel')
   const confirm = root.querySelector<HTMLElement>('#file-dialog-confirm')
   const choices = root.querySelector<HTMLElement>('#file-dialog-choices')
+  const body = root.querySelector<HTMLElement>('#file-dialog-body')
 
-  if (dialog === null || title === null) return null
+  if (dialog === null || title === null || body === null) return null
   if (message === null || cancel === null) return null
   if (confirm === null || choices === null) return null
 
-  return { dialog, title, message, cancel, confirm, choices }
+  return { dialog, title, message, cancel, confirm, choices, body }
 }
 
 function partsOf(root: ParentNode): Parts | null {
@@ -195,6 +209,47 @@ async function chooseWith(parts: Parts, request: ChooseRequest): Promise<string 
   return offered.some((choice) => choice.value === outcome) ? outcome : null
 }
 
+function termsIn(entries: HelpSection['entries']): HTMLElement[] {
+  return entries.flatMap(({ does, how }) => {
+    const what = document.createElement('dt')
+    what.textContent = does
+    const detail = document.createElement('dd')
+    detail.textContent = how
+
+    return [what, detail]
+  })
+}
+
+function sectionOf({ heading: title, entries }: HelpSection): HTMLElement {
+  const wrapper = document.createElement('section')
+  const heading = document.createElement('h3')
+  heading.textContent = title
+
+  const list = document.createElement('dl')
+  list.append(...termsIn(entries))
+  wrapper.append(heading, list)
+
+  return wrapper
+}
+
+async function informWith(parts: Parts, request: InformRequest): Promise<void> {
+  const { dialog, message, field, cancel, body } = parts
+
+  reset(parts, request.title, request.closeLabel)
+  message.textContent = ''
+  field.hidden = true
+  cancel.hidden = true
+  body.replaceChildren(...request.sections.map(sectionOf))
+  body.hidden = false
+  dialog.showModal()
+
+  await settled(dialog)
+
+  body.replaceChildren()
+  body.hidden = true
+  cancel.hidden = false
+}
+
 export function createDialogs(root: ParentNode = document): Dialogs {
   const parts = partsOf(root)
   if (parts !== null) bindEnterToConfirm(parts)
@@ -210,6 +265,10 @@ export function createDialogs(root: ParentNode = document): Dialogs {
 
     async choose(request: ChooseRequest): Promise<string | null> {
       return parts === null ? null : await chooseWith(parts, request)
+    },
+
+    async inform(request: InformRequest): Promise<void> {
+      if (parts !== null) await informWith(parts, request)
     },
   }
 }

@@ -21,6 +21,7 @@ dialog.modal#file-dialog(aria-labelledby='file-dialog-title')
         data-form-type='other'
       )
     p.modal__error#file-dialog-error(role='alert')
+    .modal__body#file-dialog-body(hidden tabindex='0')
     .modal__choices#file-dialog-choices(hidden)
     .modal__actions
       button.modal__button#file-dialog-cancel(type='submit' value='cancel') Cancel

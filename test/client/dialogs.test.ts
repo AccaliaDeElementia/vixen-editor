@@ -16,6 +16,7 @@ function page(): void {
         </p>
         <p id="file-dialog-error"></p>
         <div id="file-dialog-choices" hidden></div>
+        <div id="file-dialog-body" hidden tabindex="0"></div>
         <button id="file-dialog-cancel" type="submit" value="cancel">Cancel</button>
         <button id="file-dialog-confirm" type="submit" value="confirm"></button>
       </form>
@@ -294,7 +295,53 @@ const REQUIRED_IDS = [
   'file-dialog-cancel',
   'file-dialog-confirm',
   'file-dialog-choices',
+  'file-dialog-body',
 ]
+
+const HELP = [
+  { heading: 'Keyboard', entries: [{ does: 'Save', how: 'Ctrl/Cmd + S' }] },
+  { heading: 'Markdown', entries: [{ does: 'Heading', how: '# Title' }] },
+]
+
+describe('inform', () => {
+  it('lists every section it was given', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
+    expect([...document.querySelectorAll('#file-dialog-body h3')].map((h) => h.textContent)).toStrictEqual([
+      'Keyboard',
+      'Markdown',
+    ])
+  })
+
+  it('pairs each thing with how it is done', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
+    expect(document.querySelector('#file-dialog-body dt')?.textContent).toBe('Save')
+    expect(document.querySelector('#file-dialog-body dd')?.textContent).toBe('Ctrl/Cmd + S')
+  })
+
+  it('offers one way out, since there is nothing to decide', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden).toBe(true)
+    expect(document.querySelector('#file-dialog-confirm')?.textContent).toBe('Close')
+  })
+
+  it('resolves when it is closed, and leaves the dialog fit for the next use', async () => {
+    const dialogs = createDialogs(document)
+    const shown = dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
+    click('#file-dialog-confirm')
+    await shown
+
+    expect(document.querySelectorAll('#file-dialog-body h3')).toHaveLength(0)
+    expect(document.querySelector<HTMLElement>('#file-dialog-body')?.hidden).toBe(true)
+    expect(document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden).toBe(false)
+  })
+})
 
 describe('a page missing one part of the dialog', () => {
   it.each(REQUIRED_IDS)('declines rather than throwing when #%s is absent', async (id) => {
@@ -329,6 +376,14 @@ describe('a page without the dialog markup', () => {
     document.body.innerHTML = '<p>nothing here</p>'
 
     await expect(createDialogs(document).confirm({ title: 'x', message: 'y', confirmLabel: 'z' })).resolves.toBe(false)
+  })
+
+  it('shows no help rather than throwing', async () => {
+    document.body.innerHTML = '<p>nothing here</p>'
+
+    await expect(
+      createDialogs(document).inform({ title: 'x', closeLabel: 'Close', sections: HELP }),
+    ).resolves.toBeUndefined()
   })
 
   it('declines a choice rather than throwing', async () => {
