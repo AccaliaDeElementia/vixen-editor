@@ -5,6 +5,7 @@ import { readPreferences, writePreferences, type ExplorerPreferences } from './p
 export const MIN_EXPLORER_PX = 160
 const MIN_EDITOR_PX = 672
 const DEFAULT_EXPLORER_PX = 320
+const COLLAPSED_BY_WIDTH = 'collapsed'
 export const MAX_EXPLORER_FRACTION = 0.8
 
 const APP_SELECTOR = '#app'
@@ -32,14 +33,24 @@ function setExplorerOpen(open: boolean): void {
   writePreferences({ ...readPreferences(), open })
 }
 
-function decideOpen(stored: boolean, cramped: boolean, wasCramped: boolean | null): boolean {
-  const justBecameCramped = cramped && wasCramped !== true
+interface Collapse {
+  open: boolean
+  auto: boolean
+}
 
-  return justBecameCramped ? false : stored
+function decideOpen(stored: boolean, cramped: boolean, wasCramped: boolean | null, auto: boolean): Collapse {
+  if (cramped && wasCramped !== true) return { open: false, auto: stored }
+  if (cramped && auto) return { open: false, auto: true }
+  if (!cramped && auto) return { open: true, auto: false }
+
+  return { open: stored, auto: false }
 }
 
 export function toggleExplorer(root: ParentNode): boolean {
-  const next = root.querySelector<HTMLElement>(APP_SELECTOR)?.dataset.explorer === 'closed'
+  const app = root.querySelector<HTMLElement>(APP_SELECTOR)
+  const next = app?.dataset.explorer === 'closed'
+
+  if (app !== null) delete app.dataset.explorerAuto
 
   setExplorerOpen(next)
 
@@ -76,7 +87,15 @@ export function applyExplorerState(root: ParentNode, viewportPx: number): void {
 
   const state = readExplorerState(viewportPx)
   const cramped = viewportPx < DEFAULT_EXPLORER_PX + MIN_EDITOR_PX
-  const open = decideOpen(state.open, cramped, rememberedFlag(app.dataset.explorerCramped))
+  const { open, auto } = decideOpen(
+    state.open,
+    cramped,
+    rememberedFlag(app.dataset.explorerCramped),
+    app.dataset.explorerAuto === COLLAPSED_BY_WIDTH,
+  )
+
+  if (auto) app.dataset.explorerAuto = COLLAPSED_BY_WIDTH
+  else delete app.dataset.explorerAuto
 
   app.dataset.explorerCramped = String(cramped)
   app.dataset.explorer = open ? 'open' : 'closed'

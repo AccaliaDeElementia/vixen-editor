@@ -38,3 +38,28 @@ test('an explorer closed by hand is not reopened by widening', async ({ page }) 
   await page.setViewportSize({ width: 1500, height: 800 })
   await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
 })
+
+test('stays collapsed through a second render at the same width', async ({ page }) => {
+  await openLayout(page, 800, 800)
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+  await page.waitForTimeout(200)
+
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
+})
+
+test('a reader who opens it on a narrow viewport keeps it through a re-render', async ({ page }) => {
+  await openLayout(page, 800, 800)
+  await page.locator('#toggle-explorer').click()
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+  await page.waitForTimeout(200)
+
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
+})

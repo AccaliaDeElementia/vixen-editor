@@ -59,6 +59,25 @@ test('every pointer target in an open dialog is at least 24 by 24', async ({ pag
   await request.delete(`/api/files/entries/${folder}`)
 })
 
+test('every pointer target in an expanded trash is at least 24 by 24', async ({ page, request }) => {
+  const folder = `sizet-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: `${folder}/gone.md`, content: '# gone\n' } })
+  await request.delete(`/api/files/entries/${folder}/gone.md`)
+
+  await page.goto(`/doc/${folder}/`)
+  await expect(page.locator('[role="tree"]')).toBeVisible()
+
+  const trash = page.locator('[role="treeitem"][data-path=".trash"]')
+  await expect(trash).toBeVisible()
+  await trash.click()
+  await expect(page.locator('.tree__action').first()).toBeVisible({ timeout: 10_000 })
+
+  expect(await undersizedTargetsOn(page)).toStrictEqual([])
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
 test('every pointer target in a merge is at least 24 by 24', async ({ page, request }) => {
   const name = `sizem-${String(Date.now())}.md`
   const created = await request.post('/api/files/documents', { data: { path: name, content: '# first' } })
