@@ -23,9 +23,8 @@ function page(): HTMLElement {
   document.body.innerHTML = `
     <div class="app" id="app" data-explorer="open">
       <button id="toggle-explorer" aria-expanded="true" aria-pressed="true"></button>
-      <aside id="explorer">
-        <button id="explorer-resizer" role="separator"></button>
-      </aside>
+      <aside id="explorer"></aside>
+      <button id="explorer-resizer" role="separator"></button>
     </div>`
   return document.body
 }

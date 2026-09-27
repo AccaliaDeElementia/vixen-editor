@@ -13,6 +13,7 @@
   grid-template-columns: $ribbon-width var(--explorer-width, #{$explorer-default-width}) 1fr;
   height: 100%;
   overflow: hidden;
+  position: relative;
 
   &[data-explorer='closed'] {
     grid-template-columns: $ribbon-width 0 1fr;
@@ -103,7 +104,10 @@
 .explorer__resizer {
   position: absolute;
   top: 0;
-  right: -9px;
+  left: calc(#{$ribbon-width} + var(--explorer-width, #{$explorer-default-width}));
+  transform: translateX(-50%);
+  font-size: inherit;
+  z-index: 1;
   width: 24px;
   height: 100%;
   cursor: col-resize;
@@ -125,6 +129,10 @@
 
   &:focus-visible {
     outline: none;
+  }
+
+  .app[data-explorer='closed'] & {
+    display: none;
   }
 }
 

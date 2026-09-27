@@ -81,3 +81,28 @@ test('every pointer target in a merge is at least 24 by 24', async ({ page, requ
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('the resize handle straddles the boundary rather than sitting inside the explorer', async ({ page, request }) => {
+  const folder = `straddle-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: '# hi\n' } })
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await expect(page.locator('[role="tree"]')).toBeVisible()
+
+  const geometry = await page.evaluate(() => {
+    const handle = document.querySelector('#explorer-resizer')?.getBoundingClientRect()
+    const explorer = document.querySelector('#explorer')?.getBoundingClientRect()
+    if (handle === undefined || explorer === undefined) return null
+
+    return {
+      overTheExplorer: Math.round(explorer.right - handle.left),
+      intoTheWorkspace: Math.round(handle.right - explorer.right),
+    }
+  })
+
+  expect(geometry?.overTheExplorer).toBeGreaterThan(0)
+  expect(geometry?.intoTheWorkspace).toBeGreaterThan(0)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
