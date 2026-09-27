@@ -67,6 +67,7 @@ export function sessionRecording(into: Recorded, overrides: Partial<Session> = {
     saveOnUnload: (id: string, content: string) => {
       into.rescued.push({ id, content })
     },
+    reread: () => Promise.resolve(null),
     rename: (from: string, to: string) => {
       into.renamed.push({ from, to })
     },

@@ -302,3 +302,37 @@ describe('sending while the page is leaving', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/documents/notes.md', savingNotes)
   })
 })
+
+describe('a conditional read', () => {
+  it('offers the token it holds, so the server can answer 304', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 304 }))
+
+    await client().readIfChanged('notes.md', '"e1"')
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/notes.md', {
+      method: 'GET',
+      headers: { 'if-none-match': '"e1"' },
+    })
+  })
+
+  it('reports nothing when the document has not moved on', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 304 }))
+
+    await expect(client().readIfChanged('notes.md', '"e1"')).resolves.toBeNull()
+  })
+
+  it('returns the new content and its token when it has', async () => {
+    fetchMock.mockResolvedValue(textResponse('# changed', 200, '"e2"'))
+
+    await expect(client().readIfChanged('notes.md', '"e1"')).resolves.toStrictEqual({
+      content: '# changed',
+      etag: '"e2"',
+    })
+  })
+
+  it('raises a failure rather than reporting no change', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: 'Document not found' }, 404))
+
+    await expect(client().readIfChanged('notes.md', '"e1"')).rejects.toThrow(DocumentRequestError)
+  })
+})

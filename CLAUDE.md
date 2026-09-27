@@ -696,6 +696,19 @@ exactly the cases this exists to catch.
 for a document that does not exist, so creation goes through
 `POST /api/files/documents` and nowhere else.
 
+**`GET` honours `If-None-Match`**, answering `304` with the token and no body
+when it still matches, and the new content with the new token when it does
+not. That is deliberately the same request as a read: the client's periodic
+freshness check needs the content whenever the answer is "changed", so a
+separate "has it changed" endpoint would cost a second round trip for the
+case that matters. Weak tokens, comma-separated lists and `*` are all honoured,
+because that is what the header specifies.
+
+**The check costs a file read.** The ETag is a content hash, so there is no
+way to learn it without reading the file — `304` saves bandwidth, not disk.
+Trivial for a self-hosted editor, and worth knowing before anyone polls every
+second.
+
 ### The write lock
 
 `If-Match` alone has a hole: between hashing the current file and writing the

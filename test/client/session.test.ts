@@ -13,11 +13,12 @@ const { defaultTemplate } = TestOnly
 function fakeClient(): {
   list: ReturnType<typeof vi.fn>
   read: ReturnType<typeof vi.fn>
+  readIfChanged: ReturnType<typeof vi.fn>
   create: ReturnType<typeof vi.fn>
   save: ReturnType<typeof vi.fn>
   remove: ReturnType<typeof vi.fn>
 } {
-  return { list: vi.fn(), read: vi.fn(), create: vi.fn(), save: vi.fn(), remove: vi.fn() }
+  return { list: vi.fn(), read: vi.fn(), readIfChanged: vi.fn(), create: vi.fn(), save: vi.fn(), remove: vi.fn() }
 }
 
 let client: ReturnType<typeof fakeClient> = fakeClient()
@@ -275,5 +276,60 @@ describe('saveOnUnload', () => {
     await vi.waitFor(() => {
       expect(client.save).toHaveBeenCalledTimes(1)
     })
+  })
+})
+
+describe('reread', () => {
+  it('asks with the token the load returned', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.readIfChanged.mockResolvedValue(null)
+    const active = session()
+    await active.load('notes.md')
+
+    await active.reread('notes.md')
+
+    expect(client.readIfChanged).toHaveBeenCalledWith('notes.md', '"abc"')
+  })
+
+  it('reports nothing for a document it has never loaded, which has no token', async () => {
+    const active = session()
+
+    await expect(active.reread('unseen.md')).resolves.toBeNull()
+    expect(client.readIfChanged).not.toHaveBeenCalled()
+  })
+
+  it('reports the newer content when the server has some', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.readIfChanged.mockResolvedValue({ content: '# changed', etag: '"next"' })
+    const active = session()
+    await active.load('notes.md')
+
+    await expect(active.reread('notes.md')).resolves.toStrictEqual({ content: '# changed', stored: true })
+  })
+
+  it('takes the new token, so a save after a reload is not refused', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.readIfChanged.mockResolvedValue({ content: '# changed', etag: '"next"' })
+    client.save.mockResolvedValue('"later"')
+    const active = session()
+    await active.load('notes.md')
+    await active.reread('notes.md')
+
+    await active.save('notes.md', '# mine')
+
+    expect(client.save).toHaveBeenCalledWith('notes.md', '# mine', '"next"')
+  })
+
+  it('leaves the token alone when nothing changed', async () => {
+    client.read.mockResolvedValue(loaded('# stored', '"abc"'))
+    client.readIfChanged.mockResolvedValue(null)
+    client.save.mockResolvedValue('"later"')
+    const active = session()
+    await active.load('notes.md')
+    await active.reread('notes.md')
+
+    await active.save('notes.md', '# mine')
+
+    expect(client.save).toHaveBeenCalledWith('notes.md', '# mine', '"abc"')
   })
 })

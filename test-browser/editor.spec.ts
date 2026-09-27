@@ -518,3 +518,64 @@ test('a file dropped from outside is uploaded beside the document and embedded',
 
   await request.delete(`/api/files/entries/${folder}`)
 })
+
+test('a clean buffer reloads when the document changes underneath it', async ({ page, request }) => {
+  const name = `fresh-${String(Date.now())}.md`
+  const created = await request.post('/api/files/documents', { data: { path: name, content: '# first' } })
+  const etag = await stringFieldOf(created, 'etag')
+
+  await page.goto(`/doc/${name}`)
+  await expect(page.locator('.cm-content')).toContainText('# first')
+
+  await request.put(`/api/documents/${name}`, {
+    headers: { 'if-match': etag, 'content-type': 'application/json' },
+    data: { content: '# changed by someone else' },
+  })
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('focus'))
+  })
+
+  await expect(page.locator('.cm-content')).toContainText('# changed by someone else')
+  await expect(page.locator('#status .toast').last()).toContainText('reloaded')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a dirty buffer is warned about rather than replaced', async ({ page, request }) => {
+  const name = `dirtyfresh-${String(Date.now())}.md`
+  const created = await request.post('/api/files/documents', { data: { path: name, content: '# first' } })
+  const etag = await stringFieldOf(created, 'etag')
+
+  await page.goto(`/doc/${name}`)
+  await page.locator('.cm-content').click()
+  await page.keyboard.type('mine ')
+
+  await request.put(`/api/documents/${name}`, {
+    headers: { 'if-match': etag, 'content-type': 'application/json' },
+    data: { content: '# changed by someone else' },
+  })
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('focus'))
+  })
+
+  await expect(page.locator('#status .toast').last()).toContainText('can no longer be saved')
+  await expect(page.locator('.cm-content')).toContainText('mine')
+  await expect(page.locator('.cm-content')).not.toContainText('changed by someone else')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('an unchanged document costs no body', async ({ request }) => {
+  const name = `nochange-${String(Date.now())}.md`
+  const created = await request.post('/api/files/documents', { data: { path: name, content: '# steady' } })
+  const etag = await stringFieldOf(created, 'etag')
+
+  const res = await request.get(`/api/documents/${name}`, { headers: { 'if-none-match': etag } })
+
+  expect(res.status()).toBe(304)
+  expect(await res.text()).toBe('')
+
+  await request.delete(`/api/files/entries/${name}`)
+})

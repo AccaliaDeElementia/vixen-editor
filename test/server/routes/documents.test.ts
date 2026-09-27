@@ -350,3 +350,80 @@ describe('write contention', () => {
     held.release()
   })
 })
+
+describe('a conditional GET', () => {
+  async function conditionalGet(id: string, etag: string): Promise<Response> {
+    return await app.request(`/api/documents/${id}`, { headers: { 'if-none-match': etag } })
+  }
+
+  it('answers 304 when the token still matches, so a check costs no body', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+
+    const res = await conditionalGet('notes.md', etag)
+
+    expect(res.status).toBe(304)
+    await expect(res.text()).resolves.toBe('')
+  })
+
+  it('still carries the token on a 304, because a client may have lost it', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+
+    expect((await conditionalGet('notes.md', etag)).headers.get('etag')).toBe(etag)
+  })
+
+  it('returns the new content when the document has moved on', async () => {
+    const stale = await store.createDocument('notes.md', '# hello')
+    await store.updateDocument('notes.md', '# changed', stale)
+
+    const res = await conditionalGet('notes.md', stale)
+
+    expect(res.status).toBe(200)
+    await expect(res.text()).resolves.toBe('# changed')
+  })
+
+  it('carries the new token with the new content, which is what a resolution needs', async () => {
+    const stale = await store.createDocument('notes.md', '# hello')
+    const fresh = await store.updateDocument('notes.md', '# changed', stale)
+
+    expect((await conditionalGet('notes.md', stale)).headers.get('etag')).toBe(fresh)
+  })
+
+  it('answers in full when no token is offered at all', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    const res = await app.request('/api/documents/notes.md')
+
+    expect(res.status).toBe(200)
+  })
+
+  it('answers 404 for a document that is gone, rather than 304', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+    await store.trash('notes.md')
+
+    expect((await conditionalGet('notes.md', etag)).status).toBe(404)
+  })
+
+  it('honours a weak comparison, which is what If-None-Match specifies', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+
+    expect((await conditionalGet('notes.md', `W/${etag}`)).status).toBe(304)
+  })
+
+  it('accepts a list of tokens, matching if any of them is current', async () => {
+    const etag = await store.createDocument('notes.md', '# hello')
+
+    expect((await conditionalGet('notes.md', `"other", ${etag}`)).status).toBe(304)
+  })
+
+  it('answers in full when none of the offered tokens is current', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    expect((await conditionalGet('notes.md', '"one", "two"')).status).toBe(200)
+  })
+
+  it('answers 304 for the wildcard, which means any current version', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    expect((await conditionalGet('notes.md', '*')).status).toBe(304)
+  })
+})

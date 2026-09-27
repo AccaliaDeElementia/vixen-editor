@@ -28,6 +28,7 @@ import { createWorkspace } from '../layout/workspace.ts'
 import { createSession, type LoadedDocument, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 import { describeRefusal } from './leaving.ts'
+import { watchFreshness } from './freshness.ts'
 import { bindLinkClicks } from './link-clicks.ts'
 import { bindEntryDrops, bindFileDrops } from './drops.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
@@ -48,6 +49,8 @@ interface BootstrapOptions {
   openUrl?: (url: string) => void
   navigation?: Navigation
   dialogs?: Dialogs
+  freshnessMs?: number
+  listenForFocus?: (wake: () => void) => () => void
 }
 
 type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }
@@ -379,6 +382,29 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
 
     return leaveAnyway
   }
+
+  async function checkFreshness(): Promise<void> {
+    if (workspace.showing() !== 'document' || autosave.state() === 'saving') return
+
+    const target = documentId()
+    const loaded = await session.reread(target).catch(() => null)
+    if (loaded === null || target !== documentId()) return
+
+    const { content } = loaded
+    if (autosave.state() !== 'clean') {
+      toast.error(`${target} changed on disk — your unsaved changes can no longer be saved as they are`)
+
+      return
+    }
+
+    const caret = Math.min(caretPosition, content.length)
+    view.setState(stateFor(content, caret))
+    autosave.reset(content)
+    statusBar.showWordCount(content)
+    setStatus(`${target} changed on disk — reloaded`)
+  }
+
+  watchFreshness({ check: checkFreshness, intervalMs: options.freshnessMs, listen: options.listenForFocus })
 
   const navigator = interceptNavigation({
     navigation: options.navigation ?? globalThis.navigation,

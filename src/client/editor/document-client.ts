@@ -5,6 +5,7 @@ import { API_PREFIX } from '../../shared/api.ts'
 import { isRecord } from '../../shared/guards.ts'
 
 const HTTP_SERVICE_UNAVAILABLE = 503
+const HTTP_NOT_MODIFIED = 304
 
 export class DocumentRequestError extends Error {
   override readonly name = 'DocumentRequestError'
@@ -30,6 +31,7 @@ export const WHILE_LEAVING: SendOptions = { keepalive: true }
 export interface DocumentClient {
   list: () => Promise<string[]>
   read: (id: string) => Promise<LoadedDocument>
+  readIfChanged: (id: string, etag: string) => Promise<LoadedDocument | null>
   create: (id: string, content: string, options?: SendOptions) => Promise<string>
   save: (id: string, content: string, etag: string, options?: SendOptions) => Promise<string>
   remove: (entryPath: string) => Promise<void>
@@ -88,6 +90,17 @@ export function createDocumentClient(
 
     async read(id: string): Promise<LoadedDocument> {
       const response = await fetchImpl(`${documentsUrl}/${encodeDocumentId(id)}`, { method: 'GET' })
+      if (!response.ok) await throwRequestError(response)
+
+      return { content: await response.text(), etag: etagHeaderOf(response) }
+    },
+
+    async readIfChanged(id: string, etag: string): Promise<LoadedDocument | null> {
+      const response = await fetchImpl(`${documentsUrl}/${encodeDocumentId(id)}`, {
+        method: 'GET',
+        headers: { 'if-none-match': etag },
+      })
+      if (response.status === HTTP_NOT_MODIFIED) return null
       if (!response.ok) await throwRequestError(response)
 
       return { content: await response.text(), etag: etagHeaderOf(response) }

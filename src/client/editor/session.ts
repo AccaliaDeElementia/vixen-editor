@@ -15,6 +15,7 @@ export interface Session {
   load: (id: string) => Promise<LoadedDocument>
   save: (id: string, content: string) => Promise<void>
   saveOnUnload: (id: string, content: string) => void
+  reread: (id: string) => Promise<LoadedDocument | null>
   rename: (from: string, to: string) => void
 }
 
@@ -42,6 +43,18 @@ export function createSession(client: DocumentClient, template: (id: string) => 
         etags.delete(id)
         return { content: template(id), stored: false }
       }
+    },
+
+    async reread(id: string): Promise<LoadedDocument | null> {
+      const etag = etags.get(id)
+      if (etag === undefined) return null
+
+      const loaded = await client.readIfChanged(id, etag)
+      if (loaded === null) return null
+
+      etags.set(id, loaded.etag)
+
+      return { content: loaded.content, stored: true }
     },
 
     rename(from: string, to: string): void {
