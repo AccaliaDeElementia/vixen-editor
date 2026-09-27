@@ -1,9 +1,7 @@
 'use sanity'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
-import { directoryOf, isStorePath, resolveDestination } from '../../shared/link-paths.ts'
-
-import path from 'node:path'
+import { directoryOf, isStorePath, relativeDestination, resolveDestination } from '../../shared/link-paths.ts'
 
 import { rewriteLinkDestinations } from './links.ts'
 
@@ -30,7 +28,7 @@ export function movedPath(moves: readonly PathMove[], entryPath: string): string
 }
 
 function expressRelative(writtenPath: string, directory: string, target: string): string {
-  const relative = path.posix.relative(`/${directory}`, `/${target}`)
+  const relative = relativeDestination(directory, target)
   if (relative === '') return '.'
 
   const keepPrefix = writtenPath.startsWith(EXPLICITLY_RELATIVE) && !relative.startsWith('.')

@@ -1,6 +1,7 @@
 'use sanity'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
+import { encodeDestination } from '../../shared/link-syntax.ts'
 
 import { parse, postprocess, preprocess } from 'micromark'
 
@@ -16,16 +17,7 @@ const DESTINATION_TOKENS = new Set(['resourceDestinationString', 'definitionDest
 // CommonMark: a backslash escapes any ASCII punctuation character.
 const BACKSLASH_ESCAPE = /\\(?<punctuation>[!-\/:-@\[-`\{-~])/gv
 const PERCENT_RUN = /(?:%[0-9A-Fa-f]{2})+/gv
-const CHARACTER_REFERENCE = /^&(?:#\d+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/v
-
 const PRECEDING_CHARACTER = 1
-
-const HEX = 16
-const BYTE_DIGITS = 2
-
-const ALWAYS_ENCODED = new Set(['%', '\\'])
-const OUTSIDE_BRACKETS = new Set([' ', '(', ')', '"', '<', '>'])
-const INSIDE_BRACKETS = new Set(['<', '>'])
 
 function decodePercentRun(run: string): string {
   try {
@@ -37,31 +29,6 @@ function decodePercentRun(run: string): string {
 
 function decodeDestination(raw: string): string {
   return raw.replace(BACKSLASH_ESCAPE, '$<punctuation>').replace(PERCENT_RUN, decodePercentRun)
-}
-
-function percentEncode(character: string): string {
-  const bytes = new TextEncoder().encode(character)
-
-  return Array.from(bytes, (byte) => `%${byte.toString(HEX).toUpperCase().padStart(BYTE_DIGITS, '0')}`).join('')
-}
-
-function mustEncode(character: string, bracketed: boolean): boolean {
-  if (ALWAYS_ENCODED.has(character)) return true
-
-  return bracketed ? INSIDE_BRACKETS.has(character) : OUTSIDE_BRACKETS.has(character)
-}
-
-function encodeDestination(value: string, bracketed: boolean): string {
-  let encoded = ''
-  let offset = 0
-
-  for (const character of value) {
-    const opensReference = character === '&' && CHARACTER_REFERENCE.test(value.slice(offset))
-    encoded += mustEncode(character, bracketed) || opensReference ? percentEncode(character) : character
-    offset += character.length
-  }
-
-  return encoded
 }
 
 function findLinkDestinations(markdown: string): LinkDestination[] {
@@ -105,4 +72,4 @@ export function rewriteLinkDestinations(markdown: string, rewrite: (destination:
   return result
 }
 
-export const TestOnly = { decodeDestination, encodeDestination, findLinkDestinations }
+export const TestOnly = { decodeDestination, findLinkDestinations }

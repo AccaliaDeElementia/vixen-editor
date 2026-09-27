@@ -29,6 +29,7 @@ import { createSession, type LoadedDocument, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 import { describeRefusal } from './leaving.ts'
 import { bindLinkClicks } from './link-clicks.ts'
+import { bindEntryDrops } from './drops.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 
 const MOUNT_SELECTOR = '#editor'
@@ -219,6 +220,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   }
 
   const view = new EditorView({ parent: mount, state: stateFor('', TOP_OF_DOCUMENT) })
+
+  bindEntryDrops(view.contentDOM, (event) => view.posAtCoords({ x: event.clientX, y: event.clientY }), {
+    holder: documentId,
+    insert: (text, at) => {
+      const from = at ?? view.state.selection.main.head
+      view.dispatch({ changes: { from, insert: text }, selection: { anchor: from + text.length } })
+      view.focus()
+    },
+  })
 
   bindLinkClicks(view.contentDOM, {
     holder: documentId,

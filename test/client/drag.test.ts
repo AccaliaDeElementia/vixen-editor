@@ -28,6 +28,7 @@ const SAMPLE = parseTree({
       children: [{ name: '2026', path: 'journal/2026', kind: 'folder', children: [] }],
     },
     { name: 'notes.md', path: 'notes.md', kind: 'document' },
+    { name: 'photo.png', path: 'photo.png', kind: 'image' },
   ],
 })
 

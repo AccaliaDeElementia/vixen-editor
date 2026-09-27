@@ -454,3 +454,39 @@ test('an external link in the document is not decorated', async ({ page, request
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('dragging a document from the tree inserts a link at the drop point', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const open = `dropinto-${stamp}.md`
+  const dragged = `dragged-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: open, content: 'before after' } })
+  await request.post('/api/files/documents', { data: { path: dragged, content: '# dragged' } })
+
+  await page.goto(`/doc/${open}`)
+  await expect(page.locator(`[role="treeitem"][data-path="${dragged}"]`)).toBeVisible()
+
+  await page.locator(`[role="treeitem"][data-path="${dragged}"]`).dragTo(page.locator('.cm-content'))
+
+  await expect(page.locator('.cm-content')).toContainText(`[${dragged}](${dragged})`)
+
+  await request.delete(`/api/files/entries/${open}`)
+  await request.delete(`/api/files/entries/${dragged}`)
+})
+
+test('dragging an image inserts an embed rather than a link', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const open = `embedinto-${stamp}.md`
+  const image = `dragged-${stamp}.png`
+  await request.post('/api/files/documents', { data: { path: open, content: 'here' } })
+  await storedImage(request, image)
+
+  await page.goto(`/doc/${open}`)
+  await expect(page.locator(`[role="treeitem"][data-path="${image}"]`)).toBeVisible()
+
+  await page.locator(`[role="treeitem"][data-path="${image}"]`).dragTo(page.locator('.cm-content'))
+
+  await expect(page.locator('.cm-content')).toContainText(`![${image}](${image})`)
+
+  await request.delete(`/api/files/entries/${open}`)
+  await request.delete(`/api/files/entries/${image}`)
+})

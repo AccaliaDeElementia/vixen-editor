@@ -2,7 +2,9 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { directoryOf, isStorePath, resolveDestination } from '../../src/shared/link-paths.ts'
+import path from 'node:path'
+
+import { directoryOf, isStorePath, relativeDestination, resolveDestination } from '../../src/shared/link-paths.ts'
 
 describe('isStorePath', () => {
   it.each([
@@ -58,5 +60,32 @@ describe('resolveDestination', () => {
 
   it('refuses from the root too, where there is nothing above', () => {
     expect(resolveDestination('', '../outside.md')).toBeNull()
+  })
+})
+
+const NAMES = ['', 'a', 'b', 'a/b', 'a/c', 'a/b/c', 'x/y', 'a/b/c/d', 'b/a']
+
+describe('relativeDestination', () => {
+  it.each([
+    ['', 'a.md', 'a.md'],
+    ['journal', 'journal/a.md', 'a.md'],
+    ['journal', 'a.md', '../a.md'],
+    ['journal/2026', 'journal/a.md', '../a.md'],
+    ['journal', 'other/a.md', '../other/a.md'],
+  ])('writes %j -> %j as %j', (from, to, expected) => {
+    expect(relativeDestination(from, to)).toBe(expected)
+  })
+
+  it('agrees with node path.posix.relative on every pair of store paths', () => {
+    const disagreements = NAMES.flatMap((from) =>
+      NAMES.map((to) => ({
+        from,
+        to,
+        ours: relativeDestination(from, to),
+        node: path.posix.relative(`/${from}`, `/${to}`),
+      })).filter((pair) => pair.ours !== pair.node),
+    )
+
+    expect(disagreements).toStrictEqual([])
   })
 })

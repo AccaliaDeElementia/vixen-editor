@@ -19,6 +19,7 @@ type DropDirectory = string
 type DestinationPath = string
 
 const DRAG_MIME = 'application/x-vixen-path'
+const DRAG_KIND_MIME = 'application/x-vixen-kind'
 const DROP_TARGET_CLASS = 'tree__row--drop'
 
 interface DragContext {
@@ -104,9 +105,10 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     const row = index === null ? undefined : context.rowAt(index)
     if (!isStoreRow(row)) return
 
-    const { path } = row
+    const { path, kind } = row
     dragging = path
     event.dataTransfer?.setData(DRAG_MIME, path)
+    event.dataTransfer?.setData(DRAG_KIND_MIME, kind)
   })
 
   tree.addEventListener('dragend', () => {
@@ -162,4 +164,4 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
   })
 }
 
-export const TestOnly = { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf }
+export const TestOnly = { DRAG_KIND_MIME, DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf }
