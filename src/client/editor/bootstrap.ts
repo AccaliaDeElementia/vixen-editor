@@ -68,12 +68,14 @@ async function loadOrReport(session: Session, id: string): Promise<LoadOutcome> 
   }
 }
 
-function reportUnreachable(root: ParentNode, at: string, error: unknown): void {
-  const reason = root.querySelector(UNREACHABLE_REASON_SELECTOR)
-  if (reason === null) return
-
+function reportUnreachable(root: ParentNode, at: string, error: unknown): string {
   const subject = at === '' ? 'The store' : at
-  reason.textContent = `${subject} could not be loaded: ${errorMessage(error)}`
+  const reason = `${subject} could not be loaded: ${errorMessage(error)}`
+  const element = root.querySelector(UNREACHABLE_REASON_SELECTOR)
+
+  if (element !== null) element.textContent = reason
+
+  return reason
 }
 
 function startsALine(state: EditorState, position: number | null): boolean {
@@ -306,6 +308,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     emptyTheBuffer()
     workspace.show('missing', shown)
     missingView.offer(entryPath)
+    setStatus(`${shown} is not in the store`)
   }
 
   const imageView = createImageView({
@@ -322,8 +325,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     const outcome = await loadOrReport(session, entryPath)
     if (!outcome.reached) {
       emptyTheBuffer()
-      reportUnreachable(root, shown, outcome.error)
       workspace.show('unreachable', shown)
+      setStatus(reportUnreachable(root, shown, outcome.error))
 
       return
     }
@@ -356,6 +359,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     if (trashEntryId !== null) {
       emptyTheBuffer()
       deletedView.offer(trashEntryId)
+      setStatus('This entry is in the trash')
 
       return
     }
@@ -364,6 +368,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     if (classifyFile(documentId()) === 'image') {
       emptyTheBuffer()
       imageView.offer(documentId())
+      setStatus(`Viewing ${documentId()}`)
 
       return
     }

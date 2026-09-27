@@ -27,6 +27,24 @@ test('the document view has no accessibility violations', async ({ page, request
   await request.delete(`/api/files/entries/${folder}`)
 })
 
+test('a save is announced rather than only shown', async ({ page, request }) => {
+  const folder = `a11y-save-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await expect(page.locator('.cm-content')).toBeVisible()
+
+  await expect(page.locator('#save-label')).toHaveAttribute('role', 'status')
+
+  await page.locator('.cm-content').click()
+  await page.keyboard.type('edited')
+  await page.keyboard.press('ControlOrMeta+s')
+
+  await expect(page.locator('#save-label')).toHaveText('Saved')
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
 test('an open dialog has no accessibility violations', async ({ page, request }) => {
   const folder = `a11y-dialog-${String(Date.now())}`
   await workspaceWith(page, request, folder)
