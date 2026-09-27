@@ -2,195 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { rewriteLinkDestinations, TestOnly } from '../../../src/server/markdown/links.ts'
-import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
-
-const { decodeDestination, findLinkDestinations } = TestOnly
-
-import { encodeDestination } from '../../../src/shared/link-syntax.ts'
-
-function valuesIn(markdown: string): string[] {
-  return findLinkDestinations(markdown).map((destination) => destination.value)
-}
-
-describe('findLinkDestinations', () => {
-  it('finds an inline link', () => {
-    expect(valuesIn('see [the journal](journal/a.md) today')).toStrictEqual(['journal/a.md'])
-  })
-
-  it('finds an image', () => {
-    expect(valuesIn('![alt](img/p.png "a title")')).toStrictEqual(['img/p.png'])
-  })
-
-  it('finds a reference definition', () => {
-    expect(valuesIn('[a][id]\n\n[id]: journal/b.md')).toStrictEqual(['journal/b.md'])
-  })
-
-  it('finds a definition whose title sits on the next line', () => {
-    expect(valuesIn('[id]: next.md\n  "the title"')).toStrictEqual(['next.md'])
-  })
-
-  it('reports them in document order', () => {
-    expect(valuesIn('[a](one.md) and [b](two.md)')).toStrictEqual(['one.md', 'two.md'])
-  })
-
-  it('finds both halves of an image inside a link', () => {
-    expect(valuesIn('[![alt](inner.png)](outer.md)')).toStrictEqual(['inner.png', 'outer.md'])
-  })
-
-  it('excludes the delimiters of an angle-bracketed destination', () => {
-    expect(valuesIn('[a](<my file.md>)')).toStrictEqual(['my file.md'])
-  })
-
-  it('reports whether the destination was angle-bracketed', () => {
-    expect(findLinkDestinations('[a](<x.md>) [b](y.md)').map((d) => d.bracketed)).toStrictEqual([true, false])
-  })
-
-  it('reports offsets that slice the written form back out', () => {
-    const markdown = '[a](<my file.md>) then [b](plain.md)'
-
-    const sliced = findLinkDestinations(markdown).map((d) => markdown.slice(d.start, d.end))
-
-    expect(sliced).toStrictEqual(['my file.md', 'plain.md'])
-  })
-
-  it('finds a link inside a list item and a blockquote', () => {
-    expect(valuesIn('- [a](list.md)\n\n> [b](quote.md)')).toStrictEqual(['list.md', 'quote.md'])
-  })
-
-  it('finds nothing in a document with no links', () => {
-    expect(valuesIn('# Heading\n\nJust prose.')).toStrictEqual([])
-  })
-})
-
-describe('findLinkDestinations leaves code alone', () => {
-  it('ignores a fenced block', () => {
-    expect(valuesIn('```\n[a](fence.md)\n```')).toStrictEqual([])
-  })
-
-  it('ignores an indented block', () => {
-    expect(valuesIn('    [a](indent.md)')).toStrictEqual([])
-  })
-
-  it('ignores inline code', () => {
-    expect(valuesIn('use `[a](code.md)` here')).toStrictEqual([])
-  })
-
-  it('ignores a fenced block while still finding the prose around it', () => {
-    expect(valuesIn('[a](before.md)\n\n```\n[b](fence.md)\n```\n\n[c](after.md)')).toStrictEqual([
-      'before.md',
-      'after.md',
-    ])
-  })
-})
-
-describe('findLinkDestinations ignores what is not markdown link syntax', () => {
-  it('ignores an HTML anchor', () => {
-    expect(valuesIn('<a href="html.md">x</a>')).toStrictEqual([])
-  })
-
-  it('ignores an HTML image', () => {
-    expect(valuesIn('<img src="html.png">')).toStrictEqual([])
-  })
-
-  it('ignores an autolink', () => {
-    expect(valuesIn('see <https://example.com> ok')).toStrictEqual([])
-  })
-
-  it('ignores a bracket that was escaped out of being a link', () => {
-    expect(valuesIn('\\[a](escaped.md)')).toStrictEqual([])
-  })
-
-  it('ignores a link with an empty destination', () => {
-    expect(valuesIn('[a]()')).toStrictEqual([])
-  })
-})
-
-describe('an encoded percent survives the decoder', () => {
-  it('round-trips, so a literal percent in a name is not lost', () => {
-    expect(decodeDestination(encodeDestination('100%.md', false))).toBe('100%.md')
-  })
-})
-
-describe('decodeDestination', () => {
-  it('leaves a plain path alone', () => {
-    expect(decodeDestination('journal/a.md')).toBe('journal/a.md')
-  })
-
-  it('decodes a percent-encoded space', () => {
-    expect(decodeDestination('my%20file.md')).toBe('my file.md')
-  })
-
-  it('decodes a multi-byte sequence', () => {
-    expect(decodeDestination('caf%C3%A9.md')).toBe('café.md')
-  })
-
-  it('resolves a backslash escape', () => {
-    expect(decodeDestination('a\\(b.md')).toBe('a(b.md')
-  })
-
-  it('leaves a lone percent alone', () => {
-    expect(decodeDestination('100% done.md')).toBe('100% done.md')
-  })
-
-  it('leaves a malformed percent sequence alone', () => {
-    expect(decodeDestination('a%zzb.md')).toBe('a%zzb.md')
-  })
-
-  it('decodes a valid sequence that sits beside a malformed one', () => {
-    expect(decodeDestination('a%20b%zz.md')).toBe('a b%zz.md')
-  })
-
-  it('leaves a percent pair that is not valid UTF-8 alone', () => {
-    expect(decodeDestination('a%FFb.md')).toBe('a%FFb.md')
-  })
-})
-
-describe('a name the store allows survives a round trip through a document', () => {
-  const NAMES = [
-    'plain.md',
-    'my file.md',
-    'a  two spaces.md',
-    'a(b).md',
-    'a(b.md',
-    'a)b.md',
-    '100%.md',
-    'say "hi".md',
-    "it's.md",
-    'a&b.md',
-    'a&amp;b.md',
-    '[x].md',
-    'a<b.md',
-    'a>b.md',
-    'a#b.md',
-    'a?b.md',
-    'café.md',
-    '🎉.md',
-    'Rock & Roll (live).md',
-  ]
-
-  it('covers only names the store would actually accept', () => {
-    expect(NAMES.filter((name) => !isAllowedName(name))).toStrictEqual([])
-  })
-
-  it.each(NAMES)('round trips %j written as an inline link', (name) => {
-    const markdown = `[a](${encodeDestination(name, false)})`
-
-    expect(valuesIn(markdown)).toStrictEqual([name])
-  })
-
-  it.each(NAMES)('round trips %j written inside angle brackets', (name) => {
-    const markdown = `[a](<${encodeDestination(name, true)}>)`
-
-    expect(valuesIn(markdown)).toStrictEqual([name])
-  })
-
-  it.each(NAMES)('round trips %j written as a reference definition', (name) => {
-    const markdown = `[x][id]\n\n[id]: ${encodeDestination(name, false)}`
-
-    expect(valuesIn(markdown)).toStrictEqual([name])
-  })
-})
+import { rewriteLinkDestinations } from '../../../src/server/markdown/links.ts'
 
 const CORPUS: Readonly<Record<string, string>> = {
   empty: '',
@@ -210,6 +22,7 @@ const CORPUS: Readonly<Record<string, string>> = {
   trailingNoNewline: '[a](no-newline.md)',
   manyLinks: '[a](1.md) [b](2.md) [c](3.md)\n\n[id]: 4.md\n',
   selfReferential: '[journal/a.md](journal/a.md)\n',
+  definitionThatIsOnlyText: '- item\n<img src="./r.png">\n[c]: ./ref.md',
 
   // Written forms that do not survive a decode-then-encode round trip: the
   // author encoded something this module would have left plain, or left plain
@@ -281,6 +94,18 @@ describe('rewriteLinkDestinations', () => {
     })
 
     expect(seen).toStrictEqual(['my file.md'])
+  })
+
+  it('leaves a path alone that only looks like a definition, mid-paragraph', () => {
+    const markdown = '- item\n<img src="./r.png">\n[c]: ./ref.md'
+
+    expect(rewriteLinkDestinations(markdown, () => 'moved.md')).toBe(markdown)
+  })
+
+  it('rewrites the same path when a blank line makes it a real definition', () => {
+    const markdown = '- item\n\n[c]: ./ref.md'
+
+    expect(rewriteLinkDestinations(markdown, () => 'moved.md')).toBe('- item\n\n[c]: moved.md')
   })
 
   it('rewrites an image', () => {

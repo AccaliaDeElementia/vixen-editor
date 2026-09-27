@@ -4,6 +4,22 @@ import { SEQUENCE_START } from './sequences.ts'
 
 const CHARACTER_REFERENCE = /^&(?:#\d+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/v
 
+// CommonMark: a backslash escapes any ASCII punctuation character.
+const BACKSLASH_ESCAPE = /\\(?<punctuation>[!-\/:-@\[-`\{-~])/gv
+const PERCENT_RUN = /(?:%[0-9A-Fa-f]{2})+/gv
+
+function decodePercentRun(run: string): string {
+  try {
+    return decodeURIComponent(run)
+  } catch {
+    return run
+  }
+}
+
+export function decodeDestination(raw: string): string {
+  return raw.replace(BACKSLASH_ESCAPE, '$<punctuation>').replace(PERCENT_RUN, decodePercentRun)
+}
+
 const HEX = 16
 const BYTE_DIGITS = 2
 

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { encodeDestination } from '../../src/shared/link-syntax.ts'
+import { decodeDestination, encodeDestination } from '../../src/shared/link-syntax.ts'
 
 describe('encodeDestination', () => {
   it('leaves a plain path alone in either form', () => {
@@ -35,5 +35,45 @@ describe('encodeDestination', () => {
 
   it('leaves non-ASCII alone, which is legal and more readable than encoding it', () => {
     expect(encodeDestination('café/🎉.md', false)).toBe('café/🎉.md')
+  })
+})
+
+describe('an encoded percent survives the decoder', () => {
+  it('round-trips, so a literal percent in a name is not lost', () => {
+    expect(decodeDestination(encodeDestination('100%.md', false))).toBe('100%.md')
+  })
+})
+
+describe('decodeDestination', () => {
+  it('leaves a plain path alone', () => {
+    expect(decodeDestination('journal/a.md')).toBe('journal/a.md')
+  })
+
+  it('decodes a percent-encoded space', () => {
+    expect(decodeDestination('my%20file.md')).toBe('my file.md')
+  })
+
+  it('decodes a multi-byte sequence', () => {
+    expect(decodeDestination('caf%C3%A9.md')).toBe('café.md')
+  })
+
+  it('resolves a backslash escape', () => {
+    expect(decodeDestination('a\\(b.md')).toBe('a(b.md')
+  })
+
+  it('leaves a lone percent alone', () => {
+    expect(decodeDestination('100% done.md')).toBe('100% done.md')
+  })
+
+  it('leaves a malformed percent sequence alone', () => {
+    expect(decodeDestination('a%zzb.md')).toBe('a%zzb.md')
+  })
+
+  it('decodes a valid sequence that sits beside a malformed one', () => {
+    expect(decodeDestination('a%20b%zz.md')).toBe('a b%zz.md')
+  })
+
+  it('leaves a percent pair that is not valid UTF-8 alone', () => {
+    expect(decodeDestination('a%FFb.md')).toBe('a%FFb.md')
   })
 })
