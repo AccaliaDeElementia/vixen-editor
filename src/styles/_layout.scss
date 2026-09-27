@@ -103,17 +103,27 @@
 .explorer__resizer {
   position: absolute;
   top: 0;
-  right: 0;
-  width: 6px;
+  right: -9px;
+  width: 24px;
   height: 100%;
   cursor: col-resize;
   background: transparent;
   border: 0;
   padding: 0;
 
-  &:hover,
-  &:focus-visible {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0 9px;
+    background: transparent;
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
     background: $primary;
+  }
+
+  &:focus-visible {
     outline: none;
   }
 }
@@ -191,6 +201,7 @@
   display: flex;
   align-items: center;
   gap: 0.35em;
+  min-height: 24px;
   padding: 0.15em $space-sm 0.15em calc(#{$space-sm} + (var(--depth, 0) * 1.1em));
   color: $body-color;
   text-decoration: none;

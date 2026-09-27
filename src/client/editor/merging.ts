@@ -2,9 +2,13 @@
 
 import { getChunks, unifiedMergeView } from '@codemirror/merge'
 import { Compartment, type EditorState, type Extension } from '@codemirror/state'
-import type { EditorView } from '@codemirror/view'
+import { EditorView } from '@codemirror/view'
 
 const NOTHING_LEFT = 0
+
+const reachableChunkButtons: Extension = EditorView.theme({
+  '.cm-chunkButtons button': { minHeight: '24px', minWidth: '24px', padding: '0 0.5em' },
+})
 
 export interface MergeControl {
   inactive: Extension
@@ -23,7 +27,9 @@ export function createMergeControl(onResolved: () => void): MergeControl {
     inactive: overlay.of([]),
 
     begin(view: EditorView, onDisk: string): void {
-      view.dispatch({ effects: overlay.reconfigure(unifiedMergeView({ original: onDisk })) })
+      view.dispatch({
+        effects: overlay.reconfigure([unifiedMergeView({ original: onDisk }), reachableChunkButtons]),
+      })
     },
 
     endWhenResolved(view: EditorView): void {
