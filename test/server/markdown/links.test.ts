@@ -3,6 +3,20 @@
 import { describe, expect, it } from 'vitest'
 
 import { rewriteLinkDestinations } from '../../../src/server/markdown/links.ts'
+import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
+import { encodeDestination } from '../../../src/shared/link-syntax.ts'
+
+function valuesIn(markdown: string): string[] {
+  const seen: string[] = []
+
+  rewriteLinkDestinations(markdown, (destination) => {
+    seen.push(destination)
+
+    return destination
+  })
+
+  return seen
+}
 
 const CORPUS: Readonly<Record<string, string>> = {
   empty: '',
@@ -110,5 +124,51 @@ describe('rewriteLinkDestinations', () => {
 
   it('rewrites an image', () => {
     expect(rewriteLinkDestinations('![alt](img/p.png "t")', () => 'pics/p.png')).toBe('![alt](pics/p.png "t")')
+  })
+})
+
+describe('a name the store allows survives a round trip through a document', () => {
+  const NAMES = [
+    'plain.md',
+    'my file.md',
+    'a  two spaces.md',
+    'a(b).md',
+    'a(b.md',
+    'a)b.md',
+    '100%.md',
+    'say "hi".md',
+    "it's.md",
+    'a&b.md',
+    'a&amp;b.md',
+    '[x].md',
+    'a<b.md',
+    'a>b.md',
+    'a#b.md',
+    'a?b.md',
+    'café.md',
+    '🎉.md',
+    'Rock & Roll (live).md',
+  ]
+
+  it('covers only names the store would actually accept', () => {
+    expect(NAMES.filter((name) => !isAllowedName(name))).toStrictEqual([])
+  })
+
+  it.each(NAMES)('round trips %j written as an inline link', (name) => {
+    const markdown = `[a](${encodeDestination(name, false)})`
+
+    expect(valuesIn(markdown)).toStrictEqual([name])
+  })
+
+  it.each(NAMES)('round trips %j written inside angle brackets', (name) => {
+    const markdown = `[a](<${encodeDestination(name, true)}>)`
+
+    expect(valuesIn(markdown)).toStrictEqual([name])
+  })
+
+  it.each(NAMES)('round trips %j written as a reference definition', (name) => {
+    const markdown = `[x][id]\n\n[id]: ${encodeDestination(name, false)}`
+
+    expect(valuesIn(markdown)).toStrictEqual([name])
   })
 })

@@ -2,12 +2,14 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { destinationsIn, parseMarkdown } from '../../../src/server/markdown/tree.ts'
-import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
-import { encodeDestination } from '../../../src/shared/link-syntax.ts'
+import { parser } from '@lezer/markdown'
+
+import { destinationsIn, VIXEN_MARKDOWN_EXTENSIONS } from '../../src/shared/markdown-tree.ts'
+
+const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 
 function found(markdown: string): ReturnType<typeof destinationsIn> {
-  return destinationsIn(parseMarkdown(markdown), markdown)
+  return destinationsIn(markdownParser.parse(markdown), markdown)
 }
 
 function valuesIn(markdown: string): string[] {
@@ -135,51 +137,5 @@ describe('a definition that is only paragraph text', () => {
 
   it('is not a destination after ordinary paragraph text either', () => {
     expect(valuesIn('item\n[c]: ./ref.md')).toStrictEqual([])
-  })
-})
-
-describe('a name the store allows survives a round trip through a document', () => {
-  const NAMES = [
-    'plain.md',
-    'my file.md',
-    'a  two spaces.md',
-    'a(b).md',
-    'a(b.md',
-    'a)b.md',
-    '100%.md',
-    'say "hi".md',
-    "it's.md",
-    'a&b.md',
-    'a&amp;b.md',
-    '[x].md',
-    'a<b.md',
-    'a>b.md',
-    'a#b.md',
-    'a?b.md',
-    'café.md',
-    '🎉.md',
-    'Rock & Roll (live).md',
-  ]
-
-  it('covers only names the store would actually accept', () => {
-    expect(NAMES.filter((name) => !isAllowedName(name))).toStrictEqual([])
-  })
-
-  it.each(NAMES)('round trips %j written as an inline link', (name) => {
-    const markdown = `[a](${encodeDestination(name, false)})`
-
-    expect(valuesIn(markdown)).toStrictEqual([name])
-  })
-
-  it.each(NAMES)('round trips %j written inside angle brackets', (name) => {
-    const markdown = `[a](<${encodeDestination(name, true)}>)`
-
-    expect(valuesIn(markdown)).toStrictEqual([name])
-  })
-
-  it.each(NAMES)('round trips %j written as a reference definition', (name) => {
-    const markdown = `[x][id]\n\n[id]: ${encodeDestination(name, false)}`
-
-    expect(valuesIn(markdown)).toStrictEqual([name])
   })
 })

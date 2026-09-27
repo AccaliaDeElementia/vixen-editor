@@ -1,11 +1,13 @@
 'use sanity'
 
+import { syntaxTree } from '@codemirror/language'
 import { StateField, type Extension } from '@codemirror/state'
 import type { EditorState, Line, Range } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { isStorePath } from '../../shared/link-paths.ts'
+import { destinationsIn } from '../../shared/markdown-tree.ts'
 
 const NOT_HEADING_MARKER = /[^#]/gv
 const WHOLE_MATCH = 0
@@ -17,7 +19,6 @@ const NEXT_LINE = 1
 const ATX_HEADING = /^ {0,3}#{1,6}(?: |$)/v
 const CODE_FENCE = /^ {0,3}(?:`{3,}|~{3,})/v
 const CALLOUT_MARKER = /(?<![A-Za-z0-9_])(?:TODO|FIXME|NOTE):/gv
-const INLINE_LINK = /(?<=\]\(\s*)[^\s\)]*/gv
 
 const OPEN_HINT = 'Ctrl/Cmd+click to open'
 
@@ -96,17 +97,13 @@ function decorateLine(line: Line, ranges: Array<Range<Decoration>>): void {
     const from = line.from + marker.index
     ranges.push(markerDecoration(keywordOf(marker[WHOLE_MATCH])).range(from, from + marker[WHOLE_MATCH].length))
   }
-
-  decorateLinks(line, ranges)
 }
 
-function decorateLinks(line: Line, ranges: Array<Range<Decoration>>): void {
-  for (const link of line.text.matchAll(INLINE_LINK)) {
-    const { [WHOLE_MATCH]: destination } = link
-    if (!isStorePath(destination)) continue
+function decorateLinks(state: EditorState, ranges: Array<Range<Decoration>>): void {
+  for (const { value, from, to } of destinationsIn(syntaxTree(state), state.doc.toString())) {
+    if (!isStorePath(value)) continue
 
-    const from = line.from + link.index
-    ranges.push(linkDecoration(destination).range(from, from + destination.length))
+    ranges.push(linkDecoration(value).range(from, to))
   }
 }
 
@@ -121,6 +118,8 @@ function computeDecorations(state: EditorState): DecorationSet {
 
     if (decorate) decorateLine(line, ranges)
   }
+
+  decorateLinks(state, ranges)
 
   return Decoration.set(ranges, true)
 }

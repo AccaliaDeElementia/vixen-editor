@@ -1,13 +1,11 @@
 'use sanity'
 
 import type { Tree } from '@lezer/common'
-import { parser, Strikethrough, Table, TaskList } from '@lezer/markdown'
+import { Strikethrough, Table, TaskList } from '@lezer/markdown'
 
-import { decodeDestination } from '../../shared/link-syntax.ts'
+import { decodeDestination } from './link-syntax.ts'
 
-const VIXEN_MARKDOWN_EXTENSIONS = [Table, TaskList, Strikethrough]
-
-const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
+export const VIXEN_MARKDOWN_EXTENSIONS = [Table, TaskList, Strikethrough]
 
 const DESTINATION_NODE = 'URL'
 const IMAGE_NODE = 'Image'
@@ -24,10 +22,6 @@ interface LinkDestination {
   to: number
   bracketed: boolean
   isImage: boolean
-}
-
-export function parseMarkdown(markdown: string): Tree {
-  return markdownParser.parse(markdown)
 }
 
 function withoutAngles(text: string, from: number, to: number): { from: number; to: number; bracketed: boolean } {

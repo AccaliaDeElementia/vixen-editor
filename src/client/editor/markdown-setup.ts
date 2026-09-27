@@ -1,6 +1,8 @@
 'use sanity'
 
 import { markdown } from '@codemirror/lang-markdown'
+
+import { VIXEN_MARKDOWN_EXTENSIONS } from '../../shared/markdown-tree.ts'
 import { EditorState, type Extension } from '@codemirror/state'
 
 import { vixenDecorations } from './decorations.ts'
@@ -18,6 +20,12 @@ export function createEditorState(options: CreateEditorStateOptions = {}): Edito
   return EditorState.create({
     doc: options.doc ?? '',
     selection: options.selection ?? { anchor: START_OF_DOCUMENT },
-    extensions: [markdown(), vixenDarkSurface, vixenHighlighting, vixenDecorations, ...(options.extensions ?? [])],
+    extensions: [
+      markdown({ extensions: VIXEN_MARKDOWN_EXTENSIONS }),
+      vixenDarkSurface,
+      vixenHighlighting,
+      vixenDecorations,
+      ...(options.extensions ?? []),
+    ],
   })
 }

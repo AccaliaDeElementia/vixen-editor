@@ -1,14 +1,17 @@
 'use sanity'
 
+import { parser } from '@lezer/markdown'
+
 import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { encodeDestination } from '../../shared/link-syntax.ts'
+import { destinationsIn, VIXEN_MARKDOWN_EXTENSIONS } from '../../shared/markdown-tree.ts'
 
-import { destinationsIn, parseMarkdown } from './tree.ts'
+const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 
 export function rewriteLinkDestinations(markdown: string, rewrite: (destination: string) => string): string {
   let result = markdown
 
-  for (const destination of destinationsIn(parseMarkdown(markdown), markdown).reverse()) {
+  for (const destination of destinationsIn(markdownParser.parse(markdown), markdown).reverse()) {
     const replacement = rewrite(destination.value)
     if (replacement === destination.value) continue
 

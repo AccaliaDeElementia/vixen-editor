@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { isRecord } from '../../src/shared/guards.ts'
 
 import { vixenDecorations, TestOnly } from '../../src/client/editor/decorations.ts'
+import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
 
 const { computeDecorations, vixenDecorationField } = TestOnly
 
@@ -208,7 +209,7 @@ describe('vixenDecorationField', () => {
 describe('a markdown link to somewhere in the store', () => {
   function linksIn(markdown: string): Array<{ destination: string; title: string }> {
     const found: Array<{ destination: string; title: string }> = []
-    const set = computeDecorations(EditorState.create({ doc: markdown }))
+    const set = computeDecorations(createEditorState({ doc: markdown }))
     const cursor = set.iter()
 
     while (cursor.value !== null) {
@@ -259,5 +260,34 @@ describe('a markdown link to somewhere in the store', () => {
 
   it('tolerates whitespace after the opening bracket', () => {
     expect(linksIn('[a]( a.md)').map((link) => link.destination)).toStrictEqual(['a.md'])
+  })
+
+  it('marks a reference definition, which the editor never used to notice', () => {
+    expect(linksIn('[a][id]\n\n[id]: journal/b.md').map((link) => link.destination)).toStrictEqual(['journal/b.md'])
+  })
+
+  it('leaves a path inside inline code alone, which it used to mark by mistake', () => {
+    expect(linksIn('use `[a](a.md)` here')).toStrictEqual([])
+  })
+
+  it('leaves a path inside an indented block alone', () => {
+    expect(linksIn('    [a](a.md)')).toStrictEqual([])
+  })
+
+  it('reports the decoded path, so the gesture opens the name on disk', () => {
+    expect(linksIn('[a](my%20file.md)').map((link) => link.destination)).toStrictEqual(['my file.md'])
+  })
+
+  it('marks the written form, brackets excluded, so the mark sits on the path', () => {
+    const markdown = '[a](<my file.md>)'
+    const set = computeDecorations(createEditorState({ doc: markdown }))
+
+    expect(flatten(set).filter((d) => d.class === 'cm-vixen-link')).toStrictEqual([
+      { from: 5, to: 15, class: 'cm-vixen-link' },
+    ])
+  })
+
+  it('needs the markdown language, which is why createEditorState composes them', () => {
+    expect(computeDecorations(EditorState.create({ doc: '[a](a.md)', extensions: [vixenDecorations] })).size).toBe(0)
   })
 })
