@@ -395,17 +395,32 @@ them, but it means a green `test:coverage` is not a green gate.
 `test:unit` is the shortcut, and it is named so that reaching for it is a
 deliberate choice rather than an accident.
 
-### Suggested: tee the output
+### Run the gate so its exit code survives
 
-When running the suite, it is usually worth keeping the full log around:
+**The exit code is the only trustworthy signal, and a pipe destroys it.** A
+shell pipeline reports the _last_ command's status, so `npm test | grep …`
+exits `0` whenever the grep matches — including when the suite failed. `| tail`
+and `| tee` are the same: both return `0` from a failing run.
+
+Use a form that keeps the log and the status together:
 
 ```
-npm test 2>&1 | tee run.log
+npm test > run.log 2>&1; echo "exit=$?"; tail -n 40 run.log
 ```
 
-The terminal shows a summary; `run.log` keeps everything, so a failure buried
-above the fold can be read back without re-running. `*.log` is gitignored. This
-is a convenience, not a rule — skip it for a quick `test:unit` loop.
+`run.log` keeps everything, so a failure buried above the fold can be read back
+without re-running, and `*.log` is gitignored. Where a pipeline is genuinely
+wanted, `set -o pipefail` restores the status.
+
+**Never decide whether a gate passed by filtering its output.** Coverage
+failures print their `ERROR:` lines _after_ the `Tests … passed` line, so a
+narrow filter can show a passing test count from a failing run — which is
+exactly how a commit once shipped below the threshold with the reply claiming
+100%. Filtering is for reading; the exit code is for deciding.
+
+This applies to `npm test`, `npm run build` and `npm run test:browser` alike.
+A quick `test:unit` loop can be as sloppy as you like, because nothing is being
+claimed about it.
 
 ## Response headers
 
