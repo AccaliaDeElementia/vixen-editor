@@ -2,12 +2,14 @@
 
 import { syntaxTree } from '@codemirror/language'
 import { StateField, type Extension } from '@codemirror/state'
-import type { EditorState, Range } from '@codemirror/state'
+import type { EditorState, Range, Transaction } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
-import { isStorePath } from '../../shared/link-paths.ts'
+import { directoryOf, isStorePath, resolveDestination } from '../../shared/link-paths.ts'
 import { destinationsIn } from '../../shared/markdown-tree.ts'
+
+import { holderOf } from './holder.ts'
 
 const WHOLE_MATCH = 0
 const WITHOUT_TRAILING_COLON = -1
@@ -32,10 +34,10 @@ function markerDecoration(keyword: string): Decoration {
   return Decoration.mark({ class: `cm-vixen-marker cm-vixen-marker-${keyword.toLowerCase()}` })
 }
 
-function linkDecoration(destination: string): Decoration {
+function linkDecoration(destination: string, target: string): Decoration {
   return Decoration.mark({
     class: 'cm-vixen-link',
-    attributes: { title: OPEN_HINT, 'data-destination': destination },
+    attributes: { title: `${OPEN_HINT} ${target}`, 'data-destination': destination },
   })
 }
 
@@ -63,10 +65,15 @@ function decorateCallouts(text: string, code: readonly CodeRange[], ranges: Arra
 }
 
 function decorateLinks(state: EditorState, text: string, ranges: Array<Range<Decoration>>): void {
+  const directory = directoryOf(holderOf(state))
+
   for (const { value, from, to } of destinationsIn(syntaxTree(state), text)) {
     if (!isStorePath(value)) continue
 
-    ranges.push(linkDecoration(value).range(from, to))
+    const target = resolveDestination(directory, value)
+    if (target === null) continue
+
+    ranges.push(linkDecoration(value, target).range(from, to))
   }
 }
 
@@ -90,9 +97,14 @@ function computeDecorations(state: EditorState): DecorationSet {
   return Decoration.set(ranges, true)
 }
 
+function holderChanged(transaction: Transaction): boolean {
+  return holderOf(transaction.startState) !== holderOf(transaction.state)
+}
+
 const vixenDecorationField = StateField.define<DecorationSet>({
   create: (state) => computeDecorations(state),
-  update: (value, transaction) => (transaction.docChanged ? computeDecorations(transaction.state) : value),
+  update: (value, transaction) =>
+    transaction.docChanged || holderChanged(transaction) ? computeDecorations(transaction.state) : value,
   provide: (field) => EditorView.decorations.from(field),
 })
 

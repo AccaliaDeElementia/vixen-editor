@@ -31,6 +31,7 @@ import { describeRefusal } from './leaving.ts'
 import { watchFreshness } from './freshness.ts'
 import { isConflict, offerResolution } from './conflict.ts'
 import { createMergeControl } from './merging.ts'
+import { createHolderControl, holderOf } from './holder.ts'
 import { bindLinkClicks } from './link-clicks.ts'
 import { bindEntryDrops, bindFileDrops } from './drops.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
@@ -174,6 +175,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   let caretPosition = TOP_OF_DOCUMENT
   let lastRefusal: unknown = null
 
+  const holder = createHolderControl()
+
   const merging = createMergeControl(() => {
     setStatus(`${documentId()} merged — every change resolved`)
   })
@@ -219,6 +222,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
       selection: { anchor: caret },
       extensions: [
         basicSetup,
+        holder.unset,
         merging.inactive,
         EditorView.lineWrapping,
         keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
@@ -258,7 +262,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   })
 
   bindLinkClicks(view.contentDOM, {
-    holder: documentId,
+    holder: () => holderOf(view.state),
     open: (entryPath) => {
       openUrl(docUrlFor(entryPath))
     },
@@ -319,6 +323,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     const caret = recallCaret(entryPath, initial.length)
     caretPosition = caret
     view.setState(stateFor(initial, caret))
+    holder.follow(view, entryPath)
     autosave.reset(initial)
     statusBar.showWordCount(initial)
     view.dispatch({ effects: EditorView.scrollIntoView(caret) })
@@ -357,6 +362,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     if (moved !== documentId()) {
       session.rename(documentId(), moved)
       openDocument.commit(moved)
+      holder.follow(view, moved)
       navigate(docUrlFor(moved))
       statusBar.showPath(moved)
       setStatus(`Now editing ${moved}`)

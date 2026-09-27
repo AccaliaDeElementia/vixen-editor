@@ -240,6 +240,30 @@ describe('bootstrap follows a document that moves underneath it', () => {
     expect(record.renamed).toStrictEqual([{ from: 'notes.md', to: 'archive/notes.md' }])
   })
 
+  it('re-resolves the links in the buffer against where the document landed', async () => {
+    const navigated: string[] = []
+    const view = await openEditor({
+      root,
+      pathname: '/doc/journal/notes.md',
+      session: sessionRecording(record, {
+        load: () => Promise.resolve({ content: 'see [the gap](nothing.md)', stored: true }),
+      }),
+      navigate: (url) => {
+        navigated.push(url)
+      },
+    })
+
+    expect(view.dom.querySelector('.cm-vixen-link')?.getAttribute('title')).toBe(
+      'Ctrl/Cmd+click to open journal/nothing.md',
+    )
+
+    announceDocumentMoved(root, { from: 'journal/notes.md', to: 'archive/notes.md', rewritten: [] })
+
+    expect(view.dom.querySelector('.cm-vixen-link')?.getAttribute('title')).toBe(
+      'Ctrl/Cmd+click to open archive/nothing.md',
+    )
+  })
+
   it('rewrites the address bar to the new path', async () => {
     const navigated: string[] = []
     await editing('/doc/notes.md', navigated)

@@ -419,7 +419,7 @@ test('ctrl-clicking a link in the document opens it', async ({ page, request }) 
   await page.goto(`/doc/${folder}/source.md`)
 
   const link = page.locator('.cm-vixen-link')
-  await expect(link).toHaveAttribute('title', 'Ctrl/Cmd+click to open')
+  await expect(link).toHaveAttribute('title', `Ctrl/Cmd+click to open ${folder}/target.md`)
 
   await link.click({ modifiers: ['ControlOrMeta'] })
 
@@ -427,6 +427,34 @@ test('ctrl-clicking a link in the document opens it', async ({ page, request }) 
   expect(new URL(page.url()).pathname).toBe(`/doc/${folder}/target.md`)
 
   await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a moved document still links to the same file, and says so', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const folder = `held-${stamp}`
+  const moved = `moved-${stamp}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/folders', { data: { path: moved } })
+  await request.post('/api/files/documents', { data: { path: `${folder}/target.md`, content: '# the target' } })
+  await request.post('/api/files/documents', {
+    data: { path: `${folder}/source.md`, content: 'see [the target](target.md) for more' },
+  })
+
+  await page.goto(`/doc/${folder}/source.md`)
+  const link = page.locator('.cm-vixen-link')
+  await expect(link).toHaveAttribute('title', `Ctrl/Cmd+click to open ${folder}/target.md`)
+  await expect(link).toHaveAttribute('data-destination', 'target.md')
+
+  await page
+    .locator(`[role="treeitem"][data-path="${folder}/source.md"]`)
+    .dragTo(page.locator(`[role="treeitem"][data-path="${moved}"]`))
+  await expect(page.locator('#open-path')).toContainText(`${moved}/source.md`)
+
+  await expect(link).toHaveAttribute('data-destination', `../${folder}/target.md`)
+  await expect(link).toHaveAttribute('title', `Ctrl/Cmd+click to open ${folder}/target.md`)
+
+  await request.delete(`/api/files/entries/${folder}`)
+  await request.delete(`/api/files/entries/${moved}`)
 })
 
 test('a plain click on a link only moves the caret', async ({ page, request }) => {

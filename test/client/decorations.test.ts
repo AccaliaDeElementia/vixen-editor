@@ -8,6 +8,8 @@ import { isRecord } from '../../src/shared/guards.ts'
 
 import { vixenDecorations, TestOnly } from '../../src/client/editor/decorations.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
+import { createHolderControl } from '../../src/client/editor/holder.ts'
+import { EditorView } from '@codemirror/view'
 
 const { computeDecorations, vixenDecorationField } = TestOnly
 
@@ -234,6 +236,22 @@ describe('vixenDecorationField', () => {
     expect(next.field(vixenDecorationField)).toBe(state.field(vixenDecorationField))
   })
 
+  it('recomputes when the document it holds moves, or the links name the old place', () => {
+    const holder = createHolderControl()
+    const parent = document.createElement('div')
+    document.body.append(parent)
+    const view = new EditorView({
+      parent,
+      state: createEditorState({ doc: '[a](b.md)', extensions: [holder.unset] }),
+    })
+    holder.follow(view, 'journal/notes.md')
+
+    const titles = flatten(view.state.field(vixenDecorationField))
+
+    expect(titles).toHaveLength(1)
+    expect(view.dom.querySelector('.cm-vixen-link')?.getAttribute('title')).toBe('Ctrl/Cmd+click to open journal/b.md')
+  })
+
   it('clears decorations when the heading is removed', () => {
     const state = stateFor('# title')
     const { state: next } = state.update({ changes: { from: 0, to: 2, insert: '' } })
@@ -243,9 +261,8 @@ describe('vixenDecorationField', () => {
 })
 
 describe('a markdown link to somewhere in the store', () => {
-  function linksIn(markdown: string): Array<{ destination: string; title: string }> {
+  function linksFrom(set: DecorationSet): Array<{ destination: string; title: string }> {
     const found: Array<{ destination: string; title: string }> = []
-    const set = computeDecorations(createEditorState({ doc: markdown }))
     const cursor = set.iter()
 
     while (cursor.value !== null) {
@@ -263,14 +280,48 @@ describe('a markdown link to somewhere in the store', () => {
     return found
   }
 
+  function linksIn(markdown: string): Array<{ destination: string; title: string }> {
+    return linksFrom(computeDecorations(createEditorState({ doc: markdown })))
+  }
+
+  function linksHeldBy(entryPath: string, markdown: string): Array<{ destination: string; title: string }> {
+    const holder = createHolderControl()
+    const parent = document.createElement('div')
+    document.body.append(parent)
+    const view = new EditorView({ parent, state: createEditorState({ doc: markdown, extensions: [holder.unset] }) })
+    holder.follow(view, entryPath)
+
+    return linksFrom(computeDecorations(view.state))
+  }
+
   it('is marked so the gesture has something to land on', () => {
     expect(linksIn('see [notes](journal/a.md) for more').map((link) => link.destination)).toStrictEqual([
       'journal/a.md',
     ])
   })
 
-  it('says how to open it, which is the only clue the gesture gets', () => {
-    expect(linksIn('[a](a.md)').at(0)?.title).toBe('Ctrl/Cmd+click to open')
+  it('names the document it would open, so the gesture is not a guess', () => {
+    expect(linksIn('[a](a.md)').at(0)?.title).toBe('Ctrl/Cmd+click to open a.md')
+  })
+
+  it('names the target relative to the document holding the link', () => {
+    expect(linksHeldBy('journal/2026/notes.md', '[a](./b.md)').at(0)?.title).toBe(
+      'Ctrl/Cmd+click to open journal/2026/b.md',
+    )
+  })
+
+  it('follows a parent step out of the holding directory', () => {
+    expect(linksHeldBy('journal/2026/notes.md', '[a](../b.md)').at(0)?.title).toBe(
+      'Ctrl/Cmd+click to open journal/b.md',
+    )
+  })
+
+  it('keeps the destination as written, so the click resolves it the same way', () => {
+    expect(linksHeldBy('journal/2026/notes.md', '[a](./b.md)').at(0)?.destination).toBe('./b.md')
+  })
+
+  it('leaves a link that climbs out of the store unmarked, since it opens nothing', () => {
+    expect(linksHeldBy('notes.md', '[a](../escape.md)')).toStrictEqual([])
   })
 
   it('marks an image destination too, because it opens the same way', () => {
