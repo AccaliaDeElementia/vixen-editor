@@ -2,25 +2,27 @@
 
 import { syntaxTree } from '@codemirror/language'
 import { StateField, type Extension } from '@codemirror/state'
-import type { EditorState, Line, Range } from '@codemirror/state'
+import type { EditorState, Range } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { isStorePath } from '../../shared/link-paths.ts'
 import { destinationsIn } from '../../shared/markdown-tree.ts'
 
-const NOT_HEADING_MARKER = /[^#]/gv
 const WHOLE_MATCH = 0
 const WITHOUT_TRAILING_COLON = -1
-const NO_DELIMITER = 0
-const CODEMIRROR_FIRST_LINE = 1
-const NEXT_LINE = 1
 
-const ATX_HEADING = /^ {0,3}#{1,6}(?: |$)/v
-const CODE_FENCE = /^ {0,3}(?:`{3,}|~{3,})/v
 const CALLOUT_MARKER = /(?<![A-Za-z0-9_])(?:TODO|FIXME|NOTE):/gv
+const HEADING_NODE = /^(?:ATX|Setext)Heading(?<level>[1-6])$/v
+
+const CODE_NODES = new Set(['FencedCode', 'CodeBlock', 'InlineCode'])
 
 const OPEN_HINT = 'Ctrl/Cmd+click to open'
+
+interface CodeRange {
+  from: number
+  to: number
+}
 
 function headingDecoration(level: number): Decoration {
   return Decoration.line({ class: `cm-vixen-heading cm-vixen-heading-${String(level)}` })
@@ -37,70 +39,31 @@ function linkDecoration(destination: string): Decoration {
   })
 }
 
-function headingLevelOf(match: string): number {
-  return match.replace(NOT_HEADING_MARKER, '').length
+function headingLevelOf(nodeName: string): number | null {
+  const level = HEADING_NODE.exec(nodeName)?.groups?.level
+
+  return level === undefined ? null : Number(level)
 }
 
 function keywordOf(markerMatch: string): string {
   return markerMatch.slice(SEQUENCE_START, WITHOUT_TRAILING_COLON)
 }
 
-interface FenceState {
-  delimiterChar: string
-  delimiterLength: number
-  isOpen: boolean
+function inCode(position: number, code: readonly CodeRange[]): boolean {
+  return code.some((range) => position >= range.from && position < range.to)
 }
 
-const OUTSIDE_FENCE: FenceState = { delimiterChar: '', delimiterLength: NO_DELIMITER, isOpen: false }
+function decorateCallouts(text: string, code: readonly CodeRange[], ranges: Array<Range<Decoration>>): void {
+  for (const marker of text.matchAll(CALLOUT_MARKER)) {
+    if (inCode(marker.index, code)) continue
 
-interface FenceStep {
-  fence: FenceState
-  decorate: boolean
-}
-
-function closesFence(fence: FenceState, delimiter: string, text: string, matchLength: number): boolean {
-  return (
-    delimiter.startsWith(fence.delimiterChar) &&
-    delimiter.length >= fence.delimiterLength &&
-    text.slice(matchLength).trim() === ''
-  )
-}
-
-function stepFence(fence: FenceState, text: string): FenceStep {
-  const match = CODE_FENCE.exec(text)
-  const delimiter = match === null ? '' : match[WHOLE_MATCH].trimStart()
-
-  if (fence.isOpen) {
-    if (match === null) return { fence, decorate: false }
-
-    return {
-      fence: closesFence(fence, delimiter, text, match[WHOLE_MATCH].length) ? OUTSIDE_FENCE : fence,
-      decorate: false,
-    }
-  }
-
-  if (match === null) return { fence, decorate: true }
-
-  return {
-    fence: { delimiterChar: delimiter.charAt(SEQUENCE_START), delimiterLength: delimiter.length, isOpen: true },
-    decorate: false,
+    const { [WHOLE_MATCH]: matched } = marker
+    ranges.push(markerDecoration(keywordOf(matched)).range(marker.index, marker.index + matched.length))
   }
 }
 
-function decorateLine(line: Line, ranges: Array<Range<Decoration>>): void {
-  const heading = ATX_HEADING.exec(line.text)
-  if (heading !== null) {
-    ranges.push(headingDecoration(headingLevelOf(heading[WHOLE_MATCH])).range(line.from))
-  }
-
-  for (const marker of line.text.matchAll(CALLOUT_MARKER)) {
-    const from = line.from + marker.index
-    ranges.push(markerDecoration(keywordOf(marker[WHOLE_MATCH])).range(from, from + marker[WHOLE_MATCH].length))
-  }
-}
-
-function decorateLinks(state: EditorState, ranges: Array<Range<Decoration>>): void {
-  for (const { value, from, to } of destinationsIn(syntaxTree(state), state.doc.toString())) {
+function decorateLinks(state: EditorState, text: string, ranges: Array<Range<Decoration>>): void {
+  for (const { value, from, to } of destinationsIn(syntaxTree(state), text)) {
     if (!isStorePath(value)) continue
 
     ranges.push(linkDecoration(value).range(from, to))
@@ -109,17 +72,20 @@ function decorateLinks(state: EditorState, ranges: Array<Range<Decoration>>): vo
 
 function computeDecorations(state: EditorState): DecorationSet {
   const ranges: Array<Range<Decoration>> = []
-  let fence = OUTSIDE_FENCE
+  const code: CodeRange[] = []
+  const text = state.doc.toString()
 
-  for (let lineNumber = CODEMIRROR_FIRST_LINE; lineNumber <= state.doc.lines; lineNumber += NEXT_LINE) {
-    const line = state.doc.line(lineNumber)
-    const { fence: stepped, decorate } = stepFence(fence, line.text)
-    fence = stepped
+  syntaxTree(state).iterate({
+    enter: (node) => {
+      const level = headingLevelOf(node.name)
+      if (level !== null) ranges.push(headingDecoration(level).range(state.doc.lineAt(node.from).from))
 
-    if (decorate) decorateLine(line, ranges)
-  }
+      if (CODE_NODES.has(node.name)) code.push({ from: node.from, to: node.to })
+    },
+  })
 
-  decorateLinks(state, ranges)
+  decorateCallouts(text, code, ranges)
+  decorateLinks(state, text, ranges)
 
   return Decoration.set(ranges, true)
 }

@@ -34,7 +34,7 @@ function flatten(set: DecorationSet): FlatDecoration[] {
 }
 
 function decorationsFor(doc: string): FlatDecoration[] {
-  return flatten(computeDecorations(EditorState.create({ doc })))
+  return flatten(computeDecorations(createEditorState({ doc })))
 }
 
 function classesFor(doc: string): string[] {
@@ -84,6 +84,30 @@ describe('heading decorations', () => {
   it('treats a lone hash with no text as a heading', () => {
     expect(classesFor('#')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
   })
+
+  it('decorates a setext heading, which the line scan never recognised', () => {
+    expect(classesFor('Title\n=====')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+  })
+
+  it('anchors a setext heading on its text, not on its underline', () => {
+    expect(decorationsFor('Title\n=====')).toStrictEqual([
+      { from: 0, to: 0, class: 'cm-vixen-heading cm-vixen-heading-1' },
+    ])
+  })
+
+  it('decorates the second setext level', () => {
+    expect(classesFor('Title\n-----')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-2'])
+  })
+
+  it('decorates a heading inside a blockquote, which the line scan skipped', () => {
+    expect(decorationsFor('> # quoted')).toStrictEqual([
+      { from: 0, to: 0, class: 'cm-vixen-heading cm-vixen-heading-1' },
+    ])
+  })
+
+  it('decorates a heading inside a list item', () => {
+    expect(classesFor('- # listed')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+  })
 })
 
 describe('marker decorations', () => {
@@ -118,6 +142,18 @@ describe('marker decorations', () => {
 
   it('decorates a marker that ends the document', () => {
     expect(classesFor('TODO:')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
+  })
+
+  it('ignores a marker inside inline code, which the line scan used to decorate', () => {
+    expect(classesFor('use `TODO: x` here')).toStrictEqual([])
+  })
+
+  it('ignores a marker inside an indented block, which the line scan used to decorate', () => {
+    expect(classesFor('    TODO: x')).toStrictEqual([])
+  })
+
+  it('still decorates a marker beside inline code on the same line', () => {
+    expect(classesFor('`code` TODO: x')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
   })
 })
 
@@ -173,7 +209,7 @@ describe('ordering', () => {
 
 describe('vixenDecorationField', () => {
   function stateFor(doc: string): EditorState {
-    return EditorState.create({ doc, extensions: [vixenDecorations] })
+    return createEditorState({ doc })
   }
 
   it('populates the field when the state is created', () => {
