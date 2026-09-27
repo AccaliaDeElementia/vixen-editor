@@ -1,13 +1,15 @@
 'use sanity'
 
-import { closeHoverTooltips, EditorView } from '@codemirror/view'
+import type { TransactionSpec } from '@codemirror/state'
+import { closeHoverTooltips, EditorView, hasHoverTooltips } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createHolderControl } from '../../src/client/editor/holder.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
 import { TestOnly } from '../../src/client/editor/link-tooltip.ts'
+import { cast } from '../cast.ts'
 
-const { dismissHoverTooltips, linkTooltipAt } = TestOnly
+const { dismissHoverTooltips, linkTooltipAt, revealOnTap, whenTheCaretLeaves } = TestOnly
 
 function editing(doc: string, entryPath = 'notes.md'): EditorView {
   const holder = createHolderControl()
@@ -90,5 +92,78 @@ describe('pressing Escape', () => {
 
   it('lets the key travel on, so nothing else loses its Escape', () => {
     expect(dismissHoverTooltips(editing('[a](other.md)'))).toBe(false)
+  })
+})
+
+function aTap(): PointerEvent {
+  return new PointerEvent('pointerup', { pointerType: 'touch', clientX: 60, clientY: 8 })
+}
+
+describe('a tap, which is the only gesture touch has', () => {
+  it('opens the tooltip over a link', () => {
+    const view = editing('see [the doc](other.md) here')
+
+    revealOnTap(aTap(), view)
+
+    expect(hasHoverTooltips(view.state)).toBe(true)
+  })
+
+  it('leaves the event for the editor, so the caret still lands', () => {
+    const view = editing('see [the doc](other.md) here')
+
+    expect(revealOnTap(aTap(), view)).toBe(false)
+  })
+
+  it('opens nothing over ordinary prose', () => {
+    const view = editing('just some prose with no link in it at all')
+
+    revealOnTap(aTap(), view)
+
+    expect(hasHoverTooltips(view.state)).toBe(false)
+  })
+
+  it('opens nothing where there is no text under the finger', () => {
+    const view = editing('see [the doc](other.md) here')
+    view.posAtCoords = cast<EditorView['posAtCoords']>(() => null)
+
+    revealOnTap(aTap(), view)
+
+    expect(hasHoverTooltips(view.state)).toBe(false)
+  })
+
+  it('is ignored when it came from a mouse, which has hover instead', () => {
+    const view = editing('see [the doc](other.md) here')
+    const fromMouse = new PointerEvent('pointerup', { pointerType: 'mouse', clientX: 1, clientY: 1 })
+
+    revealOnTap(fromMouse, view)
+
+    expect(hasHoverTooltips(view.state)).toBe(false)
+  })
+})
+
+describe('the tooltip a tap opened', () => {
+  const OVER_THE_LINK = { from: 4, to: 23 }
+  const DOC = 'see [the doc](other.md) here'
+
+  function closesOn(spec: TransactionSpec): boolean {
+    const view = editing(DOC)
+
+    return whenTheCaretLeaves(OVER_THE_LINK.from, OVER_THE_LINK.to)(view.state.update(spec))
+  }
+
+  it('stays while the caret is still somewhere on the link', () => {
+    expect(closesOn({ selection: { anchor: 10 } })).toBe(false)
+  })
+
+  it('closes when the caret moves off the link', () => {
+    expect(closesOn({ selection: { anchor: 1 } })).toBe(true)
+  })
+
+  it('closes when the document is edited underneath it', () => {
+    expect(closesOn({ changes: { from: 0, insert: 'x' } })).toBe(true)
+  })
+
+  it('stays through a transaction that touches neither', () => {
+    expect(closesOn({})).toBe(false)
   })
 })
