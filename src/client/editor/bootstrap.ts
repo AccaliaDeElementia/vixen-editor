@@ -29,6 +29,7 @@ import { createSession, type LoadedDocument, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 import { describeRefusal } from './leaving.ts'
 import { watchFreshness } from './freshness.ts'
+import { isConflict, offerResolution } from './conflict.ts'
 import { bindLinkClicks } from './link-clicks.ts'
 import { bindEntryDrops, bindFileDrops } from './drops.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
@@ -189,6 +190,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     save: writeDocument,
     report: (state) => {
       statusBar.showSaveState(state, autosave.dueAt())
+      if (state === 'failed' && isConflict(lastRefusal)) void checkFreshness()
     },
   })
 
@@ -383,6 +385,29 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     return leaveAnyway
   }
 
+  function loadIntoBuffer(content: string): void {
+    const caret = Math.min(caretPosition, content.length)
+    view.setState(stateFor(content, caret))
+    autosave.reset(content)
+    statusBar.showWordCount(content)
+  }
+
+  async function resolveConflict(target: string, theirs: string): Promise<void> {
+    const resolved = await offerResolution(
+      {
+        dialogs,
+        files,
+        announce: setStatus,
+        takeTheirs: loadIntoBuffer,
+        keepMine: async () => {
+          await autosave.flush()
+        },
+      },
+      { target, theirs, mine: view.state.doc.toString() },
+    )
+    if (!resolved) toast.error(`${target} changed on disk — your unsaved changes can no longer be saved as they are`)
+  }
+
   async function checkFreshness(): Promise<void> {
     if (workspace.showing() !== 'document' || autosave.state() === 'saving') return
 
@@ -392,15 +417,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
 
     const { content } = loaded
     if (autosave.state() !== 'clean') {
-      toast.error(`${target} changed on disk — your unsaved changes can no longer be saved as they are`)
+      await resolveConflict(target, content)
 
       return
     }
 
-    const caret = Math.min(caretPosition, content.length)
-    view.setState(stateFor(content, caret))
-    autosave.reset(content)
-    statusBar.showWordCount(content)
+    loadIntoBuffer(content)
     setStatus(`${target} changed on disk — reloaded`)
   }
 

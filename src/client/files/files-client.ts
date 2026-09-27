@@ -8,7 +8,7 @@ import { isRecord } from '../../shared/guards.ts'
 export interface FilesClient {
   tree: () => Promise<TreeNode[]>
   trash: () => Promise<TrashNode[]>
-  createDocument: (entryPath: string) => Promise<void>
+  createDocument: (entryPath: string, content?: string) => Promise<void>
   createFolder: (folderPath: string) => Promise<void>
   upload: (directory: string, file: File, filename?: string) => Promise<string>
   move: (from: string, to: string) => Promise<string[]>
@@ -79,8 +79,8 @@ export function createFilesClient(
       return parseTrash(await payloadOf(`${baseUrl}/trash`))
     },
 
-    async createDocument(entryPath: string): Promise<void> {
-      await postJson(`${baseUrl}/files/documents`, { path: entryPath })
+    async createDocument(entryPath: string, content?: string): Promise<void> {
+      await postJson(`${baseUrl}/files/documents`, { path: entryPath, content })
     },
 
     async createFolder(folderPath: string): Promise<void> {

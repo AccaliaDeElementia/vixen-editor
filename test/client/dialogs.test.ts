@@ -15,6 +15,7 @@ function page(): void {
           <input id="file-dialog-entry" type="text">
         </p>
         <p id="file-dialog-error"></p>
+        <div id="file-dialog-choices" hidden></div>
         <button id="file-dialog-cancel" type="submit" value="cancel">Cancel</button>
         <button id="file-dialog-confirm" type="submit" value="confirm"></button>
       </form>
@@ -208,9 +209,96 @@ describe('confirm', () => {
   })
 })
 
-describe('a page without the dialog markup', () => {
-  it('declines a prompt rather than throwing', async () => {
-    document.body.innerHTML = '<p>nothing here</p>'
+const RESOLUTIONS = [
+  { value: 'theirs', label: 'Use the version on disk' },
+  { value: 'mine', label: 'Overwrite with mine' },
+  { value: 'copy', label: 'Save mine as a copy' },
+]
+
+function choiceLabels(): string[] {
+  return [...document.querySelectorAll('#file-dialog-choices button')].map((button) => button.textContent)
+}
+
+describe('choose', () => {
+  it('resolves the value of the button that was pressed', async () => {
+    const dialogs = createDialogs(document)
+    const pending = dialogs.choose({ title: 'Conflict', message: 'It changed', choices: RESOLUTIONS })
+
+    click('#file-dialog-choices button:nth-child(2)')
+
+    await expect(pending).resolves.toBe('mine')
+  })
+
+  it('resolves null when cancelled', async () => {
+    const dialogs = createDialogs(document)
+    const pending = dialogs.choose({ title: 'Conflict', message: 'It changed', choices: RESOLUTIONS })
+
+    click('#file-dialog-cancel')
+
+    await expect(pending).resolves.toBeNull()
+  })
+
+  it('renders one button per choice, in the order given', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.choose({ title: 'Conflict', message: 'It changed', choices: RESOLUTIONS })
+
+    expect(choiceLabels()).toStrictEqual(['Use the version on disk', 'Overwrite with mine', 'Save mine as a copy'])
+  })
+
+  it('shows the message, and hides the field and the single confirm button', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.choose({ title: 'Conflict', message: 'notes.md changed on disk', choices: RESOLUTIONS })
+
+    expect(document.querySelector('#file-dialog-message')?.textContent).toBe('notes.md changed on disk')
+    expect(document.querySelector<HTMLElement>('#file-dialog-field')?.hidden).toBe(true)
+    expect(document.querySelector<HTMLElement>('#file-dialog-confirm')?.hidden).toBe(true)
+    expect(document.querySelector<HTMLElement>('#file-dialog-choices')?.hidden).toBe(false)
+  })
+
+  it('opens the dialog modally', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.choose({ title: 'Conflict', message: 'It changed', choices: RESOLUTIONS })
+
+    expect(dialog().open).toBe(true)
+  })
+
+  it('opens with Cancel focused, so Enter cannot discard work by reflex', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.choose({ title: 'Conflict', message: 'It changed', choices: RESOLUTIONS })
+
+    expect(document.activeElement?.id).toBe('file-dialog-cancel')
+  })
+
+  it('leaves the dialog fit for an ordinary confirm afterwards', async () => {
+    const dialogs = createDialogs(document)
+    const chosen = dialogs.choose({ title: 'Conflict', message: 'It changed', choices: RESOLUTIONS })
+    click('#file-dialog-cancel')
+    await chosen
+
+    void dialogs.confirm({ title: 'Delete', message: 'Sure?', confirmLabel: 'Delete' })
+
+    expect(choiceLabels()).toStrictEqual([])
+    expect(document.querySelector<HTMLElement>('#file-dialog-choices')?.hidden).toBe(true)
+    expect(document.querySelector<HTMLElement>('#file-dialog-confirm')?.hidden).toBe(false)
+  })
+})
+
+const REQUIRED_IDS = [
+  'file-dialog',
+  'file-dialog-title',
+  'file-dialog-message',
+  'file-dialog-field',
+  'file-dialog-label',
+  'file-dialog-entry',
+  'file-dialog-error',
+  'file-dialog-cancel',
+  'file-dialog-confirm',
+  'file-dialog-choices',
+]
+
+describe('a page missing one part of the dialog', () => {
+  it.each(REQUIRED_IDS)('declines rather than throwing when #%s is absent', async (id) => {
+    document.querySelector(`#${id}`)?.remove()
 
     await expect(
       createDialogs(document).prompt({
@@ -221,14 +309,11 @@ describe('a page without the dialog markup', () => {
       }),
     ).resolves.toBe(false)
   })
+})
 
-  it('declines when the dialog is there but its input is missing', async () => {
-    document.body.innerHTML = `
-      <dialog id="file-dialog">
-        <h2 id="file-dialog-title"></h2>
-        <p id="file-dialog-message"></p>
-        <p id="file-dialog-field"></p>
-      </dialog>`
+describe('a page without the dialog markup', () => {
+  it('declines a prompt rather than throwing', async () => {
+    document.body.innerHTML = '<p>nothing here</p>'
 
     await expect(
       createDialogs(document).prompt({
@@ -244,6 +329,12 @@ describe('a page without the dialog markup', () => {
     document.body.innerHTML = '<p>nothing here</p>'
 
     await expect(createDialogs(document).confirm({ title: 'x', message: 'y', confirmLabel: 'z' })).resolves.toBe(false)
+  })
+
+  it('declines a choice rather than throwing', async () => {
+    document.body.innerHTML = '<p>nothing here</p>'
+
+    await expect(createDialogs(document).choose({ title: 'x', message: 'y', choices: RESOLUTIONS })).resolves.toBeNull()
   })
 })
 
@@ -274,17 +365,5 @@ describe('closing without a form', () => {
       ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }))
 
     expect(dialog().open).toBe(true)
-  })
-
-  it('declines when the markup has buttons missing', async () => {
-    document.body.innerHTML = `
-      <dialog id="file-dialog">
-        <h2 id="file-dialog-title"></h2>
-        <p id="file-dialog-message"></p>
-        <p id="file-dialog-field"><label id="file-dialog-label"></label><input id="file-dialog-entry"></p>
-        <p id="file-dialog-error"></p>
-      </dialog>`
-
-    await expect(createDialogs(document).confirm({ title: 'x', message: 'y', confirmLabel: 'z' })).resolves.toBe(false)
   })
 })

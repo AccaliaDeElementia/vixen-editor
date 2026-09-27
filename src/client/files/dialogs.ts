@@ -20,39 +20,74 @@ interface ConfirmRequest {
   confirmLabel: string
 }
 
+interface Choice {
+  value: string
+  label: string
+}
+
+interface ChooseRequest {
+  title: string
+  message: string
+  choices: readonly Choice[]
+}
+
 export interface Dialogs {
   prompt: (request: PromptRequest) => Promise<boolean>
   confirm: (request: ConfirmRequest) => Promise<boolean>
+  choose: (request: ChooseRequest) => Promise<string | null>
 }
 
-interface Parts {
-  dialog: HTMLDialogElement
-  title: HTMLElement
-  message: HTMLElement
+interface FieldParts {
   field: HTMLElement
   label: HTMLElement
   input: HTMLInputElement
   error: HTMLElement
-  cancel: HTMLElement
-  confirm: HTMLElement
 }
 
-function partsOf(root: ParentNode): Parts | null {
-  const dialog = root.querySelector<HTMLDialogElement>(DIALOG_SELECTOR)
-  const title = root.querySelector<HTMLElement>('#file-dialog-title')
-  const message = root.querySelector<HTMLElement>('#file-dialog-message')
+interface FrameParts {
+  dialog: HTMLDialogElement
+  title: HTMLElement
+  message: HTMLElement
+  cancel: HTMLElement
+  confirm: HTMLElement
+  choices: HTMLElement
+}
+
+type Parts = FieldParts & FrameParts
+
+function fieldPartsOf(root: ParentNode): FieldParts | null {
   const field = root.querySelector<HTMLElement>('#file-dialog-field')
   const label = root.querySelector<HTMLElement>('#file-dialog-label')
   const input = root.querySelector<HTMLInputElement>('#file-dialog-entry')
   const error = root.querySelector<HTMLElement>('#file-dialog-error')
+
+  if (field === null || label === null) return null
+  if (input === null || error === null) return null
+
+  return { field, label, input, error }
+}
+
+function framePartsOf(root: ParentNode): FrameParts | null {
+  const dialog = root.querySelector<HTMLDialogElement>(DIALOG_SELECTOR)
+  const title = root.querySelector<HTMLElement>('#file-dialog-title')
+  const message = root.querySelector<HTMLElement>('#file-dialog-message')
   const cancel = root.querySelector<HTMLElement>('#file-dialog-cancel')
   const confirm = root.querySelector<HTMLElement>('#file-dialog-confirm')
+  const choices = root.querySelector<HTMLElement>('#file-dialog-choices')
 
-  if (dialog === null || title === null || message === null || field === null) return null
-  if (label === null || input === null || error === null) return null
-  if (cancel === null || confirm === null) return null
+  if (dialog === null || title === null) return null
+  if (message === null || cancel === null) return null
+  if (confirm === null || choices === null) return null
 
-  return { dialog, title, message, field, label, input, error, cancel, confirm }
+  return { dialog, title, message, cancel, confirm, choices }
+}
+
+function partsOf(root: ParentNode): Parts | null {
+  const field = fieldPartsOf(root)
+  const frame = framePartsOf(root)
+  if (field === null || frame === null) return null
+
+  return { ...field, ...frame }
 }
 
 function bindEnterToConfirm(parts: Parts): void {
@@ -127,6 +162,39 @@ async function confirmWith(parts: Parts, request: ConfirmRequest): Promise<boole
   return (await settled(dialog)) === CONFIRM_VALUE
 }
 
+function choiceButton(choice: Choice): HTMLButtonElement {
+  const { value, label } = choice
+  const button = document.createElement('button')
+  button.type = 'submit'
+  button.className = 'modal__button modal__button--primary'
+  button.value = value
+  button.textContent = label
+
+  return button
+}
+
+async function chooseWith(parts: Parts, request: ChooseRequest): Promise<string | null> {
+  const { dialog, message, field, confirm, choices, cancel } = parts
+  const { message: text, choices: offered } = request
+
+  reset(parts, request.title, '')
+  message.textContent = text
+  field.hidden = true
+  confirm.hidden = true
+  choices.replaceChildren(...offered.map(choiceButton))
+  choices.hidden = false
+  dialog.showModal()
+  cancel.focus()
+
+  const outcome = await settled(dialog)
+
+  choices.replaceChildren()
+  choices.hidden = true
+  confirm.hidden = false
+
+  return offered.some((choice) => choice.value === outcome) ? outcome : null
+}
+
 export function createDialogs(root: ParentNode = document): Dialogs {
   const parts = partsOf(root)
   if (parts !== null) bindEnterToConfirm(parts)
@@ -138,6 +206,10 @@ export function createDialogs(root: ParentNode = document): Dialogs {
 
     async confirm(request: ConfirmRequest): Promise<boolean> {
       return parts === null ? false : await confirmWith(parts, request)
+    },
+
+    async choose(request: ChooseRequest): Promise<string | null> {
+      return parts === null ? null : await chooseWith(parts, request)
     },
   }
 }

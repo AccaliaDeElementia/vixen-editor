@@ -5,7 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { LoadedDocument, Session } from '../../src/client/editor/session.ts'
 
-import { page, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
+import type { EditorView } from '@codemirror/view'
+
+import { DocumentRequestError } from '../../src/client/editor/document-client.ts'
+import type { Dialogs } from '../../src/client/files/dialogs.ts'
+import type { FilesClient } from '../../src/client/files/files-client.ts'
+import { cast } from '../cast.ts'
+
+import { everyPendingMicrotask, page, pressSave, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
 
 const { bootstrap } = TestOnly
 
@@ -191,5 +198,145 @@ describe('a check while a save is in flight', () => {
 
     expect(asked).toStrictEqual([])
     hanging.resolve()
+  })
+})
+
+interface Chooser {
+  dialogs: Dialogs
+  offered: number
+  created: Array<{ entryPath: string; content: string | undefined }>
+}
+
+function choosing(chosen: string | null, keptAs = 'notes-mine.md'): Chooser {
+  const state: Chooser = {
+    offered: 0,
+    created: [],
+    dialogs: cast<Dialogs>({}),
+  }
+
+  state.dialogs = cast<Dialogs>({
+    choose: (): Promise<string | null> => {
+      state.offered += 1
+
+      return Promise.resolve(chosen)
+    },
+    prompt: async (request: { submit: (value: string) => Promise<string | null> }): Promise<boolean> =>
+      (await request.submit(keptAs)) === null,
+    confirm: (): Promise<boolean> => Promise.resolve(false),
+  })
+
+  return state
+}
+
+function filesRecording(into: Array<{ entryPath: string; content: string | undefined }>): FilesClient {
+  return cast<FilesClient>({
+    createDocument: (entryPath: string, content?: string): Promise<void> => {
+      into.push({ entryPath, content })
+
+      return Promise.resolve()
+    },
+  })
+}
+
+async function dirtyAgainst(theirs: string, chooser: Chooser, save?: Session['save']): Promise<EditorView> {
+  const view = await bootstrap({
+    root,
+    pathname: '/doc/notes.md',
+    dialogs: chooser.dialogs,
+    files: filesRecording(chooser.created),
+    session: fakeSession({
+      load: () => Promise.resolve({ content: '# stored', stored: true }),
+      reread: () => Promise.resolve({ content: theirs, stored: true }),
+      ...(save === undefined ? {} : { save }),
+    }),
+    listenForFocus: (registered) => {
+      wake = registered
+
+      return () => undefined
+    },
+  })
+
+  view.dispatch({ changes: { from: 0, insert: 'mine ' } })
+
+  return view
+}
+
+describe('resolving a conflict on a dirty buffer', () => {
+  it('offers a choice rather than only reporting the collision', async () => {
+    const chooser = choosing(null)
+    await dirtyAgainst('# theirs', chooser)
+
+    wake()
+
+    await vi.waitFor(() => {
+      expect(chooser.offered).toBe(1)
+    })
+  })
+
+  it('takes theirs by replacing the buffer with what is stored', async () => {
+    const view = await dirtyAgainst('# theirs', choosing('theirs'))
+
+    wake()
+
+    await vi.waitFor(() => {
+      expect(view.state.doc.toString()).toBe('# theirs')
+    })
+  })
+
+  it('keeps mine by saving the buffer over what is stored', async () => {
+    await dirtyAgainst('# theirs', choosing('mine'))
+
+    wake()
+
+    await vi.waitFor(() => {
+      expect(record.saved).toStrictEqual([{ id: 'notes.md', content: 'mine # stored' }])
+    })
+  })
+
+  it('keeps both by writing the buffer to a second document', async () => {
+    const chooser = choosing('both')
+    const view = await dirtyAgainst('# theirs', chooser)
+
+    wake()
+
+    await vi.waitFor(() => {
+      expect(chooser.created).toStrictEqual([{ entryPath: 'notes-mine.md', content: 'mine # stored' }])
+    })
+    expect(view.state.doc.toString()).toBe('# theirs')
+  })
+
+  it('still reports the collision when the choice is dismissed', async () => {
+    await dirtyAgainst('# theirs', choosing(null))
+
+    wake()
+
+    await vi.waitFor(() => {
+      expect(statusText()).toContain('can no longer be saved')
+    })
+  })
+})
+
+describe('a save the store refuses as stale', () => {
+  it('offers the same choice at once, rather than waiting for the next check', async () => {
+    const chooser = choosing(null)
+    const view = await dirtyAgainst('# theirs', chooser, () =>
+      Promise.reject(new DocumentRequestError(412, 'Document changed')),
+    )
+
+    await pressSave(view)
+
+    await vi.waitFor(() => {
+      expect(chooser.offered).toBe(1)
+    })
+  })
+
+  it('does not offer when the refusal was not a stale token', async () => {
+    const chooser = choosing(null)
+    const view = await dirtyAgainst('# theirs', chooser, () => Promise.reject(new DocumentRequestError(503, 'Busy')))
+
+    await pressSave(view)
+    await everyPendingMicrotask()
+
+    expect(chooser.offered).toBe(0)
   })
 })
