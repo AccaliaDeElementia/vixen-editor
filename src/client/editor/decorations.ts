@@ -6,10 +6,7 @@ import type { EditorState, Range } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
-import { directoryOf, isStorePath, resolveDestination } from '../../shared/link-paths.ts'
-import { destinationsIn } from '../../shared/markdown-tree.ts'
-
-import { holderOf } from './holder.ts'
+import { linkTargetsIn } from './link-targets.ts'
 import { inputsChanged } from './recompute.ts'
 
 const WHOLE_MATCH = 0
@@ -66,15 +63,8 @@ function decorateCallouts(text: string, code: readonly CodeRange[], ranges: Arra
 }
 
 function decorateLinks(state: EditorState, text: string, ranges: Array<Range<Decoration>>): void {
-  const directory = directoryOf(holderOf(state))
-
-  for (const { value, from, to } of destinationsIn(syntaxTree(state), text)) {
-    if (!isStorePath(value)) continue
-
-    const target = resolveDestination(directory, value)
-    if (target === null) continue
-
-    ranges.push(linkDecoration(value, target).range(from, to))
+  for (const { destination, from, to, target } of linkTargetsIn(state, text)) {
+    ranges.push(linkDecoration(destination, target).range(from, to))
   }
 }
 

@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { EditorState } from '@codemirror/state'
+import { Prec, type EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
@@ -32,12 +32,14 @@ import { watchFreshness } from './freshness.ts'
 import { isConflict, offerResolution } from './conflict.ts'
 import { createMergeControl } from './merging.ts'
 import { createHolderControl, holderOf } from './holder.ts'
+import { linkTargetAt } from './link-targets.ts'
 import { bindLinkClicks } from './link-clicks.ts'
 import { bindEntryDrops, bindFileDrops } from './drops.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 
 const MOUNT_SELECTOR = '#editor'
 const SAVE_KEY = 'Mod-s'
+const OPEN_LINK_KEY = 'Mod-Enter'
 const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
 const TOP_OF_DOCUMENT = 0
 
@@ -202,6 +204,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     },
   })
 
+  const openLinkAtCaret = (editor: EditorView): boolean => {
+    const found = linkTargetAt(editor.state, caretIn(editor.state))
+    if (found === null) return false
+
+    openUrl(docUrlFor(found.target))
+
+    return true
+  }
+
   const save = (): boolean => {
     const target = documentId()
     if (autosave.state() === 'clean') {
@@ -225,7 +236,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
         holder.unset,
         merging.inactive,
         EditorView.lineWrapping,
-        keymap.of([{ key: SAVE_KEY, preventDefault: true, run: save }]),
+        Prec.high(
+          keymap.of([
+            { key: SAVE_KEY, preventDefault: true, run: save },
+            { key: OPEN_LINK_KEY, run: openLinkAtCaret },
+          ]),
+        ),
         EditorView.updateListener.of((update) => {
           caretPosition = caretIn(update.state)
           merging.endWhenResolved(update.view)
