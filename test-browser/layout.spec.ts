@@ -259,11 +259,11 @@ test('a width stored wider than the viewport is clamped on load', async ({ page 
     localStorage.setItem('vixen-editor:explorer', JSON.stringify({ widthPx: 5000, open: true }))
   })
 
-  await page.setViewportSize({ width: 800, height: 700 })
+  await page.setViewportSize({ width: 1000, height: 700 })
   await page.reload()
   await expect(page.locator('.cm-editor')).toBeVisible()
 
-  expect(await explorerWidth(page)).toBeCloseTo(640, 0)
+  expect(await explorerWidth(page)).toBeCloseTo(800, 0)
 })
 
 test('the toolbar creates a folder through a real modal dialog', async ({ page, request }) => {

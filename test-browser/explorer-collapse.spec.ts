@@ -1,0 +1,40 @@
+'use sanity'
+
+import { expect, test, type Page } from '@playwright/test'
+
+async function openLayout(page: Page, width = 1200, height = 700): Promise<void> {
+  await page.setViewportSize({ width, height })
+  await page.goto('/doc/')
+  await expect(page.locator('.cm-editor')).toBeVisible()
+}
+
+test('a narrow viewport collapses the explorer, and widening brings it back', async ({ page }) => {
+  await openLayout(page, 1400, 800)
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
+
+  await page.setViewportSize({ width: 800, height: 800 })
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
+
+  await page.setViewportSize({ width: 1400, height: 800 })
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
+})
+
+test('an explorer opened by hand on a narrow viewport is left open', async ({ page }) => {
+  await openLayout(page, 800, 800)
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
+
+  await page.locator('#toggle-explorer').click()
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
+
+  await page.setViewportSize({ width: 820, height: 800 })
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
+})
+
+test('an explorer closed by hand is not reopened by widening', async ({ page }) => {
+  await openLayout(page, 1400, 800)
+  await page.locator('#toggle-explorer').click()
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
+
+  await page.setViewportSize({ width: 1500, height: 800 })
+  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
+})

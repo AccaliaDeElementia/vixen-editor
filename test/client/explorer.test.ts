@@ -112,23 +112,43 @@ describe('setExplorerWidth', () => {
 })
 
 describe('toggleExplorer', () => {
+  function toggleOnce(): boolean {
+    const next = toggleExplorer(root)
+    applyExplorerState(root, VIEWPORT)
+
+    return next
+  }
+
   it('closes an open explorer and reports the new state', () => {
-    expect(toggleExplorer()).toBe(false)
+    applyExplorerState(root, VIEWPORT)
+
+    expect(toggleOnce()).toBe(false)
     expect(readExplorerState(VIEWPORT).open).toBe(false)
   })
 
   it('reopens a closed explorer', () => {
-    toggleExplorer()
+    applyExplorerState(root, VIEWPORT)
+    toggleOnce()
 
-    expect(toggleExplorer()).toBe(true)
+    expect(toggleOnce()).toBe(true)
+  })
+
+  it('tolerates a root without the layout shell', () => {
+    document.body.innerHTML = '<p>no layout here</p>'
+
+    expect(() => toggleExplorer(document.body)).not.toThrow()
   })
 
   it('keeps the custom width across a close and reopen', () => {
-    setExplorerWidth(420, VIEWPORT)
-    toggleExplorer()
-    toggleExplorer()
+    const roomy = 1400
+    setExplorerWidth(420, roomy)
+    applyExplorerState(root, roomy)
+    toggleExplorer(root)
+    applyExplorerState(root, roomy)
+    toggleExplorer(root)
+    applyExplorerState(root, roomy)
 
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 420, open: true, openFolders: [] })
+    expect(readExplorerState(roomy)).toStrictEqual({ widthPx: 420, open: true, openFolders: [] })
   })
 })
 

@@ -74,7 +74,7 @@ function bindToggle(root: ParentNode, view: Window): void {
   if (toggle === null) return
 
   toggle.addEventListener('click', () => {
-    toggleExplorer()
+    toggleExplorer(root)
     applyExplorerState(root, view.innerWidth)
   })
 }
