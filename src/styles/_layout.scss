@@ -694,3 +694,32 @@
     margin: 0;
   }
 }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: $space-xs;
+  left: $space-xs;
+  z-index: 10;
+  padding: $space-xs $space-sm;
+  background: $surface;
+  color: $body-color;
+  border: 1px solid $primary;
+  border-radius: $radius;
+  transform: translateY(-200%);
+
+  &:focus {
+    transform: none;
+  }
+}

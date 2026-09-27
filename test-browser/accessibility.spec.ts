@@ -59,6 +59,20 @@ test('an open dialog has no accessibility violations', async ({ page, request })
   await request.delete(`/api/files/entries/${folder}`)
 })
 
+test('a dialog announces what it is for', async ({ page, request }) => {
+  const folder = `a11y-name-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await page.locator('#new-document').click()
+  await expect(page.locator('#file-dialog')).toBeVisible()
+
+  expect(await page.locator('#file-dialog').ariaSnapshot()).toContain('dialog "New document"')
+
+  await page.locator('#file-dialog-cancel').click()
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
 test('the missing-document view has no accessibility violations', async ({ page, request }) => {
   const folder = `a11y-missing-${String(Date.now())}`
   await workspaceWith(page, request, folder)
@@ -86,5 +100,31 @@ test('the help dialog lists the gestures, and has no accessibility violations', 
   expect(await violationsOn(page)).toStrictEqual([])
 
   await page.keyboard.press('Escape')
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a keyboard user can skip the chrome and land in the editor', async ({ page, request }) => {
+  const folder = `a11y-skip-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await expect(page.locator('.cm-content')).toBeVisible()
+
+  const firstFocusable = await page.evaluate(() => {
+    const candidates = document.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex="0"]')
+    const reachable = [...candidates].filter((element) => element.getAttribute('disabled') === null)
+
+    return reachable[0]?.className ?? ''
+  })
+  expect(firstFocusable).toContain('skip-link')
+
+  const skip = page.locator('.skip-link')
+  await skip.focus()
+  await expect(skip).toBeInViewport()
+
+  await page.keyboard.press('Enter')
+
+  expect(await page.evaluate(() => document.activeElement?.id)).toBe('editor')
+
   await request.delete(`/api/files/entries/${folder}`)
 })

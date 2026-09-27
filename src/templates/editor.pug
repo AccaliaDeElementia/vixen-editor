@@ -1,14 +1,15 @@
 extends layout
 
 block content
-  section.workspace(aria-label='Editor')
+  main.workspace#workspace(aria-label='Editor')
+    h1.visually-hidden#workspace-title Editor
     .statusbar
       p.statusbar__path#open-path
       p.statusbar__save
         span.statusbar__label#save-label(role='status')
         span.statusbar__countdown#save-countdown(aria-hidden='true')
       p.statusbar__words#word-count
-    #editor(hidden)
+    #editor(hidden tabindex='-1')
     section.view.view--fill#view-image(tabindex='-1' aria-label='Image' hidden)
       .image__chrome
         p.image__path#image-path
