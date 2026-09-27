@@ -12,6 +12,7 @@ import { destinationsIn } from '../../shared/markdown-tree.ts'
 import { EMPTY } from '../../shared/sequences.ts'
 
 import { holderOf } from './holder.ts'
+import { inputsChanged } from './recompute.ts'
 
 const IMAGE_ALT = /^!\[(?<alt>[^\]]*)\]/v
 const NO_ALT = ''
@@ -114,8 +115,7 @@ function computeImages(state: EditorState): DecorationSet {
 }
 
 function worthRecomputing(transaction: Transaction): boolean {
-  if (transaction.docChanged) return true
-  if (holderOf(transaction.startState) !== holderOf(transaction.state)) return true
+  if (inputsChanged(transaction)) return true
   if (transaction.startState.field(brokenImages) !== transaction.state.field(brokenImages)) return true
 
   return !sameLines(linesInReach(transaction.startState), linesInReach(transaction.state))

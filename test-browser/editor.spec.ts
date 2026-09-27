@@ -576,3 +576,27 @@ test('an unchanged document costs no body', async ({ request }) => {
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('links past the first parse of a long document decorate without being typed at', async ({ page, request }) => {
+  const name = `frontier-${String(Date.now())}.md`
+  const block = '# A heading\n\nProse with a [link](./other.md) and more words padding the line out.\n\n'
+  let body = ''
+  while (body.length < 120 * 1024) body += block
+  body += '\nTAIL [the last link](./last.md) TAIL\n'
+
+  await request.post('/api/files/documents', { data: { path: name, content: body } })
+  await page.goto(`/doc/${name}`)
+  await expect(page.locator('.cm-content')).toContainText('A heading')
+
+  await page.evaluate(() => {
+    const scroller = document.querySelector('.cm-scroller')
+    if (scroller === null) return
+
+    const { scrollHeight } = scroller
+    scroller.scrollTop = scrollHeight
+  })
+
+  await expect(page.locator('.cm-vixen-link[data-destination="./last.md"]')).toHaveCount(1)
+
+  await request.delete(`/api/files/entries/${name}`)
+})

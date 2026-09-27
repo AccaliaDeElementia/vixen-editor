@@ -2,7 +2,7 @@
 
 import { syntaxTree } from '@codemirror/language'
 import { StateField, type Extension } from '@codemirror/state'
-import type { EditorState, Range, Transaction } from '@codemirror/state'
+import type { EditorState, Range } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
@@ -10,6 +10,7 @@ import { directoryOf, isStorePath, resolveDestination } from '../../shared/link-
 import { destinationsIn } from '../../shared/markdown-tree.ts'
 
 import { holderOf } from './holder.ts'
+import { inputsChanged } from './recompute.ts'
 
 const WHOLE_MATCH = 0
 const WITHOUT_TRAILING_COLON = -1
@@ -97,14 +98,9 @@ function computeDecorations(state: EditorState): DecorationSet {
   return Decoration.set(ranges, true)
 }
 
-function holderChanged(transaction: Transaction): boolean {
-  return holderOf(transaction.startState) !== holderOf(transaction.state)
-}
-
 const vixenDecorationField = StateField.define<DecorationSet>({
   create: (state) => computeDecorations(state),
-  update: (value, transaction) =>
-    transaction.docChanged || holderChanged(transaction) ? computeDecorations(transaction.state) : value,
+  update: (value, transaction) => (inputsChanged(transaction) ? computeDecorations(transaction.state) : value),
   provide: (field) => EditorView.decorations.from(field),
 })
 
