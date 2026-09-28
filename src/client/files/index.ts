@@ -5,13 +5,20 @@ import { errorMessage } from '../error-message.ts'
 import { announceDocumentMoved } from '../document-moved.ts'
 import { createToast } from '../layout/toast.ts'
 
-import { bindActions, bindTrashActions, updateArchiveLink, type ActionContext } from './actions.ts'
+import {
+  bindActions,
+  bindTrashActions,
+  updateArchiveLink,
+  updateInsertAvailability,
+  type ActionContext,
+} from './actions.ts'
 import { createDialogs, type Dialogs } from './dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, parentOf, type TrashNode, type TreeNode } from './tree-model.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
+import { requestInsert } from '../insert-entry.ts'
 import { renderTree, rowIndexOf, ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR, type VisibleRow } from './tree-view.ts'
 
 interface FileTreeOptions {
@@ -60,6 +67,7 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<void>
 
 async function runFileTree({ tree, root, client, dialogs, openDocument, navigate }: Mounted): Promise<void> {
   const toast = createToast(root)
+  const INSERT_KEY = 'i'
   let nodes: readonly TreeNode[] = []
   let trash: readonly TrashNode[] = []
   let open: ReadonlySet<string> = new Set()
@@ -70,11 +78,16 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     return [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
   }
 
+  function reflectSelection(): void {
+    updateArchiveLink(root, targetDirectory())
+    updateInsertAvailability(root, insertableSelection())
+  }
+
   function markSelected(entryPath: string): void {
     selected = entryPath
     for (const element of rows()) element.setAttribute('aria-selected', String(element.dataset.path === entryPath))
 
-    updateArchiveLink(root, targetDirectory())
+    reflectSelection()
   }
 
   function openRow(current: VisibleRow): boolean {
@@ -88,8 +101,18 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   function draw(next: ReadonlySet<string>, focusPath?: string): void {
     open = next
     visible = renderTree(tree, { nodes, trash, open, selected })
-    updateArchiveLink(root, targetDirectory())
+    reflectSelection()
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
+  }
+
+  function visibleSelection(): string | null {
+    return visible.some((row) => row.path === selected) ? selected : null
+  }
+
+  function insertableSelection(): string | null {
+    const entryPath = visibleSelection()
+
+    return entryPath === TRASH_PATH ? null : entryPath
   }
 
   function targetDirectory(): string {
@@ -164,6 +187,17 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     return false
   }
 
+  function insertSelected(): void {
+    const entryPath = insertableSelection()
+    if (entryPath === null) {
+      toast.error('Select a file in the browser first, then insert it')
+
+      return
+    }
+
+    requestInsert(tree, entryPath)
+  }
+
   tree.addEventListener('click', (event) => {
     const index = rowIndexOf(tree, event.target)
     const current = index === null ? undefined : visible[index]
@@ -192,10 +226,21 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     openRow(current)
   })
 
+  function insertsSelected(event: KeyboardEvent): boolean {
+    return event.key === INSERT_KEY && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey
+  }
+
   tree.addEventListener('keydown', (event) => {
     const index = rowIndexOf(tree, event.target)
     const current = index === null ? undefined : visible[index]
     if (current === undefined) return
+
+    if (insertsSelected(event)) {
+      event.preventDefault()
+      insertSelected()
+
+      return
+    }
 
     if (handleKey(event.key, current)) event.preventDefault()
   })
@@ -225,9 +270,10 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     dialogs,
     toast,
     targetDirectory,
-    selectionPath: () => (visible.some((row) => row.path === selected) ? selected : null),
+    selectionPath: visibleSelection,
     refresh: load,
     reveal,
+    insertSelected,
     openSelected: () => {
       const row = visible.find((candidate) => candidate.path === selected)
       if (row !== undefined) openRow(row)

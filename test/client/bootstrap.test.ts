@@ -4,6 +4,7 @@ import type { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { announceDocumentMoved } from '../../src/client/document-moved.ts'
+import { requestInsert } from '../../src/client/insert-entry.ts'
 import { recallCaret, rememberCaret } from '../../src/client/editor/carets.ts'
 import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
@@ -383,6 +384,35 @@ describe('bootstrap follows a document that moves underneath it', () => {
     announceDocumentMoved(root, { from: 'journal', to: 'archive', rewritten: ['elsewhere.md'] })
 
     expect(statusText(root)).not.toContain('reload')
+  })
+})
+
+describe('inserting an entry the file browser picked', () => {
+  it('writes a link relative to the document holding it', async () => {
+    const view = await openEditor({ root, pathname: '/doc/journal/notes.md', session: fakeSession() })
+
+    requestInsert(root, 'journal/other.md')
+
+    expect(view.state.doc.toString()).toContain('[other.md](other.md)')
+  })
+
+  it('says what it inserted, so the tree gets an answer it did not have to watch for', async () => {
+    await openEditor({ root, pathname: '/doc/journal/notes.md', session: fakeSession() })
+
+    requestInsert(root, 'journal/other.md')
+
+    expect(statusText(root)).toContain('Inserted a link to journal/other.md')
+  })
+
+  it('says why it cannot when the workspace is showing something other than a document', async () => {
+    const view = await openEditor({ root, pathname: '/doc/photo.png', session: fakeSession() })
+
+    requestInsert(root, 'journal/other.md')
+
+    expect({ said: statusText(root), doc: view.state.doc.toString() }).toStrictEqual({
+      said: 'Open a document before inserting journal/other.md',
+      doc: '',
+    })
   })
 })
 

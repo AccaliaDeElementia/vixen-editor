@@ -42,6 +42,10 @@ function linkFor(entry: DroppedEntry, holder: string): string {
   return entry.kind === 'image' ? `![${label}](${destination})` : `[${label}](${destination})`
 }
 
+export function linkTo(entryPath: string, holder: string): string {
+  return linkFor({ path: entryPath, kind: classifyFile(entryPath) ?? 'folder' }, holder)
+}
+
 function draggedEntry(transfer: DataTransfer | null): DroppedEntry | null {
   if (transfer === null) return null
 

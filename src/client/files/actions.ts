@@ -18,6 +18,7 @@ const ACTION_SELECTORS = {
   remove: '#delete-entry',
   reveal: '#reveal-document',
   openSelected: '#open-selected',
+  insert: '#insert-entry',
 } as const
 
 const CORRECTABLE_IN_DIALOG = ['ALREADY_EXISTS', 'INVALID_PATH', 'EMPTY_CONTENT'] as const
@@ -38,6 +39,7 @@ export interface ActionContext {
   refresh: () => Promise<void>
   reveal: () => void
   openSelected: () => void
+  insertSelected: () => void
 }
 
 function correctable(error: unknown): string | null {
@@ -128,6 +130,8 @@ export function bindActions(context: ActionContext): void {
   on(ACTION_SELECTORS.reveal, context.reveal)
   on(ACTION_SELECTORS.openSelected, context.openSelected)
 
+  on(ACTION_SELECTORS.insert, context.insertSelected)
+
   on(ACTION_SELECTORS.remove, () => {
     const entryPath = context.selectionPath()
     if (entryPath === null) {
@@ -146,6 +150,13 @@ export function bindActions(context: ActionContext): void {
   })
 
   bindUpload(context, run)
+}
+
+export function updateInsertAvailability(root: ParentNode, selection: string | null): void {
+  const button = root.querySelector<HTMLButtonElement>(ACTION_SELECTORS.insert)
+  if (button === null) return
+
+  button.disabled = selection === null
 }
 
 export function updateArchiveLink(root: ParentNode, directory: string): void {

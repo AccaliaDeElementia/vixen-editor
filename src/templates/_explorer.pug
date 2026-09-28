@@ -14,6 +14,13 @@ aside.explorer#explorer(aria-label='File browser')
       span.icon(aria-hidden='true') open_in_new
     button.explorer__action#reveal-document(type='button' aria-label='Reveal open document' title='Reveal open document')
       span.icon(aria-hidden='true') center_focus_strong
+    button.explorer__action#insert-entry(
+      type='button'
+      aria-label='Insert a link to the selected file'
+      title='Insert a link to the selected file'
+      disabled
+    )
+      span.icon(aria-hidden='true') input
     input#upload-input(type='file' multiple hidden aria-hidden='true' tabindex='-1')
   ul.tree#file-tree(role='tree' aria-label='Documents')
 button.explorer__resizer#explorer-resizer(

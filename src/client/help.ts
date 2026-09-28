@@ -11,13 +11,14 @@ const SHORTCUTS: readonly Entry[] = [
   { does: 'Dismiss a link tooltip', how: 'Escape' },
   { does: 'Move through the file browser', how: 'Arrow keys' },
   { does: 'Open the row the focus is on', how: 'Enter' },
+  { does: 'Insert a link to the selected file', how: 'Ctrl/Cmd + I in the file browser' },
   { does: 'Resize the file browser', how: 'Arrow keys on the handle' },
 ]
 
 const GESTURES: readonly Entry[] = [
   { does: 'Open a document', how: 'Double-click a row, or press Enter on it' },
   { does: 'Follow a link in the text', how: 'Ctrl/Cmd + click, or tap it and then tap Open' },
-  { does: 'Insert a link to a file', how: 'Drag the row into the document' },
+  { does: 'Insert a link to a file', how: 'Drag the row into the document, or select it and press Insert' },
   { does: 'Add an image or file', how: 'Drop it onto the document, or use Upload' },
   { does: 'See an image in place', how: 'Put it alone on its own line' },
 ]

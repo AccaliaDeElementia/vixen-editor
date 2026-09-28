@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { initFileTree } from '../../src/client/files/index.ts'
+import { onInsertRequested } from '../../src/client/insert-entry.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import type { TrashNode } from '../../src/client/files/tree-model.ts'
@@ -71,6 +72,10 @@ function click(entryPath: string, init: MouseEventInit = {}): MouseEvent {
 
 function doubleClick(entryPath: string): void {
   rowFor(entryPath).dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }))
+}
+
+function statusText(): string {
+  return [...document.querySelectorAll('#status .toast')].at(-1)?.textContent ?? ''
 }
 
 function selectedPaths(): Array<string | undefined> {
@@ -193,6 +198,79 @@ describe('Enter', () => {
     press('journal')
 
     expect(opened).toStrictEqual([])
+  })
+})
+
+describe('inserting the selection with the keyboard', () => {
+  function press(entryPath: string, init: KeyboardEventInit): boolean {
+    const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init })
+    rowFor(entryPath).dispatchEvent(event)
+
+    return event.defaultPrevented
+  }
+
+  function requested(): string[] {
+    const heard: string[] = []
+    onInsertRequested(host, (entryPath) => {
+      heard.push(entryPath)
+    })
+
+    return heard
+  }
+
+  it('asks for a link to the selected file', async () => {
+    await start()
+    const heard = requested()
+    click('notes.md')
+
+    press('notes.md', { key: 'i', ctrlKey: true })
+
+    expect(heard).toStrictEqual(['notes.md'])
+  })
+
+  it('asks on a mac too', async () => {
+    await start()
+    const heard = requested()
+    click('notes.md')
+
+    press('notes.md', { key: 'i', metaKey: true })
+
+    expect(heard).toStrictEqual(['notes.md'])
+  })
+
+  it('says why it did nothing when the trash is what is selected', async () => {
+    await start()
+    const heard = requested()
+    rowFor(TRASH_PATH).click()
+
+    press(TRASH_PATH, { key: 'i', ctrlKey: true })
+
+    expect({ heard, said: statusText() }).toStrictEqual({
+      heard: [],
+      said: 'Select a file in the browser first, then insert it',
+    })
+  })
+
+  it('claims the key, so the browser does not act on it as well', async () => {
+    await start()
+    click('notes.md')
+
+    expect(press('notes.md', { key: 'i', ctrlKey: true })).toBe(true)
+  })
+
+  it.each([
+    ['i alone, which types a letter', { key: 'i' }],
+    ['shift, which is a different gesture', { key: 'i', ctrlKey: true, shiftKey: true }],
+    ['alt, which is a different gesture', { key: 'i', ctrlKey: true, altKey: true }],
+    ['another key entirely', { key: 'o', ctrlKey: true }],
+  ])('leaves %s alone', async (_case, init) => {
+    await start()
+    const heard = requested()
+    click('notes.md')
+
+    press('notes.md', init)
+
+    expect(heard).toStrictEqual([])
   })
 })
 

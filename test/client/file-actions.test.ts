@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TestOnly } from '../../src/client/files/actions.ts'
 import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
+import { onInsertRequested } from '../../src/client/insert-entry.ts'
 import { openDocumentIn } from '../../src/client/navigation.ts'
 import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
@@ -47,6 +48,7 @@ function page(): HTMLElement {
         <a id="download-archive" href="/api/files/archive"></a>
         <button id="delete-entry"></button>
         <button id="reveal-document"></button>
+        <button id="insert-entry" disabled></button>
         <input id="upload-input" type="file">
       </div>
       <ul id="file-tree" role="tree"></ul>
@@ -119,6 +121,49 @@ beforeEach(() => {
   host = page()
   client = fakeClient()
   dialogs = fakeDialogs()
+})
+
+describe('the Insert action', () => {
+  function button(): HTMLButtonElement {
+    const found = document.querySelector<HTMLButtonElement>('#insert-entry')
+    if (found === null) throw new Error('no insert button')
+
+    return found
+  }
+
+  it('is off until something insertable is selected', async () => {
+    await start()
+
+    expect(button().disabled).toBe(true)
+  })
+
+  it('comes on for a selected document', async () => {
+    await start()
+    rowFor('notes.md').click()
+
+    expect(button().disabled).toBe(false)
+  })
+
+  it('goes off again for the trash, which is not a file', async () => {
+    await start()
+    rowFor('notes.md').click()
+    rowFor(TRASH_PATH).click()
+
+    expect(button().disabled).toBe(true)
+  })
+
+  it('asks for a link to the selection, the same as the keyboard does', async () => {
+    await start()
+    const heard: string[] = []
+    onInsertRequested(host, (entryPath) => {
+      heard.push(entryPath)
+    })
+    rowFor('notes.md').click()
+
+    press('#insert-entry')
+
+    expect(heard).toStrictEqual(['notes.md'])
+  })
 })
 
 describe('where a new entry lands', () => {

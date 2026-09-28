@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bindEntryDrops, TestOnly as DropTestOnly } from '../../src/client/editor/drops.ts'
+import { bindEntryDrops, linkTo, TestOnly as DropTestOnly } from '../../src/client/editor/drops.ts'
 import { TestOnly } from '../../src/client/files/drag.ts'
 
 import { cast } from '../cast.ts'
@@ -17,6 +17,24 @@ function transferWith(entries: Record<string, string>, files: File[] = []): Data
     files,
   })
 }
+
+describe('the link a tree path becomes', () => {
+  it('embeds an image, the same as dragging it', () => {
+    expect(linkTo('journal/p.png', 'journal/notes.md')).toBe('![p.png](p.png)')
+  })
+
+  it('links a document, the same as dragging it', () => {
+    expect(linkTo('journal/a.md', 'journal/notes.md')).toBe('[a.md](a.md)')
+  })
+
+  it('treats a path with no document or image extension as a folder', () => {
+    expect(linkTo('journal/sub', 'journal/notes.md')).toBe('[sub](sub/)')
+  })
+
+  it('treats a folder whose name carries an extension as a folder too', () => {
+    expect(linkTo('journal/v1.2', 'journal/notes.md')).toBe('[v1.2](v1.2/)')
+  })
+})
 
 describe('the link a dragged entry becomes', () => {
   it('links a document by its name, relative to the document holding it', () => {

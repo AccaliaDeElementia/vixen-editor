@@ -38,7 +38,8 @@ import { createMergeControl } from './merging.ts'
 import { createHolderControl, holderOf } from './holder.ts'
 import { linkTargetAt } from './link-targets.ts'
 import { bindLinkClicks } from './link-clicks.ts'
-import { bindEntryDrops, bindFileDrops } from './drops.ts'
+import { bindEntryDrops, bindFileDrops, linkTo } from './drops.ts'
+import { onInsertRequested } from '../insert-entry.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 
 const MOUNT_SELECTOR = '#editor'
@@ -407,6 +408,17 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     if (rewritten.includes(documentId())) {
       toast.error(`${documentId()} changed on disk — reload to see the repaired links`)
     }
+  })
+
+  onInsertRequested(root, (entryPath) => {
+    if (workspace.showing() !== 'document') {
+      toast.error(`Open a document before inserting ${entryPath}`)
+
+      return
+    }
+
+    insertAt(linkTo(entryPath, documentId()), caretPosition)
+    setStatus(`Inserted a link to ${entryPath}`)
   })
 
   guardUnload({
