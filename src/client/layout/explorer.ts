@@ -57,6 +57,16 @@ export function toggleExplorer(root: ParentNode): boolean {
   return next
 }
 
+export function closeExplorerWhenCramped(root: ParentNode): boolean {
+  const app = root.querySelector<HTMLElement>(APP_SELECTOR)
+  if (app?.dataset.explorerCramped !== 'true') return false
+
+  delete app.dataset.explorerAuto
+  setExplorerOpen(false)
+
+  return true
+}
+
 const NO_STORED_WIDTH = 0
 
 function rememberedFlag(value: string | undefined): boolean | null {

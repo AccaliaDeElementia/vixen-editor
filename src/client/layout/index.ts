@@ -3,6 +3,7 @@
 import {
   applyExplorerState,
   applyExplorerWidth,
+  closeExplorerWhenCramped,
   EXPLORER_SELECTOR,
   MAX_EXPLORER_FRACTION,
   MIN_EXPLORER_PX,
@@ -13,6 +14,7 @@ import {
 } from './explorer.ts'
 import { createDialogs } from '../files/dialogs.ts'
 import { HELP_SECTIONS } from '../help.ts'
+import { onInsertRequested } from '../insert-entry.ts'
 
 const HELP_SELECTOR = '#show-help'
 
@@ -94,6 +96,12 @@ function bindHelp(root: ParentNode): void {
   })
 }
 
+function bindDrawerDismissal(root: ParentNode, view: Window): void {
+  onInsertRequested(root, () => {
+    if (closeExplorerWhenCramped(root)) applyExplorerState(root, view.innerWidth)
+  })
+}
+
 function bindViewportResize(root: ParentNode, view: Window): void {
   view.addEventListener('resize', () => {
     applyExplorerState(root, view.innerWidth)
@@ -108,6 +116,7 @@ export function initLayout(options: LayoutOptions = {}): void {
   bindResizer(root, view)
   bindToggle(root, view)
   bindHelp(root)
+  bindDrawerDismissal(root, view)
   bindViewportResize(root, view)
 }
 

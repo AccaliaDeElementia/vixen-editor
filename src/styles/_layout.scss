@@ -18,6 +18,10 @@
   &[data-explorer='closed'] {
     grid-template-columns: $ribbon-width 0 1fr;
   }
+
+  &[data-explorer-cramped='true'][data-explorer='open'] {
+    grid-template-columns: $ribbon-width 1fr 0;
+  }
 }
 
 .ribbon {
@@ -131,7 +135,8 @@
     outline: none;
   }
 
-  .app[data-explorer='closed'] & {
+  .app[data-explorer='closed'] &,
+  .app[data-explorer-cramped='true'][data-explorer='open'] & {
     display: none;
   }
 }
@@ -143,6 +148,10 @@
   min-width: 0;
   overflow: hidden;
   background: $body-bg;
+
+  .app[data-explorer-cramped='true'][data-explorer='open'] & {
+    display: none;
+  }
 }
 
 .toasts {

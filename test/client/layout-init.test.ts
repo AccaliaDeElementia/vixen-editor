@@ -11,6 +11,7 @@ import {
   TestOnly as explorerTestOnly,
 } from '../../src/client/layout/explorer.ts'
 import { initLayout, TestOnly as indexTestOnly } from '../../src/client/layout/index.ts'
+import { requestInsert } from '../../src/client/insert-entry.ts'
 
 const { KEYBOARD_STEP_PX } = indexTestOnly
 const { readExplorerState } = explorerTestOnly
@@ -294,5 +295,40 @@ describe('viewport resize', () => {
     view.dispatchEvent(new Event('resize'))
 
     expect(widthPx()).toBe(400 * MAX_EXPLORER_FRACTION)
+  })
+})
+
+describe('inserting from a drawer that covers the document', () => {
+  const NARROW = 400
+
+  function opened(view: Window): void {
+    initLayout({ root, view })
+    if (app().dataset.explorer === 'closed') root.querySelector<HTMLElement>('#toggle-explorer')?.click()
+
+    expect(app().dataset.explorer).toBe('open')
+  }
+
+  it('closes the drawer, because the document it went into is behind it', () => {
+    opened(fakeView(NARROW))
+
+    requestInsert(app(), 'notes.md')
+
+    expect(app().dataset.explorer).toBe('closed')
+  })
+
+  it('leaves a wide explorer alone, where the document was never covered', () => {
+    opened(fakeView(VIEWPORT))
+
+    requestInsert(app(), 'notes.md')
+
+    expect(app().dataset.explorer).toBe('open')
+  })
+
+  it('remembers the drawer as closed, so the next load agrees with the screen', () => {
+    opened(fakeView(NARROW))
+
+    requestInsert(app(), 'notes.md')
+
+    expect(readExplorerState(NARROW).open).toBe(false)
   })
 })
