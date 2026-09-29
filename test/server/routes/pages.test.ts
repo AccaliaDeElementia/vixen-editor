@@ -34,12 +34,11 @@ describe('GET /', () => {
   it('sends the browser to the document view, which is the app', async () => {
     const res = await app.request('/')
 
-    expect(res.status).toBe(302)
     expect(res.headers.get('location')).toBe(DOC_PREFIX)
   })
 
   it('redirects temporarily, because a permanent one is cached forever', async () => {
-    expect((await app.request('/')).status).not.toBe(301)
+    expect((await app.request('/')).status).toBe(302)
   })
 })
 

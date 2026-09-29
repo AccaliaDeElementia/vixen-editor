@@ -46,7 +46,7 @@ describe('the open path', () => {
 
     bar(root).showPath('')
 
-    expect(textOf(root, '#open-path')).not.toBe('')
+    expect(textOf(root, '#open-path')).toBe('All documents')
   })
 
   it('follows the document when it moves', () => {
