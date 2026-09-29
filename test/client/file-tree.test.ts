@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { initFileTree } from '../../src/client/files/index.ts'
 import { readOpenFolders } from '../../src/client/files/open-folders.ts'
-import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
-import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
+import { parseTree } from '../../src/client/files/tree-model.ts'
+import { TRASH_PATH } from '../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
+import { fakeClient, rowFor, rows, TRASHED, treePage } from './tree-fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [
@@ -29,50 +30,14 @@ const SAMPLE = parseTree({
   ],
 })
 
-const TRASHED: TrashNode = {
-  id: 'aaaa',
-  originalPath: 'gone.md',
-  kind: 'document',
-  deletedAt: '2026-01-01T00:00:00.000Z',
-}
-
 let host: HTMLElement = document.createElement('div')
 
-function page(): HTMLElement {
-  document.body.innerHTML = ''
-  const host = document.createElement('div')
-  host.innerHTML = '<aside id="explorer"><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
-  document.body.append(host)
-
-  return host
-}
-
-function fakeClient(overrides: { tree?: unknown; trash?: unknown } = {}): {
-  tree: ReturnType<typeof vi.fn>
-  trash: ReturnType<typeof vi.fn>
-} {
-  return {
-    tree: vi.fn().mockResolvedValue(overrides.tree ?? SAMPLE),
-    trash: vi.fn().mockResolvedValue(overrides.trash ?? []),
-  }
-}
-
-async function start(pathname = '/doc/', client = fakeClient()): Promise<void> {
+async function start(pathname = '/doc/', client = fakeClient(SAMPLE)): Promise<void> {
   await initFileTree({ root: host, pathname, client: cast<FilesClient>(client) })
-}
-
-function rows(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
 }
 
 function paths(): Array<string | undefined> {
   return rows().map((element) => element.dataset.path)
-}
-
-function rowFor(entryPath: string): HTMLElement {
-  const found = rows().find((element) => element.dataset.path === entryPath)
-  if (found === undefined) throw new Error(`no row for ${entryPath}`)
-  return found
 }
 
 function press(entryPath: string, key: string): void {
@@ -84,7 +49,7 @@ function press(entryPath: string, key: string): void {
 
 beforeEach(() => {
   localStorage.clear()
-  host = page()
+  host = treePage()
 })
 
 describe('loading', () => {
@@ -107,7 +72,7 @@ describe('loading', () => {
   })
 
   it('reports a failure instead of leaving the panel blank and silent', async () => {
-    const client = fakeClient()
+    const client = fakeClient(SAMPLE)
     client.tree.mockRejectedValue(new Error('network down'))
 
     await start('/doc/', client)
@@ -117,7 +82,7 @@ describe('loading', () => {
   })
 
   it('reports a failure that is not an Error at all', async () => {
-    const client = fakeClient()
+    const client = fakeClient(SAMPLE)
     client.tree.mockRejectedValue('just a string')
 
     await start('/doc/', client)
@@ -183,7 +148,7 @@ describe('remembering open folders', () => {
     await start()
     rowFor('journal').click()
 
-    host = page()
+    host = treePage()
     await start()
 
     expect(paths()).toContain('journal/entry.md')
@@ -193,8 +158,8 @@ describe('remembering open folders', () => {
     await start()
     rowFor('journal').click()
 
-    host = page()
-    await start('/doc/', fakeClient({ tree: parseTree({ tree: [] }) }))
+    host = treePage()
+    await start('/doc/', fakeClient(parseTree({ tree: [] })))
 
     expect([...readOpenFolders()]).not.toContain('journal')
   })
@@ -203,7 +168,7 @@ describe('remembering open folders', () => {
     await start()
     rowFor(TRASH_PATH).click()
 
-    host = page()
+    host = treePage()
     await start()
 
     expect([...readOpenFolders()]).toContain(TRASH_PATH)
@@ -255,7 +220,7 @@ describe('clicking', () => {
   })
 
   it('opens the trash to show what is in it', async () => {
-    await start('/doc/', fakeClient({ trash: [TRASHED] }))
+    await start('/doc/', fakeClient(SAMPLE, [TRASHED]))
 
     rowFor(TRASH_PATH).click()
 
@@ -413,13 +378,13 @@ describe('markup with no tree to render', () => {
     const bare = document.createElement('div')
     document.body.append(bare)
 
-    await expect(initFileTree({ root: bare, client: cast<FilesClient>(fakeClient()) })).resolves.toBeUndefined()
+    await expect(initFileTree({ root: bare, client: cast<FilesClient>(fakeClient(SAMPLE)) })).resolves.toBeUndefined()
   })
 
   it('asks the server for nothing, because there is nowhere to put the answer', async () => {
     const bare = document.createElement('div')
     document.body.append(bare)
-    const client = fakeClient()
+    const client = fakeClient(SAMPLE)
 
     await initFileTree({ root: bare, client: cast<FilesClient>(client) })
 

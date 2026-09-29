@@ -5,11 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TestOnly } from '../../src/client/files/drag.ts'
 import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
-import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
-import { ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR } from '../../src/client/files/tree-view.ts'
+import { parseTree } from '../../src/client/files/tree-model.ts'
+import { TRASH_PATH, TREE_SELECTOR } from '../../src/client/files/tree-view.ts'
 import type { Dialogs } from '../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
+import { fakeClient, rowFor, rows, TRASHED, treePage, type FakeClient } from './tree-fixtures.ts'
 
 const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf } = TestOnly
 
@@ -46,49 +47,12 @@ const TREE_AFTER_MOVE = parseTree({
   ],
 })
 
-const TRASHED: TrashNode = {
-  id: 'aaaa',
-  originalPath: 'gone.md',
-  kind: 'document',
-  deletedAt: '2026-01-01T00:00:00.000Z',
-}
-
-interface FakeClient {
-  tree: ReturnType<typeof vi.fn>
-  trash: ReturnType<typeof vi.fn>
-  createDocument: ReturnType<typeof vi.fn>
-  createFolder: ReturnType<typeof vi.fn>
-  upload: ReturnType<typeof vi.fn>
-  move: ReturnType<typeof vi.fn>
-  remove: ReturnType<typeof vi.fn>
-  restore: ReturnType<typeof vi.fn>
-  purge: ReturnType<typeof vi.fn>
-}
-
-function fakeClient(): FakeClient {
-  return {
-    tree: vi.fn().mockResolvedValue(SAMPLE),
-    trash: vi.fn().mockResolvedValue([TRASHED]),
-    createDocument: vi.fn().mockResolvedValue(undefined),
-    createFolder: vi.fn().mockResolvedValue(undefined),
-    upload: vi.fn().mockResolvedValue('uploaded.png'),
-    move: vi.fn().mockResolvedValue(undefined),
-    remove: vi.fn().mockResolvedValue(undefined),
-    restore: vi.fn().mockResolvedValue(undefined),
-    purge: vi.fn().mockResolvedValue(undefined),
-  }
-}
-
 function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<typeof vi.fn> } {
   return { prompt: vi.fn().mockResolvedValue(true), confirm: vi.fn().mockResolvedValue(true) }
 }
 
-let client: FakeClient = fakeClient()
+let client: FakeClient = fakeClient(SAMPLE, [TRASHED])
 let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
-
-function page(): void {
-  document.body.innerHTML = '<aside id="explorer"><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
-}
 
 async function start(open: string[] = ['archive', 'journal']): Promise<void> {
   await initFileTree({
@@ -98,16 +62,6 @@ async function start(open: string[] = ['archive', 'journal']): Promise<void> {
     dialogs: cast<Dialogs>(dialogs),
   })
   for (const folder of open) rowFor(folder).click()
-}
-
-function rows(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
-}
-
-function rowFor(entryPath: string): HTMLElement {
-  const found = rows().find((element) => element.dataset.path === entryPath)
-  if (found === undefined) throw new Error(`no row for ${entryPath}`)
-  return found
 }
 
 function tree(): HTMLElement {
@@ -158,8 +112,8 @@ function statusText(): string {
 
 beforeEach(() => {
   localStorage.clear()
-  page()
-  client = fakeClient()
+  treePage()
+  client = fakeClient(SAMPLE, [TRASHED])
   dialogs = fakeDialogs()
 })
 

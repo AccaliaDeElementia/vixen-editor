@@ -1,14 +1,14 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { initFileTree } from '../../src/client/files/index.ts'
 import { onInsertRequested } from '../../src/client/insert-entry.ts'
-import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
+import { TRASH_PATH } from '../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
-import type { TrashNode } from '../../src/client/files/tree-model.ts'
 
 import { cast } from '../cast.ts'
+import { fakeClient, rowFor, statusText, TRASHED, treePage } from './tree-fixtures.ts'
 
 const SAMPLE = [
   { name: 'journal', path: 'journal', kind: 'folder' as const, children: [] },
@@ -16,51 +16,18 @@ const SAMPLE = [
   { name: 'photo.png', path: 'photo.png', kind: 'image' as const },
 ]
 
-const TRASHED: TrashNode = {
-  id: 'aaaa',
-  originalPath: 'gone.md',
-  kind: 'document',
-  deletedAt: '2026-01-01T00:00:00.000Z',
-}
-
 let host: HTMLElement = document.createElement('div')
 let opened: string[] = []
-
-function page(): HTMLElement {
-  document.body.innerHTML = ''
-  const created = document.createElement('div')
-  created.innerHTML =
-    '<aside id="explorer"><button id="open-selected"></button><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
-  document.body.append(created)
-
-  return created
-}
-
-function fakeClient(): { tree: ReturnType<typeof vi.fn>; trash: ReturnType<typeof vi.fn> } {
-  return {
-    tree: vi.fn().mockResolvedValue(SAMPLE),
-    trash: vi.fn().mockResolvedValue([TRASHED]),
-  }
-}
 
 async function start(pathname = '/doc/'): Promise<void> {
   await initFileTree({
     root: host,
     pathname,
-    client: cast<FilesClient>(fakeClient()),
+    client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])),
     navigate: (url: string) => {
       opened.push(url)
     },
   })
-}
-
-function rowFor(entryPath: string): HTMLElement {
-  const row = [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].find(
-    (candidate) => candidate.dataset.path === entryPath,
-  )
-  if (row === undefined) throw new Error(`no row for ${entryPath}`)
-
-  return row
 }
 
 function click(entryPath: string, init: MouseEventInit = {}): MouseEvent {
@@ -74,10 +41,6 @@ function doubleClick(entryPath: string): void {
   rowFor(entryPath).dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }))
 }
 
-function statusText(): string {
-  return [...document.querySelectorAll('#status .toast')].at(-1)?.textContent ?? ''
-}
-
 function selectedPaths(): Array<string | undefined> {
   return [...document.querySelectorAll<HTMLElement>('[aria-selected="true"]')].map((row) => row.dataset.path)
 }
@@ -85,7 +48,7 @@ function selectedPaths(): Array<string | undefined> {
 beforeEach(() => {
   localStorage.clear()
   opened = []
-  host = page()
+  host = treePage({ withOpenSelected: true })
 })
 
 describe('a plain click', () => {

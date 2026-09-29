@@ -1,13 +1,13 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../src/client/files/drag.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
 import { parseTree } from '../../src/client/files/tree-model.ts'
-import { ROW_SELECTOR } from '../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
+import { fakeClient, rowFor, treePage } from './tree-fixtures.ts'
 
 const { DRAG_KIND_MIME, DRAG_MIME } = TestOnly
 
@@ -21,30 +21,8 @@ const SAMPLE = parseTree({
 
 let host: HTMLElement = document.createElement('div')
 
-function page(): HTMLElement {
-  document.body.innerHTML = ''
-  const created = document.createElement('div')
-  created.innerHTML = '<aside id="explorer"><ul id="file-tree" role="tree"></ul></aside><div id="status"></div>'
-  document.body.append(created)
-
-  return created
-}
-
-function fakeClient(): { tree: ReturnType<typeof vi.fn>; trash: ReturnType<typeof vi.fn> } {
-  return { tree: vi.fn().mockResolvedValue(SAMPLE), trash: vi.fn().mockResolvedValue([]) }
-}
-
 async function start(): Promise<void> {
-  await initFileTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient()) })
-}
-
-function rowFor(entryPath: string): HTMLElement {
-  const found = [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].find(
-    (element) => element.dataset.path === entryPath,
-  )
-  if (found === undefined) throw new Error(`no row for ${entryPath}`)
-
-  return found
+  await initFileTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient(SAMPLE)) })
 }
 
 function dragEvent(type: string, transfer: DataTransfer): DragEvent {
@@ -56,7 +34,7 @@ function dragEvent(type: string, transfer: DataTransfer): DragEvent {
 
 beforeEach(() => {
   localStorage.clear()
-  host = page()
+  host = treePage()
 })
 
 describe('what a drag from a row carries', () => {

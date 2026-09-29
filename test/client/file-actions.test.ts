@@ -7,11 +7,12 @@ import { FilesRequestError } from '../../src/client/files/files-client.ts'
 import { initFileTree } from '../../src/client/files/index.ts'
 import { onInsertRequested } from '../../src/client/insert-entry.ts'
 import { openDocumentIn } from '../../src/client/navigation.ts'
-import { parseTree, type TrashNode } from '../../src/client/files/tree-model.ts'
+import { parseTree } from '../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
 import type { Dialogs } from '../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
+import { fakeClient, rowFor, statusText, TRASHED, treePage, type FakeClient } from './tree-fixtures.ts'
 
 const { trashActionOf } = TestOnly
 
@@ -27,61 +28,7 @@ const SAMPLE = parseTree({
   ],
 })
 
-const TRASHED: TrashNode = {
-  id: 'aaaa',
-  originalPath: 'gone.md',
-  kind: 'document',
-  deletedAt: '2026-01-01T00:00:00.000Z',
-}
-
 let host: HTMLElement = document.createElement('div')
-
-function page(): HTMLElement {
-  document.body.innerHTML = ''
-  const created = document.createElement('div')
-  created.innerHTML = `
-    <aside id="explorer">
-      <div id="toolbar">
-        <button id="new-document"></button>
-        <button id="new-folder"></button>
-        <button id="upload-file"></button>
-        <a id="download-archive" href="/api/files/archive"></a>
-        <button id="delete-entry"></button>
-        <button id="reveal-document"></button>
-        <button id="insert-entry" disabled></button>
-        <input id="upload-input" type="file">
-      </div>
-      <ul id="file-tree" role="tree"></ul>
-    </aside>
-    <div id="status"></div>`
-  document.body.append(created)
-
-  return created
-}
-
-interface FakeClient {
-  tree: ReturnType<typeof vi.fn>
-  trash: ReturnType<typeof vi.fn>
-  createDocument: ReturnType<typeof vi.fn>
-  createFolder: ReturnType<typeof vi.fn>
-  upload: ReturnType<typeof vi.fn>
-  remove: ReturnType<typeof vi.fn>
-  restore: ReturnType<typeof vi.fn>
-  purge: ReturnType<typeof vi.fn>
-}
-
-function fakeClient(trash: TrashNode[] = []): FakeClient {
-  return {
-    tree: vi.fn().mockResolvedValue(SAMPLE),
-    trash: vi.fn().mockResolvedValue(trash),
-    createDocument: vi.fn().mockResolvedValue(undefined),
-    createFolder: vi.fn().mockResolvedValue(undefined),
-    upload: vi.fn().mockResolvedValue('uploaded.png'),
-    remove: vi.fn().mockResolvedValue(undefined),
-    restore: vi.fn().mockResolvedValue(undefined),
-    purge: vi.fn().mockResolvedValue(undefined),
-  }
-}
 
 function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<typeof vi.fn> } {
   return {
@@ -93,33 +40,21 @@ function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<
   }
 }
 
-let client: ReturnType<typeof fakeClient> = fakeClient()
+let client: FakeClient = fakeClient(SAMPLE)
 let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
 
 async function start(pathname = '/doc/'): Promise<void> {
   await initFileTree({ root: host, pathname, client: cast<FilesClient>(client), dialogs: cast<Dialogs>(dialogs) })
 }
 
-function rowFor(entryPath: string): HTMLElement {
-  const found = [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].find(
-    (element) => element.dataset.path === entryPath,
-  )
-  if (found === undefined) throw new Error(`no row for ${entryPath}`)
-  return found
-}
-
 function press(selector: string): void {
   document.querySelector<HTMLElement>(selector)?.click()
 }
 
-function statusText(): string {
-  return [...document.querySelectorAll('#status .toast')].at(-1)?.textContent ?? ''
-}
-
 beforeEach(() => {
   localStorage.clear()
-  host = page()
-  client = fakeClient()
+  host = treePage({ withToolbar: true })
+  client = fakeClient(SAMPLE)
   dialogs = fakeDialogs()
 })
 
@@ -369,7 +304,7 @@ describe('revealing the open document', () => {
 
 describe('trash actions', () => {
   beforeEach(() => {
-    client = fakeClient([TRASHED])
+    client = fakeClient(SAMPLE, [TRASHED])
   })
 
   it('restores an entry', async () => {
