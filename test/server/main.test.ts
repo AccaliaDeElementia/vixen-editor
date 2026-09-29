@@ -1,6 +1,7 @@
 'use sanity'
 
 import type { serve } from '@hono/node-server'
+import { given, givenAsync } from '../conditions.ts'
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -93,15 +94,20 @@ describe('createApp', () => {
   it('redirects the root to the document view', async () => {
     const res = await createApp(configFor(), publicDir).request('/')
 
-    expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe('/doc/')
+    expect({ status: res.status, location: res.headers.get('location') }).toStrictEqual({
+      status: 302,
+      location: '/doc/',
+    })
   })
 
   it('renders the editor template at the document view', async () => {
     const res = await createApp(configFor(), publicDir).request('/doc/')
 
-    expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toContain('text/html')
+    given(() => {
+      expect(res.status).toBe(200)
+      expect(res.headers.get('content-type')).toContain('text/html')
+    })
+
     await expect(res.text()).resolves.toContain('<div id="editor">')
   })
 
@@ -142,7 +148,10 @@ describe('createApp', () => {
   it('serves the client bundle from the assets route', async () => {
     const res = await createApp(configFor(), publicDir).request('/assets/main.js')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toContain('built = true')
   })
 
@@ -207,8 +216,10 @@ describe('startServer', () => {
 
     await startServer(runtime)
 
-    expect(order).toStrictEqual(['loadEnvFile', 'serve'])
-    expect(recorded[0]?.options.port).toBe(4321)
+    expect({ order, port: recorded[0]?.options.port }).toStrictEqual({
+      order: ['loadEnvFile', 'serve'],
+      port: 4321,
+    })
   })
 
   it('applies DEBUG from the env file, so a .env value reaches loggers made at import time', async () => {
@@ -218,7 +229,9 @@ describe('startServer', () => {
       order.push('loadEnvFile')
       runtime.env.DEBUG = 'vixen-editor:*'
     }
-    expect(alreadyCreated.enabled).toBeFalsy()
+    given(() => {
+      expect(alreadyCreated.enabled).toBeFalsy()
+    })
 
     await startServer(runtime)
 
@@ -285,8 +298,10 @@ describe('startServer', () => {
   })
 
   it('defaults to the real process environment and public directory', () => {
-    expect(defaultRuntime.env).toBe(process.env)
-    expect(defaultRuntime.publicDir).toBe(DEFAULT_PUBLIC_DIR)
+    expect({ env: defaultRuntime.env, publicDir: defaultRuntime.publicDir }).toStrictEqual({
+      env: process.env,
+      publicDir: DEFAULT_PUBLIC_DIR,
+    })
   })
 
   it('has already swept abandoned temporaries by the time it calls serve', async () => {
@@ -311,9 +326,12 @@ describe('startServer', () => {
     vi.spyOn(fs, 'readdir').mockRejectedValue(Object.assign(new Error('EACCES'), { code: 'EACCES' }))
     const { runtime, order } = recordingRuntime()
 
-    await expect(startServer(runtime)).resolves.toHaveProperty('close')
+    const server = await startServer(runtime)
 
-    expect(order).toStrictEqual(['loadEnvFile', 'serve'])
+    expect({ closes: typeof server.close, order }).toStrictEqual({
+      closes: 'function',
+      order: ['loadEnvFile', 'serve'],
+    })
     vi.restoreAllMocks()
   })
 
@@ -321,7 +339,8 @@ describe('startServer', () => {
     const { runtime, order } = recordingRuntime()
     runtime.env = { PORT: 'not-a-port' }
 
-    await expect(startServer(runtime)).rejects.toThrow(ConfigError)
+    await givenAsync(expect(startServer(runtime)).rejects.toThrow(ConfigError))
+
     expect(order).toStrictEqual(['loadEnvFile'])
   })
 })

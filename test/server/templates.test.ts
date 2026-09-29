@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { given } from '../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createTemplateRenderer, TestOnly } from '../../src/server/templates.ts'
@@ -48,8 +49,10 @@ describe('rendering', () => {
 
     const html = createTemplateRenderer(templatesDir).render('page', { title: '<script>alert(1)</script>' })
 
-    expect(html).not.toContain('<script>')
-    expect(html).toContain('&lt;script&gt;')
+    expect({ raw: html.includes('<script>'), escaped: html.includes('&lt;script&gt;') }).toStrictEqual({
+      raw: false,
+      escaped: true,
+    })
   })
 
   it('resolves a layout that the template extends', async () => {
@@ -70,7 +73,10 @@ describe('rendering', () => {
   it('surfaces a malformed template rather than reporting it as missing', async () => {
     await writeTemplate('broken', 'h1= (')
 
-    expect(() => createTemplateRenderer(templatesDir).render('broken')).toThrow()
+    given(() => {
+      expect(() => createTemplateRenderer(templatesDir).render('broken')).toThrow()
+    })
+
     expect(() => createTemplateRenderer(templatesDir).render('broken')).not.toThrow(TemplateNotFoundError)
   })
 })
@@ -80,7 +86,9 @@ describe('caching', () => {
     await writeTemplate('page', 'p first')
     const renderer = createTemplateRenderer(templatesDir, true)
 
-    expect(renderer.render('page')).toBe('<p>first</p>')
+    given(() => {
+      expect(renderer.render('page')).toBe('<p>first</p>')
+    })
     await writeTemplate('page', 'p second')
 
     expect(renderer.render('page')).toBe('<p>first</p>')
@@ -90,7 +98,9 @@ describe('caching', () => {
     await writeTemplate('page', 'p first')
     const renderer = createTemplateRenderer(templatesDir, false)
 
-    expect(renderer.render('page')).toBe('<p>first</p>')
+    given(() => {
+      expect(renderer.render('page')).toBe('<p>first</p>')
+    })
     await writeTemplate('page', 'p second')
 
     expect(renderer.render('page')).toBe('<p>second</p>')
@@ -111,8 +121,11 @@ describe('caching', () => {
     await writeTemplate('two', 'p two')
     const renderer = createTemplateRenderer(templatesDir)
 
-    expect(renderer.render('one')).toBe('<p>one</p>')
-    expect(renderer.render('two')).toBe('<p>two</p>')
+    given(() => {
+      expect(renderer.render('one')).toBe('<p>one</p>')
+      expect(renderer.render('two')).toBe('<p>two</p>')
+    })
+
     expect(renderer.render('one')).toBe('<p>one</p>')
   })
 })
