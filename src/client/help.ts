@@ -3,24 +3,52 @@
 interface Entry {
   does: string
   how: string
+  keys?: readonly string[]
+}
+
+export const KEYS = {
+  save: 'Mod-s',
+  openLink: 'Mod-Enter',
+  dismissTooltip: 'Escape',
+  nextRow: 'ArrowDown',
+  previousRow: 'ArrowUp',
+  expandRow: 'ArrowRight',
+  collapseRow: 'ArrowLeft',
+  openRow: 'Enter',
+  insert: 'i',
+  narrower: 'ArrowLeft',
+  wider: 'ArrowRight',
+  narrowest: 'Home',
+  widest: 'End',
 }
 
 const SHORTCUTS: readonly Entry[] = [
-  { does: 'Save the document', how: 'Ctrl/Cmd + S' },
-  { does: 'Open the link the caret is in', how: 'Ctrl/Cmd + Enter' },
-  { does: 'Dismiss a link tooltip', how: 'Escape' },
-  { does: 'Move through the file browser', how: 'Arrow keys' },
-  { does: 'Open the row the focus is on', how: 'Enter' },
-  { does: 'Insert a link to the selected file', how: 'Ctrl/Cmd + I in the file browser' },
-  { does: 'Resize the file browser', how: 'Arrow keys on the handle' },
+  { does: 'Save the document', how: 'Ctrl/Cmd + S', keys: [KEYS.save] },
+  { does: 'Open the link the caret is in', how: 'Ctrl/Cmd + Enter', keys: [KEYS.openLink] },
+  { does: 'Dismiss a link tooltip', how: 'Escape', keys: [KEYS.dismissTooltip] },
+  {
+    does: 'Move through the file browser',
+    how: 'Arrow keys',
+    keys: [KEYS.nextRow, KEYS.previousRow, KEYS.expandRow, KEYS.collapseRow],
+  },
+  { does: 'Open the row the focus is on', how: 'Enter', keys: [KEYS.openRow] },
+  { does: 'Insert a link to the selected file', how: 'Ctrl/Cmd + I in the file browser', keys: [KEYS.insert] },
+  {
+    does: 'Resize the file browser',
+    how: 'Arrow keys on the handle',
+    keys: [KEYS.narrower, KEYS.wider, KEYS.narrowest, KEYS.widest],
+  },
 ]
 
 const GESTURES: readonly Entry[] = [
+  { does: 'Select a file or folder', how: 'Click a row, or move to it with the arrow keys' },
   { does: 'Open a document', how: 'Double-click a row, or press Enter on it' },
   { does: 'Follow a link in the text', how: 'Ctrl/Cmd + click, or tap it and then tap Open' },
   { does: 'Insert a link to a file', how: 'Drag the row into the document, or select it and press Insert' },
+  { does: 'Move a file or folder', how: 'Drag the row onto a folder' },
   { does: 'Add an image or file', how: 'Drop it onto the document, or use Upload' },
   { does: 'See an image in place', how: 'Put it alone on its own line' },
+  { does: 'Resize the file browser', how: 'Drag the divider, or focus it and use the arrow keys' },
 ]
 
 const MARKDOWN: readonly Entry[] = [

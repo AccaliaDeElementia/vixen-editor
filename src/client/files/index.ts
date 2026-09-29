@@ -19,6 +19,7 @@ import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from '.
 import { ancestorsOf, folderPathsIn, parentOf, type TrashNode, type TreeNode } from './tree-model.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { requestInsert } from '../insert-entry.ts'
+import { KEYS } from '../help.ts'
 import { renderTree, rowIndexOf, ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR, type VisibleRow } from './tree-view.ts'
 
 interface FileTreeOptions {
@@ -67,7 +68,6 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<void>
 
 async function runFileTree({ tree, root, client, dialogs, openDocument, navigate }: Mounted): Promise<void> {
   const toast = createToast(root)
-  const INSERT_KEY = 'i'
   let nodes: readonly TreeNode[] = []
   let trash: readonly TrashNode[] = []
   let open: ReadonlySet<string> = new Set()
@@ -178,11 +178,11 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   function handleKey(key: string, current: VisibleRow): boolean {
     const index = visible.indexOf(current)
 
-    if (key === 'ArrowDown') return focusAt(index + NEXT_ROW)
-    if (key === 'ArrowUp') return focusAt(index + PREVIOUS_ROW)
-    if (key === 'ArrowRight') return expandOrDescend(current, index)
-    if (key === 'ArrowLeft') return collapseOrAscend(current, index)
-    if (key === 'Enter') return activate(current)
+    if (key === KEYS.nextRow) return focusAt(index + NEXT_ROW)
+    if (key === KEYS.previousRow) return focusAt(index + PREVIOUS_ROW)
+    if (key === KEYS.expandRow) return expandOrDescend(current, index)
+    if (key === KEYS.collapseRow) return collapseOrAscend(current, index)
+    if (key === KEYS.openRow) return activate(current)
 
     return false
   }
@@ -227,7 +227,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   })
 
   function insertsSelected(event: KeyboardEvent): boolean {
-    return event.key === INSERT_KEY && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey
+    return event.key === KEYS.insert && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey
   }
 
   tree.addEventListener('keydown', (event) => {

@@ -475,6 +475,24 @@ coverage gate.
 explorer is hidden it leaves the grid flow entirely, and with auto-placement
 the workspace slides into the collapsed `0`-width track and the editor vanishes.
 
+## Keyboard
+
+**Every key the app binds is named in `src/client/help.ts`.** `KEYS` holds the
+literals and the help entries beside it carry the same values, so a shortcut
+that is missing from the cheatsheet cannot be bound at all — which is the point,
+because a help list that is quietly incomplete is read as authoritative.
+
+Two tests hold it, and they check different halves.
+`test/conventions/keyboard-registry.test.ts` fails on a key literal, or on a
+constant that did not come from `help.ts`, at any binding site under
+`src/client/`. `test/client/help.test.ts` checks that `KEYS` and the help
+entries name the same set **in both directions**, so neither an unlisted
+binding nor an invented entry survives.
+
+**Gestures are not enforced, and that is the known gap.** Nothing in the code
+marks "double-click opens a row", so the gesture half of the list is
+hand-written and can fall behind. Add the entry by hand when adding a gesture.
+
 ## URLs
 
 **A document is addressed by its path: `/doc/<path>`.** The root redirects to

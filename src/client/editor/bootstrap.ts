@@ -40,11 +40,10 @@ import { linkTargetAt } from './link-targets.ts'
 import { bindLinkClicks } from './link-clicks.ts'
 import { bindEntryDrops, bindFileDrops, linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
+import { KEYS } from '../help.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 
 const MOUNT_SELECTOR = '#editor'
-const SAVE_KEY = 'Mod-s'
-const OPEN_LINK_KEY = 'Mod-Enter'
 const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
 const TOP_OF_DOCUMENT = 0
 
@@ -245,8 +244,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
         EditorView.lineWrapping,
         Prec.high(
           keymap.of([
-            { key: SAVE_KEY, preventDefault: true, run: save },
-            { key: OPEN_LINK_KEY, run: openLinkAtCaret },
+            { key: KEYS.save, preventDefault: true, run: save },
+            { key: KEYS.openLink, run: openLinkAtCaret },
           ]),
         ),
         EditorView.updateListener.of((update) => {

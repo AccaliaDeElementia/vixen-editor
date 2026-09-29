@@ -5,6 +5,7 @@ import { activateHover, closeHoverTooltips, EditorView, hoverTooltip, keymap } f
 import type { Tooltip } from '@codemirror/view'
 
 import { docUrlFor } from '../doc-path.ts'
+import { KEYS } from '../help.ts'
 
 import { linkTargetAt } from './link-targets.ts'
 
@@ -84,7 +85,7 @@ function revealOnTap(event: PointerEvent, view: EditorView): boolean {
 
 export const vixenLinkTooltip: Extension = [
   linkHover,
-  keymap.of([{ key: 'Escape', run: dismissHoverTooltips }]),
+  keymap.of([{ key: KEYS.dismissTooltip, run: dismissHoverTooltips }]),
   EditorView.domEventHandlers({ pointerup: revealOnTap }),
 ]
 

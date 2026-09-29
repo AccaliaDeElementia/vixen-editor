@@ -13,7 +13,7 @@ import {
   toggleExplorer,
 } from './explorer.ts'
 import { createDialogs } from '../files/dialogs.ts'
-import { HELP_SECTIONS } from '../help.ts'
+import { HELP_SECTIONS, KEYS } from '../help.ts'
 import { onInsertRequested } from '../insert-entry.ts'
 
 const HELP_SELECTOR = '#show-help'
@@ -68,10 +68,10 @@ function bindResizer(root: ParentNode, view: Window): void {
 }
 
 function keyboardWidth(key: string, currentPx: number, maxPx: number): number | null {
-  if (key === 'ArrowLeft') return currentPx - KEYBOARD_STEP_PX
-  if (key === 'ArrowRight') return currentPx + KEYBOARD_STEP_PX
-  if (key === 'Home') return MIN_EXPLORER_PX
-  if (key === 'End') return maxPx
+  if (key === KEYS.narrower) return currentPx - KEYBOARD_STEP_PX
+  if (key === KEYS.wider) return currentPx + KEYBOARD_STEP_PX
+  if (key === KEYS.narrowest) return MIN_EXPLORER_PX
+  if (key === KEYS.widest) return maxPx
   return null
 }
 
