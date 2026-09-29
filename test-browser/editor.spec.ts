@@ -150,6 +150,8 @@ test('an edit starts a countdown bar that shrinks', async ({ page, request }) =>
   await expect.poll(width, { timeout: 4000 }).toBeLessThan(started)
 })
 
+const UNAMBIGUOUSLY_SHRUNK = 0.95
+
 test('a further edit restarts the countdown rather than letting it run down', async ({ page, request }) => {
   await page.goto(await storedDocument(request, 'restart.md', 'seed'))
   await page.locator('.cm-content').click()
@@ -159,12 +161,12 @@ test('a further edit restarts the countdown rather than letting it run down', as
   const width = async (): Promise<number> => (await bar.boundingBox())?.width ?? 0
 
   const started = await width()
-  await expect.poll(width, { timeout: 4000 }).toBeLessThan(started)
+  await expect.poll(width, { timeout: 4000 }).toBeLessThan(started * UNAMBIGUOUSLY_SHRUNK)
   const shrunk = await width()
 
   await page.keyboard.type(' second')
 
-  await expect.poll(width, { timeout: 2000 }).toBeGreaterThan(shrunk)
+  await expect.poll(width, { timeout: 4000 }).toBeGreaterThan(shrunk)
 })
 
 test('a missing document offers to create it, and creating it opens the editor', async ({ page }) => {

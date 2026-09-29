@@ -152,31 +152,39 @@ describe('every source file belongs to exactly one typecheck project', () => {
   })
 })
 
-const APPROVED_RELAXATIONS = [
+const APPROVED_OVERRIDES = [
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/no-magic-numbers' },
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/promise-function-async' },
+  { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: 'max-lines' },
+  { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: 'max-nested-callbacks' },
+  { files: ['src/**/*.ts', 'scripts/**/*.ts'], rule: '@typescript-eslint/no-restricted-imports' },
   { files: ['*.config.ts'], rule: '@typescript-eslint/no-magic-numbers' },
 ]
 
-interface Relaxation {
+const BASELINE_FILES = '**/*.js,**/*.ts'
+
+interface ScopedRule {
   files: string[]
   rule: string
+}
+
+interface Relaxation extends ScopedRule {
+  off: boolean
 }
 
 function relaxationsIn(block: unknown): Relaxation[] {
   if (!isRecord(block) || !isRecord(block.rules)) return []
   const files = Array.isArray(block.files) ? block.files.filter((f): f is string => typeof f === 'string') : []
+  if (files.join(',') === BASELINE_FILES) return []
 
-  return Object.entries(block.rules)
-    .filter(([, setting]) => setting === 'off')
-    .map(([rule]) => ({ files, rule }))
+  return Object.entries(block.rules).map(([rule, setting]) => ({ files, rule, off: setting === 'off' }))
 }
 
-function describeRelaxation({ files, rule }: Relaxation): string {
+function describeRelaxation({ files, rule }: ScopedRule): string {
   return `${files.join(',')} -> ${rule}`
 }
 
-describe('every eslint relaxation is one that was approved', () => {
+describe('every scoped eslint override is one that was approved', () => {
   let relaxations: Relaxation[] = []
 
   beforeAll(async () => {
@@ -189,14 +197,18 @@ describe('every eslint relaxation is one that was approved', () => {
     expect(relaxations.length).toBeGreaterThan(0)
   })
 
+  it('skips the baseline block, or every rule love sets would look like an override', () => {
+    expect(relaxations.length).toBeLessThan(APPROVED_OVERRIDES.length + 1)
+  })
+
   it('matches the approved list, so a new one cannot land unreviewed', () => {
     expect(relaxations.map(describeRelaxation).toSorted((a, b) => a.localeCompare(b))).toStrictEqual(
-      APPROVED_RELAXATIONS.map(describeRelaxation).toSorted((a, b) => a.localeCompare(b)),
+      APPROVED_OVERRIDES.map(describeRelaxation).toSorted((a, b) => a.localeCompare(b)),
     )
   })
 
-  it('leaves shipped code with none, which is what the list is protecting', () => {
-    const shipped = relaxations.filter(({ files }) => files.some((pattern) => pattern.startsWith('src/')))
+  it('switches nothing off for shipped code, which is what the list is protecting', () => {
+    const shipped = relaxations.filter(({ files, off }) => off && files.some((pattern) => pattern.startsWith('src/')))
 
     expect(shipped.map(describeRelaxation)).toStrictEqual([])
   })

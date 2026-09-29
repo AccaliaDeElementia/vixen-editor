@@ -1235,9 +1235,17 @@ decision anyone made on purpose.
   here uses `:filter` syntax — that is the only path reaching `jstransformer`'s
   dynamic `require`.
 - **`eslint-config-love` is strict by design** and expects local relaxation.
-  **Shipped code takes none**: every relaxation in `eslint.config.js` is scoped
-  to `test/**`, `test-browser/**` or a config file, and `test/conventions/`
-  fails the gate on one that is not on its approved list. A relaxation covers
-  code nobody has written yet, so unlike a suppression at a line it never comes
-  back into review — prefer fixing the code, then an inline suppression with a
-  rationale, and treat a new relaxation as the last resort.
+  **Shipped code switches nothing off**: every rule turned off in
+  `eslint.config.js` is scoped to `test/**`, `test-browser/**` or a config
+  file. `test/conventions/` fails the gate on **any** scoped rule override that
+  is not on its approved list — not only one set to `off`, because a rule
+  weakened through its options is the same hole wearing a different hat, and
+  two had already landed that way. A scoped override covers code nobody has
+  written yet, so unlike a suppression at a line it never comes back into
+  review — prefer fixing the code, then an inline suppression with a rationale,
+  and treat a new override as the last resort.
+- **Specs get `max-lines` 1000; shipped code keeps love's 450.** A spec's
+  length tracks how many behaviours its subject has rather than how many
+  responsibilities the file has, so the lower limit was landing on files doing
+  exactly one thing and being paid in artificial edits. The rationale and the
+  measurement are on `MAX_SPEC_LINES` in `eslint.config.js`.

@@ -10,13 +10,21 @@ RUN npm ci
 
 # ---- build ------------------------------------------------------------------
 # Runs the full verification gate before bundling, so an image can never be
-# produced from code that fails formatting, lint, type-check or tests.
+# produced from code that fails formatting, lint, type-check or tests. That
+# includes the browser suite, so this stage carries Chromium and Firefox; they
+# never reach the runtime stage, which is a separate FROM.
 FROM node:26-slim AS build
 WORKDIR /app
-ENV NODE_ENV=production
+# CI=true is what the Playwright config reads to pick the list reporter, refuse
+# a stray test.only, and start its own server rather than adopting one.
+ENV NODE_ENV=production \
+    CI=true
+COPY package.json package-lock.json ./
 COPY --from=deps /app/node_modules ./node_modules
+# Ahead of the source copy so an edit does not re-download ~500 MB of browsers.
+RUN npx --no-install playwright install --with-deps chromium firefox
 COPY . .
-RUN npm test
+RUN npm run test:all
 RUN npm run build
 
 # ---- runtime ----------------------------------------------------------------
