@@ -24,6 +24,9 @@ const FIRST_LINE = 1
 const ARGUMENTS_START = 2
 const FAILURE = 1
 const SUCCESS = 0
+const FIRST_INDEX = 0
+const VERDICT_WIDTH = 17
+const CASE_FIELDS = ['label', 'file', 'from', 'to', 'project', 'spec', 'test']
 
 interface Mutant {
   file: string
@@ -127,6 +130,65 @@ function reportOn(outcomes: Outcome[]): number {
   return survivors.length
 }
 
+interface Case {
+  label: string
+  file: string
+  from: string
+  to: string
+  project: string
+  spec: string
+  test: string
+}
+
+type Verdict = 'CAUGHT' | 'STILL PASSES' | 'NO TESTS MATCHED'
+
+function ranNothing(output: string): boolean {
+  const summary = /Tests\s+(?<detail>[^\n]*)/v.exec(output)?.groups?.detail
+  if (summary === undefined) return true
+
+  const counted = [...summary.matchAll(/(?<count>\d+)\s+(?:failed|passed)/gv)]
+
+  return counted.reduce((total, match) => total + Number(match.groups?.count ?? NONE), NONE) === NONE
+}
+
+async function checkCase(item: Case, timeoutMs: number): Promise<Verdict> {
+  const target = await readFile(item.file, 'utf8')
+  if (!target.includes(item.from)) throw new Error(`${item.label}: '${item.from}' is not in ${item.file}`)
+
+  try {
+    await writeFile(item.file, target.replace(item.from, item.to))
+    const { stdout, failed } = await run(
+      'npx',
+      ['vitest', 'run', '--project', item.project, item.spec, '-t', item.test],
+      timeoutMs,
+    )
+    if (ranNothing(stdout)) return 'NO TESTS MATCHED'
+
+    return failed ? 'CAUGHT' : 'STILL PASSES'
+  } finally {
+    await writeFile(item.file, target)
+  }
+}
+
+export async function check(cases: Case[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<number> {
+  if (cases.length === NONE) throw new Error('name at least one case to check')
+
+  const entered = await workspaceState()
+  const verdicts: Verdict[] = []
+  try {
+    await serially(cases, async (item) => {
+      const verdict = await checkCase(item, timeoutMs)
+      verdicts.push(verdict)
+      process.stdout.write(`  ${verdict.padEnd(VERDICT_WIDTH)}${item.label}\n`)
+    })
+  } finally {
+    const left = await workspaceState()
+    if (left !== entered) process.stdout.write(`\nWORKSPACE CHANGED — restore by hand.\n${entered}\n${left}`)
+  }
+
+  return verdicts.filter((verdict) => verdict !== 'CAUGHT').length
+}
+
 export async function mutate(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<number> {
   if (files.length === NONE) throw new Error('name at least one file to mutate')
 
@@ -148,7 +210,25 @@ export async function mutate(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): P
   return reportOn(outcomes)
 }
 
+function isCase(value: unknown): value is Case {
+  if (typeof value !== 'object' || value === null) return false
+
+  return CASE_FIELDS.every((field) => typeof Reflect.get(value, field) === 'string')
+}
+
+async function casesFrom(path: string): Promise<Case[]> {
+  const parsed: unknown = JSON.parse(await readFile(path, 'utf8'))
+  if (!Array.isArray(parsed)) throw new Error(`${path} must hold an array of cases`)
+
+  const cases = parsed.filter(isCase)
+  if (cases.length !== parsed.length) throw new Error(`${path} holds an entry missing one of ${CASE_FIELDS.join(', ')}`)
+
+  return cases
+}
+
 if (import.meta.main) {
-  const survivors = await mutate(process.argv.slice(ARGUMENTS_START))
-  process.exitCode = survivors > NONE ? FAILURE : SUCCESS
+  const [first, ...rest] = process.argv.slice(ARGUMENTS_START)
+  const unmet =
+    first === '--cases' ? await check(await casesFrom(rest[FIRST_INDEX] ?? '')) : await mutate([first ?? '', ...rest])
+  process.exitCode = unmet > NONE ? FAILURE : SUCCESS
 }

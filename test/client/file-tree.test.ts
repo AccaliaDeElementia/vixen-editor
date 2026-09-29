@@ -61,6 +61,7 @@ describe('loading', () => {
 
   it('opens collapsed', async () => {
     await start()
+    expect(paths()).toContain('journal')
 
     expect(paths()).not.toContain('journal/entry.md')
   })

@@ -72,6 +72,7 @@ describe('rendering', () => {
 
   it('hides the contents of a collapsed folder', () => {
     render()
+    expect(pathsShown()).toContain('journal')
 
     expect(pathsShown()).not.toContain('journal/entry.md')
   })
