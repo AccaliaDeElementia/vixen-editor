@@ -7,6 +7,7 @@ import path from 'node:path'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { given } from '../../conditions.ts'
 import { fieldOf, refusalOf } from './refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
@@ -35,7 +36,10 @@ describe('DELETE /api/files/entries/:path', () => {
 
     const res = await remove('notes.md')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(fieldOf(res, 'trashId')).resolves.toMatch(/^[0-9a-f\-]{36}$/v)
   })
 
@@ -55,7 +59,11 @@ describe('DELETE /api/files/entries/:path', () => {
   it('deletes a folder', async () => {
     await store.createFolder('journal', '# journal')
 
-    expect((await remove('journal')).status).toBe(200)
+    const res = await remove('journal')
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(store.tree()).resolves.toStrictEqual([])
   })
 
@@ -84,8 +92,10 @@ describe('the document API no longer hard-deletes', () => {
 
     const res = await app.request('/api/documents/notes.md', { method: 'DELETE' })
 
-    expect(res.status).toBe(404)
-    await expect(store.read('notes.md')).resolves.toBe('x')
+    expect({ status: res.status, stored: await store.read('notes.md') }).toStrictEqual({
+      status: 404,
+      stored: 'x',
+    })
   })
 })
 
@@ -93,8 +103,9 @@ describe('GET /api/trash', () => {
   it('is empty before anything is deleted', async () => {
     const res = await app.request('/api/trash')
 
-    expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toStrictEqual({ entries: [] })
+    const body: unknown = await res.json()
+
+    expect({ status: res.status, body }).toStrictEqual({ status: 200, body: { entries: [] } })
   })
 
   it('reports deleted entries in a form that tells them from live files', async () => {
@@ -105,8 +116,9 @@ describe('GET /api/trash', () => {
 
     const entries = await fieldOf(res, 'entries')
 
-    expect(entries).toMatchObject([{ originalPath: 'notes.md', kind: 'document' }])
-    expect(entries).toMatchObject([{ deletedAt: expect.stringMatching(/^\d{4}-/v) as unknown }])
+    expect(entries).toMatchObject([
+      { originalPath: 'notes.md', kind: 'document', deletedAt: expect.stringMatching(/^\d{4}-/v) as unknown },
+    ])
   })
 })
 
@@ -121,9 +133,13 @@ describe('POST /api/trash/:entryId/restore', () => {
 
     const res = await app.request(`/api/trash/${id}/restore`, { method: 'POST' })
 
-    expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toStrictEqual({ path: 'notes.md' })
-    await expect(store.read('notes.md')).resolves.toBe('# hello')
+    const body: unknown = await res.json()
+
+    expect({ status: res.status, body, restored: await store.read('notes.md') }).toStrictEqual({
+      status: 200,
+      body: { path: 'notes.md' },
+      restored: '# hello',
+    })
   })
 
   it('returns 409 when the original path is occupied, leaving the user to decide', async () => {
@@ -155,7 +171,10 @@ describe('DELETE /api/trash/:entryId', () => {
 
     const res = await app.request(`/api/trash/${id}`, { method: 'DELETE' })
 
-    expect(res.status).toBe(204)
+    given(() => {
+      expect(res.status).toBe(204)
+    })
+
     await expect(store.listTrash()).resolves.toStrictEqual([])
   })
 

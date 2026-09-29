@@ -7,6 +7,7 @@ import path from 'node:path'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { given } from '../../conditions.ts'
 import { refusalOf } from './refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
 import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
@@ -39,8 +40,9 @@ describe('GET /api/files', () => {
   it('returns an empty tree initially', async () => {
     const res = await app.request('/api/files')
 
-    expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toStrictEqual({ tree: [] })
+    const body: unknown = await res.json()
+
+    expect({ status: res.status, body }).toStrictEqual({ status: 200, body: { tree: [] } })
   })
 
   it('reports folders, documents and images with distinct kinds', async () => {
@@ -62,7 +64,10 @@ describe('POST /api/files/folders', () => {
   it('creates a folder and reports the seeded index', async () => {
     const res = await post('folders', { path: 'journal' })
 
-    expect(res.status).toBe(201)
+    given(() => {
+      expect(res.status).toBe(201)
+    })
+
     await expect(res.json()).resolves.toMatchObject({ path: `journal/${FOLDER_INDEX_NAME}` })
   })
 
@@ -89,7 +94,10 @@ describe('POST /api/files/folders', () => {
   it('creates a nested folder', async () => {
     const res = await post('folders', { path: 'journal/2026' })
 
-    expect(res.status).toBe(201)
+    given(() => {
+      expect(res.status).toBe(201)
+    })
+
     await expect(store.read(`journal/2026/${FOLDER_INDEX_NAME}`)).resolves.toContain('# 2026')
   })
 
@@ -130,7 +138,10 @@ describe('POST /api/files/documents', () => {
   it('creates a document and reports its path', async () => {
     const res = await post('documents', { path: 'notes.md' })
 
-    expect(res.status).toBe(201)
+    given(() => {
+      expect(res.status).toBe(201)
+    })
+
     await expect(res.json()).resolves.toMatchObject({ path: 'notes.md' })
   })
 
@@ -249,8 +260,9 @@ describe('POST /api/files/uploads', () => {
   it('stores an upload and reports the path it landed at', async () => {
     const res = await upload('photo.png', PNG_BYTES, 'journal')
 
-    expect(res.status).toBe(201)
-    await expect(res.json()).resolves.toStrictEqual({ path: 'journal/photo.png' })
+    const body: unknown = await res.json()
+
+    expect({ status: res.status, body }).toStrictEqual({ status: 201, body: { path: 'journal/photo.png' } })
   })
 
   it('stores at the root when no directory is given', async () => {
@@ -359,8 +371,10 @@ describe('GET /api/files/raw/:path', () => {
 
     const res = await app.request('/api/files/raw/photo.png')
 
-    expect(res.status).toBe(200)
-    await expect(res.arrayBuffer().then((b) => new Uint8Array(b))).resolves.toStrictEqual(PNG_BYTES)
+    expect({ status: res.status, body: await res.arrayBuffer().then((b) => new Uint8Array(b)) }).toStrictEqual({
+      status: 200,
+      body: PNG_BYTES,
+    })
   })
 
   it('serves a nested path, mirroring the store layout so relative links resolve', async () => {
@@ -396,7 +410,10 @@ describe('GET /api/files/raw/:path', () => {
 
     const res = await app.request('/api/files/raw/drawing.svg')
 
-    expect(res.headers.get('content-type')).toBe('image/svg+xml')
+    given(() => {
+      expect(res.headers.get('content-type')).toBe('image/svg+xml')
+    })
+
     expect(res.headers.get('content-security-policy')).toContain("default-src 'none'")
   })
 
@@ -425,9 +442,13 @@ describe('POST /api/files/moves', () => {
 
     const res = await post('moves', { from: 'notes.md', to: 'renamed.md' })
 
-    expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toStrictEqual({ rewritten: [], failed: [] })
-    await expect(store.read('renamed.md')).resolves.toBe('# hello')
+    const body: unknown = await res.json()
+
+    expect({ status: res.status, body, renamed: await store.read('renamed.md') }).toStrictEqual({
+      status: 200,
+      body: { rewritten: [], failed: [] },
+      renamed: '# hello',
+    })
   })
 
   it('names the documents whose links it repaired', async () => {
@@ -436,9 +457,13 @@ describe('POST /api/files/moves', () => {
 
     const res = await post('moves', { from: 'journal/a.md', to: 'archive/a.md' })
 
-    expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toStrictEqual({ rewritten: ['notes.md'], failed: [] })
-    await expect(store.read('notes.md')).resolves.toBe('see [it](archive/a.md)')
+    const body: unknown = await res.json()
+
+    expect({ status: res.status, body, repaired: await store.read('notes.md') }).toStrictEqual({
+      status: 200,
+      body: { rewritten: ['notes.md'], failed: [] },
+      repaired: 'see [it](archive/a.md)',
+    })
   })
 
   it('moves a document into a folder', async () => {
@@ -469,8 +494,10 @@ describe('POST /api/files/moves', () => {
 
     await post('moves', { from: 'notes.md', to: 'archive/notes.md' })
 
-    await expect(store.read('notes.md')).resolves.toBe('# mine')
-    await expect(store.read('archive/notes.md')).resolves.toBe('# theirs')
+    expect({ mine: await store.read('notes.md'), theirs: await store.read('archive/notes.md') }).toStrictEqual({
+      mine: '# mine',
+      theirs: '# theirs',
+    })
   })
 
   it('returns 409 for a folder moved into its own descendant', async () => {
@@ -509,8 +536,9 @@ describe('POST /api/files/uploads with a chosen name', () => {
   it('stores under the name the client asked for, not the one the file carried', async () => {
     const res = await uploadNamed('IMG_0042.png', 'header.png', PNG_BYTES)
 
-    expect(res.status).toBe(201)
-    await expect(res.json()).resolves.toStrictEqual({ path: 'header.png' })
+    const body: unknown = await res.json()
+
+    expect({ status: res.status, body }).toStrictEqual({ status: 201, body: { path: 'header.png' } })
   })
 
   it('validates the chosen name exactly as it validates the file’s own', async () => {

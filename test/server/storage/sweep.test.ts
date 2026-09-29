@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../../src/server/storage/atomic-write.ts'
@@ -46,7 +47,8 @@ describe('sweepTemporaries', () => {
     const orphan = orphanIn('')
     await write(orphan)
 
-    await expect(sweepTemporaries(root)).resolves.toStrictEqual([orphan])
+    await givenAsync(expect(sweepTemporaries(root)).resolves.toStrictEqual([orphan]))
+
     expect(await exists(orphan)).toBe(false)
   })
 
@@ -67,21 +69,22 @@ describe('sweepTemporaries', () => {
   it('reports every orphan it removed, in a stable order', async () => {
     const first = orphanIn('a')
     const second = orphanIn('b')
-    await write(first)
     await write(second)
+    await write(first)
 
     const removed = await sweepTemporaries(root)
 
-    expect(removed).toHaveLength(2)
-    expect(removed).toStrictEqual([...removed].sort((a, b) => a.localeCompare(b)))
+    expect(removed).toStrictEqual([first, second])
   })
 
   it('reports nothing and removes nothing when the store is clean', async () => {
     await write('notes.md')
     await write('journal/a.md')
 
-    await expect(sweepTemporaries(root)).resolves.toStrictEqual([])
-    expect(await exists('notes.md')).toBe(true)
+    expect({ removed: await sweepTemporaries(root), kept: await exists('notes.md') }).toStrictEqual({
+      removed: [],
+      kept: true,
+    })
   })
 
   it('returns nothing when the store does not exist yet', async () => {
@@ -94,14 +97,17 @@ describe('sweepTemporaries', () => {
 
     await sweepTemporaries(root)
 
-    expect(await exists('notes.md')).toBe(true)
-    expect(await exists('.trash/8f14e45f-ea8d-4b9c-a1c2-3d4e5f607182/meta.json')).toBe(true)
+    expect({
+      document: await exists('notes.md'),
+      trash: await exists('.trash/8f14e45f-ea8d-4b9c-a1c2-3d4e5f607182/meta.json'),
+    }).toStrictEqual({ document: true, trash: true })
   })
 
   it('leaves a dotfile that is not a temporary alone', async () => {
     await write('.gitkeep')
 
-    await expect(sweepTemporaries(root)).resolves.toStrictEqual([])
+    await givenAsync(expect(sweepTemporaries(root)).resolves.toStrictEqual([]))
+
     expect(await exists('.gitkeep')).toBe(true)
   })
 
@@ -110,7 +116,8 @@ describe('sweepTemporaries', () => {
     await fs.mkdir(path.join(root, impostor), { recursive: true })
     await write(`${impostor}/kept.md`)
 
-    await expect(sweepTemporaries(root)).resolves.toStrictEqual([])
+    await givenAsync(expect(sweepTemporaries(root)).resolves.toStrictEqual([]))
+
     expect(await exists(`${impostor}/kept.md`)).toBe(true)
   })
 
@@ -128,7 +135,8 @@ describe('sweepTemporaries', () => {
     await fs.writeFile(bait, 'keep me')
     await fs.symlink(bait, path.join(root, orphanIn('')))
 
-    await expect(sweepTemporaries(root)).resolves.toStrictEqual([])
+    await givenAsync(expect(sweepTemporaries(root)).resolves.toStrictEqual([]))
+
     await expect(fs.readFile(bait, 'utf8')).resolves.toBe('keep me')
 
     await fs.rm(outside, { recursive: true, force: true })
@@ -140,7 +148,8 @@ describe('sweepTemporaries', () => {
     await fs.writeFile(bait, 'x')
     await fs.symlink(outside, path.join(root, 'linked'))
 
-    await expect(sweepTemporaries(root)).resolves.toStrictEqual([])
+    await givenAsync(expect(sweepTemporaries(root)).resolves.toStrictEqual([]))
+
     await expect(fs.readFile(bait, 'utf8')).resolves.toBe('x')
 
     await fs.rm(outside, { recursive: true, force: true })
