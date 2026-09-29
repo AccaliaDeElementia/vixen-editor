@@ -78,11 +78,16 @@ function withoutConditions(body: string): string {
   }, body)
 }
 
+const TOP_LEVEL_DECLARATION = /^(?:async function|function|const|class) /mv
+
 function bodyBetween(text: string, after: number, until: number): string | null {
   const arrow = text.indexOf('=>', after)
   if (arrow < NONE || arrow > until) return null
 
-  return text.slice(arrow + AFTER_MATCH, until)
+  const body = text.slice(arrow + AFTER_MATCH, until)
+  const declared = TOP_LEVEL_DECLARATION.exec(body)?.index
+
+  return declared === undefined ? body : body.slice(NONE, declared)
 }
 
 export function countIn(file: string, text: string): Counted[] {
