@@ -64,9 +64,13 @@ describe('a refused request leaves a trace on the server', () => {
       await app.request('/api/documents/missing.md')
     })
 
-    expect(logged.join('\n')).toContain('GET')
-    expect(logged.join('\n')).toContain('/api/documents/missing.md')
-    expect(logged.join('\n')).toContain('NOT_FOUND')
+    const line = logged.join('\n')
+
+    expect({
+      method: line.includes('GET'),
+      path: line.includes('/api/documents/missing.md'),
+      code: line.includes('NOT_FOUND'),
+    }).toStrictEqual({ method: true, path: true, code: true })
   })
 
   it('records a rejected body as well as a rejected path', async () => {

@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { given } from '../../conditions.ts'
 import { Buffer } from 'node:buffer'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -48,8 +49,13 @@ describe('GET /api/files/archive', () => {
 
     const res = await app.request('/api/files/archive')
 
-    expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toBe('application/zip')
+    given(() => {
+      expect({ status: res.status, contentType: res.headers.get('content-type') }).toStrictEqual({
+        status: 200,
+        contentType: 'application/zip',
+      })
+    })
+
     await expect(entriesIn(res)).resolves.toStrictEqual(['journal/entry.md', 'notes.md'])
   })
 
@@ -127,8 +133,11 @@ describe('GET /api/files/archive', () => {
 
     const res = await tiny.request('/api/files/archive')
 
+    given(() => {
+      expect(res.headers.get('content-type')).toContain('application/json')
+    })
+
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 413, code: 'TOO_LARGE' })
-    expect(res.headers.get('content-type')).toContain('application/json')
   })
 
   it('names the limit and the measured value, so the message can be specific', async () => {
@@ -139,7 +148,10 @@ describe('GET /api/files/archive', () => {
     const res = await tiny.request('/api/files/archive')
     const body: unknown = await res.json()
 
-    expect(res.status).toBe(413)
+    given(() => {
+      expect(res.status).toBe(413)
+    })
+
     expect(body).toMatchObject({ code: 'TOO_LARGE', unit: 'entries', limit: 1, measured: 2 })
   })
 

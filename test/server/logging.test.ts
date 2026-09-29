@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../conditions.ts'
 import { describe, expect, it } from 'vitest'
 
 import { afterEach } from 'vitest'
@@ -50,7 +51,9 @@ describe('createLogger', () => {
 describe('applyDebugFilter', () => {
   it('enables a logger that already existed before DEBUG was known', () => {
     const existing = createLogger('main', 'startServer')
-    expect(existing.enabled).toBeFalsy()
+    given(() => {
+      expect(existing.enabled).toBeFalsy()
+    })
 
     applyDebugFilter({ DEBUG: 'vixen-editor:*' })
 
@@ -63,8 +66,7 @@ describe('applyDebugFilter', () => {
 
     applyDebugFilter({ DEBUG: 'vixen-editor:storage/*' })
 
-    expect(store.enabled).toBe(true)
-    expect(startup.enabled).toBe(false)
+    expect({ store: store.enabled, startup: startup.enabled }).toStrictEqual({ store: true, startup: false })
   })
 
   it('silences everything when DEBUG is absent', () => {

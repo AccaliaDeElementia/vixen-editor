@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
@@ -174,7 +175,8 @@ describe('createDocument', () => {
   it('leaves the existing content untouched when it refuses', async () => {
     await store.createDocument('notes.md', 'original')
 
-    await expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError)
+    await givenAsync(expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError))
+
     await expect(store.read('notes.md')).resolves.toBe('original')
   })
 
@@ -282,7 +284,10 @@ describe('updateDocument', () => {
     const stale = await seeded()
     await store.updateDocument('notes.md', 'theirs', stale)
 
-    await expect(store.updateDocument('notes.md', 'mine', stale)).rejects.toThrow(ConcurrentModificationError)
+    await givenAsync(
+      expect(store.updateDocument('notes.md', 'mine', stale)).rejects.toThrow(ConcurrentModificationError),
+    )
+
     await expect(store.read('notes.md')).resolves.toBe('theirs')
   })
 
@@ -308,7 +313,8 @@ describe('updateDocument', () => {
   it('leaves the stored content alone when it refuses an empty save', async () => {
     const etag = await seeded()
 
-    await expect(store.updateDocument('notes.md', '', etag)).rejects.toThrow(EmptyContentError)
+    await givenAsync(expect(store.updateDocument('notes.md', '', etag)).rejects.toThrow(EmptyContentError))
+
     await expect(store.read('notes.md')).resolves.toBe('original')
   })
 
@@ -331,8 +337,7 @@ describe('updateDocument', () => {
       store.updateDocument('notes.md', 'second writer', etag),
     ])
 
-    expect(outcomes.map((outcome) => outcome.status)).toContain('rejected')
-    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1)
+    expect(outcomes.map((outcome) => outcome.status).toSorted()).toStrictEqual(['fulfilled', 'rejected'])
   })
 
   it('reports the loser of two concurrent saves as a conflict, not as a silent success', async () => {
@@ -376,7 +381,8 @@ describe('createFolder', () => {
   it('leaves the existing index untouched when it refuses', async () => {
     await store.createFolder('journal', '# journal')
 
-    await expect(store.createFolder('journal', '# again')).rejects.toThrow(EntryExistsError)
+    await givenAsync(expect(store.createFolder('journal', '# again')).rejects.toThrow(EntryExistsError))
+
     await expect(store.read(`journal/${FOLDER_INDEX_NAME}`)).resolves.toBe('# journal')
   })
 
@@ -475,7 +481,8 @@ describe('createUpload', () => {
   it('does not store a file it rejected as mismatched', async () => {
     const html = new TextEncoder().encode('<!doctype html>')
 
-    await expect(store.createUpload('', 'photo.png', html)).rejects.toThrow(ContentMismatchError)
+    await givenAsync(expect(store.createUpload('', 'photo.png', html)).rejects.toThrow(ContentMismatchError))
+
     await expect(fs.readdir(root)).resolves.toStrictEqual([])
   })
 

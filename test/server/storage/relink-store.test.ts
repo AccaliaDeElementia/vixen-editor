@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { given } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { relinkDocument, type PathMove } from '../../../src/server/markdown/relink.ts'
@@ -56,7 +57,10 @@ describe('relinkAfterMove', () => {
 
     const rewritten = await rewrittenBy('journal/a.md', 'archive/a.md')
 
-    expect(rewritten).toStrictEqual(['notes.md'])
+    given(() => {
+      expect(rewritten).toStrictEqual(['notes.md'])
+    })
+
     await expect(read('notes.md')).resolves.toBe('see [it](archive/a.md)')
   })
 
@@ -66,7 +70,10 @@ describe('relinkAfterMove', () => {
 
     const rewritten = await rewrittenBy('journal', 'archive')
 
-    expect(rewritten).toStrictEqual(['notes.md'])
+    given(() => {
+      expect(rewritten).toStrictEqual(['notes.md'])
+    })
+
     await expect(read('notes.md')).resolves.toBe('see [it](archive/2026/a.md)')
   })
 
@@ -76,7 +83,10 @@ describe('relinkAfterMove', () => {
 
     const rewritten = await rewrittenBy('journal/a.md', 'archive/a.md')
 
-    expect(rewritten).toStrictEqual(['notes.txt'])
+    given(() => {
+      expect(rewritten).toStrictEqual(['notes.txt'])
+    })
+
     await expect(read('notes.txt')).resolves.toBe('see [it](archive/a.md)')
   })
 
@@ -86,7 +96,10 @@ describe('relinkAfterMove', () => {
 
     const rewritten = await rewrittenBy('journal', 'deep/journal')
 
-    expect(rewritten).toStrictEqual(['deep/journal/a.md'])
+    given(() => {
+      expect(rewritten).toStrictEqual(['deep/journal/a.md'])
+    })
+
     await expect(read('deep/journal/a.md')).resolves.toBe('see [it](../../notes.md)')
   })
 
@@ -160,9 +173,11 @@ describe('relinkAfterMove when one document cannot be repaired', () => {
 
     const outcome = await moveThenRelink('journal/a.md', 'archive/a.md')
 
-    expect(outcome).toStrictEqual({ rewritten: ['one.md', 'three.md'], failed: ['two.md'] })
-    await expect(read('one.md')).resolves.toBe('[x](archive/a.md)')
-    await expect(read('three.md')).resolves.toBe('[x](archive/a.md)')
+    expect({ outcome, one: await read('one.md'), three: await read('three.md') }).toStrictEqual({
+      outcome: { rewritten: ['one.md', 'three.md'], failed: ['two.md'] },
+      one: '[x](archive/a.md)',
+      three: '[x](archive/a.md)',
+    })
   })
 
   it('repairs the others when one cannot be written', async () => {
@@ -223,7 +238,10 @@ describe('skipping documents that cannot hold a link', () => {
 
     const outcome = await moveThenRelink('journal', 'archive')
 
-    expect(unfiltered.length).toBeGreaterThan(0)
+    given(() => {
+      expect(unfiltered.length).toBeGreaterThan(0)
+    })
+
     expect(outcome.rewritten).toStrictEqual(unfiltered)
   })
 

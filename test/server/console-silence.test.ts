@@ -3,6 +3,7 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { given } from '../conditions.ts'
 import { inspect } from 'node:util'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -70,7 +71,10 @@ describe('the application never writes to the console', () => {
   it('stays silent when an unexpected storage fault produces a 500', async () => {
     const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
 
-    expect(res.status).toBe(500)
+    given(() => {
+      expect(res.status).toBe(500)
+    })
+
     expect(output).toStrictEqual([])
   })
 
@@ -93,7 +97,10 @@ describe('the application never writes to the console', () => {
       body: 'not json at all',
     })
 
-    expect(res.status).toBe(400)
+    given(() => {
+      expect(res.status).toBe(400)
+    })
+
     expect(output).toStrictEqual([])
   })
 })

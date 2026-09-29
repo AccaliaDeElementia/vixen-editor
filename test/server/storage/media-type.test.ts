@@ -36,7 +36,9 @@ describe('mediaTypeOf', () => {
   })
 
   it('declares a charset on every text type, so the browser does not guess one', () => {
-    expect(mediaTypeOf('notes.md')).toContain('charset=utf-8')
-    expect(mediaTypeOf('notes.txt')).toContain('charset=utf-8')
+    expect({ md: mediaTypeOf('notes.md'), txt: mediaTypeOf('notes.txt') }).toStrictEqual({
+      md: 'text/markdown; charset=utf-8',
+      txt: 'text/plain; charset=utf-8',
+    })
   })
 })

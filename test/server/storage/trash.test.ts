@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { given, givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
@@ -115,7 +116,10 @@ describe('trash', () => {
     await store.createDocument('notes.md', 'second')
     const second = await store.trash('notes.md')
 
-    expect(first).not.toBe(second)
+    given(() => {
+      expect(first).not.toBe(second)
+    })
+
     await expect(store.listTrash()).resolves.toHaveLength(2)
   })
 
@@ -125,8 +129,10 @@ describe('trash', () => {
     await store.createDocument('notes.md', 'second')
     const second = await store.trash('notes.md')
 
-    await expect(fs.readFile(trashPath(first, TRASH_PAYLOAD_NAME), 'utf8')).resolves.toBe('first')
-    await expect(fs.readFile(trashPath(second, TRASH_PAYLOAD_NAME), 'utf8')).resolves.toBe('second')
+    expect({
+      first: await fs.readFile(trashPath(first, TRASH_PAYLOAD_NAME), 'utf8'),
+      second: await fs.readFile(trashPath(second, TRASH_PAYLOAD_NAME), 'utf8'),
+    }).toStrictEqual({ first: 'first', second: 'second' })
   })
 
   it('throws DocumentNotFoundError for a path that is not there', async () => {
@@ -170,8 +176,10 @@ describe('listTrash', () => {
 
     const listed = await store.listTrash()
 
-    expect(listed).toMatchObject([{ id, originalPath: 'notes.md', kind: 'document' }])
-    expect(Date.parse(listed[0]?.deletedAt ?? '')).not.toBeNaN()
+    expect({ listed, deletedAt: Date.parse(listed[0]?.deletedAt ?? '') }).toMatchObject({
+      listed: [{ id, originalPath: 'notes.md', kind: 'document' }],
+      deletedAt: expect.any(Number) as unknown,
+    })
   })
 
   it('lists the most recently deleted entry first', async () => {
@@ -302,7 +310,8 @@ describe('restore', () => {
     const id = await store.trash('notes.md')
     await store.createDocument('notes.md', 'second')
 
-    await expect(store.restore(id)).rejects.toThrow(EntryExistsError)
+    await givenAsync(expect(store.restore(id)).rejects.toThrow(EntryExistsError))
+
     await expect(store.read('notes.md')).resolves.toBe('second')
   })
 
@@ -311,7 +320,8 @@ describe('restore', () => {
     const id = await store.trash('notes.md')
     await store.createDocument('notes.md', 'second')
 
-    await expect(store.restore(id)).rejects.toThrow(EntryExistsError)
+    await givenAsync(expect(store.restore(id)).rejects.toThrow(EntryExistsError))
+
     await expect(store.listTrash()).resolves.toHaveLength(1)
   })
 

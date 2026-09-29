@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
+import { given, givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
@@ -50,7 +51,10 @@ describe('repairing links', () => {
 
     const rewritten = await rewrittenBy('journal', 'deep/journal')
 
-    expect(rewritten).toStrictEqual(['deep/journal/a.md'])
+    given(() => {
+      expect(rewritten).toStrictEqual(['deep/journal/a.md'])
+    })
+
     await expect(store.read('deep/journal/a.md')).resolves.toBe('![p](../../img/p.png)')
   })
 
@@ -60,7 +64,10 @@ describe('repairing links', () => {
 
     const rewritten = await rewrittenBy('journal/a.md', 'archive/a.md')
 
-    expect(rewritten).toStrictEqual(['notes.md'])
+    given(() => {
+      expect(rewritten).toStrictEqual(['notes.md'])
+    })
+
     await expect(store.read('notes.md')).resolves.toBe('see [it](archive/a.md)')
   })
 
@@ -77,8 +84,10 @@ describe('renaming', () => {
 
     await move('notes.md', 'renamed.md')
 
-    await expect(store.read('renamed.md')).resolves.toBe('# hello')
-    expect(await exists('notes.md')).toBe(false)
+    expect({ renamed: await store.read('renamed.md'), original: await exists('notes.md') }).toStrictEqual({
+      renamed: '# hello',
+      original: false,
+    })
   })
 
   it('renames between document extensions, which name the same kind of thing', async () => {
@@ -172,8 +181,10 @@ describe('moving', () => {
 
     await move('journal', 'archive/journal')
 
-    await expect(store.read('archive/journal/entry.md')).resolves.toBe('# entry')
-    expect(await exists('journal')).toBe(false)
+    expect({ moved: await store.read('archive/journal/entry.md'), original: await exists('journal') }).toStrictEqual({
+      moved: '# entry',
+      original: false,
+    })
   })
 
   it('treats a move onto its own path as a no-op, which is what a drag home amounts to', async () => {
@@ -247,10 +258,12 @@ describe('an occupied destination', () => {
     await store.createDocument('notes.md', '# mine')
     await store.createDocument('archive/notes.md', '# theirs')
 
-    await expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(EntryExistsError)
+    await givenAsync(expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(EntryExistsError))
 
-    await expect(store.read('notes.md')).resolves.toBe('# mine')
-    await expect(store.read('archive/notes.md')).resolves.toBe('# theirs')
+    expect({ mine: await store.read('notes.md'), theirs: await store.read('archive/notes.md') }).toStrictEqual({
+      mine: '# mine',
+      theirs: '# theirs',
+    })
   })
 
   it('trashes nothing, so no recovery is needed', async () => {

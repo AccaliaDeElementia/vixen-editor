@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given, givenAsync } from '../../conditions.ts'
 import { describe, expect, it, vi } from 'vitest'
 
 import { createWriteLock, LockTimeoutError, type WriteLock } from '../../../src/server/storage/lock.ts'
@@ -46,7 +47,7 @@ describe('run', () => {
 })
 
 describe('serialisation', () => {
-  it('does not start a second operation while the first is running', async () => {
+  it('runs the second operation only after the first has finished', async () => {
     const writes = lock()
     const first = gate()
     const started = gate()
@@ -61,7 +62,9 @@ describe('serialisation', () => {
     const queued = writes.run(recording(order, 'second'))
 
     await started.hold()
-    expect(order).toStrictEqual(['first:start'])
+    given(() => {
+      expect(order).toStrictEqual(['first:start'])
+    })
     first.open()
     await Promise.all([running, queued])
 
@@ -87,7 +90,7 @@ describe('serialisation', () => {
   it('releases the lock when the operation throws, rather than wedging every later write', async () => {
     const writes = lock()
 
-    await expect(writes.run(failing())).rejects.toThrow('boom')
+    await givenAsync(expect(writes.run(failing())).rejects.toThrow('boom'))
 
     await expect(writes.run(immediately('still works'))).resolves.toBe('still works')
   })

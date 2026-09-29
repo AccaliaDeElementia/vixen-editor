@@ -7,6 +7,14 @@ import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
 
 const { ConfigError } = TestOnly
 
+const CAPPED_BY_ENV = ['UPLOAD_MAX_BYTES', 'ARCHIVE_MAX_BYTES', 'ARCHIVE_MAX_ENTRIES', 'WRITE_LOCK_TIMEOUT_MS']
+const REFUSED_VALUES: ReadonlyArray<readonly [string, string]> = [
+  ['zero', '0'],
+  ['negative', '-1'],
+  ['fractional', '1.5'],
+  ['not a number', 'plenty'],
+]
+
 describe('loadConfig', () => {
   it('applies defaults when the environment is empty', () => {
     const config = loadConfig({})
@@ -49,16 +57,12 @@ describe('loadConfig', () => {
     })
   })
 
-  it.each([
-    ['zero', '0'],
-    ['negative', '-1'],
-    ['fractional', '1.5'],
-    ['not a number', 'plenty'],
-  ])('rejects a %s limit rather than silently disabling the cap', (_label, value) => {
-    expect(() => loadConfig({ UPLOAD_MAX_BYTES: value })).toThrow(ConfigError)
-    expect(() => loadConfig({ ARCHIVE_MAX_BYTES: value })).toThrow(ConfigError)
-    expect(() => loadConfig({ ARCHIVE_MAX_ENTRIES: value })).toThrow(ConfigError)
-    expect(() => loadConfig({ WRITE_LOCK_TIMEOUT_MS: value })).toThrow(ConfigError)
+  it.each(
+    CAPPED_BY_ENV.flatMap((name) =>
+      REFUSED_VALUES.map(([label, value]) => [name, label, value] as [string, string, string]),
+    ),
+  )('rejects %s set to a %s value rather than silently disabling the cap', (name, _label, value) => {
+    expect(() => loadConfig({ [name]: value })).toThrow(ConfigError)
   })
 
   it.each([

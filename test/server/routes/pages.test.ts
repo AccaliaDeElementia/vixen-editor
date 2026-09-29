@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../../conditions.ts'
 import { describe, expect, it } from 'vitest'
 
 import { pageRoutes, TestOnly } from '../../../src/server/routes/pages.ts'
@@ -46,8 +47,10 @@ describe('GET /doc', () => {
   it('redirects to the slashed form', async () => {
     const res = await app.request('/doc')
 
-    expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe(DOC_PREFIX)
+    expect({ status: res.status, location: res.headers.get('location') }).toStrictEqual({
+      status: 302,
+      location: DOC_PREFIX,
+    })
   })
 })
 
@@ -55,22 +58,30 @@ describe('GET /doc/**', () => {
   it('renders the editor shell at the doc root', async () => {
     const res = await app.request('/doc/')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toContain('id="editor"')
   })
 
   it('renders the shell for a document path', async () => {
     const res = await app.request('/doc/journal/2026/september.md')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toContain('id="editor"')
   })
 
   it('adds the trailing slash to a folder, so relative image links resolve', async () => {
     const res = await app.request('/doc/journal/2026')
 
-    expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe('/doc/journal/2026/')
+    expect({ status: res.status, location: res.headers.get('location') }).toStrictEqual({
+      status: 302,
+      location: '/doc/journal/2026/',
+    })
   })
 
   it('renders the shell once the folder url carries its slash', async () => {
@@ -88,7 +99,10 @@ describe('GET /trash/:entryId', () => {
   it('renders the shell, so the client can show the deleted entry', async () => {
     const res = await app.request('/trash/0d5caef1-147f-45bf-8546-270886fcaa8f')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toContain('id="editor"')
   })
 

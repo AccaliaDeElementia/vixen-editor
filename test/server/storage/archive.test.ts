@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../../conditions.ts'
 import { Buffer } from 'node:buffer'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -44,8 +45,10 @@ describe('planArchive', () => {
 
     const plan = await planArchive(root, '', GENEROUS)
 
-    expect(plan.files.sort((a, b) => a.localeCompare(b))).toStrictEqual(['journal/entry.md', 'notes.md'])
-    expect(plan.totalBytes).toBe(12)
+    expect({ files: plan.files.toSorted((a, b) => a.localeCompare(b)), totalBytes: plan.totalBytes }).toStrictEqual({
+      files: ['journal/entry.md', 'notes.md'],
+      totalBytes: 12,
+    })
   })
 
   it('keeps an empty folder, which nothing else in the zip would imply', async () => {
@@ -144,8 +147,10 @@ describe('archive', () => {
     const stream = await store.archive('', GENEROUS)
     const bytes = Buffer.from(await new Response(stream).arrayBuffer())
 
-    expect(bytes.subarray(0, 2).toString('ascii')).toBe('PK')
-    expect(bytes.includes(Buffer.from('notes.md'))).toBe(true)
+    expect({
+      magic: bytes.subarray(0, 2).toString('ascii'),
+      names: bytes.includes(Buffer.from('notes.md')),
+    }).toStrictEqual({ magic: 'PK', names: true })
   })
 
   it('carries an empty folder into the zip, so the structure survives a round trip', async () => {
@@ -213,7 +218,7 @@ describe('archiveStream when the tree changes underneath it', () => {
     await fs.rm(path.join(root, 'notes.md'))
 
     const raised = await uncaughtDuring(async () => {
-      await expect(drain(archiveStream(plan))).rejects.toThrow('ENOENT')
+      await givenAsync(expect(drain(archiveStream(plan))).rejects.toThrow('ENOENT'))
     })
 
     expect(raised).toStrictEqual([])

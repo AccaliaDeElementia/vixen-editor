@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../../conditions.ts'
 import { once } from 'node:events'
 import fs from 'node:fs/promises'
 import net from 'node:net'
@@ -142,7 +143,9 @@ describe('readTree', () => {
     const [entry] = await readTree(root)
     const modified = entry?.kind === 'document' ? entry.modified : ''
 
-    expect(Date.parse(modified)).not.toBeNaN()
+    given(() => {
+      expect(Date.parse(modified)).not.toBeNaN()
+    })
     expect(modified).toBe(new Date(modified).toISOString())
   })
 
