@@ -768,7 +768,9 @@ holds — but a waiter that gives up too fast turns ordinary concurrency into
 
 Archive streaming deliberately takes no lock: a slow client dragging a large
 download over minutes would otherwise block every save. A zip may therefore
-catch the tree mid-move.
+catch the tree mid-move, **or fail part-way when a file it had planned to
+include is deleted first** — the download is the blast radius, and a client
+has to be ready for a transfer that begins with `200` and does not finish.
 
 **Because reads take no lock, a listing can race a delete, and the walk
 tolerates it.** Two tabs are enough: delete a folder in one while the other

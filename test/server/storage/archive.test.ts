@@ -7,7 +7,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { planArchive } from '../../../src/server/storage/archive.ts'
+import { archiveStream, planArchive } from '../../../src/server/storage/archive.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from '../../../src/server/storage/store-errors.ts'
@@ -165,5 +165,57 @@ describe('archive', () => {
 
     expect(etag).toBeTruthy()
     await new Response(stream).arrayBuffer()
+  })
+})
+
+describe('archiveStream when the tree changes underneath it', () => {
+  async function drain(stream: ReadableStream<Uint8Array>): Promise<number> {
+    let bytes = 0
+    for await (const chunk of stream) bytes += chunk.byteLength
+
+    return bytes
+  }
+
+  it('streams the whole plan when nothing moves', async () => {
+    await store.createDocument('notes.md', 'hello')
+    const plan = await planArchive(root, '', GENEROUS)
+
+    await expect(drain(archiveStream(plan))).resolves.toBeGreaterThan(0)
+  })
+
+  async function uncaughtDuring(work: () => Promise<void>): Promise<unknown[]> {
+    const raised: unknown[] = []
+    const record = (error: unknown): void => {
+      raised.push(error)
+    }
+
+    process.on('uncaughtException', record)
+    try {
+      await work()
+    } finally {
+      process.off('uncaughtException', record)
+    }
+
+    return raised
+  }
+
+  it('fails the download when a planned file is deleted first', async () => {
+    await store.createDocument('notes.md', 'hello')
+    const plan = await planArchive(root, '', GENEROUS)
+    await fs.rm(path.join(root, 'notes.md'))
+
+    await expect(drain(archiveStream(plan))).rejects.toThrow('ENOENT')
+  })
+
+  it('raises no uncaught exception doing so, which would end the process', async () => {
+    await store.createDocument('notes.md', 'hello')
+    const plan = await planArchive(root, '', GENEROUS)
+    await fs.rm(path.join(root, 'notes.md'))
+
+    const raised = await uncaughtDuring(async () => {
+      await expect(drain(archiveStream(plan))).rejects.toThrow('ENOENT')
+    })
+
+    expect(raised).toStrictEqual([])
   })
 })

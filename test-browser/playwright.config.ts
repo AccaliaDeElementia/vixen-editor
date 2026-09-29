@@ -27,6 +27,7 @@ export default defineConfig({
     { name: 'setup', testMatch: LIFECYCLE, grep: /@setup/v, teardown: 'cleanup' },
     { name: 'cleanup', testMatch: LIFECYCLE, grep: /@teardown/v },
     { name: 'chromium', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] }, dependencies: ['setup'] },
   ],
   webServer: {
     command: 'npm run build && node dist/index.js',

@@ -2,13 +2,13 @@
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
-import { DECODABLE_1X1_PNG_BYTES } from './png.ts'
+import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
 async function workspace(request: APIRequestContext, folder: string, body: string): Promise<void> {
   await request.post('/api/files/folders', { data: { path: folder } })
   await request.post('/api/files/documents', { data: { path: `${folder}/target.md`, content: '# the target' } })
   await request.post('/api/files/uploads', {
-    multipart: { path: folder, file: { name: 'pic.png', mimeType: 'image/png', buffer: DECODABLE_1X1_PNG_BYTES } },
+    multipart: { path: folder, file: { name: 'pic.png', mimeType: 'image/png', buffer: DECODABLE_64PX_PNG_BYTES } },
   })
   await request.post('/api/files/documents', { data: { path: `${folder}/source.md`, content: body } })
 }

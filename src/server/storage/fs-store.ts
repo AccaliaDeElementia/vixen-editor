@@ -53,7 +53,7 @@ export interface DocumentStore {
   createUpload: (directory: string, filename: string, bytes: Uint8Array) => Promise<string>
   readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
   updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
-  archive: (subtree: string, limits: ArchiveLimits) => Promise<ReadableStream>
+  archive: (subtree: string, limits: ArchiveLimits) => Promise<ReadableStream<Uint8Array>>
   move: (request: MoveRequest) => Promise<RelinkOutcome>
   trash: (entryPath: string) => Promise<string>
   listTrash: () => Promise<TrashEntry[]>
@@ -231,7 +231,7 @@ export function createFsDocumentStore(
       }
     },
 
-    async archive(subtree: string, limits: ArchiveLimits): Promise<ReadableStream> {
+    async archive(subtree: string, limits: ArchiveLimits): Promise<ReadableStream<Uint8Array>> {
       return archiveStream(await planArchive(root, subtree, limits))
     },
 

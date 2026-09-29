@@ -3,12 +3,12 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
-import { DECODABLE_1X1_PNG_BYTES } from './png.ts'
+import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
 async function documentShowing(request: APIRequestContext, folder: string, body: string): Promise<string> {
   await request.post('/api/files/folders', { data: { path: folder } })
   const stored = await request.post('/api/files/uploads', {
-    multipart: { path: folder, file: { name: 'pic.png', mimeType: 'image/png', buffer: DECODABLE_1X1_PNG_BYTES } },
+    multipart: { path: folder, file: { name: 'pic.png', mimeType: 'image/png', buffer: DECODABLE_64PX_PNG_BYTES } },
   })
   expect(await stringFieldOf(stored, 'path')).toBe(`${folder}/pic.png`)
 

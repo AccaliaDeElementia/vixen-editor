@@ -73,8 +73,13 @@ export async function planArchive(root: string, subtree: string, limits: Archive
   return plan
 }
 
-export function archiveStream(plan: ArchivePlan): ReadableStream {
+export function archiveStream(plan: ArchivePlan): ReadableStream<Uint8Array> {
   const zip = new ZipFile()
+
+  zip.on('error', (error: Error) => {
+    logArchive('aborted: %s', error.message)
+    zip.outputStream.emit('error', error)
+  })
 
   for (const directory of plan.directories) zip.addEmptyDirectory(directory)
   for (const file of plan.files) zip.addFile(path.join(plan.base, file), file)
