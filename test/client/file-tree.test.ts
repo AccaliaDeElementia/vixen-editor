@@ -8,6 +8,7 @@ import { parseTree } from '../../src/client/files/tree-model.ts'
 import { TRASH_PATH } from '../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
+import { given } from '../conditions.ts'
 import { fakeClient, rowFor, rows, TRASHED, treePage } from './tree-fixtures.ts'
 
 const SAMPLE = parseTree({
@@ -61,7 +62,9 @@ describe('loading', () => {
 
   it('opens collapsed', async () => {
     await start()
-    expect(paths()).toContain('journal')
+    given(() => {
+      expect(paths()).toContain('journal')
+    })
 
     expect(paths()).not.toContain('journal/entry.md')
   })
