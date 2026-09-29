@@ -109,6 +109,16 @@ describe('resolveDocumentPath', () => {
     })
   })
 
+  describe('names the rule that refused, because the rules are layered', () => {
+    it.each([
+      ['a bare parent segment', '..'],
+      ['a nested parent segment', 'journal/../secrets.md'],
+      ['a current-directory segment', './notes.md'],
+    ])('refuses %s as a relative path segment, not merely as a dotted one', (_label, id) => {
+      expect(() => resolveDocumentPath(ROOT, id)).toThrow('must not contain a relative path segment')
+    })
+  })
+
   describe('rejects segments beginning with a dot', () => {
     it('rejects the trash directory, which is not addressable through the document API', () => {
       expect(() => resolveDocumentPath(ROOT, '.trash/evil.md')).toThrow(InvalidPathError)

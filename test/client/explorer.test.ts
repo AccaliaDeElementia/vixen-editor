@@ -16,6 +16,7 @@ import { writePreferences } from '../../src/client/layout/preferences.ts'
 const { clampExplorerWidth, readExplorerState, setExplorerOpen } = TestOnly
 
 const VIEWPORT = 1000
+const ONE_PIXEL = 1
 
 let root: HTMLElement = document.createElement('div')
 
@@ -108,6 +109,22 @@ describe('setExplorerWidth', () => {
     setExplorerWidth(300, VIEWPORT)
 
     expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 300, open: false, openFolders: [] })
+  })
+})
+
+describe('the width at which the explorer stops sharing the screen', () => {
+  const NARROWEST_SHARED = 992
+
+  it('leaves the shell uncramped at exactly the threshold, where both still fit', () => {
+    applyExplorerState(root, NARROWEST_SHARED)
+
+    expect(app().dataset.explorerCramped).toBe('false')
+  })
+
+  it('cramps the shell one pixel below it', () => {
+    applyExplorerState(root, NARROWEST_SHARED - ONE_PIXEL)
+
+    expect(app().dataset.explorerCramped).toBe('true')
   })
 })
 
