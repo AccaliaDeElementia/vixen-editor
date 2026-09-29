@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createStatusBar, TestOnly, type StatusBar } from '../../src/client/layout/status-bar.ts'
 
-const { COUNTDOWN_ATTRIBUTE, COUNTDOWN_PROPERTY, COUNTDOWN_RUNS, SAVED_LABEL, SAVE_LABELS } = TestOnly
+const { COUNTDOWN_ATTRIBUTE, COUNTDOWN_PROPERTY, COUNTDOWN_RUNS, SAVE_LABELS } = TestOnly
 
 function page(): HTMLElement {
   const container = document.createElement('div')
@@ -113,7 +113,7 @@ describe('what the save state says', () => {
     status.showSaveState('saving', null)
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe(SAVED_LABEL)
+    expect(textOf(root, '#save-label')).toBe('Saved')
   })
 
   it('keeps saying saved on later clean reports', () => {
@@ -125,7 +125,7 @@ describe('what the save state says', () => {
     status.showSaveState('pending', Date.now() + 1000)
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe(SAVED_LABEL)
+    expect(textOf(root, '#save-label')).toBe('Saved')
   })
 })
 
@@ -254,7 +254,7 @@ describe('showing a different path', () => {
     status.showSaveState('saving', null)
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe(SAVED_LABEL)
+    expect(textOf(root, '#save-label')).toBe('Saved')
   })
 })
 

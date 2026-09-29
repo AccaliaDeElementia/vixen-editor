@@ -29,8 +29,7 @@ describe('createEditorState', () => {
   })
 
   it('configures a markdown language', () => {
-    // Without a language extension this facet resolves to null.
-    expect(createEditorState({ doc: '# hello' }).facet(language)).not.toBeNull()
+    expect(createEditorState({ doc: '# hello' }).facet(language)?.name).toBe('markdown')
   })
 
   it('appends caller-supplied extensions', () => {

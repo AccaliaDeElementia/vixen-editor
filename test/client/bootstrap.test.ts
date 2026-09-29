@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { EditorView } from '@codemirror/view'
+import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { announceDocumentMoved } from '../../src/client/document-moved.ts'
@@ -187,7 +187,9 @@ describe('saving', () => {
 
 describe('bootstrapOrReport', () => {
   it('returns the view on success', async () => {
-    await expect(bootstrapOrReport({ root, pathname: '/doc/', session: fakeSession() })).resolves.not.toBeNull()
+    await expect(bootstrapOrReport({ root, pathname: '/doc/', session: fakeSession() })).resolves.toBeInstanceOf(
+      EditorView,
+    )
   })
 
   it('resolves to null instead of rejecting when the mount is missing', async () => {

@@ -108,4 +108,4 @@ export function createStatusBar(root: ParentNode): StatusBar {
   }
 }
 
-export const TestOnly = { COUNTDOWN_ATTRIBUTE, COUNTDOWN_PROPERTY, COUNTDOWN_RUNS, SAVED_LABEL, SAVE_LABELS }
+export const TestOnly = { COUNTDOWN_ATTRIBUTE, COUNTDOWN_PROPERTY, COUNTDOWN_RUNS, SAVE_LABELS }

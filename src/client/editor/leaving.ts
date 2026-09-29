@@ -23,5 +23,3 @@ export function describeRefusal(state: SaveState, error: unknown): string | null
 
   return known ?? UNREACHABLE
 }
-
-export const TestOnly = { EMPTY_BUFFER, UNREACHABLE }
