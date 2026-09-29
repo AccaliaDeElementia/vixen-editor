@@ -22,6 +22,7 @@
     "test:all": "npm test && npm run test:browser",
     "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.client.json",
     "lint": "eslint .",
+    "mutate": "node scripts/mutate.ts",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

@@ -379,21 +379,29 @@ That hook fires only for the exact script name `test`. **`npm run test:unit`
 and `npm run test:coverage` bypass the static checks** — which is the point of
 them, but it means a green `test:coverage` is not a green gate.
 
-| Command                 | Purpose                                                        |
-| ----------------------- | -------------------------------------------------------------- |
-| `npm test`              | **The gate.** pretest (format, types, lint) then coverage      |
-| `npm run test:all`      | The gate plus the browser suite; needs browser binaries        |
-| `npm run test:unit`     | Vitest alone, no coverage — for a tight edit loop              |
-| `npm run test:watch`    | Vitest in watch mode                                           |
-| `npm run test:coverage` | Vitest with the 100% threshold enforced                        |
-| `npm run test:browser`  | Playwright, real Chromium, against built artifacts             |
-| `npm run build`         | esbuild: server to `dist/`, client to `public/assets/`         |
-| `npm run dev`           | Watch every source dir; rebuild and restart on change          |
-| `npm run format`        | Rewrite files to Prettier style (the fix for a format failure) |
-| `npm run lint:fix`      | Apply ESLint autofixes                                         |
+| Command                  | Purpose                                                                     |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `npm test`               | **The gate.** pretest (format, types, lint) then coverage                   |
+| `npm run test:all`       | The gate plus the browser suite; needs browser binaries                     |
+| `npm run test:unit`      | Vitest alone, no coverage — for a tight edit loop                           |
+| `npm run test:watch`     | Vitest in watch mode                                                        |
+| `npm run test:coverage`  | Vitest with the 100% threshold enforced                                     |
+| `npm run test:browser`   | Playwright, real Chromium, against built artifacts                          |
+| `npm run build`          | esbuild: server to `dist/`, client to `public/assets/`                      |
+| `npm run dev`            | Watch every source dir; rebuild and restart on change                       |
+| `npm run format`         | Rewrite files to Prettier style (the fix for a format failure)              |
+| `npm run lint:fix`       | Apply ESLint autofixes                                                      |
+| `npm run mutate <files>` | Mutation-test those files against the unit suite — **not part of the gate** |
 
 `test:unit` is the shortcut, and it is named so that reaching for it is a
 deliberate choice rather than an accident.
+
+**`npm run mutate` answers a question coverage cannot**: 100% says every line
+ran, never that anything depended on the result. It rewrites one operator at a
+time and re-runs the suite, so a mutant that survives names a line no test
+constrains. It costs a full run per mutant, which is why it is a tool to reach
+for deliberately and never a gate. It brackets itself with the workspace state
+on entry and refuses to report success for a file it found nothing to mutate.
 
 ### Run the gate so its exit code survives
 
