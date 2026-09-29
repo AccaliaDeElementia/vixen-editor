@@ -38,7 +38,7 @@ test('a tap in the tooltip opens the document', async ({ page, request }) => {
 
   await page.locator(`${TOOLTIP} a`).tap()
 
-  await expect(page.locator('.cm-content')).toContainText('# the target')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# the target'))
   expect(new URL(page.url()).pathname).toBe(`/doc/${folder}/target.md`)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -53,7 +53,7 @@ test('a tap away dismisses the tooltip without navigating', async ({ page, reque
 
   await page.locator('.cm-content').getByText('plain prose below').tap()
 
-  await expect(page.locator(TOOLTIP)).toHaveCount(0)
+  await givenAsync(expect(page.locator(TOOLTIP)).toHaveCount(0))
   expect(new URL(page.url()).pathname).toBe(url)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -66,7 +66,7 @@ test('a tap on prose reveals nothing, and still places the caret', async ({ page
   await page.locator('.cm-content').getByText('plain prose below').tap()
   await page.waitForTimeout(500)
 
-  await expect(page.locator(TOOLTIP)).toHaveCount(0)
+  await givenAsync(expect(page.locator(TOOLTIP)).toHaveCount(0))
   await expect(page.locator('.cm-cursor-primary')).toBeVisible()
 
   await request.delete(`/api/files/entries/${folder}`)

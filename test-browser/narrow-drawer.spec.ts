@@ -99,7 +99,7 @@ test('inserting from the drawer closes it, revealing what was inserted', async (
 
   await page.locator('#insert-entry').click()
 
-  await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
+  await givenAsync(expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed'))
   await expect(page.locator('.cm-content')).toContainText('[other.md](other.md)')
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -115,7 +115,7 @@ test('a wide window keeps the explorer open after an insert, since nothing was c
 
   await page.locator('#insert-entry').click()
 
-  await expect(page.locator('.cm-content')).toContainText('[other.md](other.md)')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('[other.md](other.md)'))
   await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
 
   await request.delete(`/api/files/entries/${folder}`)

@@ -20,11 +20,11 @@ test('the insert button is off when the selection is not a file', async ({ page,
   await page.goto(await workspace(request, folder))
   await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
-  await expect(page.locator('#insert-entry')).toBeEnabled()
+  await givenAsync(expect(page.locator('#insert-entry')).toBeEnabled())
 
   await page.locator('[role="treeitem"][data-path=".trash"]').click()
 
-  await expect(page.locator('#insert-entry')).toBeDisabled()
+  await givenAsync(expect(page.locator('#insert-entry')).toBeDisabled())
 
   await select(page, folder, 'other.md')
 
@@ -42,7 +42,7 @@ test('the button inserts a relative link at the caret and says so', async ({ pag
 
   await page.locator('#insert-entry').click()
 
-  await expect(page.locator('.cm-content')).toContainText('[other.md](other.md)')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('[other.md](other.md)'))
   await expect(page.locator('#status .toast').last()).toContainText('Inserted a link to')
 
   await request.delete(`/api/files/entries/${folder}`)

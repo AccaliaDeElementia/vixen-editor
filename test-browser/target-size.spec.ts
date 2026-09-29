@@ -1,6 +1,6 @@
 'use sanity'
 
-import { givenAsync } from '../test/conditions.ts'
+import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
@@ -70,9 +70,9 @@ test('every pointer target in an expanded trash is at least 24 by 24', async ({ 
   await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
   const trash = page.locator('[role="treeitem"][data-path=".trash"]')
-  await expect(trash).toBeVisible()
+  await givenAsync(expect(trash).toBeVisible())
   await trash.click()
-  await expect(page.locator('.tree__action').first()).toBeVisible({ timeout: 10_000 })
+  await givenAsync(expect(page.locator('.tree__action').first()).toBeVisible({ timeout: 10_000 }))
 
   expect(await undersizedTargetsOn(page)).toStrictEqual([])
 
@@ -121,7 +121,9 @@ test('the resize handle straddles the boundary rather than sitting inside the ex
     }
   })
 
-  expect(geometry?.overTheExplorer).toBeGreaterThan(0)
+  given(() => {
+    expect(geometry?.overTheExplorer).toBeGreaterThan(0)
+  })
   expect(geometry?.intoTheWorkspace).toBeGreaterThan(0)
 
   await request.delete(`/api/files/entries/${folder}`)

@@ -18,16 +18,30 @@ async function documentShowing(request: APIRequestContext, folder: string, body:
   return `/doc/${folder}/notes.md`
 }
 
-test('an image alone on its line is rendered, and really loads', async ({ page, request }) => {
+test('an image alone on its line replaces its source text', async ({ page, request }) => {
   const folder = `img-${String(Date.now())}`
   const url = await documentShowing(request, folder, 'intro\n\n![a cat](pic.png)\n\ntail\n')
 
   await page.goto(url)
 
   const image = page.locator('img.cm-vixen-image')
-  await expect(image).toHaveAttribute('src', `/api/files/raw/${folder}/pic.png`)
-  await expect(image).toHaveAttribute('alt', 'a cat')
+  await givenAsync(expect(image).toHaveAttribute('src', `/api/files/raw/${folder}/pic.png`))
+  await givenAsync(expect(image).toHaveAttribute('alt', 'a cat'))
+
   await expect(page.locator('.cm-content')).not.toContainText('![a cat]')
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a rendered image really loads its bytes', async ({ page, request }) => {
+  const folder = `imgload-${String(Date.now())}`
+  const url = await documentShowing(request, folder, 'intro\n\n![a cat](pic.png)\n\ntail\n')
+
+  await page.goto(url)
+
+  const image = page.locator('img.cm-vixen-image')
+  await givenAsync(expect(image).toHaveAttribute('src', `/api/files/raw/${folder}/pic.png`))
+
   await expect.poll(async () => await image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBeGreaterThan(0)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -43,7 +57,7 @@ test('clicking the image puts the caret in its source, which is how it gets edit
 
   await image.click()
 
-  await expect(page.locator('.cm-content')).toContainText('![a cat](pic.png)')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('![a cat](pic.png)'))
   await expect(page.locator('img.cm-vixen-image')).toHaveCount(0)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -55,7 +69,7 @@ test('an image that is not there stays as source text', async ({ page, request }
 
   await page.goto(url)
 
-  await expect(page.locator('.cm-content')).toContainText('![missing](nowhere.png)')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('![missing](nowhere.png)'))
   await expect(page.locator('img.cm-vixen-image')).toHaveCount(0)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -67,7 +81,7 @@ test('moving the caret away renders the image again', async ({ page, request }) 
 
   await page.goto(url)
   await page.locator('img.cm-vixen-image').click()
-  await expect(page.locator('img.cm-vixen-image')).toHaveCount(0)
+  await givenAsync(expect(page.locator('img.cm-vixen-image')).toHaveCount(0))
 
   await page.locator('.cm-content').click({ position: { x: 5, y: 5 } })
 

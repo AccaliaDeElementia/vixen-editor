@@ -1,6 +1,6 @@
 'use sanity'
 
-import { givenAsync } from '../test/conditions.ts'
+import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
@@ -36,13 +36,13 @@ test('lays out three full-height columns', async ({ page }) => {
   const explorer = await boxOf(page, EXPLORER)
   const workspace = await boxOf(page, WORKSPACE)
 
-  expect(ribbon.height).toBeCloseTo(700, 0)
-  expect(explorer.height).toBeCloseTo(700, 0)
-  expect(workspace.height).toBeCloseTo(700, 0)
-
-  expect(ribbon.x).toBeCloseTo(0, 0)
-  expect(explorer.x).toBeCloseTo(ribbon.width, 0)
-  expect(workspace.x).toBeCloseTo(ribbon.width + explorer.width, 0)
+  expect({
+    heights: [ribbon.height, explorer.height, workspace.height].map(Math.round),
+    lefts: [ribbon.x, explorer.x, workspace.x].map(Math.round),
+  }).toStrictEqual({
+    heights: [700, 700, 700],
+    lefts: [0, Math.round(ribbon.width), Math.round(ribbon.width + explorer.width)],
+  })
 })
 
 test('sizes the ribbon at 4em and the explorer at 20em by default', async ({ page }) => {
@@ -52,8 +52,10 @@ test('sizes the ribbon at 4em and the explorer at 20em by default', async ({ pag
   const ribbon = await boxOf(page, RIBBON)
   const explorer = await boxOf(page, EXPLORER)
 
-  expect(ribbon.width).toBeCloseTo(4 * rootFontSize, 0)
-  expect(explorer.width).toBeCloseTo(20 * rootFontSize, 0)
+  expect({ ribbon: Math.round(ribbon.width), explorer: Math.round(explorer.width) }).toStrictEqual({
+    ribbon: Math.round(4 * rootFontSize),
+    explorer: Math.round(20 * rootFontSize),
+  })
 })
 
 test('the editor column takes the remaining width', async ({ page }) => {
@@ -89,7 +91,7 @@ test('the navigation arrows are present but disabled until SPA navigation exists
   await page.goto('/doc/')
 
   await givenAsync(expect(page.locator('#nav-back')).toBeDisabled())
-  await expect(page.locator('#nav-forward')).toBeDisabled()
+  await givenAsync(expect(page.locator('#nav-forward')).toBeDisabled())
   await expect(page.locator('#toggle-explorer')).toBeEnabled()
 })
 
@@ -100,9 +102,10 @@ test('the file browser lists what the store holds', async ({ page, request }) =>
   await page.goto('/doc/')
 
   const row = page.locator(`.tree__row[data-path="${folder}"]`)
-  await givenAsync(expect(row).toBeVisible())
-  await expect(row).toHaveAttribute('aria-expanded', 'false')
-  await expect(page.locator('.tree__row[data-kind="trash-root"]')).toBeVisible()
+  await givenAsync(expect(row).toHaveAttribute('aria-expanded', 'false'))
+  await givenAsync(expect(page.locator('.tree__row[data-kind="trash-root"]')).toBeVisible())
+
+  await expect(row).toBeVisible()
 
   await request.delete(`/api/files/entries/${folder}`)
 })
@@ -161,8 +164,8 @@ test('saving surfaces a toast that then fades', async ({ page, request }) => {
   await givenAsync(expect(page.locator('.cm-editor')).toBeVisible())
 
   const toast = page.locator('#status .toast')
-  await expect(toast).toBeVisible()
-  await expect(toast).toContainText('Editing')
+  await givenAsync(expect(toast).toBeVisible())
+  await givenAsync(expect(toast).toContainText('Editing'))
 
   await expect(toast).toHaveCount(0, { timeout: 5000 })
 })
@@ -189,8 +192,10 @@ test('dragging the resizer widens and narrows the explorer', async ({ page }) =>
   await dragResizerTo(page, 300)
   const narrower = await explorerWidth(page)
 
-  expect(wider).toBeGreaterThan(before)
-  expect(narrower).toBeLessThan(wider)
+  expect({ widened: wider > before, narrowed: narrower < wider }).toStrictEqual({
+    widened: true,
+    narrowed: true,
+  })
 })
 
 test('dragging past 80% of the viewport caps the explorer', async ({ page }) => {
@@ -237,7 +242,7 @@ test('a collapsed explorer survives a reload', async ({ page }) => {
   await page.reload()
   await givenAsync(expect(page.locator('.cm-editor')).toBeVisible())
 
-  await expect(page.locator(EXPLORER)).toBeHidden()
+  await givenAsync(expect(page.locator(EXPLORER)).toBeHidden())
   await expect(page.locator('#toggle-explorer')).toHaveAttribute('aria-expanded', 'false')
 })
 
@@ -307,7 +312,7 @@ test('a rejected name stays in the dialog to be corrected', async ({ page, reque
   await page.locator('#file-dialog-entry').fill(name)
   await page.locator('#file-dialog-confirm').click()
 
-  await expect(page.locator('#file-dialog-error')).toHaveText(/exists/iv)
+  await givenAsync(expect(page.locator('#file-dialog-error')).toHaveText(/exists/iv))
   await expect(page.locator('#file-dialog')).toBeVisible()
 
   await page.locator('#file-dialog-cancel').click()
@@ -319,7 +324,7 @@ test('the archive link follows the selection', async ({ page, request }) => {
   await request.post('/api/files/folders', { data: { path: name } })
 
   await page.goto('/doc/')
-  await expect(page.locator('#download-archive')).toHaveAttribute('href', '/api/files/archive')
+  await givenAsync(expect(page.locator('#download-archive')).toHaveAttribute('href', '/api/files/archive'))
 
   await page.locator(`.tree__row[data-path="${name}"]`).click()
   await expect(page.locator('#download-archive')).toHaveAttribute('href', `/api/files/archive?path=${name}`)
@@ -348,13 +353,17 @@ test('the trash actions are distinguishable by sight and by tooltip', async ({ p
   const restore = page.locator(`[data-action="restore"][data-trash-id="${trashId}"]`)
   const purge = page.locator(`[data-action="purge"][data-trash-id="${trashId}"]`)
 
-  await expect(restore).toHaveAttribute('title', `Restore ${name}`)
-  await expect(purge).toHaveAttribute('title', `Delete ${name} for good`)
+  await givenAsync(expect(restore).toHaveAttribute('title', `Restore ${name}`))
+  await givenAsync(expect(purge).toHaveAttribute('title', `Delete ${name} for good`))
 
   const restoreBox = await restore.locator('.icon').boundingBox()
   const purgeBox = await purge.locator('.icon').boundingBox()
-  expect(restoreBox?.width ?? 0).toBeGreaterThan(0)
-  expect(purgeBox?.width ?? 0).toBeGreaterThan(0)
+  given(() => {
+    expect(restoreBox?.width ?? 0).toBeGreaterThan(0)
+  })
+  given(() => {
+    expect(purgeBox?.width ?? 0).toBeGreaterThan(0)
+  })
 
   await expect(purge).toHaveClass(/tree__action--danger/v)
 
@@ -367,14 +376,16 @@ test('the selected document is visibly marked, not merely marked up', async ({ p
 
   await page.goto(`/doc/${name}`)
   const row = page.locator(`.tree__row[data-path="${name}"]`)
-  await expect(row).toHaveAttribute('aria-selected', 'true')
+  await givenAsync(expect(row).toHaveAttribute('aria-selected', 'true'))
 
   const panel = await page.locator('#explorer').evaluate((el) => getComputedStyle(el).backgroundColor)
   const selected = await row.evaluate((el) => getComputedStyle(el).backgroundColor)
   const accent = await row.evaluate((el) => getComputedStyle(el).boxShadow)
 
-  expect(selected).not.toBe(panel)
-  expect(accent).not.toBe('none')
+  expect({ background: selected === panel, accent: accent === 'none' }).toStrictEqual({
+    background: false,
+    accent: false,
+  })
 
   await request.delete(`/api/files/entries/${name}`)
 })
@@ -410,10 +421,10 @@ test('a real drag moves a document into a folder', async ({ page, request }) => 
   const source = page.locator(`.tree__row[data-path="${doc}"]`)
   const target = page.locator(`.tree__row[data-path="${folder}"]`)
 
-  await expect(source).toHaveAttribute('draggable', 'true')
+  await givenAsync(expect(source).toHaveAttribute('draggable', 'true'))
   await source.dragTo(target)
 
-  await expect(page.locator(`.tree__row[data-path="${folder}/${doc}"]`)).toBeVisible()
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${folder}/${doc}"]`)).toBeVisible())
   await expect(page.locator(`.tree__row[data-path="${doc}"]`)).toHaveCount(0)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -443,11 +454,17 @@ test('the name field does not look like a login to a password manager', async ({
   await page.locator('#new-folder').click()
 
   const input = page.locator('#file-dialog-entry')
-  await expect(input).toHaveAttribute('name', 'vixen-entry')
-  await expect(input).toHaveAttribute('autocomplete', 'off')
-  await expect(input).toHaveAttribute('data-lpignore', 'true')
-  await expect(input).toHaveAttribute('data-form-type', 'other')
-  await expect(page.locator('#file-dialog input[type="password"]')).toHaveCount(0)
+  await givenAsync(expect(page.locator('#file-dialog input[type="password"]')).toHaveCount(0))
+  const attributes = await input.evaluate((field) => ({
+    name: field.getAttribute('name'),
+    autocomplete: field.getAttribute('autocomplete'),
+    lastpass: field.getAttribute('data-lpignore'),
+    formType: field.getAttribute('data-form-type'),
+  }))
+
+  given(() => {
+    expect(attributes).toStrictEqual({ name: 'vixen-entry', autocomplete: 'off', lastpass: 'true', formType: 'other' })
+  })
 
   // The live page, so this covers markup built in script as well as markup
   // from the template.
@@ -465,7 +482,9 @@ test('the name field does not look like a login to a password manager', async ({
     }
     return found
   })
-  expect(offenders).toEqual([])
+  given(() => {
+    expect(offenders).toEqual([])
+  })
 
   await expect(page.locator('#file-dialog-label')).toHaveText('Folder name')
 
@@ -507,7 +526,7 @@ test('a rejected drop reports beside the editor status rather than replacing it'
   await page.goto('/doc/')
   // Wait for the editor to have written its own status, or the race that hid
   // the failure originally would not be reproduced.
-  await expect(page.locator('#status')).toContainText('Editing')
+  await givenAsync(expect(page.locator('#status')).toContainText('Editing'))
 
   await page.evaluate(() => {
     const transfer = new DataTransfer()
@@ -517,7 +536,7 @@ test('a rejected drop reports beside the editor status rather than replacing it'
       ?.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
   })
 
-  await expect(page.locator('#status .toast[data-severity="error"]')).toContainText('payload.zip')
+  await givenAsync(expect(page.locator('#status .toast[data-severity="error"]')).toContainText('payload.zip'))
   await expect(page.locator('#status .toast')).toHaveCount(2)
 })
 
@@ -541,21 +560,23 @@ test('dragging the open document follows it in the address bar and keeps saving'
   await request.post('/api/files/documents', { data: { path: doc, content: '# before\n' } })
 
   await page.goto(`/doc/${doc}`)
-  await expect(page.locator('#editor .cm-content')).toContainText('# before')
+  await givenAsync(expect(page.locator('#editor .cm-content')).toContainText('# before'))
 
   await page.locator(`.tree__row[data-path="${doc}"]`).dragTo(page.locator(`.tree__row[data-path="${folder}"]`))
 
-  await expect(page).toHaveURL(`/doc/${folder}/${doc}`)
-  await expect(page.locator('#status')).toContainText(`Editing ${folder}/${doc}`)
+  await givenAsync(expect(page).toHaveURL(`/doc/${folder}/${doc}`))
+  await givenAsync(expect(page.locator('#status')).toContainText(`Editing ${folder}/${doc}`))
 
   await page.locator('#editor .cm-content').click()
   await page.keyboard.type(' edited')
-  await expect(page.locator('#editor .cm-content')).toContainText('# before edited')
+  await givenAsync(expect(page.locator('#editor .cm-content')).toContainText('# before edited'))
   await page.keyboard.press('ControlOrMeta+s')
-  await expect(page.locator('#status')).toContainText('Saved')
+  await givenAsync(expect(page.locator('#status')).toContainText('Saved'))
 
   const moved = await request.get(`/api/documents/${folder}/${doc}`)
-  expect(moved.status()).toBe(200)
+  given(() => {
+    expect(moved.status()).toBe(200)
+  })
   expect(await moved.text()).toContain('edited')
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -569,7 +590,7 @@ test('a single click selects a document without opening it', async ({ page, requ
   const row = page.locator(`[role="treeitem"][data-path="${name}"]`)
   await row.click()
 
-  await expect(row).toHaveAttribute('aria-selected', 'true')
+  await givenAsync(expect(row).toHaveAttribute('aria-selected', 'true'))
   expect(new URL(page.url()).pathname).toBe('/doc/')
 
   await request.delete(`/api/files/entries/${name}`)
@@ -582,7 +603,7 @@ test('a double click opens it', async ({ page, request }) => {
 
   await page.locator(`[role="treeitem"][data-path="${name}"]`).dblclick()
 
-  await expect(page.locator('.cm-content')).toContainText('# opened by double click')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# opened by double click'))
   expect(new URL(page.url()).pathname).toBe(`/doc/${name}`)
 
   await request.delete(`/api/files/entries/${name}`)

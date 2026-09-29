@@ -1,6 +1,6 @@
 'use sanity'
 
-import { givenAsync } from '../test/conditions.ts'
+import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 import { violationsOn } from './axe.ts'
@@ -21,7 +21,7 @@ test('the document view has no accessibility violations', async ({ page, request
 
   await page.goto(`/doc/${folder}/notes.md`)
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
-  await expect(page.locator('[role="tree"]')).toBeVisible()
+  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
   expect(await violationsOn(page)).toStrictEqual([])
 
@@ -35,7 +35,7 @@ test('a save is announced rather than only shown', async ({ page, request }) => 
   await page.goto(`/doc/${folder}/notes.md`)
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
 
-  await expect(page.locator('#save-label')).toHaveAttribute('role', 'status')
+  await givenAsync(expect(page.locator('#save-label')).toHaveAttribute('role', 'status'))
 
   await page.locator('.cm-content').click()
   await page.keyboard.type('edited')
@@ -94,9 +94,9 @@ test('the help dialog lists the gestures, and has no accessibility violations', 
   await page.locator('#show-help').click()
   await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
 
-  await expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + S')
-  await expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + Enter')
-  await expect(page.locator('#file-dialog-cancel')).toBeHidden()
+  await givenAsync(expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + S'))
+  await givenAsync(expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + Enter'))
+  await givenAsync(expect(page.locator('#file-dialog-cancel')).toBeHidden())
 
   expect(await violationsOn(page)).toStrictEqual([])
 
@@ -117,11 +117,13 @@ test('a keyboard user can skip the chrome and land in the editor', async ({ page
 
     return reachable[0]?.className ?? ''
   })
-  expect(firstFocusable).toContain('skip-link')
+  given(() => {
+    expect(firstFocusable).toContain('skip-link')
+  })
 
   const skip = page.locator('.skip-link')
   await skip.focus()
-  await expect(skip).toBeInViewport()
+  await givenAsync(expect(skip).toBeInViewport())
 
   await page.keyboard.press('Enter')
 

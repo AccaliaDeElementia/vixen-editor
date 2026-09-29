@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
@@ -34,9 +35,9 @@ test('a dirty buffer is offered the four resolutions, with none of them the defa
 
   await noticeTheChange(page)
 
-  await expect(page.locator('#file-dialog-choices button')).toHaveCount(4)
-  await expect(page.locator('#file-dialog-field')).toBeHidden()
-  await expect(page.locator('#file-dialog-cancel')).toBeFocused()
+  await givenAsync(expect(page.locator('#file-dialog-choices button')).toHaveCount(4))
+  await givenAsync(expect(page.locator('#file-dialog-field')).toBeHidden())
+  await givenAsync(expect(page.locator('#file-dialog-cancel')).toBeFocused())
   await expect(page.locator('.cm-content')).toContainText('mine')
 
   await page.locator('#file-dialog-cancel').click()
@@ -50,8 +51,8 @@ test('dismissing the resolutions leaves the buffer and says it cannot be saved',
   await noticeTheChange(page)
   await page.locator('#file-dialog-cancel').click()
 
-  await expect(page.locator('#status .toast').last()).toContainText('can no longer be saved')
-  await expect(page.locator('.cm-content')).toContainText('mine')
+  await givenAsync(expect(page.locator('#status .toast').last()).toContainText('can no longer be saved'))
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('mine'))
   await expect(page.locator('.cm-content')).not.toContainText('changed by someone else')
 
   await request.delete(`/api/files/entries/${name}`)
@@ -64,7 +65,7 @@ test('taking theirs replaces the buffer with what is stored', async ({ page, req
   await noticeTheChange(page)
   await page.locator('#file-dialog-choices button[value="theirs"]').click()
 
-  await expect(page.locator('.cm-content')).toContainText('# changed by someone else')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# changed by someone else'))
   await expect(page.locator('.cm-content')).not.toContainText('mine')
 
   await request.delete(`/api/files/entries/${name}`)
@@ -77,8 +78,11 @@ test('keeping mine overwrites the store with the buffer', async ({ page, request
   await noticeTheChange(page)
   await page.locator('#file-dialog-choices button[value="mine"]').click()
 
-  await expect(page.locator('#save-label')).toHaveText('Saved')
-  expect(await storedAt(request, name)).toContain('mine')
+  await givenAsync(expect(page.locator('#save-label')).toHaveText('Saved'))
+  const observed = await storedAt(request, name)
+  given(() => {
+    expect(observed).toContain('mine')
+  })
   expect(await storedAt(request, name)).not.toContain('changed by someone else')
 
   await request.delete(`/api/files/entries/${name}`)
@@ -92,11 +96,14 @@ test('keeping both writes the buffer to a second document and then loads theirs'
   await noticeTheChange(page)
   await page.locator('#file-dialog-choices button[value="both"]').click()
 
-  await expect(page.locator('#file-dialog-entry')).toHaveValue(kept)
+  await givenAsync(expect(page.locator('#file-dialog-entry')).toHaveValue(kept))
   await page.locator('#file-dialog-confirm').click()
 
-  await expect(page.locator('.cm-content')).toContainText('# changed by someone else')
-  expect(await storedAt(request, kept)).toContain('mine')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# changed by someone else'))
+  const observed = await storedAt(request, kept)
+  given(() => {
+    expect(observed).toContain('mine')
+  })
   expect(await storedAt(request, name)).toContain('changed by someone else')
 
   await request.delete(`/api/files/entries/${name}`)
@@ -122,8 +129,8 @@ test('merging marks the stored version against the buffer, change by change', as
   await noticeTheChange(page)
   await page.locator('#file-dialog-choices button[value="merge"]').click()
 
-  await expect(page.locator('.cm-deletedChunk')).toContainText('# changed by someone else')
-  await expect(page.locator('.cm-content')).toContainText('mine')
+  await givenAsync(expect(page.locator('.cm-deletedChunk')).toContainText('# changed by someone else'))
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('mine'))
   await expect(page.locator('.cm-chunkButtons button')).toHaveCount(2)
 
   await request.delete(`/api/files/entries/${name}`)
@@ -137,8 +144,8 @@ test('rejecting a change takes the stored version for it', async ({ page, reques
   await page.locator('#file-dialog-choices button[value="merge"]').click()
   await page.locator('.cm-chunkButtons button[name="reject"]').first().click()
 
-  await expect(page.locator('.cm-changedLine')).toHaveCount(0)
-  await expect(page.locator('.cm-content')).toContainText('# changed by someone else')
+  await givenAsync(expect(page.locator('.cm-changedLine')).toHaveCount(0))
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# changed by someone else'))
   await expect(page.locator('.cm-content')).not.toContainText('mine')
 
   await request.delete(`/api/files/entries/${name}`)
@@ -152,11 +159,11 @@ test('accepting a change keeps the buffer version, and the merged document saves
   await page.locator('#file-dialog-choices button[value="merge"]').click()
   await page.locator('.cm-chunkButtons button[name="accept"]').first().click()
 
-  await expect(page.locator('.cm-changedLine')).toHaveCount(0)
-  await expect(page.locator('#status .toast').last()).toContainText('merged')
+  await givenAsync(expect(page.locator('.cm-changedLine')).toHaveCount(0))
+  await givenAsync(expect(page.locator('#status .toast').last()).toContainText('merged'))
 
   await page.keyboard.press('Control+s')
-  await expect(page.locator('#save-label')).toHaveText('Saved')
+  await givenAsync(expect(page.locator('#save-label')).toHaveText('Saved'))
   expect(await storedAt(request, name)).toContain('mine')
 
   await request.delete(`/api/files/entries/${name}`)

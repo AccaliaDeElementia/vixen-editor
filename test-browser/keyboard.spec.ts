@@ -27,7 +27,7 @@ test('Mod-Enter opens the link the caret is in', async ({ page, request }) => {
 
   await page.keyboard.press('ControlOrMeta+Enter')
 
-  await expect(page.locator('.cm-content')).toContainText('# the target')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# the target'))
   expect(new URL(page.url()).pathname).toBe(`/doc/${folder}/target.md`)
 
   await request.delete(`/api/files/entries/${folder}`)

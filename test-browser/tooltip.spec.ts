@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 const TOOLTIP = '.cm-vixen-link-tooltip'
@@ -26,7 +27,7 @@ test('hovering a link offers to open what it resolves to', async ({ page, reques
 
   await hoverTheLink(page)
 
-  await expect(page.locator(TOOLTIP)).toHaveText(`Open ${folder}/target.md`)
+  await givenAsync(expect(page.locator(TOOLTIP)).toHaveText(`Open ${folder}/target.md`))
 
   const tip = await page.locator(TOOLTIP).boundingBox()
   const mark = await page.locator(LINK).boundingBox()
@@ -55,13 +56,17 @@ test('the tooltip opens the document, and the editor keeps focus throughout', as
   await page.locator('.cm-content').click()
   await hoverTheLink(page)
 
-  expect(await page.evaluate(() => document.activeElement?.className ?? '')).toContain('cm-content')
+  const observed = await page.evaluate(() => document.activeElement?.className ?? '')
+
+  given(() => {
+    expect(observed).toContain('cm-content')
+  })
 
   const box = await page.locator(TOOLTIP).boundingBox()
   await page.mouse.move((box?.x ?? 0) + 12, (box?.y ?? 0) + 6, { steps: 8 })
   await page.locator(`${TOOLTIP} a`).click()
 
-  await expect(page.locator('.cm-content')).toContainText('# the target')
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# the target'))
   expect(new URL(page.url()).pathname).toBe(`/doc/${folder}/target.md`)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -75,7 +80,7 @@ test('Escape dismisses the tooltip and leaves the editor focused', async ({ page
 
   await page.keyboard.press('Escape')
 
-  await expect(page.locator(TOOLTIP)).toHaveCount(0)
+  await givenAsync(expect(page.locator(TOOLTIP)).toHaveCount(0))
   expect(await page.evaluate(() => document.activeElement?.className ?? '')).toContain('cm-content')
 
   await request.delete(`/api/files/entries/${folder}`)
