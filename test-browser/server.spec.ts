@@ -60,7 +60,7 @@ test('serves the compiled stylesheet at the path the page asks for', async ({ re
 
   const stylesheet = await request.get(href ?? '')
   expect(stylesheet.status()).toBe(200)
-  expect(await stylesheet.text()).toContain('#222222')
+  expect(await stylesheet.text()).toContain('.cm-vixen-heading')
 })
 
 test('serves the built client bundle at the path the page asks for', async ({ request }) => {

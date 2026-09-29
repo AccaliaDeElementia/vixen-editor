@@ -39,6 +39,7 @@ export default defineConfig({
     env: {
       PORT: String(PORT),
       DOCS_ROOT: BROWSER_DOCS_ROOT,
+      NODE_ENV: 'production',
     },
   },
 })
