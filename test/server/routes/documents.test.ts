@@ -7,6 +7,8 @@ import path from 'node:path'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { given } from '../../conditions.ts'
+import { refusalOf } from './refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { createWriteLock } from '../../../src/server/storage/lock.ts'
@@ -39,17 +41,14 @@ async function seed(id: string, content: string): Promise<string> {
   return await store.createDocument(id, content)
 }
 
-async function codeOf(res: Response): Promise<unknown> {
-  const body: unknown = await res.json()
-
-  return typeof body === 'object' && body !== null && 'code' in body ? body.code : undefined
-}
-
 describe('GET /api/health', () => {
   it('reports ok', async () => {
     const res = await app.request('/api/health')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.json()).resolves.toStrictEqual({ status: 'ok' })
   })
 })
@@ -58,7 +57,10 @@ describe('GET /api/documents', () => {
   it('returns an empty list initially', async () => {
     const res = await app.request('/api/documents')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.json()).resolves.toStrictEqual({ documents: [] })
   })
 
@@ -78,9 +80,14 @@ describe('GET /api/documents/:id', () => {
 
     const res = await app.request('/api/documents/notes.md')
 
-    expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toContain('text/markdown')
-    await expect(res.text()).resolves.toBe('# hello')
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
+    expect({ contentType: res.headers.get('content-type'), body: await res.text() }).toStrictEqual({
+      contentType: 'text/markdown; charset=utf-8',
+      body: '# hello',
+    })
   })
 
   it('carries an etag the client can save against', async () => {
@@ -111,7 +118,10 @@ describe('GET /api/documents/:id', () => {
 
     const res = await app.request(`/api/documents/${encodeURIComponent(name)}`)
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toBe('# hello')
   })
 
@@ -120,14 +130,20 @@ describe('GET /api/documents/:id', () => {
 
     const res = await app.request('/api/documents/journal/2026/september.md')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toBe('entry')
   })
 
   it('returns 404 for a missing document', async () => {
     const res = await app.request('/api/documents/missing.md')
 
-    expect(res.status).toBe(404)
+    given(() => {
+      expect(res.status).toBe(404)
+    })
+
     await expect(res.json()).resolves.toStrictEqual({ error: 'Document not found', code: 'NOT_FOUND' })
   })
 
@@ -156,8 +172,10 @@ describe('PUT /api/documents/:id', () => {
 
     const res = await put('notes.md', '# replaced', etag)
 
-    expect(res.status).toBe(204)
-    await expect(store.read('notes.md')).resolves.toBe('# replaced')
+    expect({ status: res.status, stored: await store.read('notes.md') }).toStrictEqual({
+      status: 204,
+      stored: '# replaced',
+    })
   })
 
   it('round-trips a write then a read', async () => {
@@ -175,8 +193,12 @@ describe('PUT /api/documents/:id', () => {
     const res = await put('notes.md', 'second', etag)
     const next = res.headers.get('etag') ?? ''
 
-    expect((await put('notes.md', 'third', next)).status).toBe(204)
-    await expect(store.read('notes.md')).resolves.toBe('third')
+    const third = await put('notes.md', 'third', next)
+
+    expect({ status: third.status, stored: await store.read('notes.md') }).toStrictEqual({
+      status: 204,
+      stored: 'third',
+    })
   })
 
   it('rejects a stale etag with 412 rather than clobbering the newer content', async () => {
@@ -185,9 +207,10 @@ describe('PUT /api/documents/:id', () => {
 
     const res = await put('notes.md', 'mine', stale)
 
-    expect(res.status).toBe(412)
-    await expect(codeOf(res)).resolves.toBe('CONFLICT')
-    await expect(store.read('notes.md')).resolves.toBe('theirs')
+    expect({ refusal: await refusalOf(res), stored: await store.read('notes.md') }).toStrictEqual({
+      refusal: { status: 412, code: 'CONFLICT' },
+      stored: 'theirs',
+    })
   })
 
   it('demands If-Match rather than silently overwriting, so a forgetful client fails loudly', async () => {
@@ -199,16 +222,16 @@ describe('PUT /api/documents/:id', () => {
       body: JSON.stringify({ content: 'mine' }),
     })
 
-    expect(res.status).toBe(428)
-    await expect(codeOf(res)).resolves.toBe('PRECONDITION_REQUIRED')
-    await expect(store.read('notes.md')).resolves.toBe('first')
+    expect({ refusal: await refusalOf(res), stored: await store.read('notes.md') }).toStrictEqual({
+      refusal: { status: 428, code: 'PRECONDITION_REQUIRED' },
+      stored: 'first',
+    })
   })
 
   it('refuses to create a document, which is what the create endpoint is for', async () => {
     const res = await put('absent.md', '# new')
 
-    expect(res.status).toBe(404)
-    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it.each([
@@ -219,9 +242,10 @@ describe('PUT /api/documents/:id', () => {
 
     const res = await put('notes.md', content, etag)
 
-    expect(res.status).toBe(422)
-    await expect(codeOf(res)).resolves.toBe('EMPTY_CONTENT')
-    await expect(store.read('notes.md')).resolves.toBe('first')
+    expect({ refusal: await refusalOf(res), stored: await store.read('notes.md') }).toStrictEqual({
+      refusal: { status: 422, code: 'EMPTY_CONTENT' },
+      stored: 'first',
+    })
   })
 
   it('returns 400 for an invalid id', async () => {
@@ -329,9 +353,9 @@ describe('write contention', () => {
       body: JSON.stringify({ content: 'mine' }),
     })
 
-    expect(res.status).toBe(503)
-    expect(res.headers.get('retry-after')).toBe('1')
-    await expect(codeOf(res)).resolves.toBe('BUSY')
+    const refusal = { ...(await refusalOf(res)), retryAfter: res.headers.get('retry-after') }
+
+    expect(refusal).toStrictEqual({ status: 503, code: 'BUSY', retryAfter: '1' })
     held.release()
   })
 
@@ -345,7 +369,10 @@ describe('write contention', () => {
 
     const res = await busy.request('/api/documents/notes.md')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toBe('# readable')
     held.release()
   })
@@ -361,7 +388,10 @@ describe('a conditional GET', () => {
 
     const res = await conditionalGet('notes.md', etag)
 
-    expect(res.status).toBe(304)
+    given(() => {
+      expect(res.status).toBe(304)
+    })
+
     await expect(res.text()).resolves.toBe('')
   })
 
@@ -377,7 +407,10 @@ describe('a conditional GET', () => {
 
     const res = await conditionalGet('notes.md', stale)
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     await expect(res.text()).resolves.toBe('# changed')
   })
 

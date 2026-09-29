@@ -7,9 +7,9 @@ import path from 'node:path'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { fieldOf, refusalOf } from './refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
-import { isRecord } from '../../../src/shared/guards.ts'
 
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
@@ -24,16 +24,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
-
-async function fieldOf(res: Response, key: string): Promise<unknown> {
-  const body: unknown = await res.json()
-
-  return isRecord(body) ? body[key] : undefined
-}
-
-async function codeOf(res: Response): Promise<unknown> {
-  return await fieldOf(res, 'code')
-}
 
 async function remove(entryPath: string): Promise<Response> {
   return await app.request(`/api/files/entries/${entryPath}`, { method: 'DELETE' })
@@ -72,22 +62,19 @@ describe('DELETE /api/files/entries/:path', () => {
   it('returns 404 for a path that is not there', async () => {
     const res = await remove('missing.md')
 
-    expect(res.status).toBe(404)
-    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it('rejects an encoded traversal attempt', async () => {
     const res = await remove('..%2F..%2Fescape.md')
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('refuses to reach into the trash directory', async () => {
     const res = await remove('.trash')
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })
 
@@ -145,22 +132,19 @@ describe('POST /api/trash/:entryId/restore', () => {
 
     const res = await app.request(`/api/trash/${id}/restore`, { method: 'POST' })
 
-    expect(res.status).toBe(409)
-    await expect(codeOf(res)).resolves.toBe('ALREADY_EXISTS')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 409, code: 'ALREADY_EXISTS' })
   })
 
   it('returns 404 for an unknown entry', async () => {
     const res = await app.request('/api/trash/00000000-0000-4000-8000-000000000000/restore', { method: 'POST' })
 
-    expect(res.status).toBe(404)
-    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it('rejects an entry id that is not a uuid', async () => {
     const res = await app.request('/api/trash/not-a-uuid/restore', { method: 'POST' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })
 
@@ -184,7 +168,6 @@ describe('DELETE /api/trash/:entryId', () => {
   it('rejects an entry id that is not a uuid', async () => {
     const res = await app.request('/api/trash/not-a-uuid', { method: 'DELETE' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })

@@ -7,6 +7,7 @@ import path from 'node:path'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { refusalOf } from './refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
 import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
@@ -32,12 +33,6 @@ async function post(route: string, body: unknown): Promise<Response> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
-}
-
-async function codeOf(res: Response): Promise<unknown> {
-  const body: unknown = await res.json()
-
-  return typeof body === 'object' && body !== null && 'code' in body ? body.code : undefined
 }
 
 describe('GET /api/files', () => {
@@ -103,36 +98,31 @@ describe('POST /api/files/folders', () => {
 
     const res = await post('folders', { path: 'journal' })
 
-    expect(res.status).toBe(409)
-    await expect(codeOf(res)).resolves.toBe('ALREADY_EXISTS')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 409, code: 'ALREADY_EXISTS' })
   })
 
   it('rejects a traversal attempt', async () => {
     const res = await post('folders', { path: '../escape' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('rejects the trash, which is not addressable through the API', async () => {
     const res = await post('folders', { path: '.trash' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('rejects an empty path', async () => {
     const res = await post('folders', { path: '' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 
   it('rejects a body with no path at all', async () => {
     const res = await post('folders', {})
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 })
 
@@ -181,8 +171,7 @@ describe('POST /api/files/documents', () => {
 
     const res = await post('documents', { path: 'notes.md' })
 
-    expect(res.status).toBe(409)
-    await expect(codeOf(res)).resolves.toBe('ALREADY_EXISTS')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 409, code: 'ALREADY_EXISTS' })
   })
 
   it('leaves the existing content alone on a conflict', async () => {
@@ -195,15 +184,13 @@ describe('POST /api/files/documents', () => {
   it('rejects an extension that is not a document', async () => {
     const res = await post('documents', { path: 'photo.png' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('rejects a traversal attempt', async () => {
     const res = await post('documents', { path: '../escape.md' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it.each([
@@ -212,8 +199,7 @@ describe('POST /api/files/documents', () => {
   ])('rejects %s rather than storing a document with nothing in it', async (_label, content) => {
     const res = await post('documents', { path: 'notes.md', content })
 
-    expect(res.status).toBe(422)
-    await expect(codeOf(res)).resolves.toBe('EMPTY_CONTENT')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 422, code: 'EMPTY_CONTENT' })
   })
 
   it('does not create the document it rejected as empty', async () => {
@@ -225,15 +211,13 @@ describe('POST /api/files/documents', () => {
   it('rejects a body with no path at all', async () => {
     const res = await post('documents', {})
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 
   it('rejects a body whose content is not a string', async () => {
     const res = await post('documents', { path: 'notes.md', content: 42 })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 })
 
@@ -286,29 +270,25 @@ describe('POST /api/files/uploads', () => {
 
     const res = await upload('photo.png', html)
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('CONTENT_MISMATCH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'CONTENT_MISMATCH' })
   })
 
   it('rejects an extension outside the allowlist', async () => {
     const res = await upload('payload.zip', PNG_BYTES)
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('rejects a filename that tries to pick its own directory', async () => {
     const res = await upload('../escape.png', PNG_BYTES)
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('rejects a traversal in the target directory', async () => {
     const res = await upload('photo.png', PNG_BYTES, '../outside')
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('reports an existing file as a conflict', async () => {
@@ -316,15 +296,13 @@ describe('POST /api/files/uploads', () => {
 
     const res = await upload('photo.png', PNG_BYTES)
 
-    expect(res.status).toBe(409)
-    await expect(codeOf(res)).resolves.toBe('ALREADY_EXISTS')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 409, code: 'ALREADY_EXISTS' })
   })
 
   it('rejects an empty upload', async () => {
     const res = await upload('photo.png', new Uint8Array())
 
-    expect(res.status).toBe(422)
-    await expect(codeOf(res)).resolves.toBe('EMPTY_CONTENT')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 422, code: 'EMPTY_CONTENT' })
   })
 
   it('rejects an upload larger than the configured limit', async () => {
@@ -332,8 +310,7 @@ describe('POST /api/files/uploads', () => {
 
     const res = await upload('photo.png', PNG_BYTES, '', tiny)
 
-    expect(res.status).toBe(413)
-    await expect(codeOf(res)).resolves.toBe('TOO_LARGE')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 413, code: 'TOO_LARGE' })
   })
 
   it('does not store an upload it rejected as too large', async () => {
@@ -362,8 +339,7 @@ describe('POST /api/files/uploads', () => {
 
     const res = await app.request('/api/files/uploads', { method: 'POST', body: form })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 
   it('rejects a target directory that is not a string', async () => {
@@ -373,8 +349,7 @@ describe('POST /api/files/uploads', () => {
 
     const res = await app.request('/api/files/uploads', { method: 'POST', body: form })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 })
 
@@ -428,22 +403,19 @@ describe('GET /api/files/raw/:path', () => {
   it('returns 404 for a file that is not there', async () => {
     const res = await app.request('/api/files/raw/missing.png')
 
-    expect(res.status).toBe(404)
-    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it('rejects an extension outside the allowlist', async () => {
     const res = await app.request('/api/files/raw/payload.zip')
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('rejects an encoded traversal attempt', async () => {
     const res = await app.request('/api/files/raw/..%2F..%2Fetc%2Fpasswd.png')
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })
 
@@ -479,8 +451,7 @@ describe('POST /api/files/moves', () => {
   it('returns 404 when the source is not there', async () => {
     const res = await post('moves', { from: 'missing.md', to: 'elsewhere.md' })
 
-    expect(res.status).toBe(404)
-    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it('refuses an occupied destination rather than replacing it', async () => {
@@ -489,8 +460,7 @@ describe('POST /api/files/moves', () => {
 
     const res = await post('moves', { from: 'notes.md', to: 'archive/notes.md' })
 
-    expect(res.status).toBe(409)
-    await expect(codeOf(res)).resolves.toBe('ALREADY_EXISTS')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 409, code: 'ALREADY_EXISTS' })
   })
 
   it('leaves both documents where they were when it refuses', async () => {
@@ -508,15 +478,13 @@ describe('POST /api/files/moves', () => {
 
     const res = await post('moves', { from: 'journal', to: 'journal/2026' })
 
-    expect(res.status).toBe(409)
-    await expect(codeOf(res)).resolves.toBe('INVALID_MOVE')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 409, code: 'INVALID_MOVE' })
   })
 
   it('returns 400 for a traversal attempt', async () => {
     const res = await post('moves', { from: '../escape.md', to: 'notes.md' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('returns 400 for a rename that would change what the file claims to be', async () => {
@@ -524,8 +492,7 @@ describe('POST /api/files/moves', () => {
 
     const res = await post('moves', { from: 'notes.md', to: 'notes.svg' })
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it.each([
@@ -534,8 +501,7 @@ describe('POST /api/files/moves', () => {
   ])('rejects a body with %s', async (_label, body) => {
     const res = await post('moves', body)
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 })
 
@@ -550,22 +516,19 @@ describe('POST /api/files/uploads with a chosen name', () => {
   it('validates the chosen name exactly as it validates the file’s own', async () => {
     const res = await uploadNamed('photo.png', '../escape.png', PNG_BYTES)
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('still checks the bytes against the chosen extension', async () => {
     const res = await uploadNamed('photo.png', 'photo.gif', PNG_BYTES)
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('CONTENT_MISMATCH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'CONTENT_MISMATCH' })
   })
 
   it('rejects a filename field that is not text', async () => {
     const res = await uploadNamed('photo.png', new File([PNG_BYTES], 'nested.png'), PNG_BYTES)
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('BAD_REQUEST')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 })
 

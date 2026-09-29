@@ -8,6 +8,7 @@ import { Buffer } from 'node:buffer'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { refusalOf } from './refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
 import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
@@ -25,12 +26,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
-
-async function codeOf(res: Response): Promise<unknown> {
-  const body: unknown = await res.json()
-
-  return typeof body === 'object' && body !== null && 'code' in body ? body.code : undefined
-}
 
 describe('GET /api/files/archive', () => {
   async function entriesIn(res: Response): Promise<string[]> {
@@ -132,8 +127,7 @@ describe('GET /api/files/archive', () => {
 
     const res = await tiny.request('/api/files/archive')
 
-    expect(res.status).toBe(413)
-    await expect(codeOf(res)).resolves.toBe('TOO_LARGE')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 413, code: 'TOO_LARGE' })
     expect(res.headers.get('content-type')).toContain('application/json')
   })
 
@@ -152,8 +146,7 @@ describe('GET /api/files/archive', () => {
   it('returns 404 for a subtree that is not there', async () => {
     const res = await app.request('/api/files/archive?path=missing')
 
-    expect(res.status).toBe(404)
-    await expect(codeOf(res)).resolves.toBe('NOT_FOUND')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it('returns 404 when the path names a file rather than a folder', async () => {
@@ -165,7 +158,6 @@ describe('GET /api/files/archive', () => {
   it('rejects a traversal attempt', async () => {
     const res = await app.request('/api/files/archive?path=..%2F..%2Fetc')
 
-    expect(res.status).toBe(400)
-    await expect(codeOf(res)).resolves.toBe('INVALID_PATH')
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })

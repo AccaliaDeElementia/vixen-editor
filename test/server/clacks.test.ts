@@ -11,6 +11,7 @@ import { TestOnly as mainTestOnly } from '../../src/server/main.ts'
 import { DEFAULT_LIMITS, type Config } from '../../src/server/config.ts'
 import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
+import { given } from '../conditions.ts'
 import { failingStore } from './failing-store.ts'
 
 const { createApp } = mainTestOnly
@@ -57,8 +58,10 @@ function clacksOf(res: Response): string | null {
 
 describe('the overhead', () => {
   it('is addressed to the right man', () => {
-    expect(CLACKS_HEADER).toBe('X-Clacks-Overhead')
-    expect(CLACKS_VALUE).toBe('GNU Terry Pratchett')
+    expect({ header: CLACKS_HEADER, value: CLACKS_VALUE }).toStrictEqual({
+      header: 'X-Clacks-Overhead',
+      value: 'GNU Terry Pratchett',
+    })
   })
 })
 
@@ -66,7 +69,10 @@ describe('every api response carries the clacks header', () => {
   it('on a 200', async () => {
     const res = await buildApp({ store }).request('/api/health')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
@@ -74,28 +80,40 @@ describe('every api response carries the clacks header', () => {
     await store.createDocument('notes.md', '# hello')
     const res = await buildApp({ store }).request('/api/documents/notes.md')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
   it('on a 404 for a missing document', async () => {
     const res = await buildApp({ store }).request('/api/documents/missing.md')
 
-    expect(res.status).toBe(404)
+    given(() => {
+      expect(res.status).toBe(404)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
   it('on a 404 for an unrouted path', async () => {
     const res = await buildApp({ store }).request('/api/nope')
 
-    expect(res.status).toBe(404)
+    given(() => {
+      expect(res.status).toBe(404)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
   it('on a 400 for a rejected document id', async () => {
     const res = await buildApp({ store }).request('/api/documents/evil.zip')
 
-    expect(res.status).toBe(400)
+    given(() => {
+      expect(res.status).toBe(400)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
@@ -106,14 +124,20 @@ describe('every api response carries the clacks header', () => {
       body: 'not json at all',
     })
 
-    expect(res.status).toBe(400)
+    given(() => {
+      expect(res.status).toBe(400)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
   it('on a 500 from an unexpected storage fault', async () => {
     const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
 
-    expect(res.status).toBe(500)
+    given(() => {
+      expect(res.status).toBe(500)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
@@ -122,7 +146,10 @@ describe('every api response carries the clacks header', () => {
     const id = await store.trash('notes.md')
     const res = await buildApp({ store }).request(`/api/trash/${id}`, { method: 'DELETE' })
 
-    expect(res.status).toBe(204)
+    given(() => {
+      expect(res.status).toBe(204)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 })
@@ -131,28 +158,40 @@ describe('static responses carry it too', () => {
   it('on the served page', async () => {
     const res = await createApp(configFor(), publicDir).request('/doc/')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
   it('on a redirect, which builds its own response', async () => {
     const res = await createApp(configFor(), publicDir).request('/')
 
-    expect(res.status).toBe(302)
+    given(() => {
+      expect(res.status).toBe(302)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
   it('on a served asset', async () => {
     const res = await createApp(configFor(), publicDir).request('/assets/main.js')
 
-    expect(res.status).toBe(200)
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 
   it('on an asset that was never built', async () => {
     const res = await createApp(configFor(), publicDir).request('/assets/missing.js')
 
-    expect(res.status).toBe(404)
+    given(() => {
+      expect(res.status).toBe(404)
+    })
+
     expect(clacksOf(res)).toBe(CLACKS_VALUE)
   })
 })

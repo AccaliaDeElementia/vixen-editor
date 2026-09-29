@@ -5,7 +5,7 @@ import path from 'node:path'
 
 const SUITES = ['test', 'test-browser']
 const SUFFIXES = ['.test.ts', '.spec.ts']
-const CONDITIONS = ['given', 'waitUntil']
+const CONDITIONS = ['given', 'givenAsync']
 
 const NONE = 0
 const ONE = 1

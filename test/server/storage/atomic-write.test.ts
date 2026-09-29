@@ -6,6 +6,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { given, givenAsync } from '../../conditions.ts'
 import {
   createFileAtomic,
   isTemporaryName,
@@ -80,7 +81,8 @@ describe('replaceFileAtomic', () => {
   it('leaves no temporary behind when placing the file fails', async () => {
     await fs.mkdir(at('note.md'))
 
-    await expect(replaceFileAtomic(at('note.md'), '# fresh')).rejects.toThrow()
+    const writing = replaceFileAtomic(at('note.md'), '# fresh')
+    await givenAsync(expect(writing).rejects.toThrow())
 
     await expect(namesIn(base)).resolves.toEqual(['note.md'])
   })
@@ -100,7 +102,8 @@ describe('a write that fails after the temporary has been opened', () => {
   it('leaves no temporary behind, so a full disk does not fill further on every retry', async () => {
     failEveryWriteWithNoSpace()
 
-    await expect(replaceFileAtomic(at('note.md'), '# fresh')).rejects.toThrow('ENOSPC')
+    const writing = replaceFileAtomic(at('note.md'), '# fresh')
+    await givenAsync(expect(writing).rejects.toThrow('ENOSPC'))
 
     await expect(namesIn(base)).resolves.toStrictEqual([])
   })
@@ -109,7 +112,8 @@ describe('a write that fails after the temporary has been opened', () => {
     await fs.writeFile(at('note.md'), '# old')
     failEveryWriteWithNoSpace()
 
-    await expect(replaceFileAtomic(at('note.md'), '# new')).rejects.toThrow('ENOSPC')
+    const writing = replaceFileAtomic(at('note.md'), '# new')
+    await givenAsync(expect(writing).rejects.toThrow('ENOSPC'))
 
     vi.restoreAllMocks()
     await expect(fs.readFile(at('note.md'), 'utf8')).resolves.toBe('# old')
@@ -118,7 +122,8 @@ describe('a write that fails after the temporary has been opened', () => {
   it('creates nothing when it was a create that failed', async () => {
     failEveryWriteWithNoSpace()
 
-    await expect(createFileAtomic(at('note.md'), '# fresh')).rejects.toThrow('ENOSPC')
+    const creating = createFileAtomic(at('note.md'), '# fresh')
+    await givenAsync(expect(creating).rejects.toThrow('ENOSPC'))
 
     await expect(namesIn(base)).resolves.toStrictEqual([])
   })
@@ -140,7 +145,8 @@ describe('createFileAtomic', () => {
   it('leaves the existing content untouched when it refuses', async () => {
     await fs.writeFile(at('note.md'), '# old')
 
-    await expect(createFileAtomic(at('note.md'), '# new')).rejects.toThrow('EEXIST')
+    const creating = createFileAtomic(at('note.md'), '# new')
+    await givenAsync(expect(creating).rejects.toThrow('EEXIST'))
 
     await expect(fs.readFile(at('note.md'), 'utf8')).resolves.toBe('# old')
   })
@@ -154,7 +160,8 @@ describe('createFileAtomic', () => {
   it('leaves no temporary behind when it refuses', async () => {
     await fs.writeFile(at('note.md'), '# old')
 
-    await expect(createFileAtomic(at('note.md'), '# new')).rejects.toThrow('EEXIST')
+    const creating = createFileAtomic(at('note.md'), '# new')
+    await givenAsync(expect(creating).rejects.toThrow('EEXIST'))
 
     await expect(namesIn(base)).resolves.toEqual(['note.md'])
   })
@@ -184,8 +191,9 @@ describe('replacing rather than rewriting in place', () => {
     try {
       await replaceFileAtomic(target, '# new')
 
+      await givenAsync(expect(fs.readFile(target, 'utf8')).resolves.toBe('# new'))
+
       await expect(handle.readFile('utf8')).resolves.toBe('# old')
-      await expect(fs.readFile(target, 'utf8')).resolves.toBe('# new')
     } finally {
       await handle.close()
     }
@@ -208,12 +216,15 @@ describe('temporaryBeside', () => {
   })
 
   it('stays within the name limit for a target whose own name is at the limit', () => {
-    expect(isAllowedName(longest)).toBe(true)
+    given(() => {
+      expect(isAllowedName(longest)).toBe(true)
+    })
+
     expect(Buffer.byteLength(path.basename(temporaryBeside(at(longest))))).toBeLessThanOrEqual(MAX_NAME_BYTES)
   })
 
   it('does not stop a target at the name limit being written', async () => {
-    await expect(createFileAtomic(at(longest), '# fresh')).resolves.toBeUndefined()
+    await createFileAtomic(at(longest), '# fresh')
 
     await expect(fs.readFile(at(longest), 'utf8')).resolves.toBe('# fresh')
   })
@@ -241,7 +252,7 @@ describe('a cleanup that fails', () => {
   it('does not turn a completed create into a reported failure', async () => {
     failEveryCleanup()
 
-    await expect(createFileAtomic(at('note.md'), '# fresh')).resolves.toBeUndefined()
+    await createFileAtomic(at('note.md'), '# fresh')
 
     vi.restoreAllMocks()
     await expect(fs.readFile(at('note.md'), 'utf8')).resolves.toBe('# fresh')
@@ -251,7 +262,7 @@ describe('a cleanup that fails', () => {
     await fs.writeFile(at('note.md'), '# old')
     failEveryCleanup()
 
-    await expect(replaceFileAtomic(at('note.md'), '# new')).resolves.toBeUndefined()
+    await replaceFileAtomic(at('note.md'), '# new')
 
     vi.restoreAllMocks()
     await expect(fs.readFile(at('note.md'), 'utf8')).resolves.toBe('# new')
@@ -265,8 +276,7 @@ describe('a cleanup that fails', () => {
     vi.restoreAllMocks()
     const left = (await namesIn(base)).filter((name) => name !== 'note.md')
 
-    expect(left).toHaveLength(1)
-    expect(left.every((name) => !isAllowedName(name))).toBe(true)
+    expect(left.map((name) => isAllowedName(name))).toStrictEqual([false])
   })
 })
 
