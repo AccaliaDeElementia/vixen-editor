@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 async function workspace(request: APIRequestContext, folder: string): Promise<string> {
@@ -17,7 +18,7 @@ async function select(page: Page, folder: string, name: string): Promise<void> {
 test('the insert button is off when the selection is not a file', async ({ page, request }) => {
   const folder = `ins-${String(Date.now())}`
   await page.goto(await workspace(request, folder))
-  await expect(page.locator('[role="tree"]')).toBeVisible()
+  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
   await expect(page.locator('#insert-entry')).toBeEnabled()
 
@@ -65,7 +66,7 @@ test('Mod-i on the tree inserts the selected file', async ({ page, request }) =>
 test('Mod-i with no file selected says why it did nothing', async ({ page, request }) => {
   const folder = `insn-${String(Date.now())}`
   await page.goto(await workspace(request, folder))
-  await expect(page.locator('[role="tree"]')).toBeVisible()
+  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
   const trash = page.locator('[role="treeitem"][data-path=".trash"]')
   await trash.click()

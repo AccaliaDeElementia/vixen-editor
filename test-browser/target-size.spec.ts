@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
@@ -38,7 +39,7 @@ test('every pointer target in the workspace is at least 24 by 24', async ({ page
   await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: '# hi\n' } })
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await expect(page.locator('[role="tree"]')).toBeVisible()
+  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
   expect(await undersizedTargetsOn(page)).toStrictEqual([])
 
@@ -51,7 +52,7 @@ test('every pointer target in an open dialog is at least 24 by 24', async ({ pag
 
   await page.goto(`/doc/${folder}/`)
   await page.locator('#new-document').click()
-  await expect(page.locator('#file-dialog')).toBeVisible()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
 
   expect(await undersizedTargetsOn(page)).toStrictEqual([])
 
@@ -66,7 +67,7 @@ test('every pointer target in an expanded trash is at least 24 by 24', async ({ 
   await request.delete(`/api/files/entries/${folder}/gone.md`)
 
   await page.goto(`/doc/${folder}/`)
-  await expect(page.locator('[role="tree"]')).toBeVisible()
+  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
   const trash = page.locator('[role="treeitem"][data-path=".trash"]')
   await expect(trash).toBeVisible()
@@ -94,7 +95,7 @@ test('every pointer target in a merge is at least 24 by 24', async ({ page, requ
     window.dispatchEvent(new Event('focus'))
   })
   await page.locator('#file-dialog-choices button[value="merge"]').click()
-  await expect(page.locator('.cm-chunkButtons button').first()).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-chunkButtons button').first()).toBeVisible())
 
   expect(await undersizedTargetsOn(page)).toStrictEqual([])
 
@@ -107,7 +108,7 @@ test('the resize handle straddles the boundary rather than sitting inside the ex
   await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: '# hi\n' } })
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await expect(page.locator('[role="tree"]')).toBeVisible()
+  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
 
   const geometry = await page.evaluate(() => {
     const handle = document.querySelector('#explorer-resizer')?.getBoundingClientRect()

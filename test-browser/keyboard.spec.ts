@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
@@ -58,7 +59,7 @@ test('Mod-Enter in prose still inserts a blank line, which CodeMirror binds it t
 
   await page.keyboard.press('ControlOrMeta+Enter')
 
-  await expect(page.locator('#word-count')).toBeVisible()
+  await givenAsync(expect(page.locator('#word-count')).toBeVisible())
   expect(await page.locator('.cm-line').count()).toBeGreaterThan(2)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -73,7 +74,7 @@ test('Mod-Enter on an image opens the image view', async ({ page, request }) => 
 
   await page.keyboard.press('ControlOrMeta+Enter')
 
-  await expect(page.locator('#view-image')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-image')).toBeVisible())
   expect(new URL(page.url()).pathname).toBe(`/doc/${folder}/pic.png`)
 
   await request.delete(`/api/files/entries/${folder}`)

@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { devices, expect, test, type APIRequestContext } from '@playwright/test'
 
 test.use({ ...devices['Pixel 7'] })
@@ -23,7 +24,7 @@ test('a tap on a link reveals the tooltip', async ({ page, request }) => {
 
   await page.locator(LINK).tap()
 
-  await expect(page.locator(TOOLTIP)).toBeVisible({ timeout: 3000 })
+  await givenAsync(expect(page.locator(TOOLTIP)).toBeVisible({ timeout: 3000 }))
   await expect(page.locator(TOOLTIP)).toHaveText(`Open ${folder}/target.md`)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -33,7 +34,7 @@ test('a tap in the tooltip opens the document', async ({ page, request }) => {
   const folder = `tapopen-${String(Date.now())}`
   await page.goto(await documentWithLink(request, folder))
   await page.locator(LINK).tap()
-  await expect(page.locator(TOOLTIP)).toBeVisible({ timeout: 3000 })
+  await givenAsync(expect(page.locator(TOOLTIP)).toBeVisible({ timeout: 3000 }))
 
   await page.locator(`${TOOLTIP} a`).tap()
 
@@ -48,7 +49,7 @@ test('a tap away dismisses the tooltip without navigating', async ({ page, reque
   const url = await documentWithLink(request, folder)
   await page.goto(url)
   await page.locator(LINK).tap()
-  await expect(page.locator(TOOLTIP)).toBeVisible({ timeout: 3000 })
+  await givenAsync(expect(page.locator(TOOLTIP)).toBeVisible({ timeout: 3000 }))
 
   await page.locator('.cm-content').getByText('plain prose below').tap()
 

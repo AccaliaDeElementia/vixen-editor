@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
@@ -87,7 +88,7 @@ test('the icon font actually loads, so buttons show glyphs and not their names',
 test('the navigation arrows are present but disabled until SPA navigation exists', async ({ page }) => {
   await page.goto('/doc/')
 
-  await expect(page.locator('#nav-back')).toBeDisabled()
+  await givenAsync(expect(page.locator('#nav-back')).toBeDisabled())
   await expect(page.locator('#nav-forward')).toBeDisabled()
   await expect(page.locator('#toggle-explorer')).toBeEnabled()
 })
@@ -99,7 +100,7 @@ test('the file browser lists what the store holds', async ({ page, request }) =>
   await page.goto('/doc/')
 
   const row = page.locator(`.tree__row[data-path="${folder}"]`)
-  await expect(row).toBeVisible()
+  await givenAsync(expect(row).toBeVisible())
   await expect(row).toHaveAttribute('aria-expanded', 'false')
   await expect(page.locator('.tree__row[data-kind="trash-root"]')).toBeVisible()
 
@@ -117,7 +118,7 @@ test('a folder opens on click and its contents appear below it, indented by labe
   await page.locator(`.tree__row[data-path="${folder}"]`).click()
 
   const child = page.locator(`.tree__row[data-path="${folder}/index.md"]`)
-  await expect(child).toBeVisible()
+  await givenAsync(expect(child).toBeVisible())
 
   const parentLabel = await page.locator(`.tree__row[data-path="${folder}"] .tree__name`).boundingBox()
   const childLabel = await child.locator('.tree__name').boundingBox()
@@ -146,7 +147,7 @@ test('a modified click opens a tab rather than being swallowed', async ({ page, 
   await page.locator(`.tree__row[data-path="${name}"]`).click({ modifiers: ['ControlOrMeta'] })
   const tab = await opened
 
-  await expect(tab).toHaveURL(`/doc/${name}`)
+  await givenAsync(expect(tab).toHaveURL(`/doc/${name}`))
   expect(new URL(page.url()).pathname).toBe('/doc/')
 
   await tab.close()
@@ -157,7 +158,7 @@ test('saving surfaces a toast that then fades', async ({ page, request }) => {
   const name = `toast-${String(Date.now())}.md`
   await request.post('/api/files/documents', { data: { path: name, content: '# seed' } })
   await page.goto(`/doc/${name}`)
-  await expect(page.locator('.cm-editor')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-editor')).toBeVisible())
 
   const toast = page.locator('#status .toast')
   await expect(toast).toBeVisible()
@@ -214,7 +215,7 @@ test('the toggle collapses the explorer and the editor reclaims the space', asyn
 
   await page.locator('#toggle-explorer').click()
 
-  await expect(page.locator(EXPLORER)).toBeHidden()
+  await givenAsync(expect(page.locator(EXPLORER)).toBeHidden())
   expect((await boxOf(page, WORKSPACE)).width).toBeGreaterThan(workspaceBefore)
 })
 
@@ -224,7 +225,7 @@ test('a resized width survives a reload', async ({ page }) => {
   const resized = await explorerWidth(page)
 
   await page.reload()
-  await expect(page.locator('.cm-editor')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-editor')).toBeVisible())
 
   expect(await explorerWidth(page)).toBeCloseTo(resized, 0)
 })
@@ -234,7 +235,7 @@ test('a collapsed explorer survives a reload', async ({ page }) => {
   await page.locator('#toggle-explorer').click()
 
   await page.reload()
-  await expect(page.locator('.cm-editor')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-editor')).toBeVisible())
 
   await expect(page.locator(EXPLORER)).toBeHidden()
   await expect(page.locator('#toggle-explorer')).toHaveAttribute('aria-expanded', 'false')
@@ -244,7 +245,7 @@ test('a fresh profile with empty storage opens at 20em', async ({ browser }) => 
   const context = await browser.newContext({ viewport: { width: 1200, height: 700 } })
   const fresh = await context.newPage()
   await fresh.goto('/')
-  await expect(fresh.locator('.cm-editor')).toBeVisible()
+  await givenAsync(expect(fresh.locator('.cm-editor')).toBeVisible())
 
   const rootFontSize = await fresh.evaluate(() => Number.parseFloat(getComputedStyle(document.body).fontSize))
   const box = await fresh.locator(EXPLORER).boundingBox()
@@ -261,7 +262,7 @@ test('a width stored wider than the viewport is clamped on load', async ({ page 
 
   await page.setViewportSize({ width: 1000, height: 700 })
   await page.reload()
-  await expect(page.locator('.cm-editor')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-editor')).toBeVisible())
 
   expect(await explorerWidth(page)).toBeCloseTo(800, 0)
 })
@@ -271,7 +272,7 @@ test('the toolbar creates a folder through a real modal dialog', async ({ page, 
   await page.goto('/doc/')
 
   await page.locator('#new-folder').click()
-  await expect(page.locator('#file-dialog')).toBeVisible()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
   await page.locator('#file-dialog-entry').fill(name)
   await page.locator('#file-dialog-confirm').click()
 
@@ -288,7 +289,7 @@ test('Enter in the name field confirms, though Cancel is the first button the fo
   await page.goto('/doc/')
 
   await page.locator('#new-folder').click()
-  await expect(page.locator('#file-dialog')).toBeVisible()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
   await page.locator('#file-dialog-entry').fill(name)
   await page.locator('#file-dialog-entry').press('Enter')
 
@@ -328,7 +329,7 @@ test('the archive link follows the selection', async ({ page, request }) => {
 
 test('closing the explorer takes its actions away rather than disabling them', async ({ page }) => {
   await page.goto('/doc/')
-  await expect(page.locator('#new-folder')).toBeVisible()
+  await givenAsync(expect(page.locator('#new-folder')).toBeVisible())
 
   await page.locator('#toggle-explorer').click()
 
@@ -482,7 +483,7 @@ test('a real drag reveals the moved document at its new location', async ({ page
   await page.locator(`.tree__row[data-path="${doc}"]`).dragTo(page.locator(`.tree__row[data-path="${folder}"]`))
 
   const moved = page.locator(`.tree__row[data-path="${folder}/${doc}"]`)
-  await expect(moved).toBeVisible()
+  await givenAsync(expect(moved).toBeVisible())
   await expect(moved).toHaveAttribute('aria-selected', 'true')
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -498,7 +499,7 @@ test('a rejected upload tells the user why', async ({ page }) => {
   })
 
   const failure = page.locator('#status .toast[data-severity="error"]')
-  await expect(failure).toBeVisible()
+  await givenAsync(expect(failure).toBeVisible())
   await expect(failure).toContainText('payload.zip')
 })
 

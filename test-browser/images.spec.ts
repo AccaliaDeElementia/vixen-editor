@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
@@ -38,7 +39,7 @@ test('clicking the image puts the caret in its source, which is how it gets edit
 
   await page.goto(url)
   const image = page.locator('img.cm-vixen-image')
-  await expect(image).toBeVisible()
+  await givenAsync(expect(image).toBeVisible())
 
   await image.click()
 

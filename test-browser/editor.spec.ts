@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
@@ -18,7 +19,7 @@ async function storedDocument(request: APIRequestContext, name: string, content 
 test('mounts the editor', async ({ page, request }) => {
   await page.goto(await storedDocument(request, 'mounts.md'))
 
-  await expect(page.locator('.cm-editor')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-editor')).toBeVisible())
   await expect(page.locator('#status')).toContainText('mounts.md')
 })
 
@@ -29,7 +30,7 @@ test('renders a heading decoration with real geometry', async ({ page, request }
   await page.keyboard.type('# a heading')
 
   const heading = page.locator('.cm-vixen-heading-1').first()
-  await expect(heading).toBeVisible()
+  await givenAsync(expect(heading).toBeVisible())
 
   const box = await heading.boundingBox()
   expect(box).not.toBeNull()
@@ -44,7 +45,7 @@ test('renders a marker decoration inline', async ({ page, request }) => {
   await page.keyboard.type('TODO: something')
 
   const marker = page.locator('.cm-vixen-marker-todo').first()
-  await expect(marker).toBeVisible()
+  await givenAsync(expect(marker).toBeVisible())
   await expect(marker).toHaveText('TODO:')
 })
 
@@ -79,7 +80,7 @@ test('the editor has real geometry after being revealed from hidden', async ({ p
   await page.goto(await storedDocument(request, 'revealed.md'))
 
   const editor = page.locator('#editor')
-  await expect(editor).toBeVisible()
+  await givenAsync(expect(editor).toBeVisible())
 
   const content = page.locator('.cm-content')
   const box = await content.boundingBox()
@@ -102,7 +103,7 @@ test('a long line wraps instead of scrolling the editor sideways', async ({ page
 test('a path that names nothing reports itself as missing', async ({ page }) => {
   await page.goto('/doc/definitely/not/here.md')
 
-  await expect(page.locator('#view-missing')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-missing')).toBeVisible())
   await expect(page.locator('#missing-path')).toHaveText('definitely/not/here.md')
   await expect(page.locator('#editor')).toBeHidden()
 })
@@ -110,7 +111,7 @@ test('a path that names nothing reports itself as missing', async ({ page }) => 
 test('a folder with no index still opens an editable buffer', async ({ page }) => {
   await page.goto('/doc/')
 
-  await expect(page.locator('#editor')).toBeVisible()
+  await givenAsync(expect(page.locator('#editor')).toBeVisible())
   await expect(page.locator('#view-missing')).toBeHidden()
 })
 
@@ -173,7 +174,7 @@ test('a missing document offers to create it, and creating it opens the editor',
   const name = `created-${String(Date.now())}.md`
   await page.goto(`/doc/${name}`)
 
-  await expect(page.locator('#view-missing')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-missing')).toBeVisible())
   await page.locator('#missing-create').click()
 
   await expect(page.locator('#editor')).toBeVisible()
@@ -188,7 +189,7 @@ test('a trashed document is offered back at the path it came from', async ({ pag
   await page.goto(`/doc/${name}`)
 
   const restore = page.locator('#missing-restore-list button')
-  await expect(restore).toBeVisible()
+  await givenAsync(expect(restore).toBeVisible())
   await restore.click()
 
   await expect(page.locator('.cm-content')).toContainText('# rescued')
@@ -201,7 +202,7 @@ test('a trash entry url shows what was deleted and offers it back', async ({ pag
 
   await page.goto(`/trash/${trashId}`)
 
-  await expect(page.locator('#view-deleted')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-deleted')).toBeVisible())
   await expect(page.locator('#deleted-what')).toContainText(`The file ${name} was deleted`)
   await expect(page).toHaveTitle(name)
 
@@ -213,7 +214,7 @@ test('a trash entry url shows what was deleted and offers it back', async ({ pag
 test('a trash entry that is no longer there says so', async ({ page }) => {
   await page.goto('/trash/0d5caef1-147f-45bf-8546-270886fcaa8f')
 
-  await expect(page.locator('#view-deleted')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-deleted')).toBeVisible())
   await expect(page.locator('#deleted-what')).toContainText('already have been restored or purged')
   await expect(page.locator('#deleted-actions')).toBeHidden()
 })
@@ -232,7 +233,7 @@ test('an image path shows the image rather than failing to start', async ({ page
 
   await page.goto(await storedImage(request, name))
 
-  await expect(page.locator('#view-image')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-image')).toBeVisible())
   await expect(page.locator('#image-path')).toHaveText(name)
   await expect(page.locator('#editor')).toBeHidden()
   await expect(page.locator('#status .toast')).toHaveCount(0)
@@ -253,7 +254,7 @@ test('an image that is not there reports itself as missing', async ({ page }) =>
 
   await page.goto(`/doc/${name}`)
 
-  await expect(page.locator('#view-missing')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-missing')).toBeVisible())
   await expect(page.locator('#missing-path')).toHaveText(name)
   await expect(page.locator('#missing-create')).toBeHidden()
   await expect(page.locator('#missing-upload')).toBeVisible()
@@ -396,7 +397,7 @@ test('discarding lets the navigation through', async ({ page, request }) => {
   await page.keyboard.press('Delete')
 
   await page.locator(`[role="treeitem"][data-path="${second}"]`).dblclick()
-  await expect(page.locator('#file-dialog-confirm')).toBeVisible()
+  await givenAsync(expect(page.locator('#file-dialog-confirm')).toBeVisible())
   await page.locator('#file-dialog-confirm').click()
 
   await expect(page.locator('.cm-content')).toContainText('# second')
@@ -493,7 +494,7 @@ test('dragging a document from the tree inserts a link at the drop point', async
   await request.post('/api/files/documents', { data: { path: dragged, content: '# dragged' } })
 
   await page.goto(`/doc/${open}`)
-  await expect(page.locator(`[role="treeitem"][data-path="${dragged}"]`)).toBeVisible()
+  await givenAsync(expect(page.locator(`[role="treeitem"][data-path="${dragged}"]`)).toBeVisible())
 
   await page.locator(`[role="treeitem"][data-path="${dragged}"]`).dragTo(page.locator('.cm-content'))
 
@@ -511,7 +512,7 @@ test('dragging an image inserts an embed rather than a link', async ({ page, req
   await storedImage(request, image)
 
   await page.goto(`/doc/${open}`)
-  await expect(page.locator(`[role="treeitem"][data-path="${image}"]`)).toBeVisible()
+  await givenAsync(expect(page.locator(`[role="treeitem"][data-path="${image}"]`)).toBeVisible())
 
   await page.locator(`[role="treeitem"][data-path="${image}"]`).dragTo(page.locator('.cm-content'))
 

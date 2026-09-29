@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 const PHONE = { width: 412, height: 800 }
@@ -27,7 +28,7 @@ test('an open drawer takes the whole width and the editor steps aside', async ({
 
   const explorer = await page.locator('#explorer').boundingBox()
 
-  await expect(page.locator('.cm-content')).toBeHidden()
+  await givenAsync(expect(page.locator('.cm-content')).toBeHidden())
   expect(explorer?.width).toBe(PHONE.width - (explorer?.x ?? 0))
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -55,7 +56,7 @@ test('the editor comes back at its full width when the drawer closes', async ({ 
 
   await page.locator('#toggle-explorer').click()
 
-  await expect(page.locator('.cm-content')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
   expect((await page.locator('.cm-content').boundingBox())?.width).toBe(wide?.width)
 
   await request.delete(`/api/files/entries/${folder}`)

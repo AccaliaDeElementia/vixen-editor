@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 import { violationsOn } from './axe.ts'
@@ -19,7 +20,7 @@ test('the document view has no accessibility violations', async ({ page, request
   await workspaceWith(page, request, folder)
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await expect(page.locator('.cm-content')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
   await expect(page.locator('[role="tree"]')).toBeVisible()
 
   expect(await violationsOn(page)).toStrictEqual([])
@@ -32,7 +33,7 @@ test('a save is announced rather than only shown', async ({ page, request }) => 
   await workspaceWith(page, request, folder)
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await expect(page.locator('.cm-content')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
 
   await expect(page.locator('#save-label')).toHaveAttribute('role', 'status')
 
@@ -51,7 +52,7 @@ test('an open dialog has no accessibility violations', async ({ page, request })
 
   await page.goto(`/doc/${folder}/notes.md`)
   await page.locator('#new-document').click()
-  await expect(page.locator('#file-dialog')).toBeVisible()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
 
   expect(await violationsOn(page)).toStrictEqual([])
 
@@ -65,7 +66,7 @@ test('a dialog announces what it is for', async ({ page, request }) => {
 
   await page.goto(`/doc/${folder}/notes.md`)
   await page.locator('#new-document').click()
-  await expect(page.locator('#file-dialog')).toBeVisible()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
 
   expect(await page.locator('#file-dialog').ariaSnapshot()).toContain('dialog "New document"')
 
@@ -78,7 +79,7 @@ test('the missing-document view has no accessibility violations', async ({ page,
   await workspaceWith(page, request, folder)
 
   await page.goto(`/doc/${folder}/absent.md`)
-  await expect(page.locator('#view-missing')).toBeVisible()
+  await givenAsync(expect(page.locator('#view-missing')).toBeVisible())
 
   expect(await violationsOn(page)).toStrictEqual([])
 
@@ -91,7 +92,7 @@ test('the help dialog lists the gestures, and has no accessibility violations', 
 
   await page.goto(`/doc/${folder}/notes.md`)
   await page.locator('#show-help').click()
-  await expect(page.locator('#file-dialog')).toBeVisible()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
 
   await expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + S')
   await expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + Enter')
@@ -108,7 +109,7 @@ test('a keyboard user can skip the chrome and land in the editor', async ({ page
   await workspaceWith(page, request, folder)
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await expect(page.locator('.cm-content')).toBeVisible()
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
 
   const firstFocusable = await page.evaluate(() => {
     const candidates = document.querySelectorAll<HTMLElement>('a[href], button, input, [tabindex="0"]')
