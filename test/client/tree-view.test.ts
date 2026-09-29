@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { parseTree, type TrashNode, type TreeNode } from '../../src/client/files/tree-model.ts'
@@ -72,7 +73,9 @@ describe('rendering', () => {
 
   it('hides the contents of a collapsed folder', () => {
     render()
-    expect(pathsShown()).toContain('journal')
+    given(() => {
+      expect(pathsShown()).toContain('journal')
+    })
 
     expect(pathsShown()).not.toContain('journal/entry.md')
   })
@@ -105,8 +108,10 @@ describe('rendering', () => {
   it('records depth, so indentation follows the structure', () => {
     render({ open: new Set(['journal']) })
 
-    expect(rowFor('journal').style.getPropertyValue('--depth')).toBe('0')
-    expect(rowFor('journal/entry.md').style.getPropertyValue('--depth')).toBe('1')
+    expect({
+      folder: rowFor('journal').style.getPropertyValue('--depth'),
+      child: rowFor('journal/entry.md').style.getPropertyValue('--depth'),
+    }).toStrictEqual({ folder: '0', child: '1' })
   })
 })
 
@@ -121,12 +126,14 @@ describe('icons', () => {
     expect(iconOf(entryPath)).toBe(expected)
   })
 
-  it('carries a kind on the row, so the stylesheet can colour it', () => {
+  it.each([
+    ['a document', 'notes.md', 'document'],
+    ['an image', 'photo.png', 'image'],
+    ['a folder', 'journal', 'folder'],
+  ])('carries the kind of %s on the row, so the stylesheet can colour it', (_label, entryPath, expected) => {
     render()
 
-    expect(rowFor('notes.md').dataset.kind).toBe('document')
-    expect(rowFor('photo.png').dataset.kind).toBe('image')
-    expect(rowFor('journal').dataset.kind).toBe('folder')
+    expect(rowFor(entryPath).dataset.kind).toBe(expected)
   })
 
   it('turns the twisty down when a folder is open', () => {
@@ -169,17 +176,24 @@ describe('links', () => {
 })
 
 describe('accessibility', () => {
-  it('marks a folder as expandable and a file as not', () => {
+  it.each([
+    ['a folder as expandable', 'journal', true],
+    ['a file as not', 'notes.md', false],
+  ])('marks %s', (_label, entryPath, expected) => {
     render()
 
-    expect(rowFor('journal').hasAttribute('aria-expanded')).toBe(true)
-    expect(rowFor('notes.md').hasAttribute('aria-expanded')).toBe(false)
+    expect(rowFor(entryPath).hasAttribute('aria-expanded')).toBe(expected)
   })
 
   it('marks the selected entry', () => {
     render({ selected: 'notes.md' })
 
     expect(rowFor('notes.md').getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('says false on the rows that are not selected, rather than omitting the attribute', () => {
+    render({ selected: 'notes.md' })
+
     expect(rowFor('photo.png').getAttribute('aria-selected')).toBe('false')
   })
 
@@ -335,32 +349,36 @@ describe('telling the two trash actions apart', () => {
     render({ trash: [entry], open: new Set([TRASH_PATH]) })
   })
 
-  it('gives each action its own tooltip rather than inheriting the row deletion time', () => {
-    expect(actionButton('restore').title).not.toContain('2026-01-01')
-    expect(actionButton('purge').title).not.toContain('2026-01-01')
+  it.each(['restore', 'purge'])('gives %s its own tooltip rather than the row deletion time', (action) => {
+    expect(actionButton(action).title).not.toContain('2026-01-01')
   })
 
-  it('says what each action will do', () => {
-    expect(actionButton('restore').title).toBe('Restore journal/gone.md')
-    expect(actionButton('purge').title).toBe('Delete journal/gone.md for good')
+  it.each([
+    ['restore', 'Restore journal/gone.md'],
+    ['purge', 'Delete journal/gone.md for good'],
+  ])('says what %s will do', (action, expected) => {
+    expect(actionButton(action).title).toBe(expected)
   })
 
-  it('matches the tooltip for anyone reading by label rather than hovering', () => {
-    expect(actionButton('restore').getAttribute('aria-label')).toBe(actionButton('restore').title)
-    expect(actionButton('purge').getAttribute('aria-label')).toBe(actionButton('purge').title)
+  it.each(['restore', 'purge'])(
+    'gives %s a label matching its tooltip, for anyone reading rather than hovering',
+    (action) => {
+      expect(actionButton(action).getAttribute('aria-label')).toBe(actionButton(action).title)
+    },
+  )
+
+  it.each([
+    ['restore', 'restore'],
+    ['purge', 'delete_forever'],
+  ])('gives %s its own silhouette, so the two are not both trash cans', (action, expected) => {
+    expect(actionButton(action).querySelector('.icon')?.textContent).toBe(expected)
   })
 
-  it('uses glyphs with different silhouettes, not two trash cans', () => {
-    const restoreGlyph = actionButton('restore').querySelector('.icon')?.textContent
-    const purgeGlyph = actionButton('purge').querySelector('.icon')?.textContent
-
-    expect(restoreGlyph).toBe('restore')
-    expect(purgeGlyph).toBe('delete_forever')
-    expect(restoreGlyph).not.toContain('trash')
-  })
-
-  it('marks the irreversible one, so it can be coloured apart', () => {
+  it('marks the irreversible action, so it can be coloured apart', () => {
     expect(actionButton('purge').className).toContain('tree__action--danger')
+  })
+
+  it('leaves the reversible one unmarked', () => {
     expect(actionButton('restore').className).not.toContain('tree__action--danger')
   })
 

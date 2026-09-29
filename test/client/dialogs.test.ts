@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDialogs } from '../../src/client/files/dialogs.ts'
@@ -75,18 +76,30 @@ describe('prompt', () => {
     expect(submit).toHaveBeenCalledWith('notes.md')
   })
 
-  it('resolves false on cancel without submitting', async () => {
+  it('resolves false on cancel', async () => {
+    const dialogs = createDialogs(document)
+    const pending = dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', submit: vi.fn() })
+
+    click('#file-dialog-cancel')
+
+    await expect(pending).resolves.toBe(false)
+  })
+
+  it('submits nothing when it is cancelled', async () => {
     const submit = vi.fn()
     const dialogs = createDialogs(document)
     const pending = dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', submit })
 
     click('#file-dialog-cancel')
+    await givenAsync(pending)
 
-    await expect(pending).resolves.toBe(false)
     expect(submit).not.toHaveBeenCalled()
   })
 
-  it('shows the title and the confirm label it was given', () => {
+  it.each([
+    ['the title', '#file-dialog-title', 'New folder'],
+    ['the confirm label', '#file-dialog-confirm', 'Create'],
+  ])('shows %s it was given', (_label, selector, expected) => {
     const dialogs = createDialogs(document)
     void dialogs.prompt({
       title: 'New folder',
@@ -95,8 +108,7 @@ describe('prompt', () => {
       submit: () => Promise.resolve(null),
     })
 
-    expect(document.querySelector('#file-dialog-title')?.textContent).toBe('New folder')
-    expect(document.querySelector('#file-dialog-confirm')?.textContent).toBe('Create')
+    expect(document.querySelector(selector)?.textContent).toBe(expected)
   })
 
   it('opens the dialog modally', () => {
@@ -117,15 +129,17 @@ describe('prompt', () => {
 
     type('taken.md')
     click('#file-dialog-confirm')
-    await vi.waitFor(() => {
-      expect(errorText()).toBe('Already exists')
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(errorText()).toBe('Already exists')
+      }),
+    )
 
     expect(dialog().open).toBe(true)
 
     type('free.md')
     click('#file-dialog-confirm')
-    await expect(pending).resolves.toBe(true)
+    await givenAsync(expect(pending).resolves.toBe(true))
   })
 
   it('clears a stale error when it opens again', async () => {
@@ -138,9 +152,11 @@ describe('prompt', () => {
     })
     type('a.md')
     click('#file-dialog-confirm')
-    await vi.waitFor(() => {
-      expect(errorText()).toBe('nope')
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(errorText()).toBe('nope')
+      }),
+    )
     click('#file-dialog-cancel')
     await first
 
@@ -201,11 +217,17 @@ describe('confirm', () => {
     await expect(pending).resolves.toBe(false)
   })
 
-  it('shows the message and hides the name field', () => {
+  it('shows the message it was given', () => {
     const dialogs = createDialogs(document)
     void dialogs.confirm({ title: 'Delete', message: 'notes.md will go to the trash', confirmLabel: 'Delete' })
 
     expect(document.querySelector('#file-dialog-message')?.textContent).toBe('notes.md will go to the trash')
+  })
+
+  it('hides the name field, since there is nothing to type', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.confirm({ title: 'Delete', message: 'notes.md will go to the trash', confirmLabel: 'Delete' })
+
     expect(document.querySelector<HTMLElement>('#file-dialog-field')?.hidden).toBe(true)
   })
 })
@@ -246,14 +268,22 @@ describe('choose', () => {
     expect(choiceLabels()).toStrictEqual(['Use the version on disk', 'Overwrite with mine', 'Save mine as a copy'])
   })
 
-  it('shows the message, and hides the field and the single confirm button', () => {
+  it('shows the message it was given', () => {
     const dialogs = createDialogs(document)
     void dialogs.choose({ title: 'Conflict', message: 'notes.md changed on disk', choices: RESOLUTIONS })
 
     expect(document.querySelector('#file-dialog-message')?.textContent).toBe('notes.md changed on disk')
-    expect(document.querySelector<HTMLElement>('#file-dialog-field')?.hidden).toBe(true)
-    expect(document.querySelector<HTMLElement>('#file-dialog-confirm')?.hidden).toBe(true)
-    expect(document.querySelector<HTMLElement>('#file-dialog-choices')?.hidden).toBe(false)
+  })
+
+  it('swaps the field and the single confirm button for the choices', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.choose({ title: 'Conflict', message: 'notes.md changed on disk', choices: RESOLUTIONS })
+
+    expect({
+      fieldHidden: document.querySelector<HTMLElement>('#file-dialog-field')?.hidden,
+      confirmHidden: document.querySelector<HTMLElement>('#file-dialog-confirm')?.hidden,
+      choicesHidden: document.querySelector<HTMLElement>('#file-dialog-choices')?.hidden,
+    }).toStrictEqual({ fieldHidden: true, confirmHidden: true, choicesHidden: false })
   })
 
   it('opens the dialog modally', () => {
@@ -278,9 +308,11 @@ describe('choose', () => {
 
     void dialogs.confirm({ title: 'Delete', message: 'Sure?', confirmLabel: 'Delete' })
 
-    expect(choiceLabels()).toStrictEqual([])
-    expect(document.querySelector<HTMLElement>('#file-dialog-choices')?.hidden).toBe(true)
-    expect(document.querySelector<HTMLElement>('#file-dialog-confirm')?.hidden).toBe(false)
+    expect({
+      labels: choiceLabels(),
+      choicesHidden: document.querySelector<HTMLElement>('#file-dialog-choices')?.hidden,
+      confirmHidden: document.querySelector<HTMLElement>('#file-dialog-confirm')?.hidden,
+    }).toStrictEqual({ labels: [], choicesHidden: true, confirmHidden: false })
   })
 })
 
@@ -318,8 +350,10 @@ describe('inform', () => {
     const dialogs = createDialogs(document)
     void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
 
-    expect(document.querySelector('#file-dialog-body dt')?.textContent).toBe('Save')
-    expect(document.querySelector('#file-dialog-body dd')?.textContent).toBe('Ctrl/Cmd + S')
+    expect({
+      term: document.querySelector('#file-dialog-body dt')?.textContent,
+      description: document.querySelector('#file-dialog-body dd')?.textContent,
+    }).toStrictEqual({ term: 'Save', description: 'Ctrl/Cmd + S' })
   })
 
   it('offers one way out, since there is nothing to decide', () => {
@@ -327,19 +361,36 @@ describe('inform', () => {
     void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
 
     expect(document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden).toBe(true)
+  })
+
+  it('labels that way out as it was asked to', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
     expect(document.querySelector('#file-dialog-confirm')?.textContent).toBe('Close')
   })
 
-  it('resolves when it is closed, and leaves the dialog fit for the next use', async () => {
+  it('resolves when it is closed', async () => {
     const dialogs = createDialogs(document)
     const shown = dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
 
     click('#file-dialog-confirm')
-    await shown
 
-    expect(document.querySelectorAll('#file-dialog-body h3')).toHaveLength(0)
-    expect(document.querySelector<HTMLElement>('#file-dialog-body')?.hidden).toBe(true)
-    expect(document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden).toBe(false)
+    await expect(shown).resolves.toBeUndefined()
+  })
+
+  it('leaves the dialog fit for the next use', async () => {
+    const dialogs = createDialogs(document)
+    const shown = dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
+    click('#file-dialog-confirm')
+    await givenAsync(shown)
+
+    expect({
+      sections: document.querySelectorAll('#file-dialog-body h3').length,
+      bodyHidden: document.querySelector<HTMLElement>('#file-dialog-body')?.hidden,
+      cancelHidden: document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden,
+    }).toStrictEqual({ sections: 0, bodyHidden: true, cancelHidden: false })
   })
 })
 

@@ -140,6 +140,12 @@ if (import.meta.main) {
   for (const key of [...tally.keys()].sort((a, b) => a - b)) {
     process.stdout.write(`  ${String(key)} assertion(s): ${String(tally.get(key) ?? NONE)}\n`)
   }
+  const silent = counted.filter(({ assertions }) => assertions === NONE)
+  if (silent.length > NONE) {
+    process.stdout.write(`\n${String(silent.length)} tests assert nothing outside a wait\n`)
+    for (const { file, line, name } of silent) process.stdout.write(`  ${file}:${String(line)}  ${name}\n`)
+  }
+
   process.stdout.write(`\n${String(over.length)} tests assert more than once\n`)
   for (const { file, line, name, assertions } of over) {
     process.stdout.write(`  ${String(assertions)}  ${file}:${String(line)}  ${name}\n`)
