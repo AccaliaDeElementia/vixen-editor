@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TestOnly } from '../../src/client/editor/bootstrap.ts'
@@ -76,9 +77,12 @@ describe('a clean buffer when the document changes on disk', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('# changed elsewhere')
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(view.state.doc.toString()).toBe('# changed elsewhere')
+      }),
+    )
+
     expect(view.state.selection.main.head).toBe(4)
   })
 
@@ -88,9 +92,12 @@ describe('a clean buffer when the document changes on disk', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('x')
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(view.state.doc.toString()).toBe('x')
+      }),
+    )
+
     expect(view.state.selection.main.head).toBe(1)
   })
 
@@ -98,9 +105,16 @@ describe('a clean buffer when the document changes on disk', () => {
     const view = await editing(() => Promise.resolve(null))
 
     wake()
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('# stored')
-    })
+    await everyPendingMicrotask()
+
+    expect(view.state.doc.toString()).toBe('# stored')
+  })
+
+  it('says nothing when nothing changed', async () => {
+    await editing(() => Promise.resolve(null))
+
+    wake()
+    await everyPendingMicrotask()
 
     expect(statusText()).not.toContain('reloaded')
   })
@@ -113,9 +127,12 @@ describe('a dirty buffer when the document changes on disk', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('can no longer be saved')
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(statusText()).toContain('can no longer be saved')
+      }),
+    )
+
     expect(view.state.doc.toString()).toBe('mine # stored')
   })
 })
@@ -152,9 +169,11 @@ describe('a check that cannot be made', () => {
     })
 
     wake()
-    await vi.waitFor(() => {
-      expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(false)
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(false)
+      }),
+    )
 
     expect(asked).toStrictEqual([])
   })
@@ -187,14 +206,18 @@ describe('a check while a save is in flight', () => {
     view.contentDOM.dispatchEvent(
       new KeyboardEvent('keydown', { key: 's', code: 'KeyS', ctrlKey: true, bubbles: true, cancelable: true }),
     )
-    await vi.waitFor(() => {
-      expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
+      }),
+    )
 
     wake()
-    await vi.waitFor(() => {
-      expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
+      }),
+    )
 
     expect(asked).toStrictEqual([])
     hanging.resolve()
@@ -295,13 +318,27 @@ describe('resolving a conflict on a dirty buffer', () => {
 
   it('keeps both by writing the buffer to a second document', async () => {
     const chooser = choosing('both')
-    const view = await dirtyAgainst('# theirs', chooser)
+    await dirtyAgainst('# theirs', chooser)
 
     wake()
 
     await vi.waitFor(() => {
       expect(chooser.created).toStrictEqual([{ entryPath: 'notes-mine.md', content: 'mine # stored' }])
     })
+  })
+
+  it('then loads the stored version into the buffer, so the copy is the only stale one', async () => {
+    const chooser = choosing('both')
+    const view = await dirtyAgainst('# theirs', chooser)
+
+    wake()
+
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(chooser.created).toHaveLength(1)
+      }),
+    )
+
     expect(view.state.doc.toString()).toBe('# theirs')
   })
 
@@ -313,21 +350,63 @@ describe('resolving a conflict on a dirty buffer', () => {
     await vi.waitFor(() => {
       expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
     })
+  })
+
+  it('shows the stored version as the side to be accepted or rejected', async () => {
+    const view = await dirtyAgainst('# theirs', choosing('merge'))
+
+    wake()
+
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+      }),
+    )
+
     expect(view.dom.querySelector('.cm-deletedChunk')?.textContent).toContain('# theirs')
+  })
+
+  it('keeps the buffer as the editable side while the merge is open', async () => {
+    const view = await dirtyAgainst('# theirs', choosing('merge'))
+
+    wake()
+
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+      }),
+    )
+
     expect(view.state.doc.toString()).toContain('mine')
+  })
+
+  it('drops the markers once no change is left to decide', async () => {
+    const view = await dirtyAgainst('# theirs', choosing('merge'))
+
+    wake()
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+      }),
+    )
+
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '# theirs' } })
+
+    expect(view.dom.querySelectorAll('.cm-changedLine')).toHaveLength(0)
   })
 
   it('says the merge is done once no change is left to decide', async () => {
     const view = await dirtyAgainst('# theirs', choosing('merge'))
 
     wake()
-    await vi.waitFor(() => {
-      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+      }),
+    )
 
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '# theirs' } })
 
-    expect(view.dom.querySelectorAll('.cm-changedLine')).toHaveLength(0)
     expect(statusText()).toContain('merged')
   })
 

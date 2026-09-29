@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../cast.ts'
@@ -136,6 +137,16 @@ describe('save', () => {
     await active.save('fresh.md', '# body')
 
     expect(client.create).toHaveBeenCalledWith('fresh.md', '# body')
+  })
+
+  it('does not attempt an update it has no token for', async () => {
+    client.read.mockRejectedValue(new DocumentRequestError(404, 'Document not found'))
+    client.create.mockResolvedValue('"fresh"')
+    const active = session()
+    await active.load('fresh.md')
+
+    await active.save('fresh.md', '# body')
+
     expect(client.save).not.toHaveBeenCalled()
   })
 
@@ -199,6 +210,17 @@ describe('rename', () => {
     await active.save('archive/notes.md', '# edited')
 
     expect(client.save).toHaveBeenCalledWith('archive/notes.md', '# edited', '"e1"')
+  })
+
+  it('does not create at the new path, since the document already exists there', async () => {
+    client.read.mockResolvedValue(loaded('# mine'))
+    client.save.mockResolvedValue('"e2"')
+    const active = session()
+    await active.load('notes.md')
+
+    active.rename('notes.md', 'archive/notes.md')
+    await active.save('archive/notes.md', '# edited')
+
     expect(client.create).not.toHaveBeenCalled()
   })
 
@@ -255,9 +277,11 @@ describe('saveOnUnload', () => {
     await active.load('notes.md')
 
     active.saveOnUnload('notes.md', '# leaving')
-    await vi.waitFor(() => {
-      expect(client.save).toHaveBeenCalledTimes(1)
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(client.save).toHaveBeenCalledTimes(1)
+      }),
+    )
     await active.save('notes.md', '# still here')
 
     expect(client.save).toHaveBeenLastCalledWith('notes.md', '# still here', '"survived"')
@@ -269,13 +293,17 @@ describe('saveOnUnload', () => {
     const active = session()
     await active.load('notes.md')
 
-    expect(() => {
+    const leaving = (): void => {
       active.saveOnUnload('notes.md', '# leaving')
-    }).not.toThrow()
+    }
 
-    await vi.waitFor(() => {
-      expect(client.save).toHaveBeenCalledTimes(1)
-    })
+    expect(leaving).not.toThrow()
+
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(client.save).toHaveBeenCalledTimes(1)
+      }),
+    )
   })
 })
 
@@ -295,6 +323,13 @@ describe('reread', () => {
     const active = session()
 
     await expect(active.reread('unseen.md')).resolves.toBeNull()
+  })
+
+  it('does not ask the server about a document it has never loaded', async () => {
+    const active = session()
+
+    await givenAsync(expect(active.reread('unseen.md')).resolves.toBeNull())
+
     expect(client.readIfChanged).not.toHaveBeenCalled()
   })
 

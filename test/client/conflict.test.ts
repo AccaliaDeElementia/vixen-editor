@@ -67,6 +67,17 @@ function harness(chosen: string | null, accepted = true): Harness {
   }
 }
 
+function effectsOf(harnessed: Harness): Record<string, number> {
+  return {
+    tookTheirs: harnessed.takeTheirs.mock.calls.length,
+    keptMine: harnessed.keepMine.mock.calls.length,
+    created: harnessed.createDocument.mock.calls.length,
+    merged: harnessed.merge.mock.calls.length,
+  }
+}
+
+const NO_EFFECTS = { tookTheirs: 0, keptMine: 0, created: 0, merged: 0 }
+
 describe('offering the three resolutions', () => {
   it('names the document that changed, so the choice is not made blind', async () => {
     const { options, offers } = harness(null)
@@ -100,13 +111,12 @@ describe('take theirs', () => {
     await expect(offerResolution(options, CONFLICT)).resolves.toBe(true)
   })
 
-  it('does not write anything to the store', async () => {
-    const { options, createDocument, keepMine } = harness(TAKE_THEIRS)
+  it('changes the buffer and nothing else, writing nothing to the store', async () => {
+    const harnessed = harness(TAKE_THEIRS)
 
-    await offerResolution(options, CONFLICT)
+    await offerResolution(harnessed.options, CONFLICT)
 
-    expect(createDocument).not.toHaveBeenCalled()
-    expect(keepMine).not.toHaveBeenCalled()
+    expect(effectsOf(harnessed)).toStrictEqual({ ...NO_EFFECTS, tookTheirs: 1 })
   })
 })
 
@@ -114,8 +124,15 @@ describe('keep mine', () => {
   it('saves again, which now carries the token the check returned', async () => {
     const { options, keepMine } = harness(KEEP_MINE)
 
-    await expect(offerResolution(options, CONFLICT)).resolves.toBe(true)
+    await offerResolution(options, CONFLICT)
+
     expect(keepMine).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports itself resolved, so the caller does not also warn', async () => {
+    const { options } = harness(KEEP_MINE)
+
+    await expect(offerResolution(options, CONFLICT)).resolves.toBe(true)
   })
 
   it('leaves the buffer alone, since the buffer is what is being kept', async () => {
@@ -136,10 +153,12 @@ describe('keep both', () => {
     expect(createDocument).toHaveBeenCalledWith('journal/notes-mine.md', '# mine')
   })
 
-  it('suggests a name beside the original, keeping the extension', () => {
-    expect(copyNameFor('journal/notes.md')).toBe('journal/notes-mine.md')
-    expect(copyNameFor('notes.txt')).toBe('notes-mine.txt')
-    expect(copyNameFor('README')).toBe('README-mine')
+  it.each([
+    ['journal/notes.md', 'journal/notes-mine.md'],
+    ['notes.txt', 'notes-mine.txt'],
+    ['README', 'README-mine'],
+  ])('suggests a name beside %s, keeping the extension', (original, expected) => {
+    expect(copyNameFor(original)).toBe(expected)
   })
 
   it('then loads the version on disk, so the open document is no longer stale', async () => {
@@ -165,11 +184,18 @@ describe('keep both', () => {
     await expect(offerResolution(options, CONFLICT)).resolves.toBe(false)
   })
 
-  it('leaves the buffer alone when the copy is abandoned', async () => {
-    const { options, takeTheirs } = harness(KEEP_BOTH, false)
+  it('reports itself unresolved when the copy is abandoned', async () => {
+    const { options } = harness(KEEP_BOTH, false)
 
     await expect(offerResolution(options, CONFLICT)).resolves.toBe(false)
-    expect(takeTheirs).not.toHaveBeenCalled()
+  })
+
+  it('leaves the buffer alone when the copy is abandoned', async () => {
+    const harnessed = harness(KEEP_BOTH, false)
+
+    await offerResolution(harnessed.options, CONFLICT)
+
+    expect(effectsOf(harnessed)).toStrictEqual(NO_EFFECTS)
   })
 })
 
@@ -177,42 +203,55 @@ describe('merge', () => {
   it('hands the stored version over to be diffed against the buffer', async () => {
     const { options, merge } = harness(MERGE)
 
-    await expect(offerResolution(options, CONFLICT)).resolves.toBe(true)
+    await offerResolution(options, CONFLICT)
+
     expect(merge).toHaveBeenCalledWith('# theirs')
   })
 
+  it('reports itself resolved, so the caller does not also warn', async () => {
+    const { options } = harness(MERGE)
+
+    await expect(offerResolution(options, CONFLICT)).resolves.toBe(true)
+  })
+
   it('leaves the buffer and the store alone, because the user resolves it change by change', async () => {
-    const { options, takeTheirs, keepMine, createDocument } = harness(MERGE)
+    const harnessed = harness(MERGE)
 
-    await offerResolution(options, CONFLICT)
+    await offerResolution(harnessed.options, CONFLICT)
 
-    expect(takeTheirs).not.toHaveBeenCalled()
-    expect(keepMine).not.toHaveBeenCalled()
-    expect(createDocument).not.toHaveBeenCalled()
+    expect(effectsOf(harnessed)).toStrictEqual({ ...NO_EFFECTS, merged: 1 })
   })
 })
 
 describe('dismissing the choice', () => {
-  it('changes nothing and reports itself unresolved', async () => {
-    const { options, takeTheirs, keepMine, createDocument, merge } = harness(null)
+  it('reports itself unresolved', async () => {
+    const { options } = harness(null)
 
     await expect(offerResolution(options, CONFLICT)).resolves.toBe(false)
-    expect(takeTheirs).not.toHaveBeenCalled()
-    expect(keepMine).not.toHaveBeenCalled()
-    expect(createDocument).not.toHaveBeenCalled()
-    expect(merge).not.toHaveBeenCalled()
+  })
+
+  it('changes nothing', async () => {
+    const harnessed = harness(null)
+
+    await offerResolution(harnessed.options, CONFLICT)
+
+    expect(effectsOf(harnessed)).toStrictEqual(NO_EFFECTS)
   })
 })
 
 describe('isConflict', () => {
-  it('is true only for the status the store answers a stale token with', () => {
-    expect(isConflict(new DocumentRequestError(412, 'Conflict'))).toBe(true)
-    expect(isConflict(new DocumentRequestError(503, 'Busy'))).toBe(false)
-    expect(isConflict(new DocumentRequestError(404, 'Gone'))).toBe(false)
+  it.each([
+    ['a stale token', 412, 'Conflict', true],
+    ['a busy store', 503, 'Busy', false],
+    ['a document that is gone', 404, 'Gone', false],
+  ])('treats %s as a conflict: %s', (_label, status, message, expected) => {
+    expect(isConflict(new DocumentRequestError(status, message))).toBe(expected)
   })
 
-  it('is false for anything that never reached the store', () => {
-    expect(isConflict(new Error('network down'))).toBe(false)
-    expect(isConflict(null)).toBe(false)
+  it.each([
+    ['a network failure', new Error('network down')],
+    ['nothing at all', null],
+  ])('is false for %s, which never reached the store', (_label, thrown) => {
+    expect(isConflict(thrown)).toBe(false)
   })
 })

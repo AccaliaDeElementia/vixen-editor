@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createAutosave, TestOnly, type Autosave, type SaveState } from '../../src/client/editor/autosave.ts'
@@ -121,7 +122,9 @@ describe('the ceiling', () => {
 
     await typeWithoutPausing(autosave, EDITS_SHORT_OF_THE_CEILING)
 
-    expect(recorded.writes).toStrictEqual([])
+    given(() => {
+      expect(recorded.writes).toStrictEqual([])
+    })
 
     await vi.advanceTimersByTimeAsync(CEILING_MS - EDITS_SHORT_OF_THE_CEILING * ALMOST_A_WINDOW)
 
@@ -383,9 +386,7 @@ describe('what the indicator is told', () => {
     autosave.changed('edited')
     await vi.advanceTimersByTimeAsync(IDLE_MS)
 
-    expect(recorded.states).toContain('pending')
-    expect(recorded.states).toContain('saving')
-    expect(recorded.states.at(-1)).toBe('clean')
+    expect(recorded.states).toStrictEqual(['clean', 'pending', 'saving', 'clean'])
   })
 
   it('returns to clean when an edit is undone back to what was stored', () => {
