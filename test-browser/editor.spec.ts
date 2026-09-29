@@ -321,13 +321,19 @@ test('the forward button becomes usable only after going back', async ({ page, r
   await request.delete(`/api/files/entries/${second}`)
 })
 
-test('the archive link is left to the browser rather than intercepted', async ({ page }) => {
-  await page.goto('/doc/')
+test('the archive link is left to the browser rather than intercepted', async ({ page, request }) => {
+  const folder = `zip-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await page.goto(`/doc/${folder}/`)
+  await page.locator(`[role="treeitem"][data-path="${folder}"]`).click()
+  await expect(page.locator('#download-archive')).toHaveAttribute('href', `/api/files/archive?path=${folder}`)
 
   const download = page.waitForEvent('download')
   await page.locator('#download-archive').click()
 
   expect((await download).suggestedFilename()).toContain('.zip')
+
+  await request.delete(`/api/files/entries/${folder}`)
 })
 
 test('an edit is saved on the way out, without asking', async ({ page, request }) => {

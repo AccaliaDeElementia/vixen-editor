@@ -545,9 +545,11 @@ test('dragging the open document follows it in the address bar and keeps saving'
   await page.locator(`.tree__row[data-path="${doc}"]`).dragTo(page.locator(`.tree__row[data-path="${folder}"]`))
 
   await expect(page).toHaveURL(`/doc/${folder}/${doc}`)
+  await expect(page.locator('#status')).toContainText(`Editing ${folder}/${doc}`)
 
   await page.locator('#editor .cm-content').click()
   await page.keyboard.type(' edited')
+  await expect(page.locator('#editor .cm-content')).toContainText('# before edited')
   await page.keyboard.press('ControlOrMeta+s')
   await expect(page.locator('#status')).toContainText('Saved')
 
