@@ -12,6 +12,7 @@ import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import { DocumentNotFoundError, EntryExistsError, InvalidMoveError } from '../../../src/server/storage/store-errors.ts'
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])
 
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
@@ -116,12 +117,34 @@ describe('renaming', () => {
     await expect(move('photo.png', 'photo.md')).rejects.toThrow(InvalidPathError)
   })
 
-  it('renames between image extensions', async () => {
+  it('renames an image, keeping its extension', async () => {
     await store.createUpload('', 'photo.png', PNG)
 
     await move('photo.png', 'picture.png')
 
     await expect(store.readBytes('picture.png')).resolves.toStrictEqual(PNG)
+  })
+
+  it('refuses to turn a PNG into a JPEG, which upload refuses for the same bytes', async () => {
+    await store.createUpload('', 'photo.png', PNG)
+
+    await expect(move('photo.png', 'photo.jpg')).rejects.toThrow(InvalidPathError)
+  })
+
+  it('allows .jpg to .jpeg, two spellings the raw route serves identically', async () => {
+    await store.createUpload('', 'photo.jpg', JPEG)
+
+    await move('photo.jpg', 'photo.jpeg')
+
+    await expect(store.readBytes('photo.jpeg')).resolves.toStrictEqual(JPEG)
+  })
+
+  it('still lets a document change between .md and .txt, which are one family', async () => {
+    await store.createDocument('notes.md', '# hello')
+
+    await move('notes.md', 'notes.txt')
+
+    await expect(store.read('notes.txt')).resolves.toBe('# hello')
   })
 })
 

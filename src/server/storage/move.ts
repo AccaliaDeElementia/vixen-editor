@@ -7,6 +7,7 @@ import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './safe-path.ts'
+import { mediaTypeOf } from './media-type.ts'
 import { EntryExistsError, InvalidMoveError } from './store-errors.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { entryKindOf } from './trash.ts'
@@ -24,6 +25,10 @@ function assertKindSurvives(from: string, to: string, fromKind: EntryKind): void
 
   if (classifyFile(path.basename(to)) !== fromKind) {
     throw new InvalidPathError(to, `must keep the same kind of extension as ${from}`)
+  }
+
+  if (fromKind === 'image' && mediaTypeOf(to) !== mediaTypeOf(from)) {
+    throw new InvalidPathError(to, `must keep the same image format as ${from}`)
   }
 }
 

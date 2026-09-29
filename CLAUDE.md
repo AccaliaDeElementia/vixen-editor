@@ -695,8 +695,11 @@ Both are additive to bring back after the MVP, and a behaviour change to
 remove once anyone relies on them, which is why they go now rather than
 later.
 
-A rename may not change what a file claims to be: the raw route types a
-response from the extension alone, so `notes.md` cannot become `notes.svg`.
+A rename may not change what a file claims to be — not across kinds
+(`notes.md` to `notes.svg`) and not between image formats (`photo.png` to
+`photo.jpg`), because the raw route types a response from the extension alone.
+Within one kind the test is the media type that route would serve, so document
+extensions stay interchangeable and image formats do not.
 
 **A move reads every document in the store**, because a link from anywhere can
 point at the thing that moved, and it does so inside the write lock along with
