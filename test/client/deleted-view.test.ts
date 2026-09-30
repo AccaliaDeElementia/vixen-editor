@@ -1,6 +1,5 @@
 'use sanity'
 
-import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDeletedView, type DeletedView } from '../../src/client/layout/deleted-view.ts'
@@ -23,6 +22,9 @@ let client: Fake = fakeClient()
 let opened: string[] = []
 let revealed: string[] = []
 let errors: string[] = []
+let loaded: PromiseWithResolvers<void> = Promise.withResolvers()
+let restored: PromiseWithResolvers<void> = Promise.withResolvers()
+let reported: PromiseWithResolvers<void> = Promise.withResolvers()
 
 function fakeClient(): Fake {
   return {
@@ -50,6 +52,7 @@ function view(root: ParentNode): DeletedView {
     show: () => undefined,
     error: (message: string) => {
       errors.push(message)
+      reported.resolve()
     },
   })
 
@@ -59,9 +62,11 @@ function view(root: ParentNode): DeletedView {
     toast,
     reveal: (at: string) => {
       revealed.push(at)
+      loaded.resolve()
     },
     openUrl: (url: string) => {
       opened.push(url)
+      restored.resolve()
     },
   })
 }
@@ -79,11 +84,15 @@ function textOf(root: ParentNode, selector: string): string {
 }
 
 async function afterLoad(): Promise<void> {
-  await givenAsync(
-    vi.waitFor(() => {
-      expect(revealed).toHaveLength(1)
-    }),
-  )
+  await loaded.promise
+}
+
+async function afterRestore(): Promise<void> {
+  await restored.promise
+}
+
+async function afterReport(): Promise<void> {
+  await reported.promise
 }
 
 beforeEach(() => {
@@ -92,6 +101,9 @@ beforeEach(() => {
   opened = []
   revealed = []
   errors = []
+  loaded = Promise.withResolvers()
+  restored = Promise.withResolvers()
+  reported = Promise.withResolvers()
 })
 
 describe('an entry that is in the trash', () => {
@@ -101,9 +113,9 @@ describe('an entry that is in the trash', () => {
 
     view(root).offer(ENTRY_ID)
 
-    await vi.waitFor(() => {
-      expect(textOf(root, '#deleted-what')).toContain('The file journal/a.md was deleted')
-    })
+    await afterLoad()
+
+    expect(textOf(root, '#deleted-what')).toContain('The file journal/a.md was deleted')
   })
 
   it('calls a trashed folder a folder, because restoring one brings back everything in it', async () => {
@@ -112,9 +124,9 @@ describe('an entry that is in the trash', () => {
 
     view(root).offer(ENTRY_ID)
 
-    await vi.waitFor(() => {
-      expect(textOf(root, '#deleted-what')).toContain('The folder journal')
-    })
+    await afterLoad()
+
+    expect(textOf(root, '#deleted-what')).toContain('The folder journal')
   })
 
   it('titles the workspace by the path it came from, not by the entry id', async () => {
@@ -122,9 +134,9 @@ describe('an entry that is in the trash', () => {
 
     view(page()).offer(ENTRY_ID)
 
-    await vi.waitFor(() => {
-      expect(revealed).toStrictEqual(['journal/a.md'])
-    })
+    await afterLoad()
+
+    expect(revealed).toStrictEqual(['journal/a.md'])
   })
 
   it('offers to restore it', async () => {
@@ -133,9 +145,9 @@ describe('an entry that is in the trash', () => {
 
     view(root).offer(ENTRY_ID)
 
-    await vi.waitFor(() => {
-      expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
-    })
+    await afterLoad()
+
+    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
   })
 
   it('restores the entry the url named', async () => {
@@ -146,9 +158,9 @@ describe('an entry that is in the trash', () => {
 
     root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
 
-    await vi.waitFor(() => {
-      expect(client.restore).toHaveBeenCalledWith(ENTRY_ID)
-    })
+    await afterRestore()
+
+    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID)
   })
 
   it('opens the document at the path it came back to', async () => {
@@ -159,9 +171,9 @@ describe('an entry that is in the trash', () => {
 
     root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
 
-    await vi.waitFor(() => {
-      expect(opened).toStrictEqual(['/doc/journal/a.md'])
-    })
+    await afterRestore()
+
+    expect(opened).toStrictEqual(['/doc/journal/a.md'])
   })
 
   it('reports a refused restore rather than looking as though nothing happened', async () => {
@@ -173,9 +185,9 @@ describe('an entry that is in the trash', () => {
 
     root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
 
-    await vi.waitFor(() => {
-      expect(errors).toStrictEqual(['Restore failed: Already exists'])
-    })
+    await afterReport()
+
+    expect(errors).toStrictEqual(['Restore failed: Already exists'])
   })
 })
 
@@ -198,9 +210,9 @@ describe('an entry whose old path is in use again', () => {
 
     view(root).offer(ENTRY_ID)
 
-    await vi.waitFor(() => {
-      expect(textOf(root, '#deleted-blocked')).toContain('journal/a.md is in use again')
-    })
+    await afterLoad()
+
+    expect(textOf(root, '#deleted-blocked')).toContain('journal/a.md is in use again')
   })
 })
 
@@ -210,9 +222,9 @@ describe('an entry that is no longer in the trash', () => {
 
     view(root).offer(ENTRY_ID)
 
-    await vi.waitFor(() => {
-      expect(textOf(root, '#deleted-what')).toContain('already have been restored or purged')
-    })
+    await afterLoad()
+
+    expect(textOf(root, '#deleted-what')).toContain('already have been restored or purged')
   })
 
   it('offers nothing to restore', async () => {
@@ -258,9 +270,9 @@ describe('a trash listing that cannot be read', () => {
 
     view(root).offer(ENTRY_ID)
 
-    await vi.waitFor(() => {
-      expect(errors).toStrictEqual(['Could not read the trash: network down'])
-    })
+    await afterReport()
+
+    expect(errors).toStrictEqual(['Could not read the trash: network down'])
   })
 })
 
