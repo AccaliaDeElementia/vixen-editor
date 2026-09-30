@@ -1,6 +1,5 @@
 'use sanity'
 
-import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMissingView, type MissingView } from '../../src/client/layout/missing-view.ts'
@@ -23,6 +22,8 @@ interface Fake {
 let client: Fake = fakeClient()
 let reopen = vi.fn<() => void>()
 let errors: string[] = []
+let reopened: PromiseWithResolvers<void> = Promise.withResolvers()
+let reported: PromiseWithResolvers<void> = Promise.withResolvers()
 
 function fakeClient(): Fake {
   return {
@@ -58,6 +59,7 @@ function view(root: ParentNode): MissingView {
     show: () => undefined,
     error: (message: string) => {
       errors.push(message)
+      reported.resolve()
     },
   })
 
@@ -72,12 +74,26 @@ function folder(name: string): TreeNode {
   return { name, path: name, kind: 'folder', children: [] }
 }
 
-async function afterTheTrashIsListed(root: ParentNode): Promise<void> {
-  await givenAsync(
-    vi.waitFor(() => {
-      expect(root.querySelector('#missing-restore-list button')).not.toBeNull()
-    }),
-  )
+async function afterReopen(): Promise<void> {
+  await reopened.promise
+}
+
+async function afterReport(): Promise<void> {
+  await reported.promise
+}
+
+async function afterTheTrashIsRead(root: ParentNode): Promise<void> {
+  const section = root.querySelector('#missing-restore')
+  if (section === null) throw new Error('no restore section to watch')
+
+  const read: PromiseWithResolvers<void> = Promise.withResolvers()
+  const observer = new MutationObserver(() => {
+    observer.disconnect()
+    read.resolve()
+  })
+  observer.observe(section, { attributes: true })
+
+  await read.promise
 }
 
 function dropFile(root: ParentNode, file: File): void {
@@ -89,8 +105,12 @@ function dropFile(root: ParentNode, file: File): void {
 beforeEach(() => {
   document.body.innerHTML = ''
   client = fakeClient()
-  reopen = vi.fn<() => void>()
   errors = []
+  reopened = Promise.withResolvers()
+  reported = Promise.withResolvers()
+  reopen = vi.fn<() => void>(() => {
+    reopened.resolve()
+  })
 })
 
 describe('what the view offers for the kind of path', () => {
@@ -135,9 +155,9 @@ describe('creating the missing document', () => {
     view(root).offer('journal/a.md')
 
     root.querySelector<HTMLButtonElement>('#missing-create')?.click()
-    await vi.waitFor(() => {
-      expect(client.createDocument).toHaveBeenCalledWith('journal/a.md')
-    })
+    await afterReopen()
+
+    expect(client.createDocument).toHaveBeenCalledWith('journal/a.md')
   })
 
   it('opens the document it just made', async () => {
@@ -145,9 +165,9 @@ describe('creating the missing document', () => {
     view(root).offer('journal/a.md')
 
     root.querySelector<HTMLButtonElement>('#missing-create')?.click()
-    await vi.waitFor(() => {
-      expect(reopen).toHaveBeenCalledTimes(1)
-    })
+    await afterReopen()
+
+    expect(reopen).toHaveBeenCalledTimes(1)
   })
 
   it('reports a refusal rather than looking as though nothing happened', async () => {
@@ -156,9 +176,9 @@ describe('creating the missing document', () => {
     view(root).offer('journal/a.md')
 
     root.querySelector<HTMLButtonElement>('#missing-create')?.click()
-    await vi.waitFor(() => {
-      expect(errors).toStrictEqual(['Create failed: already exists'])
-    })
+    await afterReport()
+
+    expect(errors).toStrictEqual(['Create failed: already exists'])
   })
 })
 
@@ -168,9 +188,9 @@ describe('uploading the missing file', () => {
     view(root).offer('journal/photo.png')
 
     dropFile(root, new File(['x'], 'IMG_0042.png'))
-    await vi.waitFor(() => {
-      expect(client.upload).toHaveBeenCalledWith('journal', expect.any(File), 'photo.png')
-    })
+    await afterReopen()
+
+    expect(client.upload).toHaveBeenCalledWith('journal', expect.any(File), 'photo.png')
   })
 
   it('targets the store root for a path with no folder', async () => {
@@ -178,9 +198,9 @@ describe('uploading the missing file', () => {
     view(root).offer('photo.png')
 
     dropFile(root, new File(['x'], 'IMG_0042.png'))
-    await vi.waitFor(() => {
-      expect(client.upload).toHaveBeenCalledWith('', expect.any(File), 'photo.png')
-    })
+    await afterReopen()
+
+    expect(client.upload).toHaveBeenCalledWith('', expect.any(File), 'photo.png')
   })
 
   it('opens what it stored', async () => {
@@ -188,9 +208,9 @@ describe('uploading the missing file', () => {
     view(root).offer('journal/photo.png')
 
     dropFile(root, new File(['x'], 'photo.png'))
-    await vi.waitFor(() => {
-      expect(reopen).toHaveBeenCalledTimes(1)
-    })
+    await afterReopen()
+
+    expect(reopen).toHaveBeenCalledTimes(1)
   })
 
   it('reports a rejected upload, which is the whole point of the detected format', async () => {
@@ -199,9 +219,9 @@ describe('uploading the missing file', () => {
     view(root).offer('journal/photo.png')
 
     dropFile(root, new File(['x'], 'photo.png'))
-    await vi.waitFor(() => {
-      expect(errors).toStrictEqual(['Upload failed: Content does not match the file extension'])
-    })
+    await afterReport()
+
+    expect(errors).toStrictEqual(['Upload failed: Content does not match the file extension'])
   })
   it('opens the file picker when the upload button is pressed', () => {
     const root = page()
@@ -226,10 +246,11 @@ describe('uploading the missing file', () => {
 })
 
 describe('restoring from the trash', () => {
-  it('says nothing about the trash when it holds no candidate', () => {
+  it('says nothing about the trash when it holds no candidate', async () => {
     const root = page()
 
     view(root).offer('journal/a.md')
+    await afterTheTrashIsRead(root)
 
     expect(root.querySelector<HTMLElement>('#missing-restore')?.hidden).toBe(true)
   })
@@ -240,21 +261,21 @@ describe('restoring from the trash', () => {
 
     view(root).offer('journal/a.md')
 
-    await vi.waitFor(() => {
-      expect(root.querySelector<HTMLElement>('#missing-restore')?.hidden).toBe(false)
-    })
+    await afterTheTrashIsRead(root)
+
+    expect(root.querySelector<HTMLElement>('#missing-restore')?.hidden).toBe(false)
   })
 
   it('restores the entry the user picked', async () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document', 'entry-1')])
     const root = page()
     view(root).offer('journal/a.md')
-    await afterTheTrashIsListed(root)
+    await afterTheTrashIsRead(root)
 
     root.querySelector<HTMLButtonElement>('#missing-restore-list button')?.click()
-    await vi.waitFor(() => {
-      expect(client.restore).toHaveBeenCalledWith('entry-1')
-    })
+    await afterReopen()
+
+    expect(client.restore).toHaveBeenCalledWith('entry-1')
   })
 
   it('says a folder candidate brings back the whole folder, so the blast radius is stated', async () => {
@@ -263,17 +284,18 @@ describe('restoring from the trash', () => {
 
     view(root).offer('journal/a.md')
 
-    await vi.waitFor(() => {
-      expect(root.querySelector('#missing-restore-list')?.textContent).toContain('the whole folder journal')
-    })
+    await afterTheTrashIsRead(root)
+
+    expect(root.querySelector('#missing-restore-list')?.textContent).toContain('the whole folder journal')
   })
 
-  it('offers no button for a candidate the live tree blocks', () => {
+  it('offers no button for a candidate the live tree blocks', async () => {
     client.trash.mockResolvedValue([trashed('journal', 'folder')])
     client.tree.mockResolvedValue([folder('journal')])
     const root = page()
 
     view(root).offer('journal/a.md')
+    await afterTheTrashIsRead(root)
 
     expect(root.querySelector('#missing-restore-list button')).toBeNull()
   })
@@ -285,9 +307,9 @@ describe('restoring from the trash', () => {
 
     view(root).offer('journal/a.md')
 
-    await vi.waitFor(() => {
-      expect(root.querySelector('#missing-restore-list')?.textContent).toContain('journal is back')
-    })
+    await afterTheTrashIsRead(root)
+
+    expect(root.querySelector('#missing-restore-list')?.textContent).toContain('journal is back')
   })
 
   it('treats the server as authoritative when a restore is refused anyway', async () => {
@@ -295,12 +317,12 @@ describe('restoring from the trash', () => {
     client.restore.mockRejectedValue(new Error('Already exists'))
     const root = page()
     view(root).offer('journal/a.md')
-    await afterTheTrashIsListed(root)
+    await afterTheTrashIsRead(root)
 
     root.querySelector<HTMLButtonElement>('#missing-restore-list button')?.click()
-    await vi.waitFor(() => {
-      expect(errors).toStrictEqual(['Restore failed: Already exists'])
-    })
+    await afterReport()
+
+    expect(errors).toStrictEqual(['Restore failed: Already exists'])
   })
 
   it('clears a previous path’s candidates rather than stacking them', () => {
@@ -320,9 +342,9 @@ describe('restoring from the trash', () => {
 
     view(root).offer('journal/a.md')
 
-    await vi.waitFor(() => {
-      expect(errors).toStrictEqual(['Could not read the trash: network down'])
-    })
+    await afterReport()
+
+    expect(errors).toStrictEqual(['Could not read the trash: network down'])
   })
 })
 
