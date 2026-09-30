@@ -379,19 +379,20 @@ That hook fires only for the exact script name `test`. **`npm run test:unit`
 and `npm run test:coverage` bypass the static checks** — which is the point of
 them, but it means a green `test:coverage` is not a green gate.
 
-| Command                  | Purpose                                                                     |
-| ------------------------ | --------------------------------------------------------------------------- |
-| `npm test`               | **The gate.** pretest (format, types, lint) then coverage                   |
-| `npm run test:all`       | The gate plus the browser suite; needs browser binaries                     |
-| `npm run test:unit`      | Vitest alone, no coverage — for a tight edit loop                           |
-| `npm run test:watch`     | Vitest in watch mode                                                        |
-| `npm run test:coverage`  | Vitest with the 100% threshold enforced                                     |
-| `npm run test:browser`   | Playwright, real Chromium, against built artifacts                          |
-| `npm run build`          | esbuild: server to `dist/`, client to `public/assets/`                      |
-| `npm run dev`            | Watch every source dir; rebuild and restart on change                       |
-| `npm run format`         | Rewrite files to Prettier style (the fix for a format failure)              |
-| `npm run lint:fix`       | Apply ESLint autofixes                                                      |
-| `npm run mutate <files>` | Mutation-test those files against the unit suite — **not part of the gate** |
+| Command                  | Purpose                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `npm test`               | **The gate.** pretest (format, types, lint) then coverage                         |
+| `npm run test:all`       | The gate plus the browser suite; needs browser binaries                           |
+| `npm run test:unit`      | Vitest alone, no coverage — for a tight edit loop                                 |
+| `npm run test:watch`     | Vitest in watch mode                                                              |
+| `npm run test:coverage`  | Vitest with the 100% threshold enforced                                           |
+| `npm run test:browser`   | Playwright, real Chromium, against built artifacts                                |
+| `npm run build`          | esbuild: server to `dist/`, client to `public/assets/`                            |
+| `npm run dev`            | Watch every source dir; rebuild and restart on change                             |
+| `npm run format`         | Rewrite files to Prettier style (the fix for a format failure)                    |
+| `npm run lint:fix`       | Apply ESLint autofixes                                                            |
+| `npm run mutate <files>` | Mutation-test those files against the unit suite — **not part of the gate**       |
+| `npm run assertions`     | One claim per test, cross-checked against both runners — **not part of the gate** |
 
 `test:unit` is the shortcut, and it is named so that reaching for it is a
 deliberate choice rather than an accident.
@@ -402,6 +403,19 @@ time and re-runs the suite, so a mutant that survives names a line no test
 constrains. It costs a full run per mutant, which is why it is a tool to reach
 for deliberately and never a gate. It brackets itself with the workspace state
 on entry and refuses to report success for a file it found nothing to mutate.
+
+**`npm run assertions` answers a narrower one**: whether each test makes a
+single claim, and whether the scanner can see every test there is. It counts
+assertions per test, discounting those marked as conditions, then asks
+`vitest list` and Playwright's `--list` how many declarations each file holds
+and fails on any disagreement.
+
+**The cross-check is the load-bearing half.** The scanner is a regex over
+source, and every defect found in it so far has been a wrong answer on input
+where every line still ran — a coverage gate would have caught none of them.
+An independent enumeration catches the ones nobody predicted, and has:
+`it.each<T>(…)` with a type argument, and a whole file excluded by a suffix
+allowlist, were both invisible until the runners were asked.
 
 ### Run the gate so its exit code survives
 
@@ -1049,9 +1063,9 @@ one type on both would make one of them lie.
 
 Tests are written first. Two suites, deliberately separate:
 
-- **`test/`** — Vitest, in three projects: `test/server` (node environment),
-  `test/client` (happy-dom) and `test/conventions` (node). This is the coverage
-  gate and runs inside the Docker build.
+- **`test/`** — Vitest, in four projects: `test/server` (node environment),
+  `test/client` (happy-dom), `test/shared` (node) and `test/conventions`
+  (node). This is the coverage gate and runs inside the Docker build.
 - **`test-browser/`** — Playwright. Needs browser binaries the slim runtime
   image does not carry, so it is excluded from `npm test`. Reserve it for
   assertions that require real layout, geometry or paint, and for driving the
@@ -1081,6 +1095,59 @@ Tests are written first. Two suites, deliberately separate:
   Both projects match the one lifecycle file and pick their half of it with
   `grep` against a `@setup` / `@teardown` tag, which is what lets two tests
   that are three lines apart stay in the same file.
+
+### A test makes one claim
+
+Setup, an optional precondition, the action, and **one assertion for the
+behaviour the test is named for**. A test asserting two things is two tests,
+and the name usually confesses it: "and", "without" and "not" are reliable
+tells, as is "each", which is asking for `it.each`.
+
+Preconditions and waits are written as assertions too, and telling them from
+the claim is what `test/conditions.ts` is for:
+
+```ts
+given(() => {
+  expect(cache.size).toBeGreaterThan(0)
+})
+
+cache.clear()
+
+expect(cache.size).toBe(0)
+```
+
+Without that gate, a setup that left the cache already empty passes a test
+whose subject never ran. `given` marks a synchronous condition, `givenAsync`
+an awaited one; both re-throw, because a gate that passed silently would be
+worse than no gate. Two names rather than one overload, so that a condition
+changing from synchronous to awaited breaks the build instead of being quietly
+un-awaited.
+
+**Combining several facts into one object assertion is legitimate only where
+no single property means anything alone** — a relation, a pair, a mode, or the
+full set of effects a branch has. It is not a way to satisfy the count. Where
+the properties stand up separately they are separate tests.
+
+**`npm run assertions` is the check, and it is not in the gate yet.** It is
+meant to be: the suite satisfies it today, it costs under a second, and a
+check that matters but has to be remembered is the second stricter command
+this file says not to have. Two things are owed first, and if either is still
+unwritten when you read this, treat this paragraph as the reminder.
+
+**A gate's instrument must be as trustworthy as the gate.** Once
+`npm run assertions` can block a commit its own defects become everyone's
+problem, and it has had them — each one a wrong answer on input where every
+line still ran. So `scripts/assertions.ts` gets a spec before it gets that
+power, and the runner cross-check is no substitute: it proves the scanner
+sees every test, not that it counts them right.
+
+**The stricter rule waits on somewhere to wait.** That `vi.waitFor` may
+appear only inside `givenAsync` — making an unmarked one a claim by
+definition — cannot land while tests hold their claim inside one because
+nothing else says the work has finished. Giving them a definite signal is its
+own workstream, and closing the door first would block the refactor that
+makes it closable. Until then a bare `vi.waitFor` counts as the assertion it
+is.
 
 ### The conventions suite enforces this document
 
