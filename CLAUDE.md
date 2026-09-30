@@ -367,7 +367,7 @@ coverage would make "tests pass" mean less than it says.
 It is wired through npm's `pretest` hook, so the order is:
 
 ```
-pretest:  format  →  typecheck  →  lint
+pretest:  format  →  typecheck  →  lint  →  assertions
 test:     test:coverage
 ```
 
@@ -379,20 +379,20 @@ That hook fires only for the exact script name `test`. **`npm run test:unit`
 and `npm run test:coverage` bypass the static checks** — which is the point of
 them, but it means a green `test:coverage` is not a green gate.
 
-| Command                  | Purpose                                                                           |
-| ------------------------ | --------------------------------------------------------------------------------- |
-| `npm test`               | **The gate.** pretest (format, types, lint) then coverage                         |
-| `npm run test:all`       | The gate plus the browser suite; needs browser binaries                           |
-| `npm run test:unit`      | Vitest alone, no coverage — for a tight edit loop                                 |
-| `npm run test:watch`     | Vitest in watch mode                                                              |
-| `npm run test:coverage`  | Vitest with the 100% threshold enforced                                           |
-| `npm run test:browser`   | Playwright, real Chromium, against built artifacts                                |
-| `npm run build`          | esbuild: server to `dist/`, client to `public/assets/`                            |
-| `npm run dev`            | Watch every source dir; rebuild and restart on change                             |
-| `npm run format`         | Rewrite files to Prettier style (the fix for a format failure)                    |
-| `npm run lint:fix`       | Apply ESLint autofixes                                                            |
-| `npm run mutate <files>` | Mutation-test those files against the unit suite — **not part of the gate**       |
-| `npm run assertions`     | One claim per test, cross-checked against both runners — **not part of the gate** |
+| Command                  | Purpose                                                                             |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| `npm test`               | **The gate.** pretest (format, types, lint) then coverage                           |
+| `npm run test:all`       | The gate plus the browser suite; needs browser binaries                             |
+| `npm run test:unit`      | Vitest alone, no coverage — for a tight edit loop                                   |
+| `npm run test:watch`     | Vitest in watch mode                                                                |
+| `npm run test:coverage`  | Vitest with the 100% threshold enforced                                             |
+| `npm run test:browser`   | Playwright, real Chromium, against built artifacts                                  |
+| `npm run build`          | esbuild: server to `dist/`, client to `public/assets/`                              |
+| `npm run dev`            | Watch every source dir; rebuild and restart on change                               |
+| `npm run format`         | Rewrite files to Prettier style (the fix for a format failure)                      |
+| `npm run lint:fix`       | Apply ESLint autofixes                                                              |
+| `npm run mutate <files>` | Mutation-test those files against the unit suite — **not part of the gate**         |
+| `npm run assertions`     | One claim per test, cross-checked against both runners — **on the `pretest` chain** |
 
 `test:unit` is the shortcut, and it is named so that reaching for it is a
 deliberate choice rather than an accident.
@@ -1128,20 +1128,24 @@ no single property means anything alone** — a relation, a pair, a mode, or the
 full set of effects a branch has. It is not a way to satisfy the count. Where
 the properties stand up separately they are separate tests.
 
-**`npm run assertions` is the check, and it is not in the gate yet.** It is
-meant to be: the suite satisfies it today, it costs under a second, and a
-check that matters but has to be remembered is the second stricter command
-this file says not to have. Two things are owed first, and if either is still
-unwritten when you read this, treat this paragraph as the reminder.
+**`npm run assertions` is in the gate**, on the `pretest` chain after `lint`.
+It refuses a test that asserts more than once, and any file whose count
+disagrees with what the runners list. It costs under a second, so the reason
+`npm run mutate` stays out does not apply to it.
 
-**A gate's instrument must be as trustworthy as the gate.** Once
-`npm run assertions` can block a commit its own defects become everyone's
-problem, and it has had them — each one a wrong answer on input where every
-line still ran. So `scripts/assertions.ts` gets a spec before it gets that
-power, and the runner cross-check is no substitute: it proves the scanner
-sees every test, not that it counts them right.
+**A gate's instrument must be as trustworthy as the gate**, which is why
+`scripts/assertions.ts` has a spec of its own in `test/conventions/`, with
+its fixtures in `.txt` beside it — a fixture naming a test would otherwise be
+read as a declaration, and an exemption for the spec file would let the
+spec's own tests escape the rule. Every defect the scanner has had was a wrong
+answer on input where every line still ran, so coverage would have caught none
+of them: the spec pins the shapes that have gone wrong, the cross-check
+catches the ones nobody predicted, and
+`npm run mutate scripts/assertions.ts` is what says the spec constrains
+anything.
 
-**The stricter rule waits on somewhere to wait.** That `vi.waitFor` may
+**One rule is still owed, and this paragraph is the reminder if it stalls.**
+That `vi.waitFor` may
 appear only inside `givenAsync` — making an unmarked one a claim by
 definition — cannot land while tests hold their claim inside one because
 nothing else says the work has finished. Giving them a definite signal is its
