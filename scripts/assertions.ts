@@ -1,10 +1,12 @@
 'use sanity'
 
+import { execFile } from 'node:child_process'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const SUITES = ['test', 'test-browser']
-const SUFFIXES = ['.test.ts', '.spec.ts']
+const BROWSER_SUITE = 'test-browser'
+const SOURCE = '.ts'
 const CONDITIONS = ['given', 'givenAsync']
 
 const NONE = 0
@@ -21,7 +23,7 @@ export interface Counted {
   file: string
   line: number
   name: string
-  assertions: number
+  assertions: number | null
 }
 
 const QUOTES = new Set(["'", '"', '`'])
@@ -121,14 +123,13 @@ export function countIn(file: string, text: string): Counted[] {
 
   return starts.flatMap((match) => {
     const body = bodyOf(text, match)
-    if (body === null) return []
 
     return [
       {
         file,
         line: text.slice(NONE, match.index).split('\n').length,
         name: match.groups?.name ?? '',
-        assertions: [...withoutConditions(body).matchAll(ASSERTION)].length,
+        assertions: body === null ? null : [...withoutConditions(body).matchAll(ASSERTION)].length,
       },
     ]
   })
@@ -141,7 +142,7 @@ async function specsUnder(directory: string): Promise<string[]> {
       const full = path.join(directory, entry.name)
       if (entry.isDirectory()) return await specsUnder(full)
 
-      return SUFFIXES.some((suffix) => entry.name.endsWith(suffix)) ? [full] : []
+      return entry.name.endsWith(SOURCE) ? [full] : []
     }),
   )
 
@@ -155,17 +156,107 @@ export async function countAll(): Promise<Counted[]> {
   return counted.flat()
 }
 
+const PROJECT_TAG = /^\[[^\]]+\]\s*(?:\u203a\s*)?/v
+const VITEST_PATH_ENDS = ' > '
+
+interface Lister {
+  what: string
+  command: string
+  args: string[]
+  listsEveryProject: boolean
+  fileOf: (declaration: string) => string | null
+}
+
+function vitestFileOf(declaration: string): string | null {
+  const ends = declaration.indexOf(VITEST_PATH_ENDS)
+
+  return ends < NONE ? null : declaration.slice(NONE, ends)
+}
+
+function playwrightFileOf(declaration: string): string | null {
+  const ends = declaration.indexOf(':')
+
+  return ends < NONE ? null : path.join(BROWSER_SUITE, declaration.slice(NONE, ends))
+}
+
+const LISTERS: Lister[] = [
+  { what: 'vitest', command: 'npx', args: ['vitest', 'list'], listsEveryProject: false, fileOf: vitestFileOf },
+  {
+    what: 'playwright',
+    command: 'npx',
+    args: ['playwright', 'test', '-c', 'test-browser/playwright.config.ts', '--list'],
+    listsEveryProject: true,
+    fileOf: playwrightFileOf,
+  },
+]
+
+async function listing(lister: Lister): Promise<string> {
+  const settled: PromiseWithResolvers<string> = Promise.withResolvers()
+
+  execFile(lister.command, lister.args, (error, stdout) => {
+    if (error === null) settled.resolve(stdout)
+    else settled.reject(new Error(`${lister.what} could not list its tests: ${error.message}`))
+  })
+
+  return await settled.promise
+}
+
+function declarationsIn(lister: Lister, stdout: string): string[] {
+  const tagged = stdout.split('\n').map((line) => line.trimStart())
+  const listed = tagged.filter((line) => PROJECT_TAG.test(line)).map((line) => line.replace(PROJECT_TAG, ''))
+
+  return lister.listsEveryProject ? [...new Set(listed)] : listed
+}
+
+function tally(files: string[]): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const file of files) counts.set(file, (counts.get(file) ?? NONE) + ONE)
+
+  return counts
+}
+
+async function countedByRunners(): Promise<Map<string, number>> {
+  const listings = await Promise.all(
+    LISTERS.map(async (lister) => {
+      const declarations = declarationsIn(lister, await listing(lister))
+
+      return declarations.map((declaration) => lister.fileOf(declaration)).filter((file) => file !== null)
+    }),
+  )
+
+  return tally(listings.flat())
+}
+
+interface Disagreement {
+  file: string
+  scanned: number
+  listed: number
+}
+
+function disagreements(scanned: Counted[], listed: Map<string, number>): Disagreement[] {
+  const mine = tally(scanned.map(({ file }) => file))
+  const everyFile = new Set([...mine.keys(), ...listed.keys()])
+
+  return [...everyFile]
+    .map((file) => ({ file, scanned: mine.get(file) ?? NONE, listed: listed.get(file) ?? NONE }))
+    .filter((row) => row.scanned !== row.listed)
+    .sort((a, b) => a.file.localeCompare(b.file))
+}
+
 if (import.meta.main) {
   const counted = await countAll()
-  const over = counted.filter(({ assertions }) => assertions > ONE)
+  const over = counted.filter(({ assertions }) => assertions !== null && assertions > ONE)
+  const readable = counted.filter(({ assertions }) => assertions !== null)
   const tally = new Map<number, number>()
-  for (const { assertions } of counted) tally.set(assertions, (tally.get(assertions) ?? NONE) + ONE)
+  for (const { assertions } of readable) tally.set(assertions ?? NONE, (tally.get(assertions ?? NONE) ?? NONE) + ONE)
 
   process.stdout.write(`${String(counted.length)} tests\n`)
   for (const key of [...tally.keys()].sort((a, b) => a - b)) {
     process.stdout.write(`  ${String(key)} assertion(s): ${String(tally.get(key) ?? NONE)}\n`)
   }
   const silent = counted.filter(({ assertions }) => assertions === NONE)
+  const unread = counted.length - readable.length
+  if (unread > NONE) process.stdout.write(`  (${String(unread)} pass a named function, so their body is elsewhere)\n`)
   if (silent.length > NONE) {
     process.stdout.write(`\n${String(silent.length)} tests assert nothing outside a wait\n`)
     for (const { file, line, name } of silent) process.stdout.write(`  ${file}:${String(line)}  ${name}\n`)
@@ -176,5 +267,13 @@ if (import.meta.main) {
     process.stdout.write(`  ${String(assertions)}  ${file}:${String(line)}  ${name}\n`)
   }
 
-  process.exitCode = over.length > NONE ? FAILURE : SUCCESS
+  const missed = disagreements(counted, await countedByRunners())
+  if (missed.length > NONE) {
+    process.stdout.write(`\n${String(missed.length)} files this scanner reads differently from the runners\n`)
+    for (const { file, scanned, listed } of missed) {
+      process.stdout.write(`  ${file}: scanned ${String(scanned)}, listed ${String(listed)}\n`)
+    }
+  }
+
+  process.exitCode = over.length + missed.length > NONE ? FAILURE : SUCCESS
 }
