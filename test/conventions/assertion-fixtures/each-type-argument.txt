@@ -1,0 +1,6 @@
+it.each<[WorkspaceView, string]>([
+  ['pending', 'view-pending'],
+  ['document', 'editor'],
+])('shows only the %s view', (view, id) => {
+  expect(shown(view)).toBe(id)
+})

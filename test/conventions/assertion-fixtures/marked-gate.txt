@@ -1,0 +1,9 @@
+it('clears the cache', () => {
+  given(() => {
+    expect(cache.size).toBeGreaterThan(0)
+  })
+
+  cache.clear()
+
+  expect(cache.size).toBe(0)
+})

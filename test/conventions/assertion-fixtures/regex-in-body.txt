@@ -1,0 +1,12 @@
+test('serves the compiled stylesheet at the path the page asks for', async ({ request }) => {
+  const rendered = await (await request.get('/')).text()
+  const href = /<link[^>]+rel="stylesheet"[^>]+href="(?<href>\/assets[^"]+)"/v.exec(rendered)?.groups?.href
+
+  expect(href).toBe('/assets/main.css')
+})
+
+test('serves the built client bundle at the path the page asks for', async ({ request }) => {
+  const rendered = await (await request.get('/')).text()
+
+  expect(rendered).toContain('/assets/main.js')
+})

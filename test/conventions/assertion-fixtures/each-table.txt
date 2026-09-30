@@ -1,0 +1,6 @@
+it.each([
+  ['a document', 'notes.md'],
+  ['an image', 'photo.png'],
+])('reads %s', (_label, entryPath) => {
+  expect(kindOf(entryPath)).toBe('document')
+})

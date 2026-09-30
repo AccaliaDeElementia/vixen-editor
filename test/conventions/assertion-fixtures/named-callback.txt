@@ -1,0 +1,1 @@
+test('the document store starts empty', { tag: '@setup' }, emptyTheStore)

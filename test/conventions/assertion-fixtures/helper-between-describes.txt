@@ -1,0 +1,17 @@
+describe('one subject', () => {
+  it('asserts once', () => {
+    expect(thing()).toBe(1)
+  })
+})
+
+describe('another subject', () => {
+  function opened(): void {
+    expect(state()).toBe('open')
+  }
+
+  it('also asserts once', () => {
+    opened()
+
+    expect(other()).toBe(2)
+  })
+})

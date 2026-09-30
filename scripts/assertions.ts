@@ -19,7 +19,7 @@ const TEST_START =
   /\b(?:it|test)(?:\.each(?:<[^>]*>)?\((?:.|\n)*?\)\s*)?\(\s*(?<quote>[`'"])(?<name>(?:(?!\k<quote>).)*)\k<quote>/gv
 const ASSERTION = /\bexpect(?:\.poll)?\s*\(/gv
 
-export interface Counted {
+interface Counted {
   file: string
   line: number
   name: string
@@ -118,7 +118,7 @@ function bodyOf(text: string, match: RegExpExecArray): string | null {
   return arrow < NONE ? null : call.slice(arrow + AFTER_MATCH)
 }
 
-export function countIn(file: string, text: string): Counted[] {
+function countIn(file: string, text: string): Counted[] {
   const starts = [...text.matchAll(TEST_START)]
 
   return starts.flatMap((match) => {
@@ -149,7 +149,7 @@ async function specsUnder(directory: string): Promise<string[]> {
   return nested.flat()
 }
 
-export async function countAll(): Promise<Counted[]> {
+async function countAll(): Promise<Counted[]> {
   const found = await Promise.all(SUITES.map(specsUnder))
   const counted = await Promise.all(found.flat().map(async (file) => countIn(file, await readFile(file, 'utf8'))))
 
@@ -190,12 +190,12 @@ const LISTERS: Lister[] = [
   },
 ]
 
-async function listing(lister: Lister): Promise<string> {
+async function listing(what: string, command: string, args: string[]): Promise<string> {
   const settled: PromiseWithResolvers<string> = Promise.withResolvers()
 
-  execFile(lister.command, lister.args, (error, stdout) => {
+  execFile(command, args, (error, stdout) => {
     if (error === null) settled.resolve(stdout)
-    else settled.reject(new Error(`${lister.what} could not list its tests: ${error.message}`))
+    else settled.reject(new Error(`${what} could not list its tests: ${error.message}`))
   })
 
   return await settled.promise
@@ -218,7 +218,8 @@ function tally(files: string[]): Map<string, number> {
 async function countedByRunners(): Promise<Map<string, number>> {
   const listings = await Promise.all(
     LISTERS.map(async (lister) => {
-      const declarations = declarationsIn(lister, await listing(lister))
+      const listed = await listing(lister.what, lister.command, lister.args)
+      const declarations = declarationsIn(lister, listed)
 
       return declarations.map((declaration) => lister.fileOf(declaration)).filter((file) => file !== null)
     }),
@@ -242,6 +243,8 @@ function disagreements(scanned: Counted[], listed: Map<string, number>): Disagre
     .filter((row) => row.scanned !== row.listed)
     .sort((a, b) => a.file.localeCompare(b.file))
 }
+
+export const TestOnly = { countIn, disagreements, listing }
 
 if (import.meta.main) {
   const counted = await countAll()
