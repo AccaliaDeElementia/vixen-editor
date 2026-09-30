@@ -46,13 +46,12 @@ describe('the first document of an empty workspace', () => {
     return view.state.doc.toString()
   }
 
-  it('starts with a cheatsheet, so the gestures are discoverable at all', async () => {
-    const content = await contentOf(emptyStore(), '/doc/')
-
-    expect(content).toContain('# index')
-    expect(content).toContain('## Keyboard')
-    expect(content).toContain('Ctrl/Cmd + S')
-  })
+  it.each(['# index', '## Keyboard', 'Ctrl/Cmd + S'])(
+    'starts with a cheatsheet holding %s, so the gestures are discoverable at all',
+    async (fragment) => {
+      expect(await contentOf(emptyStore(), '/doc/')).toContain(fragment)
+    },
+  )
 
   it('is the plain template once the store has anything in it', async () => {
     expect(await contentOf(populatedStore(), '/doc/')).toBe('# index\n')

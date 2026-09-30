@@ -75,6 +75,13 @@ describe('beginning a merge', () => {
     merging.begin(view, ON_DISK)
 
     expect(strickenText(view)).toContain('theirs')
+  })
+
+  it('does not strike the buffer, which is the side being kept', () => {
+    const { view, merging } = editorShowing(IN_BUFFER)
+
+    merging.begin(view, ON_DISK)
+
     expect(strickenText(view)).not.toContain('mine')
   })
 
@@ -123,8 +130,24 @@ describe('accepting a difference, which leaves the buffer untouched', () => {
 
     acceptChunk(harness.view, getChunks(harness.view.state)?.chunks[0]?.fromB ?? 0)
 
-    expect(harness.view.state.doc.toString()).toBe(IN_BUFFER)
     expect(changedLines(harness.view)).toBe(0)
+  })
+
+  it('leaves the buffer as it was, since accepting means keeping it', () => {
+    const harness = editorShowing(IN_BUFFER)
+    harness.merging.begin(harness.view, ON_DISK)
+
+    acceptChunk(harness.view, getChunks(harness.view.state)?.chunks[0]?.fromB ?? 0)
+
+    expect(harness.view.state.doc.toString()).toBe(IN_BUFFER)
+  })
+
+  it('reports the merge resolved, so the caller can stop warning', () => {
+    const harness = editorShowing(IN_BUFFER)
+    harness.merging.begin(harness.view, ON_DISK)
+
+    acceptChunk(harness.view, getChunks(harness.view.state)?.chunks[0]?.fromB ?? 0)
+
     expect(harness.resolved.count).toBe(1)
   })
 })
@@ -137,6 +160,14 @@ describe('resolving only some of the differences', () => {
     harness.view.dispatch({ changes: { ...DIFFERING_LINE, insert: 'theirs' } })
 
     expect(changedLines(harness.view)).toBe(1)
+  })
+
+  it('reports nothing resolved while a decision is outstanding', () => {
+    const harness = editorShowing('alpha\nmine\ngamma\nmine again\n')
+    harness.merging.begin(harness.view, 'alpha\ntheirs\ngamma\ntheirs again\n')
+
+    harness.view.dispatch({ changes: { ...DIFFERING_LINE, insert: 'theirs' } })
+
     expect(harness.resolved.count).toBe(0)
   })
 })

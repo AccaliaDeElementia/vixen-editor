@@ -14,10 +14,12 @@ describe('the cheatsheet a new workspace starts with', () => {
     expect(headings).toStrictEqual(HELP_SECTIONS.map((section) => section.heading))
   })
 
-  it('is a markdown table, so it reads as a document rather than as markup', () => {
-    expect(cheatsheet()).toContain('| What | Keys |')
-    expect(cheatsheet()).toContain('| --- | --- |')
-  })
+  it.each(['| What | Keys |', '| --- | --- |'])(
+    'is a markdown table carrying %s, so it reads as a document rather than as markup',
+    (row) => {
+      expect(cheatsheet()).toContain(row)
+    },
+  )
 
   it('names every entry the dialog would list', () => {
     const rendered = cheatsheet()
@@ -29,10 +31,12 @@ describe('the cheatsheet a new workspace starts with', () => {
     }
   })
 
-  it('covers the gestures this workstream added', () => {
-    expect(cheatsheet()).toContain('Ctrl/Cmd + Enter')
-    expect(cheatsheet()).toContain('tap it and then tap Open')
-  })
+  it.each(['Ctrl/Cmd + Enter', 'tap it and then tap Open'])(
+    'covers %s, one of the gestures this workstream added',
+    (gesture) => {
+      expect(cheatsheet()).toContain(gesture)
+    },
+  )
 })
 
 describe('the keys the help list claims, against the keys the app binds', () => {

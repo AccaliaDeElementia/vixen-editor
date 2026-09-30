@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../cast.ts'
@@ -122,6 +123,13 @@ describe('mutations', () => {
     fetchMock.mockResolvedValue(jsonResponse({ path: 'journal/p.png' }, 201))
 
     await expect(client().upload('journal', new File(['x'], 'p.png'))).resolves.toBe('journal/p.png')
+  })
+
+  it('uploads a file as multipart', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ path: 'journal/p.png' }, 201))
+
+    await givenAsync(expect(client().upload('journal', new File(['x'], 'p.png'))).resolves.toBe('journal/p.png'))
+
     expect(fetchMock).toHaveBeenCalledWith('/api/files/uploads', expect.objectContaining({ method: 'POST' }))
   })
 

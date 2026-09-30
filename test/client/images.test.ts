@@ -38,6 +38,13 @@ function sourceIsVisible(view: EditorView): boolean {
   return view.dom.textContent.includes('![')
 }
 
+function lineShows(view: EditorView): { images: number; source: boolean } {
+  return { images: rendered(view).length, source: sourceIsVisible(view) }
+}
+
+const THE_IMAGE = { images: 1, source: false }
+const THE_SOURCE = { images: 0, source: true }
+
 function caretTo(view: EditorView, anchor: number): void {
   view.dispatch({ selection: { anchor } })
 }
@@ -50,8 +57,7 @@ describe('an image alone on its line', () => {
   it('renders in place of its source', () => {
     const view = editing('intro\n![a](./pic.png)\ntail\n')
 
-    expect(rendered(view)).toHaveLength(1)
-    expect(sourceIsVisible(view)).toBe(false)
+    expect(lineShows(view)).toStrictEqual(THE_IMAGE)
   })
 
   it('points at the raw route, resolved against the document holding it', () => {
@@ -79,8 +85,7 @@ describe('the caret', () => {
 
     caretTo(view, 8)
 
-    expect(rendered(view)).toHaveLength(0)
-    expect(sourceIsVisible(view)).toBe(true)
+    expect(lineShows(view)).toStrictEqual(THE_SOURCE)
   })
 
   it('renders the image again once it leaves', () => {
@@ -172,8 +177,7 @@ describe('an image that will not load', () => {
 
     rendered(view).at(0)?.dispatchEvent(new Event('error'))
 
-    expect(rendered(view)).toHaveLength(0)
-    expect(sourceIsVisible(view)).toBe(true)
+    expect(lineShows(view)).toStrictEqual(THE_SOURCE)
   })
 
   it('does not take other images down with it', () => {

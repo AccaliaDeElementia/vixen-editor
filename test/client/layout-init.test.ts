@@ -265,6 +265,13 @@ describe('the help button', () => {
     root.querySelector<HTMLElement>('#show-help')?.click()
 
     expect(root.querySelector('#file-dialog-title')?.textContent).toBe('Help')
+  })
+
+  it('lists the gestures and shortcuts in that dialog', () => {
+    initLayout({ root, view: fakeView() })
+
+    root.querySelector<HTMLElement>('#show-help')?.click()
+
     expect([...root.querySelectorAll('#file-dialog-body h3')].map((h) => h.textContent)).toContain('Keyboard')
   })
 

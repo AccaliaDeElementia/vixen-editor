@@ -124,8 +124,11 @@ describe('destinationsIn ignores what is not markdown link syntax', () => {
     expect(valuesIn('<img src="html.png">')).toStrictEqual([])
   })
 
-  it('ignores an autolink, though the same text written as a link is found', () => {
+  it('ignores an autolink', () => {
     expect(valuesIn('see <https://example.com/a.md> ok')).toStrictEqual([])
+  })
+
+  it('finds the same target written as a link, which is what makes the autolink case a choice', () => {
     expect(valuesIn('see [x](https://example.com/a.md) ok')).toStrictEqual(['https://example.com/a.md'])
   })
 

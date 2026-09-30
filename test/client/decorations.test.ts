@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../conditions.ts'
 import { EditorState } from '@codemirror/state'
 import type { Decoration, DecorationSet } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
@@ -248,7 +249,10 @@ describe('vixenDecorationField', () => {
 
     const titles = flatten(view.state.field(vixenDecorationField))
 
-    expect(titles).toHaveLength(1)
+    given(() => {
+      expect(titles).toHaveLength(1)
+    })
+
     expect(view.dom.querySelector('.cm-vixen-link')?.getAttribute('title')).toBe('Ctrl/Cmd+click to open journal/b.md')
   })
 

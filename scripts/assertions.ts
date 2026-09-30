@@ -14,7 +14,7 @@ const FAILURE = 1
 const SUCCESS = 0
 
 const TEST_START =
-  /\b(?:it|test)(?:\.each\((?:.|\n)*?\)\s*)?\(\s*(?<quote>[`'"])(?<name>(?:(?!\k<quote>).)*)\k<quote>/gv
+  /\b(?:it|test)(?:\.each(?:<[^>]*>)?\((?:.|\n)*?\)\s*)?\(\s*(?<quote>[`'"])(?<name>(?:(?!\k<quote>).)*)\k<quote>/gv
 const ASSERTION = /\bexpect(?:\.poll)?\s*\(/gv
 
 export interface Counted {
@@ -34,32 +34,50 @@ function quoteAfter(character: string, quote: string | null): string | null {
   return character === quote ? null : quote
 }
 
+const BEFORE_A_REGEX = new Set(['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '\n'])
+const INSIGNIFICANT = new Set([' ', '\t'])
+
 interface Scan {
   depth: number
   quote: string | null
   escaped: boolean
+  inRegex: boolean
+  previous: string
   closedAt: number | null
 }
 
-function advance(scan: Scan, character: string, index: number): Scan {
-  if (scan.escaped) return { ...scan, escaped: false }
-  if (scan.quote !== null) {
-    return { ...scan, escaped: character === '\\', quote: quoteAfter(character, scan.quote) }
+function remembering(scan: Scan, character: string): string {
+  return INSIGNIFICANT.has(character) ? scan.previous : character
+}
+
+function opensARegex(scan: Scan, character: string, next: string): boolean {
+  return character === '/' && next !== '/' && next !== '*' && BEFORE_A_REGEX.has(scan.previous)
+}
+
+function advance(scan: Scan, character: string, next: string, index: number): Scan {
+  const previous = remembering(scan, character)
+  if (scan.escaped) return { ...scan, escaped: false, previous }
+  if (scan.inRegex) {
+    return { ...scan, escaped: character === '\\', inRegex: character !== '/', previous }
   }
-  if (QUOTES.has(character)) return { ...scan, quote: character }
-  if (OPENERS.has(character)) return { ...scan, depth: scan.depth + ONE }
-  if (!CLOSERS.has(character)) return scan
+  if (scan.quote !== null) {
+    return { ...scan, escaped: character === '\\', quote: quoteAfter(character, scan.quote), previous }
+  }
+  if (opensARegex(scan, character, next)) return { ...scan, inRegex: true, previous }
+  if (QUOTES.has(character)) return { ...scan, quote: character, previous }
+  if (OPENERS.has(character)) return { ...scan, depth: scan.depth + ONE, previous }
+  if (!CLOSERS.has(character)) return { ...scan, previous }
 
   const depth = scan.depth - ONE
 
-  return { ...scan, depth, closedAt: depth === NONE ? index : null }
+  return { ...scan, depth, previous, closedAt: depth === NONE ? index : null }
 }
 
 function spanFrom(text: string, open: number): string {
-  let scan: Scan = { depth: NONE, quote: null, escaped: false, closedAt: null }
+  let scan: Scan = { depth: NONE, quote: null, escaped: false, inRegex: false, previous: '(', closedAt: null }
 
   for (let index = open; index < text.length; index += ONE) {
-    scan = advance(scan, text[index] ?? '', index)
+    scan = advance(scan, text[index] ?? '', text[index + ONE] ?? '', index)
     if (scan.closedAt !== null) return text.slice(open, scan.closedAt + ONE)
   }
 
@@ -78,24 +96,31 @@ function withoutConditions(body: string): string {
   }, body)
 }
 
-const TOP_LEVEL_DECLARATION = /^(?:async function|function|const|class) /mv
+const QUOTE_PAIR = 2
 
-function bodyBetween(text: string, after: number, until: number): string | null {
-  const arrow = text.indexOf('=>', after)
-  if (arrow < NONE || arrow > until) return null
+function callOpenedAt(text: string, match: RegExpExecArray): number | null {
+  const name = match.groups?.name ?? ''
+  const nameOpensAt = match.index + match[NONE].length - name.length - QUOTE_PAIR
+  const open = text.lastIndexOf('(', nameOpensAt)
 
-  const body = text.slice(arrow + AFTER_MATCH, until)
-  const declared = TOP_LEVEL_DECLARATION.exec(body)?.index
+  return open < NONE ? null : open
+}
 
-  return declared === undefined ? body : body.slice(NONE, declared)
+function bodyOf(text: string, match: RegExpExecArray): string | null {
+  const open = callOpenedAt(text, match)
+  if (open === null) return null
+
+  const call = spanFrom(text, open)
+  const arrow = call.indexOf('=>')
+
+  return arrow < NONE ? null : call.slice(arrow + AFTER_MATCH)
 }
 
 export function countIn(file: string, text: string): Counted[] {
   const starts = [...text.matchAll(TEST_START)]
 
-  return starts.flatMap((match, position) => {
-    const until = starts[position + ONE]?.index ?? text.length
-    const body = bodyBetween(text, match.index + match[NONE].length, until)
+  return starts.flatMap((match) => {
+    const body = bodyOf(text, match)
     if (body === null) return []
 
     return [

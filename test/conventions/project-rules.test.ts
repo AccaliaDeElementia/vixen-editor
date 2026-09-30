@@ -79,15 +79,15 @@ describe('the source tree', () => {
     expect(sources.length).toBeGreaterThan(20)
   })
 
-  it('includes both entry points', () => {
-    const found = sources.map((source) => source.relativePath)
-
-    expect(found).toContain('src/index.ts')
-    expect(found).toContain('src/client/main.ts')
+  it.each(['src/index.ts', 'src/client/main.ts'])('includes the %s entry point', (entryPoint) => {
+    expect(sources.map((source) => source.relativePath)).toContain(entryPoint)
   })
 
-  it('includes this scanner, which the content scans then skip to avoid matching their own patterns', () => {
+  it('includes this scanner, so it cannot escape the rules it enforces', () => {
     expect(sources.map((source) => source.relativePath)).toContain(SCANNER)
+  })
+
+  it('then skips it for the content scans, which would otherwise match their own patterns', () => {
     expect(scannable().map((source) => source.relativePath)).not.toContain(SCANNER)
   })
 })
@@ -390,9 +390,11 @@ describe('every export is consumed by something', () => {
     expect(leaked).toStrictEqual([])
   })
 
-  it('exempts types, which no runtime container can hold', () => {
-    expect(TYPE_EXPORT.test('export interface Runtime {')).toBe(true)
-    expect(TYPE_EXPORT.test('export function startServer(')).toBe(false)
+  it.each([
+    ['an interface, which no runtime container can hold', 'export interface Runtime {', true],
+    ['a function, which one can', 'export function startServer(', false],
+  ])('exempts %s', (_label, declaration, exempt) => {
+    expect(TYPE_EXPORT.test(declaration)).toBe(exempt)
   })
 
   it('reads a renamed re-export as the name it presents, not the one it wraps', () => {

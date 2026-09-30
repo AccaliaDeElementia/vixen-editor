@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given, givenAsync } from '../conditions.ts'
 import { describe, expect, it } from 'vitest'
 
 import { serially } from '../../src/shared/serially.ts'
@@ -53,7 +54,9 @@ describe('serially', () => {
 
     await Promise.resolve()
 
-    expect(order).toStrictEqual(['start slow'])
+    given(() => {
+      expect(order).toStrictEqual(['start slow'])
+    })
 
     release.resolve('released slow')
     await run
@@ -70,7 +73,8 @@ describe('serially', () => {
       if (item === 'b') throw new Error('refused')
     })
 
-    await expect(run).rejects.toThrow('refused')
+    await givenAsync(expect(run).rejects.toThrow('refused'))
+
     expect(seen).toStrictEqual(['a', 'b'])
   })
 

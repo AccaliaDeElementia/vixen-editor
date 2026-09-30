@@ -343,6 +343,15 @@ describe('dismissing through the handle', () => {
     }).not.toThrow()
 
     settle()
+  })
+
+  it('lets the fade finish removing it', () => {
+    const handle = createToast(root).show('Saved notes.md')
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS)
+    handle.dismiss()
+
+    settle()
+
     expect(texts()).toStrictEqual([])
   })
 })
@@ -374,6 +383,14 @@ describe('the stack is capped', () => {
     toast.error('Upload refused')
 
     expect(texts().at(-1)).toBe('Upload refused')
+  })
+
+  it('keeps the chatter as well, rather than evicting to make room', () => {
+    const toast = createToast(root)
+
+    for (let n = 0; n < MAX_VISIBLE; n += 1) toast.show(`message ${String(n)}`)
+    toast.error('Upload refused')
+
     expect(toasts()).toHaveLength(MAX_VISIBLE + 1)
   })
 

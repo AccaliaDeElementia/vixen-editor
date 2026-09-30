@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindFileDrops, TestOnly } from '../../src/client/editor/drops.ts'
@@ -177,6 +178,24 @@ describe('several files at once', () => {
     await vi.waitFor(() => {
       expect(inserted).toStrictEqual([{ text: '![good.png](good.png)', at: 3 }])
     })
+  })
+
+  it('reports the file that was refused, so the gap in the links is explained', async () => {
+    const element = editor()
+    upload.mockImplementation((directory: string, file: File) =>
+      file.name === 'bad.png'
+        ? Promise.reject(new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH', []))
+        : Promise.resolve(`${directory}/${file.name}`),
+    )
+
+    dropFiles(element, [png('bad.png'), png('good.png')])
+
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(inserted).toHaveLength(1)
+      }),
+    )
+
     expect(errors).toStrictEqual(['bad.png: Content does not match'])
   })
 
@@ -186,9 +205,12 @@ describe('several files at once', () => {
 
     dropFiles(element, [png('a.png')])
 
-    await vi.waitFor(() => {
-      expect(errors.length).toBe(1)
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(errors.length).toBe(1)
+      }),
+    )
+
     expect(inserted).toStrictEqual([])
   })
 })
@@ -209,10 +231,10 @@ describe('a name that is already taken', () => {
     })
   })
 
-  it('uploads under the chosen name and links what it stored', async () => {
+  it('links what it stored under the chosen name', async () => {
     const element = editor({
       answerPrompt: async (submit) => {
-        expect(await submit('renamed.png')).toBeNull()
+        await givenAsync(expect(submit('renamed.png')).resolves.toBeNull())
 
         return true
       },

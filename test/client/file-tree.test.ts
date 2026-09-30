@@ -75,15 +75,17 @@ describe('loading', () => {
     await expect(start()).resolves.toBeUndefined()
   })
 
-  it('reports a failure instead of leaving the panel blank and silent', async () => {
-    const client = fakeClient(SAMPLE)
-    client.tree.mockRejectedValue(new Error('network down'))
+  it.each(['Could not load the file browser', 'network down'])(
+    'reports a failure saying %s, instead of leaving the panel blank and silent',
+    async (fragment) => {
+      const client = fakeClient(SAMPLE)
+      client.tree.mockRejectedValue(new Error('network down'))
 
-    await start('/doc/', client)
+      await start('/doc/', client)
 
-    expect(document.body.textContent).toContain('Could not load the file browser')
-    expect(document.body.textContent).toContain('network down')
-  })
+      expect(document.body.textContent).toContain(fragment)
+    },
+  )
 
   it('reports a failure that is not an Error at all', async () => {
     const client = fakeClient(SAMPLE)

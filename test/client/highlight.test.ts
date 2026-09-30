@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../conditions.ts'
 import { highlightingFor, language } from '@codemirror/language'
 import { EditorState } from '@codemirror/state'
 import { tags, type Tag } from '@lezer/highlight'
@@ -30,7 +31,10 @@ describe('vixenHighlightStyle', () => {
   it('is installed by the editor state', () => {
     const state = createEditorState({ doc: '# hello' })
 
-    expect(state.facet(language)).not.toBeNull()
+    given(() => {
+      expect(state.facet(language)).not.toBeNull()
+    })
+
     expect(highlightingFor(state, [tags.heading])).not.toBeNull()
   })
 

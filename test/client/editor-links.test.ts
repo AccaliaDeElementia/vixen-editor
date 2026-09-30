@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../cast.ts'
@@ -113,7 +114,7 @@ describe('dropping files from outside the browser', () => {
     view.contentDOM.dispatchEvent(event)
   }
 
-  it('uploads beside the open document and embeds what it stored', async () => {
+  it('uploads beside the open document', async () => {
     const uploaded: string[] = []
     const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: true }) })
     const files = cast<FilesClient>({
@@ -127,10 +128,27 @@ describe('dropping files from outside the browser', () => {
 
     dropFilesOn(view, [new File(['x'], 'p.png')])
 
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(view.state.doc.toString()).toBe('![p.png](p.png)')
+      }),
+    )
+
+    expect(uploaded).toStrictEqual(['journal/p.png'])
+  })
+
+  it('embeds what it stored', async () => {
+    const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: true }) })
+    const files = cast<FilesClient>({
+      upload: (directory: string, file: File) => Promise.resolve(joinPath(directory, file.name)),
+    })
+    const view = await bootstrap({ root, pathname: '/doc/journal/notes.md', session, files })
+
+    dropFilesOn(view, [new File(['x'], 'p.png')])
+
     await vi.waitFor(() => {
       expect(view.state.doc.toString()).toBe('![p.png](p.png)')
     })
-    expect(uploaded).toStrictEqual(['journal/p.png'])
   })
 
   it('puts one link per line when several arrive at once', async () => {

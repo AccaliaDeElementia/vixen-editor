@@ -57,11 +57,17 @@ describe('the client and the server read the same document the same way', () => 
     expect(onClient).toStrictEqual(onServer)
   })
 
-  it('finds destinations at all, so agreeing on nothing cannot pass', () => {
+  it.each([
+    ['the server parser', serverParser],
+    ['the client parser', clientParser],
+  ])('finds destinations at all with %s, so agreeing on nothing cannot pass', (_label, parser) => {
     const document = '[a](1.md) [b](2.md) [c](3.md)\n\n[id]: 4.md\n'
-    const expected = ['1.md', '2.md', '3.md', '4.md']
 
-    expect(destinationsIn(serverParser.parse(document), document).map((d) => d.value)).toStrictEqual(expected)
-    expect(destinationsIn(clientParser.parse(document), document).map((d) => d.value)).toStrictEqual(expected)
+    expect(destinationsIn(parser.parse(document), document).map((d) => d.value)).toStrictEqual([
+      '1.md',
+      '2.md',
+      '3.md',
+      '4.md',
+    ])
   })
 })

@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../cast.ts'
@@ -205,13 +206,23 @@ describe('retrying a busy write', () => {
       .mockResolvedValueOnce(noContent('"after-retry"'))
 
     await expect(client().save('notes.md', 'x', '"abc"')).resolves.toBe('"after-retry"')
+  })
+
+  it('sends the save exactly twice when the first attempt is refused', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ error: 'Busy', code: 'BUSY' }, 503))
+      .mockResolvedValueOnce(noContent('"after-retry"'))
+
+    await givenAsync(expect(client().save('notes.md', 'x', '"abc"')).resolves.toBe('"after-retry"'))
+
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('gives up after one retry rather than hammering a busy server', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: 'Busy', code: 'BUSY' }, 503))
 
-    await expect(client().save('notes.md', 'x', '"abc"')).rejects.toMatchObject({ status: 503 })
+    await givenAsync(expect(client().save('notes.md', 'x', '"abc"')).rejects.toMatchObject({ status: 503 }))
+
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 

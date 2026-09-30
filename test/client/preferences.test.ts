@@ -27,6 +27,23 @@ beforeEach(() => {
   localStorage.clear()
 })
 
+function whileLocalStorageThrows(body: () => void): void {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    get() {
+      throw new Error('site data blocked')
+    },
+  })
+
+  try {
+    body()
+  } finally {
+    if (original !== undefined) Object.defineProperty(globalThis, 'localStorage', original)
+  }
+}
+
 describe('readPreferences', () => {
   it('returns the defaults when nothing is stored', () => {
     expect(readPreferences(storageHolding(null))).toStrictEqual(DEFAULT_PREFERENCES)
@@ -50,24 +67,18 @@ describe('readPreferences', () => {
     expect(readPreferences(null)).toStrictEqual(DEFAULT_PREFERENCES)
   })
 
-  it('survives even reaching for localStorage throwing, as when site data is blocked', () => {
-    const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      get() {
-        throw new Error('site data blocked')
-      },
-    })
-
-    try {
+  it('reads defaults when even reaching for localStorage throws, as when site data is blocked', () => {
+    whileLocalStorageThrows(() => {
       expect(readPreferences()).toStrictEqual(DEFAULT_PREFERENCES)
+    })
+  })
+
+  it('writes without throwing when even reaching for localStorage throws', () => {
+    whileLocalStorageThrows(() => {
       expect(() => {
         writePreferences({ widthPx: 300, open: true, openFolders: [] })
       }).not.toThrow()
-    } finally {
-      if (original !== undefined) Object.defineProperty(globalThis, 'localStorage', original)
-    }
+    })
   })
 
   it.each([
@@ -132,12 +143,19 @@ describe('writePreferences', () => {
     }).not.toThrow()
   })
 
-  it('defaults to localStorage and not sessionStorage, so preferences outlive the tab', () => {
+  it('defaults to localStorage, so preferences outlive the tab', () => {
     sessionStorage.clear()
 
     writePreferences({ widthPx: 256, open: true, openFolders: [] })
 
     expect(localStorage.getItem(PREFERENCES_KEY)).not.toBeNull()
+  })
+
+  it('does not write to sessionStorage, which the tab closing would clear', () => {
+    sessionStorage.clear()
+
+    writePreferences({ widthPx: 256, open: true, openFolders: [] })
+
     expect(sessionStorage.getItem(PREFERENCES_KEY)).toBeNull()
   })
 })

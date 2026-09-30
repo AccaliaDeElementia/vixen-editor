@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given, givenAsync } from '../conditions.ts'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -102,9 +103,10 @@ describe('bootstrap', () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
 
-    await expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(
-      MissingMountError,
+    await givenAsync(
+      expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(MissingMountError),
     )
+
     expect(statusText(bare)).toContain('Missing editor mount point')
   })
 
@@ -125,6 +127,18 @@ describe('bootstrap', () => {
     const view = await openEditor()
 
     expect(view.state.doc.toString()).toBe('# from the api')
+    vi.unstubAllGlobals()
+  })
+
+  it('falls back to the live location when given no options', async () => {
+    document.body.innerHTML = '<span id="status"></span><div id="editor"></div>'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('# from the api', { headers: { 'content-type': 'text/markdown' } })),
+    )
+
+    await openEditor()
+
     expect(statusText(document)).toContain('Editing index.md')
     vi.unstubAllGlobals()
   })
@@ -217,7 +231,8 @@ describe('bootstrapOrReport', () => {
   it('falls back to the live document when given no options', async () => {
     document.body.innerHTML = '<span id="status"></span>'
 
-    await expect(bootstrapOrReport()).resolves.toBeNull()
+    await givenAsync(expect(bootstrapOrReport()).resolves.toBeNull())
+
     expect(statusText(document)).toContain('Failed to start')
   })
 })
@@ -256,9 +271,11 @@ describe('bootstrap follows a document that moves underneath it', () => {
       },
     })
 
-    expect(view.dom.querySelector('.cm-vixen-link')?.getAttribute('title')).toBe(
-      'Ctrl/Cmd+click to open journal/nothing.md',
-    )
+    given(() => {
+      expect(view.dom.querySelector('.cm-vixen-link')?.getAttribute('title')).toBe(
+        'Ctrl/Cmd+click to open journal/nothing.md',
+      )
+    })
 
     announceDocumentMoved(root, { from: 'journal/notes.md', to: 'archive/notes.md', rewritten: [] })
 
@@ -333,8 +350,7 @@ describe('bootstrap follows a document that moves underneath it', () => {
 
     announceDocumentMoved(root, { from: 'other.md', to: 'archive/other.md', rewritten: [] })
 
-    expect(record.renamed).toStrictEqual([])
-    expect(navigated).toStrictEqual([])
+    expect({ renamed: record.renamed, navigated }).toStrictEqual({ renamed: [], navigated: [] })
   })
 
   it('says where the document went', async () => {

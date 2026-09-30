@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { interceptNavigation } from '../../src/client/navigation.ts'
@@ -276,9 +277,23 @@ describe('leaving a document that will not save', () => {
     navigation.fire(event)
 
     settled()
+
     await vi.waitFor(() => {
       expect(navigation.navigate).not.toHaveBeenCalled()
     })
+  })
+
+  it('opens nothing when the user chooses to stay', async () => {
+    const { navigation, settled } = blocking(false, false)
+    const { event } = navigateEvent('/doc/other.md')
+    navigation.fire(event)
+
+    settled()
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(navigation.navigate).not.toHaveBeenCalled()
+      }),
+    )
 
     expect(opened).toStrictEqual([])
   })
