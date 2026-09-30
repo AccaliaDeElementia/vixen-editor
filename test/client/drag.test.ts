@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given, givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TestOnly } from '../../src/client/files/drag.ts'
@@ -53,6 +54,12 @@ function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<
 
 let client: FakeClient = fakeClient(SAMPLE, [TRASHED])
 let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
+
+function actionsTaken(): Record<string, number> {
+  return { moves: client.move.mock.calls.length, uploads: client.upload.mock.calls.length }
+}
+
+const NOTHING_HAPPENED = { moves: 0, uploads: 0 }
 
 async function start(open: string[] = ['archive', 'journal']): Promise<void> {
   await initFileTree({
@@ -195,15 +202,27 @@ describe('moving by drag', () => {
     })
   })
 
-  it('asks nothing, because an occupied destination is simply refused', async () => {
+  it('moves the file into the folder it was dropped on', async () => {
     await start()
 
     drag('notes.md', rowFor('archive'))
 
     await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalled()
+      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
     })
-    expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
+  })
+
+  it('asks nothing, because an occupied destination is simply refused', async () => {
+    await start()
+
+    drag('notes.md', rowFor('archive'))
+
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(client.move).toHaveBeenCalled()
+      }),
+    )
+
     expect(dialogs.confirm).not.toHaveBeenCalled()
   })
 
@@ -222,9 +241,12 @@ describe('moving by drag', () => {
 
     drag('archive/old.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(client.tree).toHaveBeenCalledTimes(2)
-    })
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(client.tree).toHaveBeenCalledTimes(2)
+      }),
+    )
+
     expect(client.move).not.toHaveBeenCalled()
   })
 
@@ -269,10 +291,13 @@ describe('showing where the entry went', () => {
 
     drag('archive/old.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(client.tree).toHaveBeenCalledTimes(2)
-    })
-    expect(client.move).not.toHaveBeenCalled()
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(client.tree).toHaveBeenCalledTimes(2)
+      }),
+    )
+
+    expect(rows().filter((row) => row.getAttribute('aria-selected') === 'true')).toHaveLength(0)
   })
 })
 
@@ -298,6 +323,16 @@ describe('where a drop is refused', () => {
     rowFor('journal/2026').dispatchEvent(over)
 
     expect(over.defaultPrevented).toBe(false)
+  })
+
+  it('marks no row for a folder onto its own descendant', async () => {
+    await start()
+    const transfer = internalTransfer('journal')
+    rowFor('journal').dispatchEvent(dragEvent('dragstart', transfer))
+
+    const over = dragEvent('dragover', transfer)
+    rowFor('journal/2026').dispatchEvent(over)
+
     expect(rowFor('journal/2026').className).not.toContain(DROP_TARGET_CLASS)
   })
 
@@ -309,7 +344,10 @@ describe('where a drop is refused', () => {
     const over = dragEvent('dragover', transfer)
     treeElement().dispatchEvent(over)
 
-    expect(over.defaultPrevented).toBe(true)
+    given(() => {
+      expect(over.defaultPrevented).toBe(true)
+    })
+
     expect(document.querySelectorAll(`.${DROP_TARGET_CLASS}`)).toHaveLength(0)
   })
 
@@ -452,6 +490,21 @@ describe('dropping files from outside', () => {
     await vi.waitFor(() => {
       expect(client.upload).toHaveBeenCalledTimes(2)
     })
+  })
+
+  it('reports the file that was rejected, so the failure is not silent', async () => {
+    await start()
+    client.upload.mockRejectedValueOnce(new Error('too large')).mockResolvedValueOnce('b.png')
+    const transfer = externalTransfer(new File(['x'], 'a.png'), new File(['y'], 'b.png'))
+
+    rowFor('archive').dispatchEvent(dragEvent('drop', transfer))
+
+    await givenAsync(
+      vi.waitFor(() => {
+        expect(client.upload).toHaveBeenCalledTimes(2)
+      }),
+    )
+
     expect(statusText()).toContain('a.png')
   })
 
@@ -474,8 +527,7 @@ describe('drops that carry nothing usable', () => {
 
     rowFor('archive').dispatchEvent(event)
 
-    expect(client.move).not.toHaveBeenCalled()
-    expect(client.upload).not.toHaveBeenCalled()
+    expect(actionsTaken()).toStrictEqual(NOTHING_HAPPENED)
   })
 
   it('ignores a drop carrying neither files nor a path', async () => {
@@ -483,8 +535,7 @@ describe('drops that carry nothing usable', () => {
 
     rowFor('archive').dispatchEvent(dragEvent('drop', new DataTransfer()))
 
-    expect(client.move).not.toHaveBeenCalled()
-    expect(client.upload).not.toHaveBeenCalled()
+    expect(actionsTaken()).toStrictEqual(NOTHING_HAPPENED)
   })
 
   it('describes a rejection that is not an Error', async () => {

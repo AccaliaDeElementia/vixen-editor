@@ -1,5 +1,6 @@
 'use sanity'
 
+import { given } from '../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../src/client/layout/explorer.ts'
@@ -21,7 +22,9 @@ beforeEach(() => {
 describe('staying on a narrow viewport', () => {
   it('stays collapsed across a second render, which any resize causes', () => {
     const first = decideOpen(STORED_OPEN, CRAMPED, FIRST_RUN, NOT_AUTO)
-    expect(first).toStrictEqual({ open: false, auto: true })
+    given(() => {
+      expect(first).toStrictEqual({ open: false, auto: true })
+    })
 
     expect(decideOpen(STORED_OPEN, CRAMPED, CRAMPED, first.auto)).toStrictEqual({ open: false, auto: true })
   })
@@ -38,9 +41,11 @@ describe('arriving on a narrow viewport', () => {
 })
 
 describe('arriving on a wide viewport', () => {
-  it('honours the stored preference either way', () => {
-    expect(decideOpen(STORED_OPEN, ROOMY, FIRST_RUN, NOT_AUTO)).toStrictEqual({ open: true, auto: false })
-    expect(decideOpen(STORED_CLOSED, ROOMY, FIRST_RUN, NOT_AUTO)).toStrictEqual({ open: false, auto: false })
+  it.each([
+    ['an explorer left open', STORED_OPEN, true],
+    ['an explorer left closed', STORED_CLOSED, false],
+  ])('honours %s', (_label, stored, expected) => {
+    expect(decideOpen(stored, ROOMY, FIRST_RUN, NOT_AUTO)).toStrictEqual({ open: expected, auto: false })
   })
 })
 

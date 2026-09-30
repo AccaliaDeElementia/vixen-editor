@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDeletedView, type DeletedView } from '../../src/client/layout/deleted-view.ts'
@@ -78,9 +79,11 @@ function textOf(root: ParentNode, selector: string): string {
 }
 
 async function afterLoad(): Promise<void> {
-  await vi.waitFor(() => {
-    expect(revealed).toHaveLength(1)
-  })
+  await givenAsync(
+    vi.waitFor(() => {
+      expect(revealed).toHaveLength(1)
+    }),
+  )
 }
 
 beforeEach(() => {
@@ -139,9 +142,7 @@ describe('an entry that is in the trash', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
     view(root).offer(ENTRY_ID)
-    await vi.waitFor(() => {
-      expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
-    })
+    await afterLoad()
 
     root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
 
@@ -154,9 +155,7 @@ describe('an entry that is in the trash', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
     view(root).offer(ENTRY_ID)
-    await vi.waitFor(() => {
-      expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
-    })
+    await afterLoad()
 
     root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
 
@@ -170,9 +169,7 @@ describe('an entry that is in the trash', () => {
     client.restore.mockRejectedValue(new Error('Already exists'))
     const root = page()
     view(root).offer(ENTRY_ID)
-    await vi.waitFor(() => {
-      expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
-    })
+    await afterLoad()
 
     root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
 
@@ -230,9 +227,7 @@ describe('an entry that is no longer in the trash', () => {
   it('does nothing when the restore button is pressed anyway', async () => {
     const root = page()
     view(root).offer(ENTRY_ID)
-    await vi.waitFor(() => {
-      expect(textOf(root, '#deleted-what')).not.toBe('')
-    })
+    await afterLoad()
 
     root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
 
@@ -246,9 +241,7 @@ describe('a second entry opened after the first', () => {
     const root = page()
     const deleted = view(root)
     deleted.offer(ENTRY_ID)
-    await vi.waitFor(() => {
-      expect(textOf(root, '#deleted-what')).not.toBe('')
-    })
+    await afterLoad()
 
     const stillLoading: PromiseWithResolvers<TrashNode[]> = Promise.withResolvers()
     client.trash.mockReturnValue(stillLoading.promise)

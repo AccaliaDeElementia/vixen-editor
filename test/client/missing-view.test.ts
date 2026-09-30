@@ -1,5 +1,6 @@
 'use sanity'
 
+import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMissingView, type MissingView } from '../../src/client/layout/missing-view.ts'
@@ -69,6 +70,14 @@ function trashed(originalPath: string, kind: TrashNode['kind'], id = originalPat
 
 function folder(name: string): TreeNode {
   return { name, path: name, kind: 'folder', children: [] }
+}
+
+async function afterTheTrashIsListed(root: ParentNode): Promise<void> {
+  await givenAsync(
+    vi.waitFor(() => {
+      expect(root.querySelector('#missing-restore-list button')).not.toBeNull()
+    }),
+  )
 }
 
 function dropFile(root: ParentNode, file: File): void {
@@ -240,9 +249,7 @@ describe('restoring from the trash', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document', 'entry-1')])
     const root = page()
     view(root).offer('journal/a.md')
-    await vi.waitFor(() => {
-      expect(root.querySelector('#missing-restore-list button')).not.toBeNull()
-    })
+    await afterTheTrashIsListed(root)
 
     root.querySelector<HTMLButtonElement>('#missing-restore-list button')?.click()
     await vi.waitFor(() => {
@@ -288,9 +295,7 @@ describe('restoring from the trash', () => {
     client.restore.mockRejectedValue(new Error('Already exists'))
     const root = page()
     view(root).offer('journal/a.md')
-    await vi.waitFor(() => {
-      expect(root.querySelector('#missing-restore-list button')).not.toBeNull()
-    })
+    await afterTheTrashIsListed(root)
 
     root.querySelector<HTMLButtonElement>('#missing-restore-list button')?.click()
     await vi.waitFor(() => {

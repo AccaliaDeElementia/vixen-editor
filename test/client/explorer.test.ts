@@ -136,10 +136,17 @@ describe('toggleExplorer', () => {
     return next
   }
 
-  it('closes an open explorer and reports the new state', () => {
+  it('reports the new state to the caller that toggled it', () => {
     applyExplorerState(root, VIEWPORT)
 
     expect(toggleOnce()).toBe(false)
+  })
+
+  it('closes an open explorer', () => {
+    applyExplorerState(root, VIEWPORT)
+
+    toggleOnce()
+
     expect(readExplorerState(VIEWPORT).open).toBe(false)
   })
 
@@ -213,23 +220,27 @@ describe('applyExplorerState', () => {
     expect(app().style.getPropertyValue('--explorer-width')).toBe(`${400 * MAX_EXPLORER_FRACTION}px`)
   })
 
-  it('reflects the open state on the toggle button for assistive technology', () => {
-    setExplorerOpen(false)
-    applyExplorerState(root, VIEWPORT)
-    const toggle = root.querySelector('#toggle-explorer')
+  it.each(['aria-expanded', 'aria-pressed'])(
+    'reflects the open state on the toggle button through %s, for assistive technology',
+    (attribute) => {
+      setExplorerOpen(false)
+      applyExplorerState(root, VIEWPORT)
+      const toggle = root.querySelector('#toggle-explorer')
 
-    expect(toggle?.getAttribute('aria-expanded')).toBe('false')
-    expect(toggle?.getAttribute('aria-pressed')).toBe('false')
-  })
+      expect(toggle?.getAttribute(attribute)).toBe('false')
+    },
+  )
 
-  it('publishes the current width on the separator', () => {
+  it.each([
+    ['aria-valuenow', '420'],
+    ['aria-valuemin', String(MIN_EXPLORER_PX)],
+    ['aria-valuemax', String(VIEWPORT * MAX_EXPLORER_FRACTION)],
+  ])('publishes %s on the separator', (attribute, expected) => {
     setExplorerWidth(420, VIEWPORT)
     applyExplorerState(root, VIEWPORT)
     const resizer = root.querySelector('#explorer-resizer')
 
-    expect(resizer?.getAttribute('aria-valuenow')).toBe('420')
-    expect(resizer?.getAttribute('aria-valuemin')).toBe(String(MIN_EXPLORER_PX))
-    expect(resizer?.getAttribute('aria-valuemax')).toBe(String(VIEWPORT * MAX_EXPLORER_FRACTION))
+    expect(resizer?.getAttribute(attribute)).toBe(expected)
   })
 
   it('tolerates a document without the layout shell', () => {
@@ -247,15 +258,28 @@ describe('applyExplorerState', () => {
     expect(() => {
       applyExplorerState(document.body, VIEWPORT)
     }).not.toThrow()
+  })
+
+  it('still sets the width when there is no separator to describe', () => {
+    document.body.innerHTML = '<div class="app" id="app" data-explorer="open"></div>'
+    setExplorerWidth(420, VIEWPORT)
+
+    applyExplorerState(document.body, VIEWPORT)
+
     expect(document.body.querySelector<HTMLElement>('#app')?.style.getPropertyValue('--explorer-width')).toBe('420px')
   })
 })
 
 describe('applyExplorerWidth', () => {
-  it('updates the shell without persisting, so a drag writes storage once', () => {
+  it('updates the shell', () => {
     applyExplorerWidth(root, 333, VIEWPORT)
 
     expect(app().style.getPropertyValue('--explorer-width')).toBe('333px')
+  })
+
+  it('persists nothing, so a drag writes storage once', () => {
+    applyExplorerWidth(root, 333, VIEWPORT)
+
     expect(readExplorerState(VIEWPORT).widthPx).toBeNull()
   })
 
