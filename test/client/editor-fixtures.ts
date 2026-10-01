@@ -17,6 +17,8 @@ export function recorded(): Recorded {
   return { saved: [], renamed: [], rescued: [] }
 }
 
+const STATUS_SELECTOR = '#status'
+
 const WORKSPACE = `
   <nav>
     <button type="button" id="nav-back" disabled aria-disabled="true"></button>
@@ -83,17 +85,20 @@ export function statusText(container: ParentNode): string {
   return [...container.querySelectorAll('#status .toast')].at(-1)?.textContent ?? ''
 }
 
-export async function everyPendingMicrotask(): Promise<void> {
-  const macrotaskBoundary: PromiseWithResolvers<void> = Promise.withResolvers()
+export async function pressSave(view: EditorView, root: ParentNode): Promise<void> {
+  const status = root.querySelector(STATUS_SELECTOR)
+  if (status === null) throw new Error(`no ${STATUS_SELECTOR} to watch`)
 
-  setTimeout(macrotaskBoundary.resolve)
+  const spoke: PromiseWithResolvers<void> = Promise.withResolvers()
+  const observer = new MutationObserver(() => {
+    observer.disconnect()
+    spoke.resolve()
+  })
+  observer.observe(status, { childList: true, subtree: true, characterData: true })
 
-  await macrotaskBoundary.promise
-}
-
-export async function pressSave(view: EditorView): Promise<void> {
   view.contentDOM.dispatchEvent(
     new KeyboardEvent('keydown', { key: 's', code: 'KeyS', ctrlKey: true, bubbles: true, cancelable: true }),
   )
-  await everyPendingMicrotask()
+
+  await spoke.promise
 }

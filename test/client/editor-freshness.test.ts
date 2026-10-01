@@ -428,7 +428,7 @@ describe('a save the store refuses as stale', () => {
       Promise.reject(new DocumentRequestError(412, 'Document changed')),
     )
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     await afterTheCheck()
 
@@ -439,7 +439,7 @@ describe('a save the store refuses as stale', () => {
     const chooser = choosing(null)
     const view = await dirtyAgainst('# theirs', chooser, () => Promise.reject(new DocumentRequestError(503, 'Busy')))
 
-    await pressSave(view)
+    await pressSave(view, root)
     await afterTheCheck()
 
     expect(chooser.offered).toBe(0)

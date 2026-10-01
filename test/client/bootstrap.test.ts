@@ -149,7 +149,7 @@ describe('saving', () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
     view.dispatch({ changes: { from: 0, insert: 'extra ' } })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(record.saved).toStrictEqual([{ id: 'notes.md', content: 'extra # notes.md' }])
   })
@@ -158,7 +158,7 @@ describe('saving', () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
     view.dispatch({ changes: { from: 0, insert: 'extra ' } })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(statusText(root)).toBe('Saved notes.md')
   })
@@ -168,7 +168,7 @@ describe('saving', () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session })
     view.dispatch({ changes: { from: 0, insert: 'extra ' } })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(statusText(root)).toBe('Save failed: server exploded')
   })
@@ -177,7 +177,7 @@ describe('saving', () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
     view.dispatch({ selection: { anchor: 1 } })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(record.saved).toStrictEqual([])
   })
@@ -185,7 +185,7 @@ describe('saving', () => {
   it('writes nothing when the buffer matches what was loaded', async () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(record.saved).toStrictEqual([])
   })
@@ -193,7 +193,7 @@ describe('saving', () => {
   it('says so rather than claiming a save that did not happen', async () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(statusText(root)).toBe('No changes in notes.md')
   })
@@ -538,7 +538,7 @@ describe('the caret across a reload', () => {
     const view = await open('/doc/notes.md')
     view.dispatch({ changes: { from: 0, insert: 'extra ' }, selection: { anchor: 4 } })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(4)
   })
@@ -548,7 +548,7 @@ describe('the caret across a reload', () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session })
     view.dispatch({ changes: { from: 0, insert: 'extra ' }, selection: { anchor: 4 } })
 
-    await pressSave(view)
+    await pressSave(view, root)
 
     expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(0)
   })
