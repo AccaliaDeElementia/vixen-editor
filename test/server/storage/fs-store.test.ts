@@ -122,6 +122,13 @@ describe('list', () => {
     await expect(store.list()).resolves.toStrictEqual(['a.md', 'b.md'])
   })
 
+  it('lists them the way a reader counts, so file9 comes before file10', async () => {
+    await store.createDocument('file10.md', 'x')
+    await store.createDocument('file9.md', 'x')
+
+    await expect(store.list()).resolves.toStrictEqual(['file9.md', 'file10.md'])
+  })
+
   it('lists nested documents with posix separators', async () => {
     await store.createDocument('journal/2026/september.md', 'x')
 

@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
+import { compareNames } from './name-order.ts'
 import { movedPath, relinkDocument, type PathMove } from '../markdown/relink.ts'
 
 import { replaceFileAtomic } from './atomic-write.ts'
@@ -59,9 +60,5 @@ export async function relinkAfterMove(
 
   logRelink('rewrote %d, failed %d, of %d documents', rewritten.length, failed.length, documentIds.length)
 
-  return { rewritten: rewritten.sort(compare), failed: failed.sort(compare) }
-}
-
-function compare(a: string, b: string): number {
-  return a.localeCompare(b)
+  return { rewritten: rewritten.sort(compareNames), failed: failed.sort(compareNames) }
 }

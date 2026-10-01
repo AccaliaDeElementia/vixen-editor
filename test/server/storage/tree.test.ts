@@ -103,6 +103,14 @@ describe('readTree', () => {
     await expect(readTree(root).then(names)).resolves.toStrictEqual(['archive', 'work', 'alpha.md', 'zebra.md'])
   })
 
+  it('counts the way a reader does, so file9 comes before file10', async () => {
+    await write('file10.md')
+    await write('file9.md')
+    await write('file2.md')
+
+    await expect(readTree(root).then(names)).resolves.toStrictEqual(['file2.md', 'file9.md', 'file10.md'])
+  })
+
   it('nests children under their folder', async () => {
     await write('journal/2026/september.md')
 

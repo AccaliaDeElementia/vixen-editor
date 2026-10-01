@@ -127,6 +127,14 @@ describe('relinkAfterMove', () => {
 
     await expect(rewrittenBy('journal/a.md', 'archive/a.md')).resolves.toStrictEqual(['a.md', 'b.md'])
   })
+
+  it('reports them the way a reader counts, even when the move reorders them', async () => {
+    await write('aaa/other.md', '# other')
+    await write('aaa/doc.md', '[x](other.md)')
+    await write('doc9.md', '[x](aaa/doc.md)')
+
+    await expect(rewrittenBy('aaa/doc.md', 'doc10.md')).resolves.toStrictEqual(['doc9.md', 'doc10.md'])
+  })
 })
 
 // A move has already happened by the time the links are repaired, so one

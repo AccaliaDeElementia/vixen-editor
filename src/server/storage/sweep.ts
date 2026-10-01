@@ -6,6 +6,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
+import { compareNames } from './name-order.ts'
 
 import { isTemporaryName } from './atomic-write.ts'
 import { nullWhenAbsent } from './containment.ts'
@@ -44,5 +45,5 @@ export async function sweepTemporaries(docsRoot: string): Promise<string[]> {
 
   if (removed.length > EMPTY) logSwept('removed %d abandoned temporary file(s)', removed.length)
 
-  return removed.sort((a, b) => a.localeCompare(b))
+  return removed.sort(compareNames)
 }

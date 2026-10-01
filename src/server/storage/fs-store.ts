@@ -9,6 +9,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
+import { compareNames } from './name-order.ts'
 
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './atomic-write.ts'
@@ -122,7 +123,7 @@ export function createFsDocumentStore(
     async list(): Promise<string[]> {
       const found: string[] = []
       await collectDocumentIds(root, '', found)
-      return found.sort((a, b) => a.localeCompare(b))
+      return found.sort(compareNames)
     },
 
     async tree(): Promise<TreeEntry[]> {

@@ -8,6 +8,7 @@ import { createLogger } from '../logging.ts'
 
 import { isAtOrInside, nullWhenAbsent } from './containment.ts'
 import { isAllowedName } from './safe-path.ts'
+import { compareNames } from './name-order.ts'
 import { classifyFile, type FileKind } from '../../shared/documents.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
@@ -41,7 +42,7 @@ const FOLDERS_FIRST: Record<TreeEntry['kind'], number> = { folder: FOLDER_RANK, 
 function compareEntries(a: TreeEntry, b: TreeEntry): number {
   const byKind = FOLDERS_FIRST[a.kind] - FOLDERS_FIRST[b.kind]
 
-  return byKind === SORT_EQUAL ? a.name.localeCompare(b.name) : byKind
+  return byKind === SORT_EQUAL ? compareNames(a.name, b.name) : byKind
 }
 
 interface WalkScope {

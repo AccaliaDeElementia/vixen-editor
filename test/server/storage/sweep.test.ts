@@ -77,6 +77,17 @@ describe('sweepTemporaries', () => {
     expect(removed).toStrictEqual([first, second])
   })
 
+  it('reports them the way a reader counts, so folder9 comes before folder10', async () => {
+    const ninth = orphanIn('folder9')
+    const tenth = orphanIn('folder10')
+    await write(tenth)
+    await write(ninth)
+
+    const removed = await sweepTemporaries(root)
+
+    expect(removed).toStrictEqual([ninth, tenth])
+  })
+
   it('reports nothing and removes nothing when the store is clean', async () => {
     await write('notes.md')
     await write('journal/a.md')
