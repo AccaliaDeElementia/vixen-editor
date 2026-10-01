@@ -4,6 +4,7 @@ import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../layout/toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
+import { rebuildingRunner } from './rebuild.ts'
 import { FilesRequestError, type FilesClient } from './files-client.ts'
 import { archiveUrlFor } from '../../shared/api.ts'
 import { serially } from '../../shared/serially.ts'
@@ -59,15 +60,14 @@ async function createVia(create: (entryPath: string) => Promise<void>, entryPath
 }
 
 function runnerFor(context: ActionContext): (work: () => Promise<void>) => void {
+  const rebuilding = rebuildingRunner(context)
+
   return (work) => {
-    void (async () => {
-      try {
-        await work()
-        await context.refresh()
-      } catch (error) {
-        context.toast.error(errorMessage(error))
-      }
-    })()
+    rebuilding(async () => {
+      await work()
+
+      return undefined
+    })
   }
 }
 

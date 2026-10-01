@@ -9,10 +9,9 @@ import type { Dialogs } from './dialogs.ts'
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
 import { parentOf } from './tree-model.ts'
+import { rebuildingRunner } from './rebuild.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath, STORE_ROOT } from '../../shared/store-path.ts'
-
-type OnceRebuilt = () => void
 
 type DropDirectory = string
 
@@ -88,17 +87,7 @@ export function bindDragAndDrop(context: DragContext, tree: HTMLElement): void {
     })
   }
 
-  function run(work: () => Promise<OnceRebuilt | undefined>): void {
-    void (async () => {
-      try {
-        const after = await work()
-        await context.refresh()
-        after?.()
-      } catch (error) {
-        context.toast.error(errorMessage(error))
-      }
-    })()
-  }
+  const run = rebuildingRunner(context)
 
   tree.addEventListener('dragstart', (event) => {
     const index = rowIndexOf(tree, event.target)
