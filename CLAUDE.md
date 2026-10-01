@@ -434,6 +434,19 @@ npm test > run.log 2>&1; echo "exit=$?"; tail -n 40 run.log
 without re-running, and `*.log` is gitignored. Where a pipeline is genuinely
 wanted, `set -o pipefail` restores the status.
 
+**A pipe is not the only way to lose it: `$?` holds the _previous_ command's
+status, whatever that was.** Anything between the command and the check reads
+the wrong one, including something that looks like formatting:
+
+```
+npm test > run.log 2>&1; echo; echo "exit=$?"    # reports the bare echo. Always 0.
+```
+
+That exact line made a failing gate read as green here, in a session that had
+been using the correct form throughout — so knowing the rule is not protection.
+Read the status immediately, or save it first (`status=$?`), and never insert a
+separator for readability.
+
 **Never decide whether a gate passed by filtering its output.** Coverage
 failures print their `ERROR:` lines _after_ the `Tests … passed` line, so a
 narrow filter can show a passing test count from a failing run — which is
