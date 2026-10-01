@@ -47,6 +47,11 @@ const MOUNT_SELECTOR = '#editor'
 const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
 const TOP_OF_DOCUMENT = 0
 
+interface Editor {
+  view: EditorView
+  teardownEditor: () => void
+}
+
 interface BootstrapOptions {
   root?: ParentNode
   pathname?: string
@@ -157,7 +162,7 @@ class MissingMountError extends Error {
   }
 }
 
-async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
+async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { root, pathname, session, navigate, files, reopen, openUrl } = wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
 
@@ -420,7 +425,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     setStatus(`Inserted a link to ${entryPath}`)
   })
 
-  guardUnload({
+  const { unguardUnload } = guardUnload({
     unsaved: () => autosave.state() !== 'clean',
     rescue: () => {
       const content = view.state.doc.toString()
@@ -490,7 +495,11 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
     setStatus(`${target} changed on disk — reloaded`)
   }
 
-  watchFreshness({ check: checkFreshness, intervalMs: options.freshnessMs, listen: options.listenForFocus })
+  const { unwatchFreshness } = watchFreshness({
+    check: checkFreshness,
+    intervalMs: options.freshnessMs,
+    listen: options.listenForFocus,
+  })
 
   const navigator = interceptNavigation({
     navigation: options.navigation ?? globalThis.navigation,
@@ -506,10 +515,18 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<EditorView> {
   await openPath(pathname)
   refreshHistoryButtons(root, navigator)
 
-  return view
+  return {
+    view,
+    teardownEditor: () => {
+      unwatchFreshness()
+      unguardUnload()
+      navigator.stopIntercepting()
+      view.destroy()
+    },
+  }
 }
 
-export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise<EditorView | null> {
+export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise<Editor | null> {
   return await bootstrap(options).catch((error: unknown) => {
     createToast(options.root ?? document).show(`Failed to start: ${errorMessage(error)}`)
     return null

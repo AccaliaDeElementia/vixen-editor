@@ -18,10 +18,11 @@ import {
   recorded,
   sessionRecording,
   statusText,
+  trackEditor,
   type Recorded,
 } from './editor-fixtures.ts'
 
-const { MissingMountError, bootstrap } = TestOnly
+const { MissingMountError } = TestOnly
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -45,7 +46,7 @@ afterEach(() => {
 
 describe('bootstrap', () => {
   it('mounts an editor into the configured selector', async () => {
-    await bootstrap({ root, pathname: '/doc/', session: fakeSession() })
+    await openEditor({ root, pathname: '/doc/', session: fakeSession() })
 
     expect(root.querySelector('#editor .cm-editor')).not.toBeNull()
   })
@@ -65,7 +66,7 @@ describe('bootstrap', () => {
       },
     })
 
-    await bootstrap({ root, pathname: '/doc/journal/2026.md', session })
+    await openEditor({ root, pathname: '/doc/journal/2026.md', session })
 
     expect(loaded).toStrictEqual(['journal/2026.md'])
   })
@@ -79,13 +80,13 @@ describe('bootstrap', () => {
       },
     })
 
-    await bootstrap({ root, pathname: '/doc/', session })
+    await openEditor({ root, pathname: '/doc/', session })
 
     expect(loaded).toStrictEqual(['index.md'])
   })
 
   it('reports the document being edited in the status element', async () => {
-    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
 
     expect(statusText(root)).toContain('Editing notes.md')
   })
@@ -94,7 +95,7 @@ describe('bootstrap', () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
 
-    await expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(
+    await expect(openEditor({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(
       MissingMountError,
     )
   })
@@ -104,7 +105,7 @@ describe('bootstrap', () => {
     const bare = page({ withMount: false })
 
     await givenAsync(
-      expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(MissingMountError),
+      expect(openEditor({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(MissingMountError),
     )
 
     expect(statusText(bare)).toContain('Missing editor mount point')
@@ -114,7 +115,7 @@ describe('bootstrap', () => {
     document.body.innerHTML = ''
     const bare = page({ withStatus: false })
 
-    await expect(bootstrap({ root: bare, pathname: '/doc/', session: fakeSession() })).resolves.toBeDefined()
+    await expect(openEditor({ root: bare, pathname: '/doc/', session: fakeSession() })).resolves.toBeDefined()
   })
 
   it('falls back to the live document, location and api session when given no options', async () => {
@@ -201,9 +202,9 @@ describe('saving', () => {
 
 describe('bootstrapOrReport', () => {
   it('returns the view on success', async () => {
-    await expect(bootstrapOrReport({ root, pathname: '/doc/', session: fakeSession() })).resolves.toBeInstanceOf(
-      EditorView,
-    )
+    const started = trackEditor(await bootstrapOrReport({ root, pathname: '/doc/', session: fakeSession() }))
+
+    expect(started?.view).toBeInstanceOf(EditorView)
   })
 
   it('resolves to null instead of rejecting when the mount is missing', async () => {
@@ -385,7 +386,7 @@ describe('bootstrap follows a document that moves underneath it', () => {
       location: { pathname: before },
     } = window
     try {
-      await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession() })
+      await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
 
       announceDocumentMoved(root, { from: 'notes.md', to: 'archive/notes.md', rewritten: [] })
 

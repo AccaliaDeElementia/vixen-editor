@@ -4,7 +4,7 @@ import { given } from '../conditions.ts'
 import { undoDepth } from '@codemirror/commands'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 
 import { cast } from '../cast.ts'
@@ -13,9 +13,15 @@ import type { Dialogs } from '../../src/client/files/dialogs.ts'
 import { DocumentRequestError } from '../../src/client/editor/document-client.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 
-import { openEditor, page, recorded, sessionRecording, statusText, type Recorded } from './editor-fixtures.ts'
-
-const { bootstrap } = TestOnly
+import {
+  openEditor,
+  page,
+  recorded,
+  sessionRecording,
+  statusText,
+  trackEditor,
+  type Recorded,
+} from './editor-fixtures.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -49,7 +55,7 @@ describe('which view the workspace shows', () => {
   it('reports a named document that is not there, rather than offering a blank one', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: false }) })
 
-    await bootstrap({ root, pathname: '/doc/journal/gone.md', session })
+    await openEditor({ root, pathname: '/doc/journal/gone.md', session })
 
     expect(shown()).toStrictEqual(['view-missing'])
   })
@@ -57,7 +63,7 @@ describe('which view the workspace shows', () => {
   it('names the path that is missing', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: false }) })
 
-    await bootstrap({ root, pathname: '/doc/journal/gone.md', session })
+    await openEditor({ root, pathname: '/doc/journal/gone.md', session })
 
     expect(root.querySelector('#missing-path')?.textContent).toBe('journal/gone.md')
   })
@@ -73,7 +79,7 @@ describe('which view the workspace shows', () => {
   it('leaves the buffer empty, so nothing can autosave into a document that is not there', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '# template', stored: false }) })
 
-    const view = await bootstrap({ root, pathname: '/doc/journal/gone.md', session })
+    const view = await openEditor({ root, pathname: '/doc/journal/gone.md', session })
 
     expect(view.state.doc.toString()).toBe('')
   })
@@ -81,7 +87,7 @@ describe('which view the workspace shows', () => {
   it('shows the unreachable view when the load fails outright', async () => {
     const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
 
-    await bootstrap({ root, pathname: '/doc/notes.md', session })
+    await openEditor({ root, pathname: '/doc/notes.md', session })
 
     expect(shown()).toStrictEqual(['view-unreachable'])
   })
@@ -89,7 +95,7 @@ describe('which view the workspace shows', () => {
   it('says why it could not be reached, so a reload is an informed choice', async () => {
     const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
 
-    await bootstrap({ root, pathname: '/doc/notes.md', session })
+    await openEditor({ root, pathname: '/doc/notes.md', session })
 
     expect(root.querySelector('#unreachable-reason')?.textContent).toContain('network down')
   })
@@ -97,7 +103,7 @@ describe('which view the workspace shows', () => {
   it('names the store rather than an empty path when the root cannot be loaded', async () => {
     const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
 
-    await bootstrap({ root, pathname: '/doc/', session })
+    await openEditor({ root, pathname: '/doc/', session })
 
     expect(root.querySelector('#unreachable-reason')?.textContent).toContain('The store')
   })
@@ -106,13 +112,13 @@ describe('which view the workspace shows', () => {
     root.querySelector('#unreachable-reason')?.remove()
     const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
 
-    await expect(bootstrap({ root, pathname: '/doc/notes.md', session })).resolves.toBeDefined()
+    await expect(openEditor({ root, pathname: '/doc/notes.md', session })).resolves.toBeDefined()
   })
 
   it('does not report an unreachable store as a failure to start', async () => {
     const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
 
-    await bootstrapOrReport({ root, pathname: '/doc/notes.md', session })
+    trackEditor(await bootstrapOrReport({ root, pathname: '/doc/notes.md', session }))
 
     expect(statusText(root)).not.toContain('Failed to start')
   })
@@ -151,7 +157,7 @@ describe('a trash entry url', () => {
     const trash = [{ id: 'entry-1', originalPath: 'journal/a.md', kind: 'document' as const, deletedAt: NOW }]
     const files = cast<FilesClient>({ trash: () => Promise.resolve(trash), tree: () => Promise.resolve([]) })
 
-    await bootstrap({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
+    await openEditor({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
 
     expect(shown()).toStrictEqual(['view-deleted'])
   })
@@ -166,7 +172,7 @@ describe('a trash entry url', () => {
     })
     const files = cast<FilesClient>({ trash: () => Promise.resolve([]), tree: () => Promise.resolve([]) })
 
-    await bootstrap({ root, pathname: '/trash/entry-1', session, files })
+    await openEditor({ root, pathname: '/trash/entry-1', session, files })
 
     expect(loaded).toStrictEqual([])
   })
@@ -174,7 +180,7 @@ describe('a trash entry url', () => {
   it('leaves the buffer empty, so nothing can autosave into a deleted entry', async () => {
     const files = cast<FilesClient>({ trash: () => Promise.resolve([]), tree: () => Promise.resolve([]) })
 
-    const view = await bootstrap({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
+    const view = await openEditor({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
 
     expect(view.state.doc.toString()).toBe('')
   })
@@ -196,19 +202,19 @@ describe('an image path', () => {
       },
     })
 
-    await bootstrap({ root, pathname: '/doc/journal/photo.png', session })
+    await openEditor({ root, pathname: '/doc/journal/photo.png', session })
 
     expect(loaded).toStrictEqual([])
   })
 
   it('leaves the buffer empty, because an image is not a buffer', async () => {
-    const view = await bootstrap({ root, pathname: '/doc/photo.png', session: fakeSession() })
+    const view = await openEditor({ root, pathname: '/doc/photo.png', session: fakeSession() })
 
     expect(view.state.doc.toString()).toBe('')
   })
 
   it('shows the image once it has loaded', async () => {
-    await bootstrap({ root, pathname: '/doc/journal/photo.png', session: fakeSession() })
+    await openEditor({ root, pathname: '/doc/journal/photo.png', session: fakeSession() })
 
     root.querySelector('#image-file')?.dispatchEvent(new Event('load'))
 
@@ -216,7 +222,7 @@ describe('an image path', () => {
   })
 
   it('falls through to the missing view when the image will not load', async () => {
-    await bootstrap({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
+    await openEditor({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
 
     root.querySelector('#image-file')?.dispatchEvent(new Event('error'))
 
@@ -224,7 +230,7 @@ describe('an image path', () => {
   })
 
   it('names the broken image as the missing path', async () => {
-    await bootstrap({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
+    await openEditor({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
 
     root.querySelector('#image-file')?.dispatchEvent(new Event('error'))
 
@@ -236,7 +242,7 @@ describe('the buffer when the workspace leaves a document', () => {
   it('forgets the previous text, so an unload cannot write it to the new path', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '# secrets', stored: false }) })
 
-    const view = await bootstrap({ root, pathname: '/doc/gone.md', session })
+    const view = await openEditor({ root, pathname: '/doc/gone.md', session })
 
     expect(view.state.doc.toString()).toBe('')
   })
@@ -282,6 +288,7 @@ describe('navigating away from a document', () => {
       },
       navigation: cast<Navigation>({
         addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+        removeEventListener: (type: string) => handlers.delete(type),
         canGoBack: false,
         canGoForward: false,
         back: () => undefined,
@@ -296,7 +303,7 @@ describe('navigating away from a document', () => {
       load: (id: string) =>
         Promise.resolve(id === 'gone.md' ? { content: '', stored: false } : { content: '# first', stored: true }),
     })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
     given(() => {
       expect(view.state.doc.toString()).toBe('# first')
     })
@@ -312,7 +319,7 @@ describe('navigating away from a document', () => {
       load: (id: string) =>
         Promise.resolve(id === 'gone.md' ? { content: '', stored: false } : { content: '# first', stored: true }),
     })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
     view.dispatch({ changes: { from: 0, insert: 'unsaved ' } })
     given(() => {
       expect(root.querySelector('#save-label')?.textContent).toBe('Save pending')
@@ -328,7 +335,7 @@ describe('navigating away from a document', () => {
     const session = fakeSession({
       load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }),
     })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
 
     await stub.go('/doc/other.md')
 
@@ -340,7 +347,7 @@ describe('navigating away from a document', () => {
     const session = fakeSession({
       load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }),
     })
-    await bootstrap({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
+    await openEditor({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
 
     await stub.go('/doc/other.md')
 
@@ -365,7 +372,7 @@ describe('leaving a document with unsaved changes', () => {
     const navigated: PromiseWithResolvers<void> = Promise.withResolvers()
     let decision: Promise<boolean> = Promise.resolve(answer)
 
-    const view = await bootstrap({
+    const view = await openEditor({
       root,
       pathname: '/doc/notes.md',
       session: fakeSession(overrides),
@@ -380,6 +387,7 @@ describe('leaving a document with unsaved changes', () => {
       }),
       navigation: cast<Navigation>({
         addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+        removeEventListener: (type: string) => handlers.delete(type),
         canGoBack: false,
         canGoForward: false,
         back: () => undefined,
@@ -542,6 +550,7 @@ describe('the ribbon history buttons', () => {
       },
       navigation: cast<Navigation>({
         addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+        removeEventListener: (type: string) => handlers.delete(type),
         get canGoBack() {
           return state.canGoBack
         },
@@ -557,7 +566,7 @@ describe('the ribbon history buttons', () => {
   it('stay disabled while there is nowhere to go', async () => {
     const { navigation } = stubbedNavigation(false, false)
 
-    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
 
     expect({ back: button('nav-back').disabled, forward: button('nav-forward').disabled }).toStrictEqual({
       back: true,
@@ -568,7 +577,7 @@ describe('the ribbon history buttons', () => {
   it('become usable once the browser says there is history to walk', async () => {
     const { navigation } = stubbedNavigation(true, true)
 
-    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
 
     expect({ back: button('nav-back').disabled, forward: button('nav-forward').disabled }).toStrictEqual({
       back: false,
@@ -579,7 +588,7 @@ describe('the ribbon history buttons', () => {
   it('keep aria-disabled in step with disabled, for anyone not using a mouse', async () => {
     const { navigation } = stubbedNavigation(true, false)
 
-    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
 
     expect({
       back: button('nav-back').getAttribute('aria-disabled'),
@@ -589,7 +598,7 @@ describe('the ribbon history buttons', () => {
 
   it('walk the history through the Navigation API rather than through history.back', async () => {
     const { navigation, went } = stubbedNavigation(true, true)
-    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
 
     button('nav-back').click()
     button('nav-forward').click()
@@ -599,7 +608,7 @@ describe('the ribbon history buttons', () => {
 
   it('are refreshed once a navigation settles, which is when the answer changes', async () => {
     const stub = stubbedNavigation(false, false)
-    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation: stub.navigation })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation: stub.navigation })
     given(() => {
       expect(button('nav-back').disabled).toBe(true)
     })
@@ -612,7 +621,7 @@ describe('the ribbon history buttons', () => {
 
   it('do nothing when there is nowhere to go, rather than throwing', async () => {
     const { navigation, went } = stubbedNavigation(false, false)
-    await bootstrap({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession(), navigation })
 
     button('nav-back').click()
     button('nav-forward').click()

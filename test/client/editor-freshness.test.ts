@@ -3,7 +3,6 @@
 import { given } from '../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { LoadedDocument, Session } from '../../src/client/editor/session.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -13,9 +12,7 @@ import type { Dialogs } from '../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
 
-import { page, pressSave, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
-
-const { bootstrap } = TestOnly
+import { openEditor, page, pressSave, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -26,8 +23,8 @@ function fakeSession(overrides: Partial<Session> = {}): Session {
   return sessionRecording(record, overrides)
 }
 
-async function editing(reread: () => Promise<LoadedDocument | null>): Promise<ReturnType<typeof bootstrap>> {
-  return await bootstrap({
+async function editing(reread: () => Promise<LoadedDocument | null>): Promise<EditorView> {
+  return await openEditor({
     root,
     pathname: '/doc/notes.md',
     session: fakeSession({ load: () => Promise.resolve({ content: '# stored', stored: true }), reread }),
@@ -150,7 +147,7 @@ describe('a check that cannot be made', () => {
 
   it('is not made at all while the workspace is showing something other than a document', async () => {
     const asked: string[] = []
-    await bootstrap({
+    await openEditor({
       root,
       pathname: '/doc/gone.md',
       session: fakeSession({
@@ -184,7 +181,7 @@ describe('a check while a save is in flight', () => {
     const asked: string[] = []
     const hanging: PromiseWithResolvers<void> = Promise.withResolvers()
     const saving: PromiseWithResolvers<void> = Promise.withResolvers()
-    const view = await bootstrap({
+    const view = await openEditor({
       root,
       pathname: '/doc/notes.md',
       session: fakeSession({
@@ -266,7 +263,7 @@ function filesRecording(into: Array<{ entryPath: string; content: string | undef
 }
 
 async function dirtyAgainst(theirs: string, chooser: Chooser, save?: Session['save']): Promise<EditorView> {
-  const view = await bootstrap({
+  const view = await openEditor({
     root,
     pathname: '/doc/notes.md',
     dialogs: chooser.dialogs,

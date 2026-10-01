@@ -7,6 +7,8 @@ import type { Session } from '../../src/client/editor/session.ts'
 
 const { bootstrap } = TestOnly
 
+const standing: Array<() => void> = []
+
 export interface Recorded {
   saved: Array<{ id: string; content: string }>
   renamed: Array<{ from: string; to: string }>
@@ -78,7 +80,20 @@ export function sessionRecording(into: Recorded, overrides: Partial<Session> = {
 }
 
 export async function openEditor(options: Parameters<typeof bootstrap>[0] = {}): Promise<EditorView> {
-  return await bootstrap(options)
+  const { view, teardownEditor } = await bootstrap(options)
+  standing.push(teardownEditor)
+
+  return view
+}
+
+export function trackEditor<T extends { teardownEditor: () => void } | null>(started: T): T {
+  if (started !== null) standing.push(started.teardownEditor)
+
+  return started
+}
+
+export function closeEditors(): void {
+  for (const teardownEditor of standing.splice(0)) teardownEditor()
 }
 
 export function statusText(container: ParentNode): string {

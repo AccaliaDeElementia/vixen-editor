@@ -11,9 +11,9 @@ import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 
-import { page, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
+import { openEditor, page, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
 
-const { bootstrap, startsALine } = TestOnly
+const { startsALine } = TestOnly
 
 async function afterTheBufferChanges(view: EditorView): Promise<void> {
   const changed: PromiseWithResolvers<void> = Promise.withResolvers()
@@ -44,7 +44,7 @@ describe('a link inside the document', () => {
   it('opens on Ctrl+click, resolved against the document holding it', async () => {
     const opened: string[] = []
     const session = fakeSession({ load: () => Promise.resolve({ content: 'see [a](a.md)', stored: true }) })
-    const view = await bootstrap({
+    const view = await openEditor({
       root,
       pathname: '/doc/journal/notes.md',
       session,
@@ -75,7 +75,7 @@ describe('dropping an entry from the file browser', () => {
 
   it('inserts a link to the dropped document, relative to the one open', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: true }) })
-    const view = await bootstrap({ root, pathname: '/doc/journal/notes.md', session })
+    const view = await openEditor({ root, pathname: '/doc/journal/notes.md', session })
 
     dropOn(view, {
       'application/x-vixen-path': 'journal/other.md',
@@ -87,7 +87,7 @@ describe('dropping an entry from the file browser', () => {
 
   it('embeds a dropped image rather than linking it', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: true }) })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session })
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session })
 
     dropOn(view, { 'application/x-vixen-path': 'p.png', 'application/x-vixen-kind': 'image' })
 
@@ -96,7 +96,7 @@ describe('dropping an entry from the file browser', () => {
 
   it('leaves the caret after what it inserted, ready to keep typing', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: true }) })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session })
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session })
 
     dropOn(view, { 'application/x-vixen-path': 'a.md', 'application/x-vixen-kind': 'document' })
 
@@ -105,7 +105,7 @@ describe('dropping an entry from the file browser', () => {
 
   it('counts as an edit, so the autosave window restarts', async () => {
     const session = fakeSession({ load: () => Promise.resolve({ content: '', stored: true }) })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session })
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session })
 
     dropOn(view, { 'application/x-vixen-path': 'a.md', 'application/x-vixen-kind': 'document' })
 
@@ -135,7 +135,7 @@ describe('dropping files from outside the browser', () => {
         return Promise.resolve(joinPath(directory, file.name))
       },
     })
-    const view = await bootstrap({ root, pathname: '/doc/journal/notes.md', session, files })
+    const view = await openEditor({ root, pathname: '/doc/journal/notes.md', session, files })
 
     dropFilesOn(view, [new File(['x'], 'p.png')])
 
@@ -149,7 +149,7 @@ describe('dropping files from outside the browser', () => {
     const files = cast<FilesClient>({
       upload: (directory: string, file: File) => Promise.resolve(joinPath(directory, file.name)),
     })
-    const view = await bootstrap({ root, pathname: '/doc/journal/notes.md', session, files })
+    const view = await openEditor({ root, pathname: '/doc/journal/notes.md', session, files })
 
     dropFilesOn(view, [new File(['x'], 'p.png')])
 
@@ -163,7 +163,7 @@ describe('dropping files from outside the browser', () => {
     const files = cast<FilesClient>({
       upload: (directory: string, file: File) => Promise.resolve(joinPath(directory, file.name)),
     })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session, files })
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session, files })
 
     dropFilesOn(view, [new File(['x'], 'a.png'), new File(['x'], 'b.png')])
 

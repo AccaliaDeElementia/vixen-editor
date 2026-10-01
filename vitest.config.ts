@@ -29,6 +29,7 @@ export default defineConfig({
           environment: 'happy-dom',
           testTimeout: IN_MEMORY_TIMEOUT_MS,
           include: ['test/client/**/*.test.ts'],
+          setupFiles: ['./test/client/setup.ts'],
           env: silentEnv,
         },
       },
