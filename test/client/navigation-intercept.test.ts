@@ -1,6 +1,5 @@
 'use sanity'
 
-import { givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { interceptNavigation } from '../../src/client/navigation.ts'
@@ -232,7 +231,7 @@ describe('a browser without the Navigation API', () => {
 describe('leaving a document that will not save', () => {
   interface Blocking {
     navigation: FakeNavigation
-    settled: () => void
+    settled: () => Promise<void>
   }
 
   function blocking(mayLeave: boolean, proceed: boolean): Blocking {
@@ -246,13 +245,14 @@ describe('leaving a document that will not save', () => {
         await Promise.resolve()
       },
       mayLeave: () => mayLeave,
-      settle: async () => await decision.promise,
+      settle: () => decision.promise,
     })
 
     return {
       navigation,
-      settled: () => {
+      settled: async () => {
         decision.resolve(proceed)
+        await decision.promise
       },
     }
   }
@@ -276,11 +276,9 @@ describe('leaving a document that will not save', () => {
     const { event } = navigateEvent('/doc/other.md')
     navigation.fire(event)
 
-    settled()
+    await settled()
 
-    await vi.waitFor(() => {
-      expect(navigation.navigate).not.toHaveBeenCalled()
-    })
+    expect(navigation.navigate).not.toHaveBeenCalled()
   })
 
   it('opens nothing when the user chooses to stay', async () => {
@@ -288,12 +286,7 @@ describe('leaving a document that will not save', () => {
     const { event } = navigateEvent('/doc/other.md')
     navigation.fire(event)
 
-    settled()
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(navigation.navigate).not.toHaveBeenCalled()
-      }),
-    )
+    await settled()
 
     expect(opened).toStrictEqual([])
   })
@@ -303,11 +296,9 @@ describe('leaving a document that will not save', () => {
     const { event } = navigateEvent('/doc/other.md')
     navigation.fire(event)
 
-    settled()
+    await settled()
 
-    await vi.waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledWith('https://example.test/doc/other.md', { history: 'push' })
-    })
+    expect(navigation.navigate).toHaveBeenCalledWith('https://example.test/doc/other.md', { history: 'push' })
   })
 
   it('goes back to the same history entry rather than pushing a new one', async () => {
@@ -315,11 +306,9 @@ describe('leaving a document that will not save', () => {
     const { event } = navigateEvent('/doc/other.md', { navigationType: 'traverse' })
     navigation.fire(event)
 
-    settled()
+    await settled()
 
-    await vi.waitFor(() => {
-      expect(navigation.traverseTo).toHaveBeenCalledWith('entry-key')
-    })
+    expect(navigation.traverseTo).toHaveBeenCalledWith('entry-key')
   })
 
   it('replaces rather than pushes when that is what was asked for', async () => {
@@ -327,11 +316,9 @@ describe('leaving a document that will not save', () => {
     const { event } = navigateEvent('/doc/other.md', { navigationType: 'replace' })
     navigation.fire(event)
 
-    settled()
+    await settled()
 
-    await vi.waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledWith('https://example.test/doc/other.md', { history: 'replace' })
-    })
+    expect(navigation.navigate).toHaveBeenCalledWith('https://example.test/doc/other.md', { history: 'replace' })
   })
 
   it('swallows a resumed navigation that is itself refused, rather than leaving a loose rejection', async () => {
@@ -340,12 +327,9 @@ describe('leaving a document that will not save', () => {
     const { event } = navigateEvent('/doc/other.md')
     navigation.fire(event)
 
-    settled()
+    await settled()
 
-    await vi.waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledTimes(1)
-    })
-    await Promise.resolve()
+    expect(navigation.navigate).toHaveBeenCalledTimes(1)
   })
 
   it('does not block when there is nothing to settle', () => {
