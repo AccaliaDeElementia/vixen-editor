@@ -13,5 +13,5 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["test-browser/**/*.ts", "test/conditions.ts", "vitest.config.ts"]
+  "include": ["test-browser/**/*.ts", "test/*.ts", "vitest.config.ts"]
 }

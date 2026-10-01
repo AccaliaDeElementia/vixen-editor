@@ -15,7 +15,10 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const SOURCE_DIRECTORIES = ['src', 'scripts', 'test', 'test-browser']
 const ROOT_SOURCE_FILES = ['vitest.config.ts', 'eslint.config.js']
 
-const TYPECHECK_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json']
+const TYPECHECK_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json', 'tsconfig.test-browser.json']
+const PORTABILITY_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json']
+
+const UNCHECKABLE_BY_TSC = ['eslint.config.js']
 const SOURCE_EXTENSION = /\.(?:ts|js)$/v
 
 const DIRECTIVE = "'use sanity'"
@@ -133,26 +136,50 @@ describe('every source file belongs to exactly one typecheck project', () => {
     return Array.isArray(include) ? include.filter((entry): entry is string => typeof entry === 'string') : []
   }
 
-  function matches(pattern: string, filePath: string): boolean {
-    if (!pattern.includes('*')) return pattern === filePath
-    const prefix = pattern.replace(/\*\*\/\*\.ts$/v, '')
-    return filePath.startsWith(prefix) && filePath.endsWith('.ts')
+  const ANY_DIRECTORIES = String.raw`(?:[^\/]+\/)*`
+  const ANY_NAME = String.raw`[^\/]*`
+
+  function asRegExp(pattern: string): RegExp {
+    const escaped = pattern.replace(/[.+^$\{\}\(\)\|\[\]\\]/gv, String.raw`\$&`)
+    const expanded = escaped.replace(/\*\*\/|\*/gv, (token) => (token === '*' ? ANY_NAME : ANY_DIRECTORIES))
+
+    return new RegExp(`^${expanded}$`, 'v')
   }
 
-  it('leaves no src file unchecked, and only shared code checked twice', () => {
-    const projects = TYPECHECK_PROJECTS.map((configPath) => ({ configPath, includes: includesOf(configPath) }))
+  function matches(pattern: string, filePath: string): boolean {
+    return asRegExp(pattern).test(filePath)
+  }
 
-    const filedUnder = (relativePath: string): string[] =>
-      projects
-        .filter(({ includes }) => includes.some((pattern) => matches(pattern, relativePath)))
-        .map(({ configPath }) => configPath)
+  function filedUnder(relativePath: string, configPaths: readonly string[]): string[] {
+    return configPaths.filter((configPath) => includesOf(configPath).some((pattern) => matches(pattern, relativePath)))
+  }
 
-    const misfiled = sources
-      .filter((source) => source.relativePath.startsWith('src/'))
-      .map((source) => ({ path: source.relativePath, projects: filedUnder(source.relativePath) }))
-      .filter(({ path, projects: matched }) => matched.length !== (path.startsWith(SHARED) ? 2 : 1))
+  it('leaves no source file outside every project, whatever directory it lives in', () => {
+    const unchecked = sources
+      .filter((source) => !UNCHECKABLE_BY_TSC.includes(source.relativePath))
+      .filter((source) => filedUnder(source.relativePath, TYPECHECK_PROJECTS).length === 0)
 
-    expect(misfiled).toStrictEqual([])
+    expect(unchecked.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('exempts only the config that is JavaScript, which no project checks', () => {
+    const exempt = UNCHECKABLE_BY_TSC.filter(
+      (relativePath) => filedUnder(relativePath, TYPECHECK_PROJECTS).length === 0,
+    )
+
+    expect(exempt).toStrictEqual(UNCHECKABLE_BY_TSC)
+  })
+
+  it('compiles shared code under both halves, which is what proves it is portable', () => {
+    const notBoth = sources
+      .filter((source) => source.relativePath.startsWith(SHARED))
+      .filter((source) => filedUnder(source.relativePath, PORTABILITY_PROJECTS).length !== PORTABILITY_PROJECTS.length)
+
+    expect(notBoth.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('finds shared code at all, so that comparison is not passing vacuously', () => {
+    expect(sources.filter((source) => source.relativePath.startsWith(SHARED)).length).toBeGreaterThan(0)
   })
 })
 
@@ -619,5 +646,61 @@ describe('waiting for work to finish', () => {
     const allowed = sources.find((source) => source.relativePath === RUNTIME_DECIDES_THE_MOMENT)
 
     expect(HAND_ROLLED_TIMER.test(allowed?.contents ?? '')).toBe(true)
+  })
+})
+
+interface DeclarationSite {
+  file: string
+  pattern: RegExp
+}
+
+const LANGUAGE_LEVEL_SITES: DeclarationSite[] = [
+  { file: 'tsconfig.base.json', pattern: /"target":\s*"(?<value>[^"]+)"/gv },
+  { file: 'tsconfig.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },
+  { file: 'tsconfig.client.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },
+  { file: 'tsconfig.server.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },
+  { file: 'tsconfig.test-browser.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },
+  { file: 'scripts/build.ts', pattern: /target: '(?<value>es\d+)'/gv },
+]
+
+const RUNTIME_SITES: DeclarationSite[] = [
+  { file: 'package.json', pattern: /"node": ">=(?<value>\d+)"/gv },
+  { file: 'scripts/build.ts', pattern: /target: 'node(?<value>\d+)'/gv },
+  { file: 'Dockerfile', pattern: /^FROM node:(?<value>\d+)-/gmv },
+]
+
+function declaredAt(site: DeclarationSite): string[] {
+  const contents = readFileSync(path.join(REPO_ROOT, site.file), 'utf8')
+
+  return [...contents.matchAll(site.pattern)].map((found) => (found.groups?.value ?? '').toLowerCase())
+}
+
+function everyDeclaration(sites: readonly DeclarationSite[]): string[] {
+  return sites.flatMap(declaredAt)
+}
+
+describe('one fact in several files', () => {
+  it('names the same language level everywhere it is declared', () => {
+    expect([...new Set(everyDeclaration(LANGUAGE_LEVEL_SITES))]).toHaveLength(1)
+  })
+
+  it('finds a language level at every site, so a renamed option cannot hide', () => {
+    const silent = LANGUAGE_LEVEL_SITES.filter((site) => declaredAt(site).length === 0)
+
+    expect(silent.map((site) => site.file)).toStrictEqual([])
+  })
+
+  it('names the same node major everywhere it is declared', () => {
+    expect([...new Set(everyDeclaration(RUNTIME_SITES))]).toHaveLength(1)
+  })
+
+  it('finds a node major at every site, including each stage of the image', () => {
+    const counted = RUNTIME_SITES.map((site) => ({ file: site.file, found: declaredAt(site).length }))
+
+    expect(counted).toStrictEqual([
+      { file: 'package.json', found: 1 },
+      { file: 'scripts/build.ts', found: 1 },
+      { file: 'Dockerfile', found: 3 },
+    ])
   })
 })
