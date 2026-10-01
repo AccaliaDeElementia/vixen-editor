@@ -1230,6 +1230,36 @@ is the sort that stops holding without warning. The fix is that each of
 `watchFreshness`, `guardUnload` and `interceptNavigation` hands back a named
 cleanup and `bootstrap` composes them into the `teardownEditor` it returns.
 
+### Nor may a listener on `window` or `document`
+
+`test/client/listeners.ts` is the same idea for the other half of that leak,
+and the client setup installs it beside the timer guard. The failure names the
+target and the event, because the fix is always "hold the remover something
+handed back".
+
+**Only `window` and `document` are watched, and that bound is the design
+rather than a shortcut.** A listener on an element the test created dies with
+that element, so it cannot accumulate; a listener on a shared target
+accumulates once per test and is what fires against an abandoned subject.
+Watching every `EventTarget` would report the former as a leak and drown the
+signal.
+
+**The cost of that bound is a real gap, and it is worth naming.** A listener
+on an element that is long-lived _in production_ but rebuilt per test — the
+file dialog is the one here — is invisible to this guard, because the test's
+copy is discarded either way. Registration being bounded across repeated use
+of such an element is a claim a test has to make directly.
+
+A `{ once: true }` registration counts as standing until it fires, since one
+that never fires is still registered. The guard tracks the firing, so a
+one-shot listener that has done its job is not reported.
+
+A guard like this cannot be trusted on inspection — patching the wrong thing
+reports silence, which reads exactly like success. `test/client/listeners.ts`
+earned its spec by failing that way first: `EventTarget.prototype` is not what
+`window.addEventListener` resolves to under this runner, and the instrument
+was blind until a deliberately leaked listener was used to prove otherwise.
+
 ### The conventions suite enforces this document
 
 `test/conventions/project-rules.test.ts` reads the source tree and fails the
