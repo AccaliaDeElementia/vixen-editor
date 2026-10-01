@@ -90,7 +90,7 @@ export function bindEntryDrops(
   )
 }
 
-export const TestOnly = { draggedEntry, insertionFor, linkFor, suggestedName }
+export const TestOnly = { draggedEntry, insertionFor, linkFor, receive, suggestedName }
 
 function droppedFiles(transfer: DataTransfer | null): File[] | null {
   if (transfer === null || ![...transfer.types].includes('Files')) return null
@@ -165,24 +165,29 @@ function insertionFor(links: readonly string[], atLineStart: boolean): string {
   return atLineStart ? body : `\n${body}`
 }
 
+async function receive(
+  files: readonly File[],
+  at: number | null,
+  atLineStart: (position: number | null) => boolean,
+  options: FileDropOptions,
+): Promise<void> {
+  const directory = directoryOf(options.holder())
+  const links: string[] = []
+
+  await serially(files, async (file) => {
+    const stored = await storeOne(file, directory, options)
+    if (stored !== null) links.push(linkFor(entryFor(stored), options.holder()))
+  })
+
+  if (links.length > NO_LINKS) options.insert(insertionFor(links, atLineStart(at)), at)
+}
+
 export function bindFileDrops(
   content: HTMLElement,
   positionAt: (event: DragEvent) => number | null,
   atLineStart: (position: number | null) => boolean,
   options: FileDropOptions,
 ): void {
-  async function receive(files: readonly File[], at: number | null): Promise<void> {
-    const directory = directoryOf(options.holder())
-    const links: string[] = []
-
-    await serially(files, async (file) => {
-      const stored = await storeOne(file, directory, options)
-      if (stored !== null) links.push(linkFor(entryFor(stored), options.holder()))
-    })
-
-    if (links.length > NO_LINKS) options.insert(insertionFor(links, atLineStart(at)), at)
-  }
-
   content.addEventListener(
     'dragover',
     (event) => {
@@ -200,7 +205,7 @@ export function bindFileDrops(
       if (files === null) return
 
       event.preventDefault()
-      void receive(files, positionAt(event))
+      void receive(files, positionAt(event), atLineStart, options)
     },
     BEFORE_THE_EDITOR,
   )

@@ -10,7 +10,7 @@ import type { Toast } from '../../src/client/layout/toast.ts'
 
 import { cast } from '../cast.ts'
 
-const { insertionFor, suggestedName } = TestOnly
+const { insertionFor, receive, suggestedName } = TestOnly
 
 interface Prompted {
   title: string
@@ -21,6 +21,8 @@ let inserted: Array<{ text: string; at: number | null }> = []
 let errors: string[] = []
 let prompted: Prompted[] = []
 let upload = vi.fn()
+let insertion: PromiseWithResolvers<void> = Promise.withResolvers()
+let prompting: PromiseWithResolvers<void> = Promise.withResolvers()
 
 interface DropOptions {
   answerPrompt?: (submit: (name: string) => Promise<string | null>) => Promise<boolean>
@@ -32,43 +34,56 @@ function declinePrompt(): Promise<boolean> {
   return Promise.resolve(false)
 }
 
+const AT_CARET = 3
+
+function dropOptions(options: DropOptions = {}): Parameters<typeof receive>[3] {
+  return {
+    holder: () => 'journal/notes.md',
+    client: cast<FilesClient>({ upload }),
+    dialogs: cast<Dialogs>({
+      prompt: async (request: { title: string; value?: string; submit: (name: string) => Promise<string | null> }) => {
+        prompted.push({ title: request.title, value: request.value ?? '' })
+
+        const answer = options.answerPrompt ?? declinePrompt
+        const chosen = await answer(request.submit)
+        prompting.resolve()
+
+        return chosen
+      },
+    }),
+    toast: cast<Toast>({
+      show: () => undefined,
+      error: (message: string) => {
+        errors.push(message)
+      },
+    }),
+    insert: (text: string, at: number | null) => {
+      inserted.push({ text, at })
+      insertion.resolve()
+    },
+  }
+}
+
 function editor(options: DropOptions = {}): HTMLElement {
   const element = document.createElement('div')
   document.body.append(element)
 
   bindFileDrops(
     element,
-    () => options.at ?? 3,
+    () => options.at ?? AT_CARET,
     () => options.atLineStart ?? false,
-    {
-      holder: () => 'journal/notes.md',
-      client: cast<FilesClient>({ upload }),
-      dialogs: cast<Dialogs>({
-        prompt: async (request: {
-          title: string
-          value?: string
-          submit: (name: string) => Promise<string | null>
-        }) => {
-          prompted.push({ title: request.title, value: request.value ?? '' })
-
-          const answer = options.answerPrompt ?? declinePrompt
-
-          return await answer(request.submit)
-        },
-      }),
-      toast: cast<Toast>({
-        show: () => undefined,
-        error: (message: string) => {
-          errors.push(message)
-        },
-      }),
-      insert: (text: string, at: number | null) => {
-        inserted.push({ text, at })
-      },
-    },
+    dropOptions(options),
   )
 
   return element
+}
+
+async function afterInserting(): Promise<void> {
+  await insertion.promise
+}
+
+async function afterPrompting(): Promise<void> {
+  await prompting.promise
 }
 
 function dropFiles(element: HTMLElement, files: File[]): DragEvent {
@@ -91,6 +106,8 @@ beforeEach(() => {
   inserted = []
   errors = []
   prompted = []
+  insertion = Promise.withResolvers()
+  prompting = Promise.withResolvers()
   upload = vi.fn().mockImplementation((directory: string, file: File) => Promise.resolve(`${directory}/${file.name}`))
 })
 
@@ -100,9 +117,9 @@ describe('where a dropped file lands', () => {
 
     dropFiles(element, [png('a.png')])
 
-    await vi.waitFor(() => {
-      expect(upload).toHaveBeenCalledWith('journal', expect.any(File))
-    })
+    await afterInserting()
+
+    expect(upload).toHaveBeenCalledWith('journal', expect.any(File))
   })
 
   it('inserts an embed for the stored image', async () => {
@@ -110,9 +127,9 @@ describe('where a dropped file lands', () => {
 
     dropFiles(element, [png('a.png')])
 
-    await vi.waitFor(() => {
-      expect(inserted).toStrictEqual([{ text: '![a.png](a.png)', at: 3 }])
-    })
+    await afterInserting()
+
+    expect(inserted).toStrictEqual([{ text: '![a.png](a.png)', at: 3 }])
   })
 
   it('inserts a link for a stored document', async () => {
@@ -120,9 +137,9 @@ describe('where a dropped file lands', () => {
 
     dropFiles(element, [png('notes.txt')])
 
-    await vi.waitFor(() => {
-      expect(inserted).toStrictEqual([{ text: '[notes.txt](notes.txt)', at: 3 }])
-    })
+    await afterInserting()
+
+    expect(inserted).toStrictEqual([{ text: '[notes.txt](notes.txt)', at: 3 }])
   })
 })
 
@@ -140,9 +157,9 @@ describe('several files at once', () => {
 
     dropFiles(element, [png('a.png'), png('b.png')])
 
-    await vi.waitFor(() => {
-      expect(order).toStrictEqual(['start a.png', 'done a.png', 'start b.png', 'done b.png'])
-    })
+    await afterInserting()
+
+    expect(order).toStrictEqual(['start a.png', 'done a.png', 'start b.png', 'done b.png'])
   })
 
   it('breaks the line first when the drop lands mid-line', async () => {
@@ -150,9 +167,9 @@ describe('several files at once', () => {
 
     dropFiles(element, [png('a.png'), png('b.png')])
 
-    await vi.waitFor(() => {
-      expect(inserted.at(0)?.text).toBe('\n![a.png](a.png)\n![b.png](b.png)')
-    })
+    await afterInserting()
+
+    expect(inserted.at(0)?.text).toBe('\n![a.png](a.png)\n![b.png](b.png)')
   })
 
   it('does not break the line when the drop is already at one', async () => {
@@ -160,9 +177,9 @@ describe('several files at once', () => {
 
     dropFiles(element, [png('a.png'), png('b.png')])
 
-    await vi.waitFor(() => {
-      expect(inserted.at(0)?.text).toBe('![a.png](a.png)\n![b.png](b.png)')
-    })
+    await afterInserting()
+
+    expect(inserted.at(0)?.text).toBe('![a.png](a.png)\n![b.png](b.png)')
   })
 
   it('keeps the files that did upload when one is refused', async () => {
@@ -175,9 +192,9 @@ describe('several files at once', () => {
 
     dropFiles(element, [png('bad.png'), png('good.png')])
 
-    await vi.waitFor(() => {
-      expect(inserted).toStrictEqual([{ text: '![good.png](good.png)', at: 3 }])
-    })
+    await afterInserting()
+
+    expect(inserted).toStrictEqual([{ text: '![good.png](good.png)', at: 3 }])
   })
 
   it('reports the file that was refused, so the gap in the links is explained', async () => {
@@ -190,26 +207,17 @@ describe('several files at once', () => {
 
     dropFiles(element, [png('bad.png'), png('good.png')])
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(inserted).toHaveLength(1)
-      }),
-    )
+    await afterInserting()
 
     expect(errors).toStrictEqual(['bad.png: Content does not match'])
   })
+})
 
+describe('a drop whose whole outcome is silence, so the work itself is the only signal', () => {
   it('inserts nothing when every file was refused', async () => {
-    const element = editor()
     upload.mockRejectedValue(new FilesRequestError(400, 'nope', 'CONTENT_MISMATCH', []))
 
-    dropFiles(element, [png('a.png')])
-
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(errors.length).toBe(1)
-      }),
-    )
+    await receive([png('a.png')], AT_CARET, () => false, dropOptions())
 
     expect(inserted).toStrictEqual([])
   })
@@ -226,9 +234,9 @@ describe('a name that is already taken', () => {
 
     dropFiles(element, [png('a.png')])
 
-    await vi.waitFor(() => {
-      expect(prompted).toStrictEqual([{ title: 'a.png is already there', value: 'a-1.png' }])
-    })
+    await afterPrompting()
+
+    expect(prompted).toStrictEqual([{ title: 'a.png is already there', value: 'a-1.png' }])
   })
 
   it('links what it stored under the chosen name', async () => {
@@ -246,9 +254,9 @@ describe('a name that is already taken', () => {
 
     dropFiles(element, [png('a.png')])
 
-    await vi.waitFor(() => {
-      expect(inserted).toStrictEqual([{ text: '![renamed.png](renamed.png)', at: 3 }])
-    })
+    await afterInserting()
+
+    expect(inserted).toStrictEqual([{ text: '![renamed.png](renamed.png)', at: 3 }])
   })
 
   it('links the file already in the store when the rename is declined', async () => {
@@ -257,9 +265,9 @@ describe('a name that is already taken', () => {
 
     dropFiles(element, [png('a.png')])
 
-    await vi.waitFor(() => {
-      expect(inserted).toStrictEqual([{ text: '![a.png](a.png)', at: 3 }])
-    })
+    await afterInserting()
+
+    expect(inserted).toStrictEqual([{ text: '![a.png](a.png)', at: 3 }])
   })
 
   it('reports a rename the server also refused, so the dialog can stay open', async () => {
@@ -276,9 +284,9 @@ describe('a name that is already taken', () => {
 
     dropFiles(element, [png('a.png')])
 
-    await vi.waitFor(() => {
-      expect(reported).toBe('Already exists')
-    })
+    await afterPrompting()
+
+    expect(reported).toBe('Already exists')
   })
 })
 
