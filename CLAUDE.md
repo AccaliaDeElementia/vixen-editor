@@ -1191,12 +1191,44 @@ One such helper lived here, drained the microtask queue with a `setTimeout`,
 and was **correct only while no timer was scheduled after its own** — green or
 red purely by which `setTimeout` was queued first, with nothing announcing the
 difference. So `test/conventions/` also fails on a hand-rolled `setTimeout` or
-`setInterval` anywhere in `test/`. The single exception is
-`test/rejections.ts`, where the thing awaited is the runtime's own
-unhandled-rejection reporting, which happens at a macrotask boundary by
-specification and has no earlier observable moment. `test-browser/` is not
-covered: there `page.waitForTimeout` waits on real paint and animation, which
-is a different question and not yet settled.
+`setInterval` anywhere in `test/`. Two files are exempt, each because it exists
+to exercise the thing the rule forbids: `test/rejections.ts`, where the thing
+awaited is the runtime's own unhandled-rejection reporting, which happens at a
+macrotask boundary by specification and has no earlier observable moment; and
+`test/conventions/timer-guard.test.ts`, which has to schedule a timer to prove
+the guard below catches one. `test-browser/` is not covered: there
+`page.waitForTimeout` waits on real paint and animation, which is a different
+question and not yet settled.
+
+### A repeating timer may not outlive the test that started it
+
+`test/timers.ts` wraps `setInterval` and `clearInterval` and fails any test
+that ends with one still scheduled. Every project installs it through a setup
+file, so a leak is caught wherever it comes from rather than only where one was
+once found.
+
+**Intervals, not timeouts, and the line is principled rather than
+convenient.** An interval never completes, so one left behind goes on firing
+against a subject the test has abandoned — there is no reading of that which is
+not a defect. A pending `setTimeout` is in-flight scheduled work the test
+legitimately walked away from: a toast that will expire, an autosave window
+that will close. Holding tests to the stricter rule would mean teaching the
+toast and autosave lifecycles to be torn down, which is real work and not this
+guard's job.
+
+The guard **cancels what it found** before failing, so one leak fails its own
+test rather than every test after it in the file. Timers created under
+`vi.useFakeTimers()` are deliberately invisible to it, because the fake clock
+discards them; the wrapper survives a fake-timer round trip, so a file that
+uses them is not thereby excused for the rest of its run.
+
+`bootstrap` is what prompted it: `watchFreshness` returned a cleanup,
+`bootstrap` discarded it, and every test that started an editor left an
+interval and six `window` listeners behind. That was harmless only by accident
+— no test dispatched `focus` in a file that had bootstrapped — and the accident
+is the sort that stops holding without warning. The fix is that each of
+`watchFreshness`, `guardUnload` and `interceptNavigation` hands back a named
+cleanup and `bootstrap` composes them into the `teardownEditor` it returns.
 
 ### The conventions suite enforces this document
 

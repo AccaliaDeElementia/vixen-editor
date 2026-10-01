@@ -2,6 +2,13 @@
 
 import { afterEach } from 'vitest'
 
+import { failOnLeakedInterval, watchIntervals } from '../timers.ts'
+
 import { closeEditors } from './editor-fixtures.ts'
 
-afterEach(closeEditors)
+watchIntervals()
+
+afterEach(() => {
+  closeEditors()
+  failOnLeakedInterval()
+})

@@ -1,0 +1,39 @@
+'use sanity'
+
+import { expect } from 'vitest'
+
+const NO_INTERVALS_STANDING = 0
+
+const LEAKED_INTERVAL =
+  'This test finished with a repeating timer still scheduled. An interval never completes on its own, so it goes on firing against a subject the test has abandoned for the rest of the file. Hold the cleanup whatever created it handed back and call it, or install fake timers for this test.'
+
+type Schedule = typeof globalThis.setInterval
+type Cancel = typeof globalThis.clearInterval
+type IntervalHandle = Parameters<Cancel>[0]
+
+const standing = new Set<IntervalHandle>()
+
+export function watchIntervals(): void {
+  const schedule: Schedule = globalThis.setInterval
+  const cancel: Cancel = globalThis.clearInterval
+
+  globalThis.setInterval = ((...args: Parameters<Schedule>) => {
+    const handle = schedule(...args)
+    standing.add(handle)
+
+    return handle
+  }) as Schedule
+
+  globalThis.clearInterval = (handle: IntervalHandle) => {
+    standing.delete(handle)
+    cancel(handle)
+  }
+}
+
+export function failOnLeakedInterval(): void {
+  const leaked = [...standing]
+  standing.clear()
+  for (const handle of leaked) globalThis.clearInterval(handle)
+
+  expect(leaked.length, LEAKED_INTERVAL).toBe(NO_INTERVALS_STANDING)
+}

@@ -28,6 +28,8 @@ const SCANNER = 'test/conventions/project-rules.test.ts'
 const POLLED_WAIT = /\bvi\.waitFor\s*\(/v
 const HAND_ROLLED_TIMER = /\bset(?:Timeout|Interval)\s*\(/v
 const RUNTIME_DECIDES_THE_MOMENT = 'test/rejections.ts'
+const PROVES_THE_TIMER_GUARD = 'test/conventions/timer-guard.test.ts'
+const MAY_SCHEDULE_A_TIMER = [RUNTIME_DECIDES_THE_MOMENT, PROVES_THE_TIMER_GUARD]
 const UNNAMED_TIMEOUT = /\{\s*timeout:\s*\d/v
 
 const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmv
@@ -629,16 +631,16 @@ describe('waiting for work to finish', () => {
 
   it('leaves no hand-rolled timer in the unit suite, where a signal is always available', () => {
     const yielding = suiteFiles('test/')
-      .filter((source) => source.relativePath !== RUNTIME_DECIDES_THE_MOMENT)
+      .filter((source) => !MAY_SCHEDULE_A_TIMER.includes(source.relativePath))
       .filter((source) => HAND_ROLLED_TIMER.test(source.contents))
 
     expect(yielding.map((source) => source.relativePath)).toStrictEqual([])
   })
 
-  it('finds the one timer the runtime does decide, so that scan is not passing vacuously', () => {
-    const allowed = sources.find((source) => source.relativePath === RUNTIME_DECIDES_THE_MOMENT)
+  it.each(MAY_SCHEDULE_A_TIMER)('finds the timer %s is allowed, so that scan is not passing vacuously', (allowed) => {
+    const source = sources.find((candidate) => candidate.relativePath === allowed)
 
-    expect(HAND_ROLLED_TIMER.test(allowed?.contents ?? '')).toBe(true)
+    expect(HAND_ROLLED_TIMER.test(source?.contents ?? '')).toBe(true)
   })
 
   it('leaves no bare number as a test timeout, so a slow test has to say what it waits for', () => {

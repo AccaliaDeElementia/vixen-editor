@@ -17,6 +17,7 @@ export default defineConfig({
       {
         test: {
           name: 'server',
+          setupFiles: ['./test/timers-setup.ts'],
           environment: 'node',
           testTimeout: REAL_FILESYSTEM_TIMEOUT_MS,
           include: ['test/server/**/*.test.ts'],
@@ -36,6 +37,7 @@ export default defineConfig({
       {
         test: {
           name: 'shared',
+          setupFiles: ['./test/timers-setup.ts'],
           environment: 'node',
           testTimeout: IN_MEMORY_TIMEOUT_MS,
           include: ['test/shared/**/*.test.ts'],
@@ -44,6 +46,7 @@ export default defineConfig({
       {
         test: {
           name: 'conventions',
+          setupFiles: ['./test/timers-setup.ts'],
           environment: 'node',
           testTimeout: IN_MEMORY_TIMEOUT_MS,
           include: ['test/conventions/**/*.test.ts'],
