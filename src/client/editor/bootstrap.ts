@@ -52,7 +52,7 @@ interface BootstrapOptions {
   pathname?: string
   session?: Session
   navigate?: (url: string) => void
-  listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => void
+  listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => () => void
   files?: FilesClient
   reopen?: () => void
   openUrl?: (url: string) => void

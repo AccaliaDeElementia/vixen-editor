@@ -20,6 +20,8 @@ function guarding(unsaved: () => boolean): Guarded {
     rescue,
     listen: (registered) => {
       handler = registered
+
+      return () => undefined
     },
   })
 
@@ -67,11 +69,33 @@ describe('the default listener', () => {
     const addEventListener = vi.spyOn(window, 'addEventListener')
 
     try {
-      guardUnload({ unsaved: () => false, rescue: () => undefined })
+      guardUnload({ unsaved: () => false, rescue: () => undefined }).unguardUnload()
 
       expect(addEventListener).toHaveBeenCalledWith('beforeunload', expect.any(Function))
     } finally {
       addEventListener.mockRestore()
     }
+  })
+
+  it('stops listening on the window once the guard is released', () => {
+    const removeEventListener = vi.spyOn(window, 'removeEventListener')
+
+    try {
+      guardUnload({ unsaved: () => false, rescue: () => undefined }).unguardUnload()
+
+      expect(removeEventListener).toHaveBeenCalledWith('beforeunload', expect.any(Function))
+    } finally {
+      removeEventListener.mockRestore()
+    }
+  })
+})
+
+describe('releasing the guard', () => {
+  it('invokes the remover its listener handed back', () => {
+    const remove = vi.fn<() => void>()
+
+    guardUnload({ unsaved: () => false, rescue: () => undefined, listen: () => remove }).unguardUnload()
+
+    expect(remove).toHaveBeenCalledTimes(1)
   })
 })

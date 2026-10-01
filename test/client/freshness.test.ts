@@ -11,16 +11,16 @@ let checks = 0
 let release: Array<() => void> = []
 
 function watching(options: { listen?: (wake: () => void) => () => void; intervalMs?: number } = {}): () => void {
-  const stop = watchFreshness({
+  const { unwatchFreshness } = watchFreshness({
     check: async () => {
       checks += 1
       await Promise.resolve()
     },
     ...options,
   })
-  release.push(stop)
+  release.push(unwatchFreshness)
 
-  return stop
+  return unwatchFreshness
 }
 
 beforeEach(() => {

@@ -448,6 +448,8 @@ describe('leaving the page with the buffer dirty', () => {
       session: fakeSession(),
       listenForUnload: (registered) => {
         handler = registered
+
+        return () => undefined
       },
     })
 

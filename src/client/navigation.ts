@@ -40,6 +40,7 @@ export interface Navigator {
   forward: () => void
   canGoBack: () => boolean
   canGoForward: () => boolean
+  stopIntercepting: () => void
 }
 
 interface InterceptOptions {
@@ -55,6 +56,7 @@ const NOWHERE_TO_GO: Navigator = {
   forward: () => undefined,
   canGoBack: () => false,
   canGoForward: () => false,
+  stopIntercepting: () => undefined,
 }
 
 function shouldHandle(event: NavigateEvent): boolean {
@@ -91,7 +93,7 @@ export function interceptNavigation(options: InterceptOptions): Navigator {
   const { navigation } = options
   if (navigation === undefined) return NOWHERE_TO_GO
 
-  navigation.addEventListener('navigate', (event) => {
+  const onNavigate = (event: NavigateEvent): void => {
     if (!shouldHandle(event)) return
 
     if (blocks(options, event)) {
@@ -109,13 +111,20 @@ export function interceptNavigation(options: InterceptOptions): Navigator {
         await options.open(pathname)
       },
     })
-  })
+  }
 
-  navigation.addEventListener('navigatesuccess', () => {
+  const onNavigateSuccess = (): void => {
     if (options.onSettled !== undefined) options.onSettled()
-  })
+  }
+
+  navigation.addEventListener('navigate', onNavigate)
+  navigation.addEventListener('navigatesuccess', onNavigateSuccess)
 
   return {
+    stopIntercepting: () => {
+      navigation.removeEventListener('navigate', onNavigate)
+      navigation.removeEventListener('navigatesuccess', onNavigateSuccess)
+    },
     back: () => {
       if (navigation.canGoBack) navigation.back()
     },

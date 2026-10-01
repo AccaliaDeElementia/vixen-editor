@@ -8,6 +8,10 @@ interface FreshnessOptions {
   listen?: ((wake: () => void, settled: () => Promise<void>) => () => void) | undefined
 }
 
+interface FreshnessWatcher {
+  unwatchFreshness: () => void
+}
+
 function onTabFocus(wake: () => void): () => void {
   const onVisible = (): void => {
     if (document.visibilityState === 'visible') wake()
@@ -22,7 +26,7 @@ function onTabFocus(wake: () => void): () => void {
   }
 }
 
-export function watchFreshness(options: FreshnessOptions): () => void {
+export function watchFreshness(options: FreshnessOptions): FreshnessWatcher {
   const listen = options.listen ?? onTabFocus
   let inFlight: Promise<void> | null = null
 
@@ -39,9 +43,11 @@ export function watchFreshness(options: FreshnessOptions): () => void {
   const timer = setInterval(wake, options.intervalMs ?? CHECK_INTERVAL_MS)
   const unlisten = listen(wake, settled)
 
-  return () => {
-    clearInterval(timer)
-    unlisten()
+  return {
+    unwatchFreshness: () => {
+      clearInterval(timer)
+      unlisten()
+    },
   }
 }
 

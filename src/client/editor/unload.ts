@@ -5,20 +5,30 @@ type UnloadHandler = (event: BeforeUnloadEvent) => void
 interface UnloadOptions {
   unsaved: () => boolean
   rescue: () => void
-  listen?: ((handler: UnloadHandler) => void) | undefined
+  listen?: ((handler: UnloadHandler) => () => void) | undefined
 }
 
-function onWindowUnload(handler: UnloadHandler): void {
+interface UnloadGuard {
+  unguardUnload: () => void
+}
+
+function onWindowUnload(handler: UnloadHandler): () => void {
   window.addEventListener('beforeunload', handler)
+
+  return () => {
+    window.removeEventListener('beforeunload', handler)
+  }
 }
 
-export function guardUnload(options: UnloadOptions): void {
+export function guardUnload(options: UnloadOptions): UnloadGuard {
   const listen = options.listen ?? onWindowUnload
 
-  listen((event) => {
+  const unlisten = listen((event) => {
     if (!options.unsaved()) return
 
     options.rescue()
     event.preventDefault()
   })
+
+  return { unguardUnload: unlisten }
 }

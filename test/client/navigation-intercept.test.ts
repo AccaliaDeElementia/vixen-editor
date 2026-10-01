@@ -11,6 +11,7 @@ import { cast } from '../cast.ts'
 
 interface FakeNavigation {
   addEventListener: (type: string, handler: (event: unknown) => void) => void
+  removeEventListener: (type: string, handler: (event: unknown) => void) => void
   fire: (event: unknown) => void
   settle: () => void
   back: ReturnType<typeof vi.fn>
@@ -35,6 +36,9 @@ function fakeNavigation(): FakeNavigation {
   return {
     addEventListener: (type: string, handler: (event: unknown) => void) => {
       handlers.set(type, handler)
+    },
+    removeEventListener: (type: string, handler: (event: unknown) => void) => {
+      if (handlers.get(type) === handler) handlers.delete(type)
     },
     fire: (event: unknown) => handlers.get('navigate')?.(event),
     settle: () => handlers.get('navigatesuccess')?.(new Event('navigatesuccess')),
@@ -227,7 +231,24 @@ describe('a browser without the Navigation API', () => {
     expect(() => {
       navigator.back()
       navigator.forward()
+      navigator.stopIntercepting()
     }).not.toThrow()
+  })
+})
+
+describe('releasing the interception', () => {
+  it('stops opening documents for navigations it used to handle', () => {
+    const navigation = fakeNavigation()
+    const navigator = listening(navigation)
+    navigation.fire(navigateEvent('/doc/a.md').event)
+    given(() => {
+      expect(opened).toStrictEqual(['/doc/a.md'])
+    })
+
+    navigator.stopIntercepting()
+    navigation.fire(navigateEvent('/doc/b.md').event)
+
+    expect(opened).toStrictEqual(['/doc/a.md'])
   })
 })
 
