@@ -1,7 +1,7 @@
 'use sanity'
 
-import { givenAsync } from '../conditions.ts'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { given } from '../conditions.ts'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { LoadedDocument, Session } from '../../src/client/editor/session.ts'
@@ -13,13 +13,14 @@ import type { Dialogs } from '../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
 
-import { everyPendingMicrotask, page, pressSave, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
+import { page, pressSave, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
 
 const { bootstrap } = TestOnly
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
 let wake: () => void = () => undefined
+let afterTheCheck: () => Promise<void> = () => Promise.resolve()
 
 function fakeSession(overrides: Partial<Session> = {}): Session {
   return sessionRecording(record, overrides)
@@ -30,8 +31,9 @@ async function editing(reread: () => Promise<LoadedDocument | null>): Promise<Re
     root,
     pathname: '/doc/notes.md',
     session: fakeSession({ load: () => Promise.resolve({ content: '# stored', stored: true }), reread }),
-    listenForFocus: (registered) => {
+    listenForFocus: (registered, settled) => {
       wake = registered
+      afterTheCheck = settled
 
       return () => undefined
     },
@@ -48,6 +50,7 @@ beforeEach(() => {
   document.body.innerHTML = ''
   root = page()
   wake = () => undefined
+  afterTheCheck = () => Promise.resolve()
 })
 
 describe('a clean buffer when the document changes on disk', () => {
@@ -56,9 +59,9 @@ describe('a clean buffer when the document changes on disk', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('# changed elsewhere')
-    })
+    await afterTheCheck()
+
+    expect(view.state.doc.toString()).toBe('# changed elsewhere')
   })
 
   it('says it reloaded, rather than the text changing silently', async () => {
@@ -66,9 +69,9 @@ describe('a clean buffer when the document changes on disk', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('changed on disk — reloaded')
-    })
+    await afterTheCheck()
+
+    expect(statusText()).toContain('changed on disk — reloaded')
   })
 
   it('keeps the caret where it was, so the reader does not lose their place', async () => {
@@ -77,11 +80,10 @@ describe('a clean buffer when the document changes on disk', () => {
 
     wake()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.state.doc.toString()).toBe('# changed elsewhere')
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(view.state.doc.toString()).toBe('# changed elsewhere')
+    })
 
     expect(view.state.selection.main.head).toBe(4)
   })
@@ -92,11 +94,10 @@ describe('a clean buffer when the document changes on disk', () => {
 
     wake()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.state.doc.toString()).toBe('x')
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(view.state.doc.toString()).toBe('x')
+    })
 
     expect(view.state.selection.main.head).toBe(1)
   })
@@ -105,7 +106,7 @@ describe('a clean buffer when the document changes on disk', () => {
     const view = await editing(() => Promise.resolve(null))
 
     wake()
-    await everyPendingMicrotask()
+    await afterTheCheck()
 
     expect(view.state.doc.toString()).toBe('# stored')
   })
@@ -114,7 +115,7 @@ describe('a clean buffer when the document changes on disk', () => {
     await editing(() => Promise.resolve(null))
 
     wake()
-    await everyPendingMicrotask()
+    await afterTheCheck()
 
     expect(statusText()).not.toContain('reloaded')
   })
@@ -127,11 +128,10 @@ describe('a dirty buffer when the document changes on disk', () => {
 
     wake()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(statusText()).toContain('can no longer be saved')
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(statusText()).toContain('can no longer be saved')
+    })
 
     expect(view.state.doc.toString()).toBe('mine # stored')
   })
@@ -143,9 +143,9 @@ describe('a check that cannot be made', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(statusText()).not.toContain('reloaded')
-    })
+    await afterTheCheck()
+
+    expect(statusText()).not.toContain('reloaded')
   })
 
   it('is not made at all while the workspace is showing something other than a document', async () => {
@@ -161,19 +161,19 @@ describe('a check that cannot be made', () => {
           return Promise.resolve(null)
         },
       }),
-      listenForFocus: (registered) => {
+      listenForFocus: (registered, settled) => {
         wake = registered
+        afterTheCheck = settled
 
         return () => undefined
       },
     })
 
     wake()
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(false)
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(false)
+    })
 
     expect(asked).toStrictEqual([])
   })
@@ -183,20 +183,26 @@ describe('a check while a save is in flight', () => {
   it('is skipped, or it could observe a half-written document', async () => {
     const asked: string[] = []
     const hanging: PromiseWithResolvers<void> = Promise.withResolvers()
+    const saving: PromiseWithResolvers<void> = Promise.withResolvers()
     const view = await bootstrap({
       root,
       pathname: '/doc/notes.md',
       session: fakeSession({
         load: () => Promise.resolve({ content: '# stored', stored: true }),
-        save: () => hanging.promise,
+        save: () => {
+          saving.resolve()
+
+          return hanging.promise
+        },
         reread: (id: string) => {
           asked.push(id)
 
           return Promise.resolve(null)
         },
       }),
-      listenForFocus: (registered) => {
+      listenForFocus: (registered, settled) => {
         wake = registered
+        afterTheCheck = settled
 
         return () => undefined
       },
@@ -206,18 +212,16 @@ describe('a check while a save is in flight', () => {
     view.contentDOM.dispatchEvent(
       new KeyboardEvent('keydown', { key: 's', code: 'KeyS', ctrlKey: true, bubbles: true, cancelable: true }),
     )
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
-      }),
-    )
+    await saving.promise
+    given(() => {
+      expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
+    })
 
     wake()
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
+    })
 
     expect(asked).toStrictEqual([])
     hanging.resolve()
@@ -272,8 +276,9 @@ async function dirtyAgainst(theirs: string, chooser: Chooser, save?: Session['sa
       reread: () => Promise.resolve({ content: theirs, stored: true }),
       ...(save === undefined ? {} : { save }),
     }),
-    listenForFocus: (registered) => {
+    listenForFocus: (registered, settled) => {
       wake = registered
+      afterTheCheck = settled
 
       return () => undefined
     },
@@ -291,9 +296,9 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(chooser.offered).toBe(1)
-    })
+    await afterTheCheck()
+
+    expect(chooser.offered).toBe(1)
   })
 
   it('takes theirs by replacing the buffer with what is stored', async () => {
@@ -301,9 +306,9 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('# theirs')
-    })
+    await afterTheCheck()
+
+    expect(view.state.doc.toString()).toBe('# theirs')
   })
 
   it('keeps mine by saving the buffer over what is stored', async () => {
@@ -311,9 +316,9 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(record.saved).toStrictEqual([{ id: 'notes.md', content: 'mine # stored' }])
-    })
+    await afterTheCheck()
+
+    expect(record.saved).toStrictEqual([{ id: 'notes.md', content: 'mine # stored' }])
   })
 
   it('keeps both by writing the buffer to a second document', async () => {
@@ -322,9 +327,9 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(chooser.created).toStrictEqual([{ entryPath: 'notes-mine.md', content: 'mine # stored' }])
-    })
+    await afterTheCheck()
+
+    expect(chooser.created).toStrictEqual([{ entryPath: 'notes-mine.md', content: 'mine # stored' }])
   })
 
   it('then loads the stored version into the buffer, so the copy is the only stale one', async () => {
@@ -333,11 +338,10 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(chooser.created).toHaveLength(1)
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(chooser.created).toHaveLength(1)
+    })
 
     expect(view.state.doc.toString()).toBe('# theirs')
   })
@@ -347,9 +351,9 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
-    })
+    await afterTheCheck()
+
+    expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
   })
 
   it('shows the stored version as the side to be accepted or rejected', async () => {
@@ -357,11 +361,10 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+    })
 
     expect(view.dom.querySelector('.cm-deletedChunk')?.textContent).toContain('# theirs')
   })
@@ -371,11 +374,10 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+    })
 
     expect(view.state.doc.toString()).toContain('mine')
   })
@@ -384,11 +386,10 @@ describe('resolving a conflict on a dirty buffer', () => {
     const view = await dirtyAgainst('# theirs', choosing('merge'))
 
     wake()
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+    })
 
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '# theirs' } })
 
@@ -399,11 +400,10 @@ describe('resolving a conflict on a dirty buffer', () => {
     const view = await dirtyAgainst('# theirs', choosing('merge'))
 
     wake()
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
-      }),
-    )
+    await afterTheCheck()
+    given(() => {
+      expect(view.dom.querySelectorAll('.cm-changedLine').length).toBeGreaterThan(0)
+    })
 
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '# theirs' } })
 
@@ -415,9 +415,9 @@ describe('resolving a conflict on a dirty buffer', () => {
 
     wake()
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('can no longer be saved')
-    })
+    await afterTheCheck()
+
+    expect(statusText()).toContain('can no longer be saved')
   })
 })
 
@@ -430,9 +430,9 @@ describe('a save the store refuses as stale', () => {
 
     await pressSave(view)
 
-    await vi.waitFor(() => {
-      expect(chooser.offered).toBe(1)
-    })
+    await afterTheCheck()
+
+    expect(chooser.offered).toBe(1)
   })
 
   it('does not offer when the refusal was not a stale token', async () => {
@@ -440,7 +440,7 @@ describe('a save the store refuses as stale', () => {
     const view = await dirtyAgainst('# theirs', chooser, () => Promise.reject(new DocumentRequestError(503, 'Busy')))
 
     await pressSave(view)
-    await everyPendingMicrotask()
+    await afterTheCheck()
 
     expect(chooser.offered).toBe(0)
   })

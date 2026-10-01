@@ -59,7 +59,7 @@ interface BootstrapOptions {
   navigation?: Navigation
   dialogs?: Dialogs
   freshnessMs?: number
-  listenForFocus?: (wake: () => void) => () => void
+  listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
 }
 
 type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }

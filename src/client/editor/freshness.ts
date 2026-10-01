@@ -5,7 +5,7 @@ const CHECK_INTERVAL_MS = 60_000
 interface FreshnessOptions {
   check: () => Promise<void>
   intervalMs?: number | undefined
-  listen?: ((wake: () => void) => () => void) | undefined
+  listen?: ((wake: () => void, settled: () => Promise<void>) => () => void) | undefined
 }
 
 function onTabFocus(wake: () => void): () => void {
@@ -32,8 +32,12 @@ export function watchFreshness(options: FreshnessOptions): () => void {
     })
   }
 
+  const settled = async (): Promise<void> => {
+    await (inFlight ?? Promise.resolve())
+  }
+
   const timer = setInterval(wake, options.intervalMs ?? CHECK_INTERVAL_MS)
-  const unlisten = listen(wake)
+  const unlisten = listen(wake, settled)
 
   return () => {
     clearInterval(timer)
