@@ -12,7 +12,7 @@ import { ROW_SELECTOR, TRASH_PATH } from '../../src/client/files/tree-view.ts'
 import type { Dialogs } from '../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 import { cast } from '../cast.ts'
-import { given, givenAsync } from '../conditions.ts'
+import { given } from '../conditions.ts'
 import { fakeClient, rowFor, statusText, TRASHED, treePage, type FakeClient } from './tree-fixtures.ts'
 
 const { trashActionOf } = TestOnly
@@ -44,8 +44,15 @@ function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<
 let client: FakeClient = fakeClient(SAMPLE)
 let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
 
+let settled: () => Promise<void> = () => Promise.resolve()
+
 async function start(pathname = '/doc/'): Promise<void> {
-  await initFileTree({ root: host, pathname, client: cast<FilesClient>(client), dialogs: cast<Dialogs>(dialogs) })
+  settled = await initFileTree({
+    root: host,
+    pathname,
+    client: cast<FilesClient>(client),
+    dialogs: cast<Dialogs>(dialogs),
+  })
 }
 
 function press(selector: string): void {
@@ -108,11 +115,10 @@ describe('where a new entry lands', () => {
     rowFor('notes.md').click()
     rowFor('notes.md').click()
     press('#new-document')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.createDocument).toHaveBeenCalled()
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.createDocument).toHaveBeenCalled()
+    })
 
     expect(client.createDocument).toHaveBeenCalledWith('typed-name.md')
   })
@@ -122,11 +128,10 @@ describe('where a new entry lands', () => {
     rowFor('journal').click()
 
     press('#new-document')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.createDocument).toHaveBeenCalled()
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.createDocument).toHaveBeenCalled()
+    })
 
     expect(client.createDocument).toHaveBeenCalledWith('journal/typed-name.md')
   })
@@ -137,11 +142,10 @@ describe('where a new entry lands', () => {
     rowFor('journal/entry.md').click()
 
     press('#new-folder')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.createFolder).toHaveBeenCalled()
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.createFolder).toHaveBeenCalled()
+    })
 
     expect(client.createFolder).toHaveBeenCalledWith('journal/typed-name.md')
   })
@@ -150,11 +154,10 @@ describe('where a new entry lands', () => {
     await start('/doc/journal/entry.md')
 
     press('#new-document')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.createDocument).toHaveBeenCalled()
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.createDocument).toHaveBeenCalled()
+    })
 
     expect(client.createDocument).toHaveBeenCalledWith('journal/typed-name.md')
   })
@@ -165,9 +168,9 @@ describe('creating', () => {
     await start()
 
     press('#new-folder')
-    await vi.waitFor(() => {
-      expect(client.tree).toHaveBeenCalledTimes(2)
-    })
+    await settled()
+
+    expect(client.tree).toHaveBeenCalledTimes(2)
   })
 
   it('keeps a rejected name in the dialog rather than throwing it away', async () => {
@@ -176,11 +179,10 @@ describe('creating', () => {
 
     press('#new-document')
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(dialogs.prompt).toHaveBeenCalled()
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(dialogs.prompt).toHaveBeenCalled()
+    })
     await expect(dialogs.prompt.mock.results[0]?.value).resolves.toBe(true)
   })
 
@@ -190,9 +192,9 @@ describe('creating', () => {
 
     press('#new-document')
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('Busy, try again')
-    })
+    await settled()
+
+    expect(statusText()).toContain('Busy, try again')
   })
 })
 
@@ -203,11 +205,10 @@ describe('deleting', () => {
 
     press('#delete-entry')
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.remove).toHaveBeenCalledWith('notes.md')
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.remove).toHaveBeenCalledWith('notes.md')
+    })
     expect(dialogs.confirm).toHaveBeenCalled()
   })
 
@@ -217,11 +218,10 @@ describe('deleting', () => {
     rowFor('notes.md').click()
 
     press('#delete-entry')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.tree).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.tree).toHaveBeenCalledTimes(2)
+    })
 
     expect(client.remove).not.toHaveBeenCalled()
   })
@@ -248,11 +248,10 @@ describe('uploading', () => {
 
     input?.dispatchEvent(new Event('change'))
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.upload).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.upload).toHaveBeenCalledTimes(2)
+    })
     expect(client.upload).toHaveBeenCalledWith('journal', expect.objectContaining({ name: 'a.png' }))
   })
 
@@ -264,11 +263,10 @@ describe('uploading', () => {
 
     input?.dispatchEvent(new Event('change'))
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.upload).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.upload).toHaveBeenCalledTimes(2)
+    })
     expect(statusText()).toContain('a.png')
   })
 
@@ -335,9 +333,9 @@ describe('trash actions', () => {
 
     document.querySelector<HTMLElement>('[data-action="restore"]')?.click()
 
-    await vi.waitFor(() => {
-      expect(client.restore).toHaveBeenCalledWith('aaaa')
-    })
+    await settled()
+
+    expect(client.restore).toHaveBeenCalledWith('aaaa')
   })
 
   it('asks before purging, because that cannot be undone', async () => {
@@ -346,11 +344,10 @@ describe('trash actions', () => {
 
     document.querySelector<HTMLElement>('[data-action="purge"]')?.click()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.purge).toHaveBeenCalledWith('aaaa')
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.purge).toHaveBeenCalledWith('aaaa')
+    })
     expect(dialogs.confirm).toHaveBeenCalled()
   })
 
@@ -360,11 +357,10 @@ describe('trash actions', () => {
     rowFor(TRASH_PATH).click()
 
     document.querySelector<HTMLElement>('[data-action="purge"]')?.click()
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.tree).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.tree).toHaveBeenCalledTimes(2)
+    })
 
     expect(client.purge).not.toHaveBeenCalled()
   })
@@ -385,9 +381,9 @@ describe('trash actions', () => {
 
     document.querySelector<HTMLElement>('[data-action="restore"]')?.click()
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('Already exists')
-    })
+    await settled()
+
+    expect(statusText()).toContain('Already exists')
   })
 })
 
@@ -433,9 +429,9 @@ describe('reporting odd failures', () => {
 
     press('#delete-entry')
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('unknown error')
-    })
+    await settled()
+
+    expect(statusText()).toContain('unknown error')
   })
 
   it('uploads nothing when the picker was dismissed without choosing a file', async () => {
@@ -445,11 +441,10 @@ describe('reporting odd failures', () => {
 
     input?.dispatchEvent(new Event('change'))
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.tree).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.tree).toHaveBeenCalledTimes(2)
+    })
     expect(client.upload).not.toHaveBeenCalled()
   })
 })

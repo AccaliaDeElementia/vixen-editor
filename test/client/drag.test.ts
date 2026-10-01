@@ -1,6 +1,6 @@
 'use sanity'
 
-import { given, givenAsync } from '../conditions.ts'
+import { given } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TestOnly } from '../../src/client/files/drag.ts'
@@ -61,8 +61,10 @@ function actionsTaken(): Record<string, number> {
 
 const NOTHING_HAPPENED = { moves: 0, uploads: 0 }
 
+let settled: () => Promise<void> = () => Promise.resolve()
+
 async function start(open: string[] = ['archive', 'journal']): Promise<void> {
-  await initFileTree({
+  settled = await initFileTree({
     root: document,
     pathname: '/doc/',
     client: cast<FilesClient>(client),
@@ -177,9 +179,9 @@ describe('moving by drag', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
-    })
+    await settled()
+
+    expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
   })
 
   it('drops beside a document rather than inside it', async () => {
@@ -187,9 +189,9 @@ describe('moving by drag', () => {
 
     drag('notes.md', rowFor('archive/old.md'))
 
-    await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
-    })
+    await settled()
+
+    expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
   })
 
   it('moves a whole folder', async () => {
@@ -197,9 +199,9 @@ describe('moving by drag', () => {
 
     drag('journal', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalledWith('journal', 'archive/journal')
-    })
+    await settled()
+
+    expect(client.move).toHaveBeenCalledWith('journal', 'archive/journal')
   })
 
   it('moves the file into the folder it was dropped on', async () => {
@@ -207,9 +209,9 @@ describe('moving by drag', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
-    })
+    await settled()
+
+    expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
   })
 
   it('asks nothing, because an occupied destination is simply refused', async () => {
@@ -217,11 +219,10 @@ describe('moving by drag', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.move).toHaveBeenCalled()
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.move).toHaveBeenCalled()
+    })
 
     expect(dialogs.confirm).not.toHaveBeenCalled()
   })
@@ -231,9 +232,9 @@ describe('moving by drag', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(client.tree).toHaveBeenCalledTimes(2)
-    })
+    await settled()
+
+    expect(client.tree).toHaveBeenCalledTimes(2)
   })
 
   it('does nothing when dropped back on its own parent', async () => {
@@ -241,11 +242,10 @@ describe('moving by drag', () => {
 
     drag('archive/old.md', rowFor('archive'))
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.tree).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.tree).toHaveBeenCalledTimes(2)
+    })
 
     expect(client.move).not.toHaveBeenCalled()
   })
@@ -256,9 +256,9 @@ describe('moving by drag', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('Cannot move into its own descendant')
-    })
+    await settled()
+
+    expect(statusText()).toContain('Cannot move into its own descendant')
   })
 })
 
@@ -269,9 +269,9 @@ describe('showing where the entry went', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(rows().map((row) => row.dataset.path)).toContain('archive/notes.md')
-    })
+    await settled()
+
+    expect(rows().map((row) => row.dataset.path)).toContain('archive/notes.md')
   })
 
   it('selects the entry at its new path', async () => {
@@ -280,9 +280,9 @@ describe('showing where the entry went', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(rowFor('archive/notes.md').getAttribute('aria-selected')).toBe('true')
-    })
+    await settled()
+
+    expect(rowFor('archive/notes.md').getAttribute('aria-selected')).toBe('true')
   })
 
   it('reveals nothing when the drop was a no-op', async () => {
@@ -291,11 +291,10 @@ describe('showing where the entry went', () => {
 
     drag('archive/old.md', rowFor('archive'))
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.tree).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.tree).toHaveBeenCalledTimes(2)
+    })
 
     expect(rows().filter((row) => row.getAttribute('aria-selected') === 'true')).toHaveLength(0)
   })
@@ -452,9 +451,9 @@ describe('dropping files from outside', () => {
     rowFor('archive').dispatchEvent(dragEvent('dragover', transfer))
     rowFor('archive').dispatchEvent(dragEvent('drop', transfer))
 
-    await vi.waitFor(() => {
-      expect(client.upload).toHaveBeenCalledWith('archive', expect.objectContaining({ name: 'a.png' }))
-    })
+    await settled()
+
+    expect(client.upload).toHaveBeenCalledWith('archive', expect.objectContaining({ name: 'a.png' }))
   })
 
   it('uploads into the root when dropped on the tree background', async () => {
@@ -463,9 +462,9 @@ describe('dropping files from outside', () => {
 
     tree().dispatchEvent(dragEvent('drop', transfer))
 
-    await vi.waitFor(() => {
-      expect(client.upload).toHaveBeenCalledWith('', expect.objectContaining({ name: 'a.png' }))
-    })
+    await settled()
+
+    expect(client.upload).toHaveBeenCalledWith('', expect.objectContaining({ name: 'a.png' }))
   })
 
   it('takes the drop position over the selection', async () => {
@@ -475,9 +474,9 @@ describe('dropping files from outside', () => {
 
     rowFor('archive').dispatchEvent(dragEvent('drop', transfer))
 
-    await vi.waitFor(() => {
-      expect(client.upload).toHaveBeenCalledWith('archive', expect.anything())
-    })
+    await settled()
+
+    expect(client.upload).toHaveBeenCalledWith('archive', expect.anything())
   })
 
   it('sends each file separately, so one rejection does not discard the rest', async () => {
@@ -487,9 +486,9 @@ describe('dropping files from outside', () => {
 
     rowFor('archive').dispatchEvent(dragEvent('drop', transfer))
 
-    await vi.waitFor(() => {
-      expect(client.upload).toHaveBeenCalledTimes(2)
-    })
+    await settled()
+
+    expect(client.upload).toHaveBeenCalledTimes(2)
   })
 
   it('reports the file that was rejected, so the failure is not silent', async () => {
@@ -499,11 +498,10 @@ describe('dropping files from outside', () => {
 
     rowFor('archive').dispatchEvent(dragEvent('drop', transfer))
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.upload).toHaveBeenCalledTimes(2)
-      }),
-    )
+    await settled()
+    given(() => {
+      expect(client.upload).toHaveBeenCalledTimes(2)
+    })
 
     expect(statusText()).toContain('a.png')
   })
@@ -544,9 +542,9 @@ describe('drops that carry nothing usable', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('unknown error')
-    })
+    await settled()
+
+    expect(statusText()).toContain('unknown error')
   })
 })
 
@@ -557,9 +555,9 @@ describe('after a move succeeds', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(rowFor('archive/notes.md')).toBeDefined()
-    })
+    await settled()
+
+    expect(rowFor('archive/notes.md')).toBeDefined()
   })
 
   it('reports a refusal to the user rather than failing silently', async () => {
@@ -568,8 +566,8 @@ describe('after a move succeeds', () => {
 
     drag('notes.md', rowFor('archive'))
 
-    await vi.waitFor(() => {
-      expect(statusText()).toContain('Already exists')
-    })
+    await settled()
+
+    expect(statusText()).toContain('Already exists')
   })
 })
