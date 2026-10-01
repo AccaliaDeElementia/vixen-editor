@@ -47,7 +47,6 @@ test('stays collapsed through a second render at the same width', async ({ page 
   await page.evaluate(() => {
     window.dispatchEvent(new Event('resize'))
   })
-  await page.waitForTimeout(200)
 
   await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
 })
@@ -60,7 +59,6 @@ test('a reader who opens it on a narrow viewport keeps it through a re-render', 
   await page.evaluate(() => {
     window.dispatchEvent(new Event('resize'))
   })
-  await page.waitForTimeout(200)
 
   await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'open')
 })

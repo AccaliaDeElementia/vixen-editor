@@ -3,6 +3,12 @@
 import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
+import { TestOnly } from '../src/client/editor/link-tooltip.ts'
+
+const { HOVER_DELAY_MS } = TestOnly
+const OUTLASTS_THE_HOVER_DELAY_BY = 3
+const PAST_THE_HOVER_DELAY_MS = HOVER_DELAY_MS * OUTLASTS_THE_HOVER_DELAY_BY
+
 const TOOLTIP = '.cm-vixen-link-tooltip'
 const LINK = '.cm-vixen-link'
 
@@ -43,7 +49,7 @@ test('the pointer can travel into the tooltip without it vanishing', async ({ pa
 
   const box = await page.locator(TOOLTIP).boundingBox()
   await page.mouse.move((box?.x ?? 0) + 12, (box?.y ?? 0) + 6, { steps: 12 })
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(PAST_THE_HOVER_DELAY_MS)
 
   await expect(page.locator(TOOLTIP)).toBeVisible()
 
@@ -91,7 +97,7 @@ test('hovering ordinary prose offers nothing', async ({ page, request }) => {
   await page.goto(await documentWithLink(request, folder))
 
   await page.locator('.cm-content').getByText('plain prose below').hover()
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(PAST_THE_HOVER_DELAY_MS)
 
   await expect(page.locator(TOOLTIP)).toHaveCount(0)
 

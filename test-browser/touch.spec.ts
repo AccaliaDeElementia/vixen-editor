@@ -5,6 +5,12 @@ import { devices, expect, test, type APIRequestContext } from '@playwright/test'
 
 test.use({ ...devices['Pixel 7'] })
 
+import { TestOnly } from '../src/client/editor/link-tooltip.ts'
+
+const { HOVER_DELAY_MS } = TestOnly
+const OUTLASTS_THE_HOVER_DELAY_BY = 3
+const PAST_THE_HOVER_DELAY_MS = HOVER_DELAY_MS * OUTLASTS_THE_HOVER_DELAY_BY
+
 const TOOLTIP = '.cm-vixen-link-tooltip'
 const LINK = '.cm-vixen-link'
 
@@ -64,7 +70,7 @@ test('a tap on prose reveals nothing, and still places the caret', async ({ page
   await page.goto(await documentWithLink(request, folder))
 
   await page.locator('.cm-content').getByText('plain prose below').tap()
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(PAST_THE_HOVER_DELAY_MS)
 
   await givenAsync(expect(page.locator(TOOLTIP)).toHaveCount(0))
   await expect(page.locator('.cm-cursor-primary')).toBeVisible()

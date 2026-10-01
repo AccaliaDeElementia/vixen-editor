@@ -14,6 +14,8 @@ async function workspace(request: APIRequestContext, folder: string, body: strin
   await request.post('/api/files/documents', { data: { path: `${folder}/source.md`, content: body } })
 }
 
+const LINES_AFTER_THE_BLANK = 3
+
 async function caretOnTheLink(page: Page): Promise<void> {
   await page.locator('.cm-vixen-link').click()
 }
@@ -42,7 +44,7 @@ test('Mod-Enter in ordinary prose navigates nowhere', async ({ page, request }) 
   const { pathname: before } = new URL(page.url())
 
   await page.keyboard.press('ControlOrMeta+Enter')
-  await page.waitForTimeout(300)
+  await givenAsync(expect(page.locator('.cm-line')).toHaveCount(LINES_AFTER_THE_BLANK))
 
   expect(new URL(page.url()).pathname).toBe(before)
 

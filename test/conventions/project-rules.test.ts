@@ -31,6 +31,7 @@ const RUNTIME_DECIDES_THE_MOMENT = 'test/rejections.ts'
 const PROVES_THE_TIMER_GUARD = 'test/conventions/timer-guard.test.ts'
 const MAY_SCHEDULE_A_TIMER = [RUNTIME_DECIDES_THE_MOMENT, PROVES_THE_TIMER_GUARD]
 const UNNAMED_TIMEOUT = /\{\s*timeout:\s*\d/v
+const UNNAMED_PAINT_WAIT = /waitForTimeout\(\s*\d/v
 
 const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmv
 const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}/gmv
@@ -651,6 +652,16 @@ describe('waiting for work to finish', () => {
 
   it('recognises a bare timeout when it sees one, so that scan is not passing vacuously', () => {
     expect(UNNAMED_TIMEOUT.test('{ timeout: 5000 }')).toBe(true)
+  })
+
+  it('leaves no bare number waiting on paint, so a kept duration has to name what it outlasts', () => {
+    const unnamed = suiteFiles('test-browser/').filter((source) => UNNAMED_PAINT_WAIT.test(source.contents))
+
+    expect(unnamed.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('recognises a bare paint wait when it sees one, so that scan is not passing vacuously', () => {
+    expect(UNNAMED_PAINT_WAIT.test('await page.waitForTimeout(200)')).toBe(true)
   })
 
   it('accepts a timeout that was given a name', () => {

@@ -89,4 +89,4 @@ export const vixenLinkTooltip: Extension = [
   EditorView.domEventHandlers({ pointerup: revealOnTap }),
 ]
 
-export const TestOnly = { dismissHoverTooltips, linkTooltipAt, revealOnTap, whenTheCaretLeaves }
+export const TestOnly = { dismissHoverTooltips, HOVER_DELAY_MS, linkTooltipAt, revealOnTap, whenTheCaretLeaves }
