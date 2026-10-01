@@ -27,6 +27,7 @@ interface DragContext {
   toast: Toast
   rowAt: (index: number) => VisibleRow | undefined
   refresh: () => Promise<void>
+  track: (rebuild: Promise<void>) => void
   revealPath: (entryPath: string) => void
   announce: (moved: DocumentMoved) => void
 }

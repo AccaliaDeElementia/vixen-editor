@@ -14,6 +14,7 @@ import {
 } from './actions.ts'
 import { createDialogs, type Dialogs } from './dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
+import { collectRuns } from './rebuild.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, parentOf, type TrashNode, type TreeNode } from './tree-model.ts'
@@ -51,12 +52,12 @@ interface Mounted {
   navigate: (url: string) => void
 }
 
-export async function initFileTree(options: FileTreeOptions = {}): Promise<void> {
+export async function initFileTree(options: FileTreeOptions = {}): Promise<() => Promise<void>> {
   const root = options.root ?? document
   const tree = root.querySelector<HTMLElement>(TREE_SELECTOR)
-  if (tree === null) return
+  if (tree === null) return collectRuns().settled
 
-  await runFileTree({
+  return await runFileTree({
     tree,
     root,
     client: options.client ?? createFilesClient(),
@@ -66,7 +67,14 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<void>
   })
 }
 
-async function runFileTree({ tree, root, client, dialogs, openDocument, navigate }: Mounted): Promise<void> {
+async function runFileTree({
+  tree,
+  root,
+  client,
+  dialogs,
+  openDocument,
+  navigate,
+}: Mounted): Promise<() => Promise<void>> {
   const toast = createToast(root)
   let nodes: readonly TreeNode[] = []
   let trash: readonly TrashNode[] = []
@@ -264,6 +272,8 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     draw(pruneOpenFolders([...folderPathsIn(nodes), TRASH_PATH]))
   }
 
+  const runs = collectRuns()
+
   const context: ActionContext = {
     root,
     client,
@@ -272,6 +282,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     targetDirectory,
     selectionPath: visibleSelection,
     refresh: load,
+    track: runs.track,
     reveal,
     insertSelected,
     openSelected: () => {
@@ -288,6 +299,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
       toast,
       rowAt: (index) => visible[index],
       refresh: load,
+      track: runs.track,
       revealPath,
       announce: (moved) => {
         announceDocumentMoved(root, moved)
@@ -301,4 +313,6 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   } catch (error) {
     toast.error(`Could not load the file browser: ${errorMessage(error)}`)
   }
+
+  return runs.settled
 }

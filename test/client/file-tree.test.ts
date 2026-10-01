@@ -384,7 +384,9 @@ describe('markup with no tree to render', () => {
     const bare = document.createElement('div')
     document.body.append(bare)
 
-    await expect(initFileTree({ root: bare, client: cast<FilesClient>(fakeClient(SAMPLE)) })).resolves.toBeUndefined()
+    const settled = await initFileTree({ root: bare, client: cast<FilesClient>(fakeClient(SAMPLE)) })
+
+    await expect(settled()).resolves.toBeUndefined()
   })
 
   it('asks the server for nothing, because there is nowhere to put the answer', async () => {

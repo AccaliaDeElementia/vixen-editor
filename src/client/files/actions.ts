@@ -38,6 +38,7 @@ export interface ActionContext {
   targetDirectory: () => string
   selectionPath: () => string | null
   refresh: () => Promise<void>
+  track: (rebuild: Promise<void>) => void
   reveal: () => void
   openSelected: () => void
   insertSelected: () => void
