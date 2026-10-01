@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "comment": [
+    "The browser suite needs both halves of the world: axe.ts reads the store through",
+    "node:fs while the specs touch document and window inside page.evaluate. So it",
+    "cannot join either typecheck project and gets its own, which npm run typecheck",
+    "builds alongside them."
+  ],
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["test-browser/**/*.ts", "test/conditions.ts", "vitest.config.ts"]
+}
