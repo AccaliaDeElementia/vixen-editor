@@ -1,8 +1,8 @@
 'use sanity'
 
-import { given, givenAsync } from '../conditions.ts'
+import { given } from '../conditions.ts'
 import { undoDepth } from '@codemirror/commands'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bootstrapOrReport, TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
@@ -140,6 +140,17 @@ describe('long lines', () => {
   })
 })
 
+async function afterTheViewChanges(watched: HTMLElement): Promise<void> {
+  const changed: PromiseWithResolvers<void> = Promise.withResolvers()
+  const observer = new MutationObserver(() => {
+    observer.disconnect()
+    changed.resolve()
+  })
+  observer.observe(watched, { attributes: true, subtree: true })
+
+  await changed.promise
+}
+
 describe('a trash entry url', () => {
   function shown(): string[] {
     return [...root.querySelectorAll<HTMLElement>('#editor, [id^="view-"]')]
@@ -152,10 +163,9 @@ describe('a trash entry url', () => {
     const files = cast<FilesClient>({ trash: () => Promise.resolve(trash), tree: () => Promise.resolve([]) })
 
     await bootstrap({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
+    await afterTheViewChanges(root)
 
-    await vi.waitFor(() => {
-      expect(shown()).toStrictEqual(['view-deleted'])
-    })
+    expect(shown()).toStrictEqual(['view-deleted'])
   })
 
   it('asks the session for nothing, because a trash entry is not a document', async () => {
@@ -262,19 +272,25 @@ describe('the buffer when the workspace leaves a document', () => {
 })
 
 describe('navigating away from a document', () => {
-  function stubbedNavigation(): { navigation: Navigation; go: (url: string) => void } {
+  function stubbedNavigation(): { navigation: Navigation; go: (url: string) => Promise<void> } {
     const handlers = new Map<string, (event?: unknown) => void>()
 
     return {
-      go: (url: string) => {
+      go: async (url: string) => {
+        let navigated: Promise<void> = Promise.resolve()
+
         handlers.get('navigate')?.({
           canIntercept: true,
           hashChange: false,
           downloadRequest: null,
           formData: null,
           destination: { url: new URL(url, 'https://example.test').href },
-          intercept: (intercepted: { handler: () => Promise<void> }) => intercepted.handler(),
+          intercept: (intercepted: { handler: () => Promise<void> }) => {
+            navigated = intercepted.handler()
+          },
         })
+
+        await navigated
       },
       navigation: cast<Navigation>({
         addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
@@ -297,12 +313,7 @@ describe('navigating away from a document', () => {
       expect(view.state.doc.toString()).toBe('# first')
     })
 
-    stub.go('/doc/gone.md')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(false)
-      }),
-    )
+    await stub.go('/doc/gone.md')
 
     expect(view.state.doc.toString()).toBe('')
   })
@@ -319,12 +330,7 @@ describe('navigating away from a document', () => {
       expect(root.querySelector('#save-label')?.textContent).toBe('Save pending')
     })
 
-    stub.go('/doc/gone.md')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(false)
-      }),
-    )
+    await stub.go('/doc/gone.md')
 
     expect(root.querySelector('#save-label')?.textContent).toBe('')
   })
@@ -336,11 +342,9 @@ describe('navigating away from a document', () => {
     })
     const view = await bootstrap({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
 
-    stub.go('/doc/other.md')
+    await stub.go('/doc/other.md')
 
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('# other.md')
-    })
+    expect(view.state.doc.toString()).toBe('# other.md')
   })
 
   it('titles the page with the document it navigated to', async () => {
@@ -348,14 +352,9 @@ describe('navigating away from a document', () => {
     const session = fakeSession({
       load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }),
     })
-    const view = await bootstrap({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
+    await bootstrap({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
 
-    stub.go('/doc/other.md')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.state.doc.toString()).toBe('# other.md')
-      }),
-    )
+    await stub.go('/doc/other.md')
 
     expect(document.title).toBe('other.md')
   })
@@ -366,11 +365,17 @@ describe('leaving a document with unsaved changes', () => {
     view: EditorView
     go: (url: string) => void
     asked: string[]
+    answered: () => Promise<void>
+    settled: () => Promise<void>
+    wentOn: () => Promise<void>
   }
 
   async function editing(overrides: Partial<Session>, answer: boolean): Promise<Driver> {
     const handlers = new Map<string, (event?: unknown) => void>()
     const asked: string[] = []
+    const askedFor: PromiseWithResolvers<void> = Promise.withResolvers()
+    const navigated: PromiseWithResolvers<void> = Promise.withResolvers()
+    let decision: Promise<boolean> = Promise.resolve(answer)
 
     const view = await bootstrap({
       root,
@@ -379,7 +384,10 @@ describe('leaving a document with unsaved changes', () => {
       dialogs: cast<Dialogs>({
         confirm: (request: { message: string }) => {
           asked.push(request.message)
-          return Promise.resolve(answer)
+          decision = Promise.resolve(answer)
+          askedFor.resolve()
+
+          return decision
         },
       }),
       navigation: cast<Navigation>({
@@ -388,7 +396,11 @@ describe('leaving a document with unsaved changes', () => {
         canGoForward: false,
         back: () => undefined,
         forward: () => undefined,
-        navigate: () => ({}),
+        navigate: () => {
+          navigated.resolve()
+
+          return {}
+        },
         traverseTo: () => ({}),
       }),
     })
@@ -396,6 +408,16 @@ describe('leaving a document with unsaved changes', () => {
     return {
       view,
       asked,
+      answered: async () => {
+        await askedFor.promise
+      },
+      settled: async () => {
+        await askedFor.promise
+        await decision
+      },
+      wentOn: async () => {
+        await navigated.promise
+      },
       go: (url: string) => {
         handlers.get('navigate')?.({
           canIntercept: true,
@@ -418,9 +440,9 @@ describe('leaving a document with unsaved changes', () => {
 
     driver.go('/doc/other.md')
 
-    await vi.waitFor(() => {
-      expect(record.saved).toStrictEqual([{ id: 'notes.md', content: 'edited # notes.md' }])
-    })
+    await driver.wentOn()
+
+    expect(record.saved).toStrictEqual([{ id: 'notes.md', content: 'edited # notes.md' }])
   })
 
   it('asks nothing when the save lands', async () => {
@@ -429,11 +451,7 @@ describe('leaving a document with unsaved changes', () => {
 
     driver.go('/doc/other.md')
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(record.saved.length).toBeGreaterThan(0)
-      }),
-    )
+    await driver.wentOn()
 
     expect(driver.asked).toStrictEqual([])
   })
@@ -444,11 +462,11 @@ describe('leaving a document with unsaved changes', () => {
 
     driver.go('/doc/other.md')
 
-    await vi.waitFor(() => {
-      expect(driver.asked).toStrictEqual([
-        'It changed on disk since it was loaded. Leaving now discards the changes you made.',
-      ])
-    })
+    await driver.answered()
+
+    expect(driver.asked).toStrictEqual([
+      'It changed on disk since it was loaded. Leaving now discards the changes you made.',
+    ])
   })
 
   it('blocks an empty buffer, because the store refuses it', async () => {
@@ -457,9 +475,9 @@ describe('leaving a document with unsaved changes', () => {
 
     driver.go('/doc/other.md')
 
-    await vi.waitFor(() => {
-      expect(driver.asked).toStrictEqual(['Empty documents are not stored. Leaving now discards the changes you made.'])
-    })
+    await driver.answered()
+
+    expect(driver.asked).toStrictEqual(['Empty documents are not stored. Leaving now discards the changes you made.'])
   })
 
   it('does not ask the server to store an empty buffer', async () => {
@@ -468,11 +486,7 @@ describe('leaving a document with unsaved changes', () => {
 
     driver.go('/doc/other.md')
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(driver.asked).toHaveLength(1)
-      }),
-    )
+    await driver.settled()
 
     expect(record.saved).toStrictEqual([])
   })
@@ -483,15 +497,9 @@ describe('leaving a document with unsaved changes', () => {
 
     driver.go('/doc/other.md')
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(driver.asked.length).toBe(1)
-      }),
-    )
+    await driver.settled()
 
-    await vi.waitFor(() => {
-      expect(root.querySelector('#save-label')?.textContent).toBe('')
-    })
+    expect(root.querySelector('#save-label')?.textContent).toBe('')
   })
 
   it('stays on the document when the user declines', async () => {
@@ -500,11 +508,7 @@ describe('leaving a document with unsaved changes', () => {
 
     driver.go('/doc/other.md')
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(driver.asked.length).toBe(1)
-      }),
-    )
+    await driver.settled()
 
     expect(driver.view.state.doc.toString()).toBe('edited # notes.md')
   })
