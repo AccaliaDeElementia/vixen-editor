@@ -4,7 +4,13 @@ import { describe, expect, it } from 'vitest'
 
 import path from 'node:path'
 
-import { directoryOf, isStorePath, relativeDestination, resolveDestination } from '../../src/shared/link-paths.ts'
+import {
+  basenameOf,
+  directoryOf,
+  isStorePath,
+  relativeDestination,
+  resolveDestination,
+} from '../../src/shared/link-paths.ts'
 
 describe('isStorePath', () => {
   it.each([
@@ -38,6 +44,17 @@ describe('directoryOf', () => {
     ['journal/2026/a.md', 'journal/2026'],
   ])('reads the directory of %s as %j', (entryPath, expected) => {
     expect(directoryOf(entryPath)).toBe(expected)
+  })
+})
+
+describe('basenameOf', () => {
+  it.each([
+    ['notes.md', 'notes.md'],
+    ['journal/a.md', 'a.md'],
+    ['journal/2026/a.md', 'a.md'],
+    ['', ''],
+  ])('takes the last segment of %s', (entryPath, expected) => {
+    expect(basenameOf(entryPath)).toBe(expected)
   })
 })
 

@@ -2,11 +2,12 @@
 
 import { describe, expect, it } from 'vitest'
 
+import { directoryOf } from '../../src/shared/link-paths.ts'
+
 import {
   ancestorsOf,
   entryPathsIn,
   folderPathsIn,
-  parentOf,
   parseTrash,
   parseTree,
   type TreeNode,
@@ -147,17 +148,9 @@ describe('folderPathsIn', () => {
   })
 })
 
-describe('parentOf', () => {
-  it('drops the last segment', () => {
-    expect(parentOf('journal/2026/a.md')).toBe('journal/2026')
-  })
-
-  it('returns the store root for a top-level entry', () => {
-    expect(parentOf('notes.md')).toBe('')
-  })
-
-  it('agrees with the last ancestor, which is what it replaced at two call sites', () => {
-    expect(parentOf('journal/2026/a.md')).toBe(ancestorsOf('journal/2026/a.md').at(-1))
+describe('ancestorsOf against the shared directoryOf', () => {
+  it('ends where directoryOf says the parent is, so the tree and links agree', () => {
+    expect(ancestorsOf('journal/2026/a.md').at(-1)).toBe(directoryOf('journal/2026/a.md'))
   })
 })
 

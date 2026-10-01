@@ -1,6 +1,6 @@
 'use sanity'
 
-import { PAST_SEPARATOR } from '../../shared/sequences.ts'
+import { basenameOf } from '../../shared/link-paths.ts'
 
 import { DocumentRequestError, WHILE_LEAVING, type DocumentClient } from './document-client.ts'
 
@@ -24,7 +24,7 @@ function isAbsent(error: unknown): boolean {
 }
 
 function defaultTemplate(id: string): string {
-  const name = id.slice(id.lastIndexOf('/') + PAST_SEPARATOR).replace(/\.[^.\/]+$/v, '')
+  const name = basenameOf(id).replace(/\.[^.\/]+$/v, '')
   return `# ${name}\n\nTODO: start writing.\n`
 }
 

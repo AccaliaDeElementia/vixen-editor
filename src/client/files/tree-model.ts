@@ -1,7 +1,6 @@
 'use sanity'
 
-import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
-import { STORE_ROOT } from '../../shared/store-path.ts'
+import { SEQUENCE_START } from '../../shared/sequences.ts'
 
 import { isRecord } from '../../shared/guards.ts'
 import { isEntryKind, type EntryKind, type FileKind } from '../../shared/documents.ts'
@@ -66,12 +65,6 @@ export function parseTrash(payload: unknown): TrashNode[] {
 }
 
 const INCLUSIVE_END = 1
-
-export function parentOf(entryPath: string): string {
-  const cut = entryPath.lastIndexOf('/')
-
-  return cut === NOT_FOUND ? STORE_ROOT : entryPath.slice(SEQUENCE_START, cut)
-}
 
 export function ancestorsOf(entryPath: string): FolderPath[] {
   const segments = entryPath.split('/')

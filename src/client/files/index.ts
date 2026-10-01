@@ -14,10 +14,11 @@ import {
 } from './actions.ts'
 import { createDialogs, type Dialogs } from './dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
+import { directoryOf } from '../../shared/link-paths.ts'
 import { collectRuns } from './rebuild.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
-import { ancestorsOf, folderPathsIn, parentOf, type TrashNode, type TreeNode } from './tree-model.ts'
+import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { requestInsert } from '../insert-entry.ts'
 import { KEYS } from '../help.ts'
@@ -129,7 +130,7 @@ async function runFileTree({
     const row = visible.find((candidate) => candidate.path === selected)
     if (row === undefined) return STORE_ROOT
 
-    return row.expandable ? selected : parentOf(selected)
+    return row.expandable ? selected : directoryOf(selected)
   }
 
   function indexOfPath(entryPath: string): number {

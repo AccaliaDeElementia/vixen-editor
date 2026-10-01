@@ -1,7 +1,8 @@
 'use sanity'
 
 import { classifyFile, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, type FileKind } from '../../shared/documents.ts'
-import { EMPTY, NOT_FOUND, PAST_SEPARATOR } from '../../shared/sequences.ts'
+import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
+import { EMPTY } from '../../shared/sequences.ts'
 import { errorMessage } from '../error-message.ts'
 import type { FilesClient } from '../files/files-client.ts'
 import { restoreCandidatesFor, type RestoreCandidate } from '../files/restore-candidates.ts'
@@ -55,16 +56,6 @@ function partsOf(root: ParentNode): Parts | null {
 
 function livePathsIn(tree: readonly TreeNode[]): Set<string> {
   return new Set(folderPathsIn(tree))
-}
-
-function directoryOf(entryPath: string): string {
-  const separator = entryPath.lastIndexOf('/')
-
-  return separator === NOT_FOUND ? '' : entryPath.slice(EMPTY, separator)
-}
-
-function basenameOf(entryPath: string): string {
-  return entryPath.slice(entryPath.lastIndexOf('/') + PAST_SEPARATOR)
 }
 
 function describeCandidate(candidate: RestoreCandidate): string {

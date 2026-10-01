@@ -1,13 +1,13 @@
 'use sanity'
 
 import type { DocumentMoved } from '../document-moved.ts'
-import { EMPTY, PAST_SEPARATOR } from '../../shared/sequences.ts'
+import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
+import { EMPTY } from '../../shared/sequences.ts'
 import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../layout/toast.ts'
 
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
-import { parentOf } from './tree-model.ts'
 import { rebuildingRunner } from './rebuild.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath, STORE_ROOT } from '../../shared/store-path.ts'
@@ -30,15 +30,11 @@ interface DragContext {
   announce: (moved: DocumentMoved) => void
 }
 
-function basenameOf(entryPath: string): string {
-  return entryPath.slice(entryPath.lastIndexOf('/') + PAST_SEPARATOR)
-}
-
 function containerOf(row: VisibleRow | undefined): DropDirectory | null {
   if (row === undefined) return STORE_ROOT
   if (!isStoreRow(row)) return null
 
-  return row.kind === 'folder' ? row.path : parentOf(row.path)
+  return row.kind === 'folder' ? row.path : directoryOf(row.path)
 }
 
 function canMoveInto(source: string, directory: string): boolean {

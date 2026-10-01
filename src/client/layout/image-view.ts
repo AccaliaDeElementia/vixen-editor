@@ -1,7 +1,7 @@
 'use sanity'
 
 import { rawUrlFor } from '../../shared/api.ts'
-import { PAST_SEPARATOR } from '../../shared/sequences.ts'
+import { basenameOf } from '../../shared/link-paths.ts'
 
 const PATH_SELECTOR = '#image-path'
 const DOWNLOAD_SELECTOR = '#image-download'
@@ -31,10 +31,6 @@ function partsOf(root: ParentNode): Parts | null {
   if (path === null || download === null || file === null) return null
 
   return { path, download, file }
-}
-
-function basenameOf(entryPath: string): string {
-  return entryPath.slice(entryPath.lastIndexOf('/') + PAST_SEPARATOR)
 }
 
 const INERT: ImageView = {

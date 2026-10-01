@@ -1,8 +1,8 @@
 'use sanity'
 
 import { encodeDestination } from '../../shared/link-syntax.ts'
-import { directoryOf, relativeDestination } from '../../shared/link-paths.ts'
-import { PAST_SEPARATOR, SEQUENCE_START } from '../../shared/sequences.ts'
+import { basenameOf, directoryOf, relativeDestination } from '../../shared/link-paths.ts'
+import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { classifyFile, type EntryKind } from '../../shared/documents.ts'
 import { joinPath } from '../../shared/store-path.ts'
 import { serially } from '../../shared/serially.ts'
@@ -23,10 +23,6 @@ const BEFORE_THE_EDITOR = true
 interface DroppedEntry {
   path: string
   kind: EntryKind
-}
-
-function basenameOf(entryPath: string): string {
-  return entryPath.slice(entryPath.lastIndexOf('/') + PAST_SEPARATOR)
 }
 
 function destinationFor(entry: DroppedEntry, holder: string): string {

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { EMPTY, NOT_FOUND, SEQUENCE_START } from './sequences.ts'
+import { EMPTY, NOT_FOUND, PAST_SEPARATOR, SEQUENCE_START } from './sequences.ts'
 import { STORE_ROOT } from './store-path.ts'
 
 const ONE_SEGMENT = 1
@@ -15,6 +15,10 @@ export function directoryOf(entryPath: string): string {
   const cut = entryPath.lastIndexOf('/')
 
   return cut === NOT_FOUND ? STORE_ROOT : entryPath.slice(SEQUENCE_START, cut)
+}
+
+export function basenameOf(entryPath: string): string {
+  return entryPath.slice(entryPath.lastIndexOf('/') + PAST_SEPARATOR)
 }
 
 export function relativeDestination(fromDirectory: string, target: string): string {

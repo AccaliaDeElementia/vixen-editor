@@ -1,10 +1,9 @@
 'use sanity'
 
-import { PAST_SEPARATOR } from '../../shared/sequences.ts'
-
 import { Hono } from 'hono'
 
 import { classifyFile } from '../../shared/documents.ts'
+import { basenameOf } from '../../shared/link-paths.ts'
 import { DOC_PREFIX, TRASH_PREFIX } from '../../shared/page-urls.ts'
 
 const HTTP_FOUND = 302
@@ -12,7 +11,7 @@ const HTTP_FOUND = 302
 function folderRedirectTarget(rest: string): string | null {
   if (rest === '' || rest.endsWith('/')) return null
 
-  const leaf = rest.slice(rest.lastIndexOf('/') + PAST_SEPARATOR)
+  const leaf = basenameOf(rest)
 
   return classifyFile(leaf) === null ? `${DOC_PREFIX}${rest}/` : null
 }
