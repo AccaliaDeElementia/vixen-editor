@@ -109,9 +109,13 @@ describe('initLayout', () => {
   it('falls back to the live document and window when given no options', () => {
     setExplorerWidth(400, window.innerWidth)
 
-    initLayout()
+    const { teardownLayout } = initLayout()
 
-    expect(widthPx()).toBe(400)
+    try {
+      expect(widthPx()).toBe(400)
+    } finally {
+      teardownLayout()
+    }
   })
 })
 

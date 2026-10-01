@@ -8,6 +8,8 @@ import { createHolderControl } from '../../src/client/editor/holder.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
 import { TestOnly } from '../../src/client/editor/images.ts'
 
+import { trackView } from './editor-fixtures.ts'
+
 const { altOf } = TestOnly
 
 const IMAGE_SELECTOR = 'img.cm-vixen-image'
@@ -17,14 +19,16 @@ function editing(doc: string, entryPath = 'notes.md'): EditorView {
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  const view = new EditorView({
-    parent,
-    state: createEditorState({
-      doc,
-      selection: { anchor: doc.length },
-      extensions: [holder.unset, EditorState.allowMultipleSelections.of(true)],
+  const view = trackView(
+    new EditorView({
+      parent,
+      state: createEditorState({
+        doc,
+        selection: { anchor: doc.length },
+        extensions: [holder.unset, EditorState.allowMultipleSelections.of(true)],
+      }),
     }),
-  })
+  )
   holder.follow(view, entryPath)
 
   return view

@@ -15,8 +15,20 @@ export function requestInsert(target: EventTarget, entryPath: string): void {
   target.dispatchEvent(new InsertRequestedEvent(entryPath))
 }
 
-export function onInsertRequested(root: ParentNode, handle: (entryPath: string) => void): void {
-  root.addEventListener(INSERT_REQUESTED, (event) => {
+interface InsertListener {
+  offInsertRequested: () => void
+}
+
+export function onInsertRequested(root: ParentNode, handle: (entryPath: string) => void): InsertListener {
+  const hear = (event: Event): void => {
     if (event instanceof InsertRequestedEvent) handle(event.entryPath)
-  })
+  }
+
+  root.addEventListener(INSERT_REQUESTED, hear)
+
+  return {
+    offInsertRequested: () => {
+      root.removeEventListener(INSERT_REQUESTED, hear)
+    },
+  }
 }

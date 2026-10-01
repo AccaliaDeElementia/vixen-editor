@@ -96,19 +96,31 @@ function bindHelp(root: ParentNode): void {
   })
 }
 
-function bindDrawerDismissal(root: ParentNode, view: Window): void {
-  onInsertRequested(root, () => {
+function bindDrawerDismissal(root: ParentNode, view: Window): () => void {
+  const { offInsertRequested } = onInsertRequested(root, () => {
     if (closeExplorerWhenCramped(root)) applyExplorerState(root, view.innerWidth)
   })
+
+  return offInsertRequested
 }
 
-function bindViewportResize(root: ParentNode, view: Window): void {
-  view.addEventListener('resize', () => {
+function bindViewportResize(root: ParentNode, view: Window): () => void {
+  const onResize = (): void => {
     applyExplorerState(root, view.innerWidth)
-  })
+  }
+
+  view.addEventListener('resize', onResize)
+
+  return () => {
+    view.removeEventListener('resize', onResize)
+  }
 }
 
-export function initLayout(options: LayoutOptions = {}): void {
+interface Layout {
+  teardownLayout: () => void
+}
+
+export function initLayout(options: LayoutOptions = {}): Layout {
   const root = options.root ?? document
   const view = options.view ?? window
 
@@ -116,8 +128,15 @@ export function initLayout(options: LayoutOptions = {}): void {
   bindResizer(root, view)
   bindToggle(root, view)
   bindHelp(root)
-  bindDrawerDismissal(root, view)
-  bindViewportResize(root, view)
+  const offInsertRequested = bindDrawerDismissal(root, view)
+  const offResize = bindViewportResize(root, view)
+
+  return {
+    teardownLayout: () => {
+      offInsertRequested()
+      offResize()
+    },
+  }
 }
 
 export const TestOnly = { KEYBOARD_STEP_PX }

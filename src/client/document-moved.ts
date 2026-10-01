@@ -21,10 +21,22 @@ export function announceDocumentMoved(root: ParentNode, moved: DocumentMoved): v
   root.dispatchEvent(new DocumentMovedEvent(moved))
 }
 
-export function onDocumentMoved(root: ParentNode, handle: (moved: DocumentMoved) => void): void {
-  root.addEventListener(DOCUMENT_MOVED, (event) => {
+interface MoveListener {
+  offDocumentMoved: () => void
+}
+
+export function onDocumentMoved(root: ParentNode, handle: (moved: DocumentMoved) => void): MoveListener {
+  const hear = (event: Event): void => {
     if (event instanceof DocumentMovedEvent) handle(event.moved)
-  })
+  }
+
+  root.addEventListener(DOCUMENT_MOVED, hear)
+
+  return {
+    offDocumentMoved: () => {
+      root.removeEventListener(DOCUMENT_MOVED, hear)
+    },
+  }
 }
 
 export const TestOnly = { DOCUMENT_MOVED }

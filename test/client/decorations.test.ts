@@ -3,6 +3,7 @@
 import { given } from '../conditions.ts'
 import { EditorState } from '@codemirror/state'
 import type { Decoration, DecorationSet } from '@codemirror/view'
+import { trackView } from './editor-fixtures.ts'
 import { describe, expect, it } from 'vitest'
 
 import { isRecord } from '../../src/shared/guards.ts'
@@ -245,10 +246,12 @@ describe('vixenDecorationField', () => {
     const holder = createHolderControl()
     const parent = document.createElement('div')
     document.body.append(parent)
-    const view = new EditorView({
-      parent,
-      state: createEditorState({ doc: '[a](b.md)', extensions: [holder.unset] }),
-    })
+    const view = trackView(
+      new EditorView({
+        parent,
+        state: createEditorState({ doc: '[a](b.md)', extensions: [holder.unset] }),
+      }),
+    )
     holder.follow(view, 'journal/notes.md')
 
     const titles = flatten(view.state.field(vixenDecorationField))
@@ -296,7 +299,9 @@ describe('a markdown link to somewhere in the store', () => {
     const holder = createHolderControl()
     const parent = document.createElement('div')
     document.body.append(parent)
-    const view = new EditorView({ parent, state: createEditorState({ doc: markdown, extensions: [holder.unset] }) })
+    const view = trackView(
+      new EditorView({ parent, state: createEditorState({ doc: markdown, extensions: [holder.unset] }) }),
+    )
     holder.follow(view, entryPath)
 
     return linksFrom(computeDecorations(view.state))

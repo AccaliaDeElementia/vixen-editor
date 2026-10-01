@@ -9,6 +9,8 @@ import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
 import { TestOnly } from '../../src/client/editor/link-tooltip.ts'
 import { cast } from '../cast.ts'
 
+import { trackView } from './editor-fixtures.ts'
+
 const { dismissHoverTooltips, linkTooltipAt, revealOnTap, whenTheCaretLeaves } = TestOnly
 
 function editing(doc: string, entryPath = 'notes.md'): EditorView {
@@ -16,7 +18,7 @@ function editing(doc: string, entryPath = 'notes.md'): EditorView {
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  const view = new EditorView({ parent, state: createEditorState({ doc, extensions: [holder.unset] }) })
+  const view = trackView(new EditorView({ parent, state: createEditorState({ doc, extensions: [holder.unset] }) }))
   holder.follow(view, entryPath)
 
   return view

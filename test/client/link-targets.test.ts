@@ -7,12 +7,14 @@ import { createHolderControl } from '../../src/client/editor/holder.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
 import { linkTargetAt } from '../../src/client/editor/link-targets.ts'
 
+import { trackView } from './editor-fixtures.ts'
+
 function editing(doc: string, entryPath = 'notes.md'): EditorView {
   const holder = createHolderControl()
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  const view = new EditorView({ parent, state: createEditorState({ doc, extensions: [holder.unset] }) })
+  const view = trackView(new EditorView({ parent, state: createEditorState({ doc, extensions: [holder.unset] }) }))
   holder.follow(view, entryPath)
 
   return view

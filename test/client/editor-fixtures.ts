@@ -8,6 +8,7 @@ import type { Session } from '../../src/client/editor/session.ts'
 const { bootstrap } = TestOnly
 
 const standing: Array<() => void> = []
+const standingViews: EditorView[] = []
 
 export interface Recorded {
   saved: Array<{ id: string; content: string }>
@@ -92,8 +93,15 @@ export function trackEditor<T extends { teardownEditor: () => void } | null>(sta
   return started
 }
 
+export function trackView(view: EditorView): EditorView {
+  standingViews.push(view)
+
+  return view
+}
+
 export function closeEditors(): void {
   for (const teardownEditor of standing.splice(0)) teardownEditor()
+  for (const view of standingViews.splice(0)) view.destroy()
 }
 
 export function statusText(container: ParentNode): string {

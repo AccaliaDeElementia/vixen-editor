@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createMergeControl, type MergeControl } from '../../src/client/editor/merging.ts'
 
+import { trackView } from './editor-fixtures.ts'
+
 const ON_DISK = 'alpha\ntheirs\ngamma\n'
 const IN_BUFFER = 'alpha\nmine\ngamma\n'
 const DIFFERING_LINE = { from: 6, to: 10 }
@@ -26,18 +28,20 @@ function editorShowing(buffer: string): Harness {
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  const view = new EditorView({
-    parent,
-    state: EditorState.create({
-      doc: buffer,
-      extensions: [
-        merging.inactive,
-        EditorView.updateListener.of((update) => {
-          merging.endWhenResolved(update.view)
-        }),
-      ],
+  const view = trackView(
+    new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: buffer,
+        extensions: [
+          merging.inactive,
+          EditorView.updateListener.of((update) => {
+            merging.endWhenResolved(update.view)
+          }),
+        ],
+      }),
     }),
-  })
+  )
 
   return { view, merging, resolved }
 }

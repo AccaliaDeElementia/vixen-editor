@@ -396,7 +396,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     await showDocument(documentId(), shown, namesFolderIndex(target))
   }
 
-  onDocumentMoved(root, ({ from, to, rewritten }) => {
+  const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId())
 
@@ -414,7 +414,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
-  onInsertRequested(root, (entryPath) => {
+  const { offInsertRequested } = onInsertRequested(root, (entryPath) => {
     if (workspace.showing() !== 'document') {
       toast.error(`Open a document before inserting ${entryPath}`)
 
@@ -520,6 +520,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     teardownEditor: () => {
       unwatchFreshness()
       unguardUnload()
+      offDocumentMoved()
+      offInsertRequested()
       navigator.stopIntercepting()
       view.destroy()
     },

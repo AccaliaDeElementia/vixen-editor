@@ -6,12 +6,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createHolderControl } from '../../src/client/editor/holder.ts'
 import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
 
+import { trackView } from './editor-fixtures.ts'
+
 function editing(entryPath: string | null): EditorView {
   const holder = createHolderControl()
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  const view = new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [holder.unset] }) })
+  const view = trackView(new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [holder.unset] }) }))
   if (entryPath !== null) holder.follow(view, entryPath)
 
   return view
@@ -38,7 +40,9 @@ describe('the name a screen reader reads for the editor', () => {
     const holder = createHolderControl()
     const parent = document.createElement('div')
     document.body.append(parent)
-    const view = new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [holder.unset] }) })
+    const view = trackView(
+      new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [holder.unset] }) }),
+    )
 
     holder.follow(view, 'journal/notes.md')
     holder.follow(view, 'archive/notes.md')

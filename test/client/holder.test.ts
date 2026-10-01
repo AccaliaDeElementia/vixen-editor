@@ -1,6 +1,7 @@
 'use sanity'
 
 import { EditorView } from '@codemirror/view'
+import { trackView } from './editor-fixtures.ts'
 import { describe, expect, it } from 'vitest'
 
 import { createHolderControl, holderOf } from '../../src/client/editor/holder.ts'
@@ -10,7 +11,7 @@ function editor(extension: ReturnType<typeof createHolderControl>['unset']): Edi
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  return new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [extension] }) })
+  return trackView(new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [extension] }) }))
 }
 
 describe('the path of the document in the buffer', () => {
