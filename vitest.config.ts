@@ -4,6 +4,13 @@ import { defineConfig } from 'vitest/config'
 
 const silentEnv = { DEBUG: '' }
 
+// Measured across three runs, worst case per test: client 79ms, shared 4ms,
+// conventions 13ms, server 661ms. Only the server suite touches a real
+// filesystem -- tmpdirs, fsync, atomic writes, trash moves -- so it gets the
+// looser bound and everything else does not.
+const IN_MEMORY_TIMEOUT_MS = 500
+const REAL_FILESYSTEM_TIMEOUT_MS = 3000
+
 export default defineConfig({
   test: {
     projects: [
@@ -11,6 +18,7 @@ export default defineConfig({
         test: {
           name: 'server',
           environment: 'node',
+          testTimeout: REAL_FILESYSTEM_TIMEOUT_MS,
           include: ['test/server/**/*.test.ts'],
           env: silentEnv,
         },
@@ -19,6 +27,7 @@ export default defineConfig({
         test: {
           name: 'client',
           environment: 'happy-dom',
+          testTimeout: IN_MEMORY_TIMEOUT_MS,
           include: ['test/client/**/*.test.ts'],
           env: silentEnv,
         },
@@ -27,6 +36,7 @@ export default defineConfig({
         test: {
           name: 'shared',
           environment: 'node',
+          testTimeout: IN_MEMORY_TIMEOUT_MS,
           include: ['test/shared/**/*.test.ts'],
         },
       },
@@ -34,6 +44,7 @@ export default defineConfig({
         test: {
           name: 'conventions',
           environment: 'node',
+          testTimeout: IN_MEMORY_TIMEOUT_MS,
           include: ['test/conventions/**/*.test.ts'],
           env: silentEnv,
         },

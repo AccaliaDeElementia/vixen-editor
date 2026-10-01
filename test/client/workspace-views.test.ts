@@ -140,17 +140,6 @@ describe('long lines', () => {
   })
 })
 
-async function afterTheViewChanges(watched: HTMLElement): Promise<void> {
-  const changed: PromiseWithResolvers<void> = Promise.withResolvers()
-  const observer = new MutationObserver(() => {
-    observer.disconnect()
-    changed.resolve()
-  })
-  observer.observe(watched, { attributes: true, subtree: true })
-
-  await changed.promise
-}
-
 describe('a trash entry url', () => {
   function shown(): string[] {
     return [...root.querySelectorAll<HTMLElement>('#editor, [id^="view-"]')]
@@ -163,7 +152,6 @@ describe('a trash entry url', () => {
     const files = cast<FilesClient>({ trash: () => Promise.resolve(trash), tree: () => Promise.resolve([]) })
 
     await bootstrap({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
-    await afterTheViewChanges(root)
 
     expect(shown()).toStrictEqual(['view-deleted'])
   })

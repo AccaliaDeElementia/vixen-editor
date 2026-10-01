@@ -28,6 +28,7 @@ const SCANNER = 'test/conventions/project-rules.test.ts'
 const POLLED_WAIT = /\bvi\.waitFor\s*\(/v
 const HAND_ROLLED_TIMER = /\bset(?:Timeout|Interval)\s*\(/v
 const RUNTIME_DECIDES_THE_MOMENT = 'test/rejections.ts'
+const UNNAMED_TIMEOUT = /\{\s*timeout:\s*\d/v
 
 const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmv
 const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}/gmv
@@ -638,6 +639,20 @@ describe('waiting for work to finish', () => {
     const allowed = sources.find((source) => source.relativePath === RUNTIME_DECIDES_THE_MOMENT)
 
     expect(HAND_ROLLED_TIMER.test(allowed?.contents ?? '')).toBe(true)
+  })
+
+  it('leaves no bare number as a test timeout, so a slow test has to say what it waits for', () => {
+    const unnamed = suiteFiles('test/').filter((source) => UNNAMED_TIMEOUT.test(source.contents))
+
+    expect(unnamed.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('recognises a bare timeout when it sees one, so that scan is not passing vacuously', () => {
+    expect(UNNAMED_TIMEOUT.test('{ timeout: 5000 }')).toBe(true)
+  })
+
+  it('accepts a timeout that was given a name', () => {
+    expect(UNNAMED_TIMEOUT.test('{ timeout: FONT_LOAD_MS }')).toBe(false)
   })
 })
 
