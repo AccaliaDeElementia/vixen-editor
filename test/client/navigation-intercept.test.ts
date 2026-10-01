@@ -2,6 +2,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { given } from '../conditions.ts'
+import { looseRejectionsDuring } from '../rejections.ts'
+
 import { interceptNavigation } from '../../src/client/navigation.ts'
 
 import { cast } from '../cast.ts'
@@ -325,11 +328,15 @@ describe('leaving a document that will not save', () => {
     const { navigation, settled } = blocking(false, true)
     navigation.navigate.mockReturnValue({ committed: Promise.reject(new Error('cancelled')) })
     const { event } = navigateEvent('/doc/other.md')
-    navigation.fire(event)
+    const loose = await looseRejectionsDuring(async () => {
+      navigation.fire(event)
+      await settled()
+    })
+    given(() => {
+      expect(navigation.navigate).toHaveBeenCalledTimes(1)
+    })
 
-    await settled()
-
-    expect(navigation.navigate).toHaveBeenCalledTimes(1)
+    expect(loose).toStrictEqual([])
   })
 
   it('does not block when there is nothing to settle', () => {

@@ -1,6 +1,7 @@
 'use sanity'
 
 import { givenAsync } from '../conditions.ts'
+import { looseRejectionsDuring } from '../rejections.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../cast.ts'
@@ -293,13 +294,12 @@ describe('saveOnUnload', () => {
     const active = session()
     await active.load('notes.md')
 
-    const leaving = (): void => {
+    const loose = await looseRejectionsDuring(async () => {
       active.saveOnUnload('notes.md', '# leaving')
-    }
+      await afterTheUnloadSaveSettles()
+    })
 
-    expect(leaving).not.toThrow()
-
-    await afterTheUnloadSaveSettles()
+    expect(loose).toStrictEqual([])
   })
 })
 
