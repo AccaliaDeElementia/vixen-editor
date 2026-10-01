@@ -1,11 +1,11 @@
 'use sanity'
 
-import { givenAsync } from '../conditions.ts'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../cast.ts'
 import { joinPath } from '../../src/shared/store-path.ts'
 import { EditorState } from '@codemirror/state'
+import type { EditorView } from '@codemirror/view'
 import type { FilesClient } from '../../src/client/files/files-client.ts'
 
 import { TestOnly } from '../../src/client/editor/bootstrap.ts'
@@ -14,6 +14,17 @@ import type { Session } from '../../src/client/editor/session.ts'
 import { page, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
 
 const { bootstrap, startsALine } = TestOnly
+
+async function afterTheBufferChanges(view: EditorView): Promise<void> {
+  const changed: PromiseWithResolvers<void> = Promise.withResolvers()
+  const observer = new MutationObserver(() => {
+    observer.disconnect()
+    changed.resolve()
+  })
+  observer.observe(view.contentDOM, { childList: true, subtree: true, characterData: true })
+
+  await changed.promise
+}
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -128,11 +139,7 @@ describe('dropping files from outside the browser', () => {
 
     dropFilesOn(view, [new File(['x'], 'p.png')])
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(view.state.doc.toString()).toBe('![p.png](p.png)')
-      }),
-    )
+    await afterTheBufferChanges(view)
 
     expect(uploaded).toStrictEqual(['journal/p.png'])
   })
@@ -146,9 +153,9 @@ describe('dropping files from outside the browser', () => {
 
     dropFilesOn(view, [new File(['x'], 'p.png')])
 
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('![p.png](p.png)')
-    })
+    await afterTheBufferChanges(view)
+
+    expect(view.state.doc.toString()).toBe('![p.png](p.png)')
   })
 
   it('puts one link per line when several arrive at once', async () => {
@@ -160,9 +167,9 @@ describe('dropping files from outside the browser', () => {
 
     dropFilesOn(view, [new File(['x'], 'a.png'), new File(['x'], 'b.png')])
 
-    await vi.waitFor(() => {
-      expect(view.state.doc.toString()).toBe('![a.png](a.png)\n![b.png](b.png)')
-    })
+    await afterTheBufferChanges(view)
+
+    expect(view.state.doc.toString()).toBe('![a.png](a.png)\n![b.png](b.png)')
   })
 })
 
