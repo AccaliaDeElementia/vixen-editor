@@ -294,7 +294,7 @@ Three specific traps:
 
 An export from `src/` is valid only if one of these holds:
 
-1. **Something in `src/` or `scripts/` imports it.** It is the module's
+1. **Something in `src/`, `scripts/` or `tools/` imports it.** It is the module's
    contract.
 2. **It is the module's `TestOnly` container** — one object holding what only
    tests reach for.
@@ -325,7 +325,7 @@ equivalent seams here are already function parameters — `startServer(runtime)`
 `createFilesClient(fetchImpl)`, `bootstrap({ navigate })`.
 
 Two mechanisms hold the rule, split by what each does well. **ESLint** blocks
-`src/` and `scripts/` from importing `TestOnly`, which it does natively and
+`src/`, `scripts/` and `tools/` from importing `TestOnly`, which it does natively and
 precisely. **The conventions suite** owns consumer analysis, which ESLint
 cannot do without a new plugin.
 
@@ -992,7 +992,8 @@ src/
   styles/         SCSS; compiled to public/assets/main.css
   templates/      Pug; layout.pug plus _ribbon/_explorer partials
   assets/         binary source assets, copied verbatim to public/assets/
-scripts/          build and dev entry points — tooling, not shipped app code
+scripts/          build and dev entry points — the shipped artifact depends on these
+tools/            instruments nothing depends on: the assertion scan, the mutation harness
 public/           assets/ only — the client bundle and stylesheet, both built
 test/             Vitest: server (node), client (happy-dom), conventions (node)
 test-browser/     Playwright: real-browser rendering, and the built server
@@ -1011,8 +1012,20 @@ up new subdirectories automatically. The residual — a new `src/shared/` matchi
 neither typecheck project — is caught by a conventions test rather than left to
 memory, because `tsc` exits 0 while silently ignoring such a directory.
 
-`scripts/` is deliberately outside `src/`: it is build tooling, never shipped,
-and never imported by the app.
+`scripts/` and `tools/` are deliberately outside `src/`: neither is shipped and
+neither is imported by the app. They are split by **what depends on the
+output**, not by who runs them. `scripts/build.ts` produces `dist/` and
+`public/`, which the Docker image copies out, so the running application
+depends on it; `scripts/dev.ts` imports it. `tools/assertions.ts` and
+`tools/mutate.ts` are instruments — nothing depends on them, and what they
+produce is a judgement a person reads.
+
+**That split does not license a directory-level coverage rule.** `tools/` holds
+`assertions.ts`, which is pure string analysis and cheap to test, beside
+`mutate.ts`, which spawns a suite run per mutant and rewrites the working
+tree — so a single rule over the pair would ask for the stubbing this codebase
+has already measured and rejected. Checks go per file, proportionate to how
+silently each can be wrong.
 
 ### `src/shared/` is what both sides need
 
@@ -1134,14 +1147,14 @@ disagrees with what the runners list. It costs under a second, so the reason
 `npm run mutate` stays out does not apply to it.
 
 **A gate's instrument must be as trustworthy as the gate**, which is why
-`scripts/assertions.ts` has a spec of its own in `test/conventions/`, with
+`tools/assertions.ts` has a spec of its own in `test/conventions/`, with
 its fixtures in `.txt` beside it — a fixture naming a test would otherwise be
 read as a declaration, and an exemption for the spec file would let the
 spec's own tests escape the rule. Every defect the scanner has had was a wrong
 answer on input where every line still ran, so coverage would have caught none
 of them: the spec pins the shapes that have gone wrong, the cross-check
 catches the ones nobody predicted, and
-`npm run mutate scripts/assertions.ts` is what says the spec constrains
+`npm run mutate tools/assertions.ts` is what says the spec constrains
 anything.
 
 **`vi.waitFor` is banned outright**, and `test/conventions/` fails the gate on

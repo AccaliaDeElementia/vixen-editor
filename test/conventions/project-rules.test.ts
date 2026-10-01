@@ -12,7 +12,7 @@ import { isRecord } from '../../src/shared/guards.ts'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
-const SOURCE_DIRECTORIES = ['src', 'scripts', 'test', 'test-browser']
+const SOURCE_DIRECTORIES = ['src', 'scripts', 'tools', 'test', 'test-browser']
 const ROOT_SOURCE_FILES = ['vitest.config.ts', 'eslint.config.js']
 
 const TYPECHECK_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json', 'tsconfig.test-browser.json']
@@ -177,7 +177,7 @@ const APPROVED_OVERRIDES = [
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/promise-function-async' },
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: 'max-lines' },
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: 'max-nested-callbacks' },
-  { files: ['src/**/*.ts', 'scripts/**/*.ts'], rule: '@typescript-eslint/no-restricted-imports' },
+  { files: ['src/**/*.ts', 'scripts/**/*.ts', 'tools/**/*.ts'], rule: '@typescript-eslint/no-restricted-imports' },
   { files: ['*.config.ts'], rule: '@typescript-eslint/no-magic-numbers' },
 ]
 
@@ -394,7 +394,10 @@ describe('every export is consumed by something', () => {
 
   it('keeps every test-only runtime export inside a TestOnly container', () => {
     const shipping = scannable().filter(
-      (source) => source.relativePath.startsWith('src/') || source.relativePath.startsWith('scripts/'),
+      (source) =>
+        source.relativePath.startsWith('src/') ||
+        source.relativePath.startsWith('scripts/') ||
+        source.relativePath.startsWith('tools/'),
     )
     const graph = importGraph(shipping)
 

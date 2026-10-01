@@ -51,7 +51,7 @@ export default [
     },
   },
   {
-    files: ['src/**/*.ts', 'scripts/**/*.ts'],
+    files: ['src/**/*.ts', 'scripts/**/*.ts', 'tools/**/*.ts'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',

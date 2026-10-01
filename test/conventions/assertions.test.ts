@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../scripts/assertions.ts'
+import { TestOnly } from '../../tools/assertions.ts'
 
 const { countIn, disagreements, listing } = TestOnly
 
