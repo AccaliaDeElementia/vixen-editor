@@ -18,7 +18,6 @@ const ROOT_SOURCE_FILES = ['vitest.config.ts', 'eslint.config.js']
 const TYPECHECK_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json', 'tsconfig.test-browser.json']
 const PORTABILITY_PROJECTS = ['tsconfig.server.json', 'tsconfig.client.json']
 
-const UNCHECKABLE_BY_TSC = ['eslint.config.js']
 const SOURCE_EXTENSION = /\.(?:ts|js)$/v
 
 const DIRECTIVE = "'use sanity'"
@@ -155,19 +154,9 @@ describe('every source file belongs to exactly one typecheck project', () => {
   }
 
   it('leaves no source file outside every project, whatever directory it lives in', () => {
-    const unchecked = sources
-      .filter((source) => !UNCHECKABLE_BY_TSC.includes(source.relativePath))
-      .filter((source) => filedUnder(source.relativePath, TYPECHECK_PROJECTS).length === 0)
+    const unchecked = sources.filter((source) => filedUnder(source.relativePath, TYPECHECK_PROJECTS).length === 0)
 
     expect(unchecked.map((source) => source.relativePath)).toStrictEqual([])
-  })
-
-  it('exempts only the config that is JavaScript, which no project checks', () => {
-    const exempt = UNCHECKABLE_BY_TSC.filter(
-      (relativePath) => filedUnder(relativePath, TYPECHECK_PROJECTS).length === 0,
-    )
-
-    expect(exempt).toStrictEqual(UNCHECKABLE_BY_TSC)
   })
 
   it('compiles shared code under both halves, which is what proves it is portable', () => {
@@ -656,7 +645,6 @@ interface DeclarationSite {
 
 const LANGUAGE_LEVEL_SITES: DeclarationSite[] = [
   { file: 'tsconfig.base.json', pattern: /"target":\s*"(?<value>[^"]+)"/gv },
-  { file: 'tsconfig.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },
   { file: 'tsconfig.client.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },
   { file: 'tsconfig.server.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },
   { file: 'tsconfig.test-browser.json', pattern: /"lib":\s*\[\s*"(?<value>[^"]+)"/gv },

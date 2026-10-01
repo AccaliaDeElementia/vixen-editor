@@ -5,7 +5,9 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "lib": ["ES2024"],
-    "types": ["node"]
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true
   },
   "include": [
     "src/shared/**/*.ts",
@@ -15,6 +17,7 @@
     "test/server/**/*.ts",
     "test/shared/**/*.ts",
     "test/conventions/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "eslint.config.js"
   ]
 }

@@ -24,12 +24,7 @@ export default [
     languageOptions: {
       ...love.languageOptions,
       parserOptions: {
-        /* Widened from love's `projectService: true` so this file is linted too.
-           Only `*.js` may be listed: allowDefaultProject errors on a file that a
-           tsconfig already covers, which every .ts file here is. */
-        projectService: {
-          allowDefaultProject: ['*.js'],
-        },
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
