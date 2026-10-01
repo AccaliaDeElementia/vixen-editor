@@ -23,6 +23,10 @@ const DEFAULT_EXPORT_ALLOWLIST = ['eslint.config.js', 'test-browser/playwright.c
 
 const SCANNER = 'test/conventions/project-rules.test.ts'
 
+const POLLED_WAIT = /\bvi\.waitFor\s*\(/v
+const HAND_ROLLED_TIMER = /\bset(?:Timeout|Interval)\s*\(/v
+const RUNTIME_DECIDES_THE_MOMENT = 'test/rejections.ts'
+
 const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmv
 const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}/gmv
 
@@ -585,5 +589,35 @@ describe('the documented error codes match the ones the server emits', () => {
     const { emitted } = await bothSides()
 
     expect(emitted.size).toBeGreaterThan(5)
+  })
+})
+
+describe('waiting for work to finish', () => {
+  function suiteFiles(prefix: string): SourceFile[] {
+    return scannable().filter((source) => source.relativePath.startsWith(prefix))
+  }
+
+  it('leaves no polled wait, because every wait now has a signal to await', () => {
+    const polling = suiteFiles('test').filter((source) => POLLED_WAIT.test(source.contents))
+
+    expect(polling.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('recognises a polled wait when it sees one, so the scan is not passing vacuously', () => {
+    expect(POLLED_WAIT.test('await vi.waitFor(() => undefined)')).toBe(true)
+  })
+
+  it('leaves no hand-rolled timer in the unit suite, where a signal is always available', () => {
+    const yielding = suiteFiles('test/')
+      .filter((source) => source.relativePath !== RUNTIME_DECIDES_THE_MOMENT)
+      .filter((source) => HAND_ROLLED_TIMER.test(source.contents))
+
+    expect(yielding.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('finds the one timer the runtime does decide, so that scan is not passing vacuously', () => {
+    const allowed = sources.find((source) => source.relativePath === RUNTIME_DECIDES_THE_MOMENT)
+
+    expect(HAND_ROLLED_TIMER.test(allowed?.contents ?? '')).toBe(true)
   })
 })

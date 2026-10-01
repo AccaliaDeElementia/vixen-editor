@@ -1144,14 +1144,33 @@ catches the ones nobody predicted, and
 `npm run mutate scripts/assertions.ts` is what says the spec constrains
 anything.
 
-**One rule is still owed, and this paragraph is the reminder if it stalls.**
-That `vi.waitFor` may
-appear only inside `givenAsync` — making an unmarked one a claim by
-definition — cannot land while tests hold their claim inside one because
-nothing else says the work has finished. Giving them a definite signal is its
-own workstream, and closing the door first would block the refactor that
-makes it closable. Until then a bare `vi.waitFor` counts as the assertion it
-is.
+**`vi.waitFor` is banned outright**, and `test/conventions/` fails the gate on
+one. Every wait in this suite turned out to have a definite signal to await —
+an injected callback, a promise the code already created and discarded, or a
+mutation to the output the test asserts on. So the door is closed rather than
+narrowed: it was briefly going to be "legal inside `givenAsync`", and that
+would have kept an escape hatch nothing needs. `given` and `givenAsync` stay,
+for marking a precondition or a postcondition that is genuinely an assertion
+rather than a wait.
+
+**Inventing a waiter is a defect report about the code, not a fix for the
+test.** A helper that yields a microtask, or a macrotask, or counts either
+until the subject has probably finished, is saying the subject offers no way
+to observe that it finished — and the answer is to find the signal, not to
+guess at the timing. Look for a callback the code already calls, a promise it
+already creates and throws away, or an event the DOM already emits; if none
+exists, that absence is the finding.
+
+One such helper lived here, drained the microtask queue with a `setTimeout`,
+and was **correct only while no timer was scheduled after its own** — green or
+red purely by which `setTimeout` was queued first, with nothing announcing the
+difference. So `test/conventions/` also fails on a hand-rolled `setTimeout` or
+`setInterval` anywhere in `test/`. The single exception is
+`test/rejections.ts`, where the thing awaited is the runtime's own
+unhandled-rejection reporting, which happens at a macrotask boundary by
+specification and has no earlier observable moment. `test-browser/` is not
+covered: there `page.waitForTimeout` waits on real paint and animation, which
+is a different question and not yet settled.
 
 ### The conventions suite enforces this document
 

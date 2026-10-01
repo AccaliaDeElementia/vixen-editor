@@ -16,7 +16,7 @@ const FAILURE = 1
 const SUCCESS = 0
 
 const TEST_START =
-  /\b(?:it|test)(?:\.each(?:<[^>]*>)?\((?:.|\n)*?\)\s*)?\(\s*(?<quote>[`'"])(?<name>(?:(?!\k<quote>).)*)\k<quote>/gv
+  /(?<![.\w$])(?:it|test)(?:\.each(?:<[^>]*>)?\((?:.|\n)*?\)\s*)?\(\s*(?<quote>[`'"])(?<name>(?:(?!\k<quote>).)*)\k<quote>/gv
 const ASSERTION = /\bexpect(?:\.poll)?\s*\(/gv
 
 interface Counted {

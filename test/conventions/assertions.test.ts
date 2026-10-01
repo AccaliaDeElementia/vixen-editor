@@ -62,6 +62,16 @@ describe('a declaration behind a type argument on each', () => {
   })
 })
 
+describe('a call to a method named test, with a string literal after it', () => {
+  it('is not mistaken for a declaration, which the runner cross-check would report', async () => {
+    expect(await scan('method-named-test')).toHaveLength(1)
+  })
+
+  it('still counts the one assertion wrapped around it', async () => {
+    expect((await only('method-named-test')).assertions).toBe(1)
+  })
+})
+
 describe('a body holding a regex literal whose quotes do not balance', () => {
   it('ends where its own test ends, rather than swallowing the next one', async () => {
     expect((await scan('regex-in-body')).map(({ assertions }) => assertions)).toStrictEqual([1, 1])
