@@ -71,6 +71,30 @@ beforeEach(() => {
   page()
 })
 
+describe('a dialog element that outlives the dialog it showed', () => {
+  it('is left with no close listener, so repeated use cannot accumulate them', async () => {
+    const dialog = document.querySelector<HTMLDialogElement>('#file-dialog')
+    if (dialog === null) throw new Error('no #file-dialog to watch')
+    // happy-dom implements `{ once: true }` by calling `removeEventListener`; a
+    // real browser removes the listener internally without going through the
+    // public method, so this spy would observe nothing under `test-browser/`.
+    const released = vi.spyOn(dialog, 'removeEventListener')
+
+    const dialogs = createDialogs(document)
+    const pending = dialogs.prompt({
+      title: 'New',
+      label: 'Name',
+      confirmLabel: 'Create',
+      submit: () => Promise.resolve(null),
+    })
+    type('notes.md')
+    click('#file-dialog-confirm')
+    await pending
+
+    expect(released).toHaveBeenCalledWith('close', expect.any(Function))
+  })
+})
+
 describe('prompt', () => {
   it('resolves true once the submission succeeds', async () => {
     const dialogs = createDialogs(document)

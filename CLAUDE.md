@@ -1245,10 +1245,11 @@ Watching every `EventTarget` would report the former as a leak and drown the
 signal.
 
 **The cost of that bound is a real gap, and it is worth naming.** A listener
-on an element that is long-lived _in production_ but rebuilt per test — the
-file dialog is the one here — is invisible to this guard, because the test's
-copy is discarded either way. Registration being bounded across repeated use
-of such an element is a claim a test has to make directly.
+on an element that is long-lived _in production_ but rebuilt per test is
+invisible to this guard, because the test's copy is discarded either way.
+Registration being bounded across repeated use of such an element is a claim a
+test has to make directly, and `test/client/dialogs.test.ts` makes it for the
+file dialog — the only element here with that shape.
 
 A `{ once: true }` registration counts as standing until it fires, since one
 that never fires is still registered. The guard tracks the firing, so a
