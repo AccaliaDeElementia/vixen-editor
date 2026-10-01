@@ -28,6 +28,13 @@ const SAMPLE = parseTree({
   ],
 })
 
+const GLYPH_TRASH_ENTRY: TrashNode = {
+  id: 'bbbb',
+  originalPath: 'journal/glyphs.md',
+  kind: 'document',
+  deletedAt: '2026-01-01T00:00:00.000Z',
+}
+
 let tree: HTMLElement = document.createElement('ul')
 
 function render(overrides: Partial<TreeViewModel> = {}): void {
@@ -185,6 +192,26 @@ describe('accessibility', () => {
     expect(rowFor(entryPath).hasAttribute('aria-expanded')).toBe(expected)
   })
 
+  it('hides every decorative glyph from assistive technology, since each repeats its row', () => {
+    render({ trash: [GLYPH_TRASH_ENTRY], open: new Set([TRASH_PATH]) })
+    const glyphs = [...tree.querySelectorAll<HTMLElement>('.icon')]
+    given(() => {
+      expect(glyphs.length).toBeGreaterThan(0)
+    })
+
+    expect(glyphs.filter((glyph) => glyph.getAttribute('aria-hidden') !== 'true')).toStrictEqual([])
+  })
+
+  it('marks every entry row draggable, which is what lets a drag begin at all', () => {
+    render()
+    const entries = rows().filter((element) => element.dataset.path !== TRASH_PATH)
+    given(() => {
+      expect(entries.length).toBeGreaterThan(0)
+    })
+
+    expect(entries.filter((element) => !element.draggable)).toStrictEqual([])
+  })
+
   it('marks the selected entry', () => {
     render({ selected: 'notes.md' })
 
@@ -252,6 +279,12 @@ describe('the trash pseudo-folder', () => {
     render({ trash: [entry], open: new Set([TRASH_PATH]) })
 
     expect(tree.querySelector('[role="treeitem"][data-trash-id]')?.textContent).toContain('journal/gone.md')
+  })
+
+  it('leaves a deleted entry unselected, because selection addresses the live tree', () => {
+    render({ trash: [entry], open: new Set([TRASH_PATH]) })
+
+    expect(tree.querySelector('[role="treeitem"][data-trash-id]')?.getAttribute('aria-selected')).toBe('false')
   })
 
   it('carries the entry id, which restore and purge address it by', () => {

@@ -214,19 +214,6 @@ describe('moving by drag', () => {
     expect(client.move).toHaveBeenCalledWith('notes.md', 'archive/notes.md')
   })
 
-  it('asks nothing, because an occupied destination is simply refused', async () => {
-    await start()
-
-    drag('notes.md', rowFor('archive'))
-
-    await settled()
-    given(() => {
-      expect(client.move).toHaveBeenCalled()
-    })
-
-    expect(dialogs.confirm).not.toHaveBeenCalled()
-  })
-
   it('refreshes the tree after a move', async () => {
     await start()
 

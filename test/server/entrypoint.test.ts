@@ -12,6 +12,7 @@ describe('the process entry point', () => {
   })
 
   it('does not start a server when imported rather than launched', async () => {
+    vi.resetModules()
     const { startServer } = await import('../../src/server/main.ts')
     await import('../../src/index.ts')
 

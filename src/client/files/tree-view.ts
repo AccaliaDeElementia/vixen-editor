@@ -79,10 +79,18 @@ interface RowOptions {
   href?: string
 }
 
+function rowElement(href: string | undefined): HTMLElement {
+  if (href === undefined) return document.createElement('div')
+
+  const anchor = document.createElement('a')
+  anchor.href = href
+
+  return anchor
+}
+
 function row(options: RowOptions): HTMLElement {
   const { path, kind, draggable, name, depth, expanded, selected, href } = options
-  const element = document.createElement(href === undefined ? 'div' : 'a')
-  if (element instanceof HTMLAnchorElement && href !== undefined) element.href = href
+  const element = rowElement(href)
 
   element.className = 'tree__row'
   element.setAttribute('role', 'treeitem')

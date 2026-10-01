@@ -161,6 +161,12 @@ describe('keep both', () => {
     expect(copyNameFor(original)).toBe(expected)
   })
 
+  it('reports itself resolved, so the caller does not also warn', async () => {
+    const { options } = harness(KEEP_BOTH)
+
+    await expect(offerResolution(options, CONFLICT)).resolves.toBe(true)
+  })
+
   it('then loads the version on disk, so the open document is no longer stale', async () => {
     const { options, takeTheirs } = harness(KEEP_BOTH)
 

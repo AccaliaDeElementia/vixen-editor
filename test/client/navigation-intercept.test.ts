@@ -236,6 +236,25 @@ describe('a browser without the Navigation API', () => {
   })
 })
 
+describe('an intercept given only half of the leaving pair', () => {
+  it.each([
+    ['nothing to settle with', { mayLeave: () => false }],
+    ['nobody to ask', { settle: () => Promise.resolve(true) }],
+  ])('lets the navigation through when it has %s', (_label, half) => {
+    const navigation = fakeNavigation()
+    interceptNavigation({
+      navigation: cast<Navigation>(navigation),
+      open: () => Promise.resolve(),
+      ...half,
+    })
+    const { event, attempt } = navigateEvent('/doc/a.md')
+
+    navigation.fire(event)
+
+    expect(attempt.blocked).toBe(false)
+  })
+})
+
 describe('releasing the interception', () => {
   it('stops opening documents for navigations it used to handle', () => {
     const navigation = fakeNavigation()

@@ -387,6 +387,20 @@ describe('inform', () => {
     expect(document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden).toBe(true)
   })
 
+  it('hides the name field, because there is nothing to type', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-field')?.hidden).toBe(true)
+  })
+
+  it('shows the body it just filled, which the other dialogs keep hidden', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-body')?.hidden).toBe(false)
+  })
+
   it('labels that way out as it was asked to', () => {
     const dialogs = createDialogs(document)
     void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })

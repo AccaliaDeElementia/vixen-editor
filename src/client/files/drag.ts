@@ -5,7 +5,6 @@ import { EMPTY, PAST_SEPARATOR } from '../../shared/sequences.ts'
 import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../layout/toast.ts'
 
-import type { Dialogs } from './dialogs.ts'
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
 import { parentOf } from './tree-model.ts'
@@ -23,7 +22,6 @@ const DROP_TARGET_CLASS = 'tree__row--drop'
 
 interface DragContext {
   client: FilesClient
-  dialogs: Dialogs
   toast: Toast
   rowAt: (index: number) => VisibleRow | undefined
   refresh: () => Promise<void>

@@ -155,6 +155,13 @@ describe('the tooltip a tap opened', () => {
     expect(closesOn({ selection: { anchor: 10 } })).toBe(false)
   })
 
+  it.each([
+    ['its first character', OVER_THE_LINK.from],
+    ['its last', OVER_THE_LINK.to],
+  ])('stays with the caret on %s, which is still the link', (_label, anchor) => {
+    expect(closesOn({ selection: { anchor } })).toBe(false)
+  })
+
   it('closes when the caret moves off the link', () => {
     expect(closesOn({ selection: { anchor: 1 } })).toBe(true)
   })

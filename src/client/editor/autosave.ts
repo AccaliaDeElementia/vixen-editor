@@ -42,6 +42,10 @@ export function createAutosave(options: AutosaveOptions): Autosave {
     return current !== saved
   }
 
+  function nothingToWrite(): boolean {
+    return !dirty() || isBlank(current)
+  }
+
   function movedOnSince(era: object): boolean {
     return era !== tracking
   }
@@ -70,7 +74,7 @@ export function createAutosave(options: AutosaveOptions): Autosave {
   }
 
   async function drain(): Promise<void> {
-    while (dirty() && !isBlank(current)) {
+    while (!nothingToWrite()) {
       const attempt = current
       const startedTracking = tracking
       writing = true
@@ -113,7 +117,7 @@ export function createAutosave(options: AutosaveOptions): Autosave {
 
   function schedule(): void {
     stopIdle()
-    if (!dirty() || isBlank(current) || refused === current) {
+    if (nothingToWrite() || refused === current) {
       stopCeiling()
       announce()
       return
@@ -153,7 +157,7 @@ export function createAutosave(options: AutosaveOptions): Autosave {
     },
 
     async flush(): Promise<void> {
-      if (!dirty() || isBlank(current)) return
+      if (nothingToWrite()) return
 
       refused = null
       await write()

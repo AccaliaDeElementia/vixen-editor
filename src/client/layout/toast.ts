@@ -277,4 +277,12 @@ export function createToast(root: ParentNode = document): Toast {
   }
 }
 
-export const TestOnly = { FADE_MS, MAX_QUEUED, MAX_VISIBLE, OVERFLOW_TEXT, TOAST_ERROR_MS, TOAST_VISIBLE_MS }
+export const TestOnly = {
+  FADE_MS,
+  MAX_QUEUED,
+  MAX_VISIBLE,
+  OVERFLOW_TEXT,
+  REDUCED_MOTION,
+  TOAST_ERROR_MS,
+  TOAST_VISIBLE_MS,
+}

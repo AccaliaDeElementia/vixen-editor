@@ -10,6 +10,7 @@ import { isRecord } from '../../src/shared/guards.ts'
 const { CARETS_KEY, REMEMBERED_DOCUMENTS } = TestOnly
 
 const LONG_ENOUGH = 10_000
+const SOMEWHERE_INSIDE = 5
 
 function rememberedPaths(): string[] {
   const stored = readJson(CARETS_KEY)
@@ -171,6 +172,14 @@ describe('a corrupted store', () => {
       broken: 0,
       kept: 3,
     })
+  })
+
+  it('discards a stored value that is not an entry at all', () => {
+    localStorage.setItem(CARETS_KEY, JSON.stringify(['rubbish']))
+
+    rememberCaret('notes.md', SOMEWHERE_INSIDE)
+
+    expect(readJson(CARETS_KEY)).toStrictEqual([{ path: 'notes.md', position: SOMEWHERE_INSIDE }])
   })
 
   it('refuses a negative position, which no document has', () => {

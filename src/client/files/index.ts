@@ -295,7 +295,6 @@ async function runFileTree({
   bindDragAndDrop(
     {
       client,
-      dialogs,
       toast,
       rowAt: (index) => visible[index],
       refresh: load,

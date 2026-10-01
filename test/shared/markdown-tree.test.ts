@@ -17,6 +17,10 @@ function valuesIn(markdown: string): string[] {
 }
 
 describe('destinationsIn', () => {
+  it('keeps a trailing angle that opened nothing, rather than reading it as a bracket', () => {
+    expect(valuesIn('see [the journal](journal>) today')).toStrictEqual(['journal>'])
+  })
+
   it('finds an inline link', () => {
     expect(valuesIn('see [the journal](journal/a.md) today')).toStrictEqual(['journal/a.md'])
   })

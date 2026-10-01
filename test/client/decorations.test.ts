@@ -155,6 +155,10 @@ describe('marker decorations', () => {
     expect(classesFor('    TODO: x')).toStrictEqual([])
   })
 
+  it('decorates a marker that begins where inline code ends, with nothing between', () => {
+    expect(classesFor('`code`TODO: x')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
+  })
+
   it('still decorates a marker beside inline code on the same line', () => {
     expect(classesFor('`code` TODO: x')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
   })

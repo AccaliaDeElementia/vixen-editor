@@ -2,9 +2,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { cast } from '../cast.ts'
+
 import { createToast, TestOnly } from '../../src/client/layout/toast.ts'
 
-const { FADE_MS, MAX_QUEUED, MAX_VISIBLE, OVERFLOW_TEXT, TOAST_ERROR_MS, TOAST_VISIBLE_MS } = TestOnly
+const { FADE_MS, MAX_QUEUED, MAX_VISIBLE, OVERFLOW_TEXT, REDUCED_MOTION, TOAST_ERROR_MS, TOAST_VISIBLE_MS } = TestOnly
 
 const FIRST = 0
 
@@ -47,6 +49,23 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers()
   document.body.innerHTML = ''
+})
+
+describe('a reader who asked for less motion', () => {
+  it('has the toast removed outright rather than faded out', () => {
+    const asked = vi
+      .spyOn(window, 'matchMedia')
+      .mockImplementation((query: string) => cast<MediaQueryList>({ matches: query === REDUCED_MOTION }))
+
+    try {
+      createToast(root).show('Saved notes.md')
+      vi.advanceTimersByTime(TOAST_VISIBLE_MS)
+
+      expect(toasts()).toHaveLength(0)
+    } finally {
+      asked.mockRestore()
+    }
+  })
 })
 
 describe('showing a toast', () => {
