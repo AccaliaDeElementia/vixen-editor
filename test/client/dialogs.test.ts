@@ -1,6 +1,6 @@
 'use sanity'
 
-import { givenAsync } from '../conditions.ts'
+import { given, givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDialogs } from '../../src/client/files/dialogs.ts'
@@ -38,6 +38,29 @@ function type(value: string): void {
 
 function click(selector: string): void {
   document.querySelector<HTMLButtonElement>(selector)?.click()
+}
+
+interface Submission {
+  submit: (value: string) => Promise<string | null>
+  handled: () => Promise<void>
+}
+
+function submitting(answer: (value: string) => string | null): Submission {
+  const called: PromiseWithResolvers<void> = Promise.withResolvers()
+  let outcome: Promise<string | null> = Promise.resolve(null)
+
+  return {
+    submit: (value: string) => {
+      outcome = Promise.resolve(answer(value))
+      called.resolve()
+
+      return outcome
+    },
+    handled: async () => {
+      await called.promise
+      await outcome
+    },
+  }
 }
 
 function errorText(): string {
@@ -118,45 +141,46 @@ describe('prompt', () => {
     expect(dialog().open).toBe(true)
   })
 
-  it('stays open and shows the reason when the submission is rejected', async () => {
+  it('shows the reason when the submission is rejected', async () => {
     const dialogs = createDialogs(document)
-    const pending = dialogs.prompt({
-      title: 'New',
-      label: 'Name',
-      confirmLabel: 'Create',
-      submit: (value) => Promise.resolve(value === 'taken.md' ? 'Already exists' : null),
-    })
+    const taken = submitting((value) => (value === 'taken.md' ? 'Already exists' : null))
+    const pending = dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', submit: taken.submit })
 
     type('taken.md')
     click('#file-dialog-confirm')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(errorText()).toBe('Already exists')
-      }),
-    )
+    await taken.handled()
+
+    expect(errorText()).toBe('Already exists')
+
+    click('#file-dialog-cancel')
+    await pending
+  })
+
+  it('stays open when the submission is rejected, so the name can be corrected', async () => {
+    const dialogs = createDialogs(document)
+    const taken = submitting((value) => (value === 'taken.md' ? 'Already exists' : null))
+    const pending = dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', submit: taken.submit })
+
+    type('taken.md')
+    click('#file-dialog-confirm')
+    await taken.handled()
 
     expect(dialog().open).toBe(true)
 
-    type('free.md')
-    click('#file-dialog-confirm')
-    await givenAsync(expect(pending).resolves.toBe(true))
+    click('#file-dialog-cancel')
+    await pending
   })
 
   it('clears a stale error when it opens again', async () => {
     const dialogs = createDialogs(document)
-    const first = dialogs.prompt({
-      title: 'New',
-      label: 'Name',
-      confirmLabel: 'Create',
-      submit: () => Promise.resolve('nope'),
-    })
+    const refused = submitting(() => 'nope')
+    const first = dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', submit: refused.submit })
     type('a.md')
     click('#file-dialog-confirm')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(errorText()).toBe('nope')
-      }),
-    )
+    await refused.handled()
+    given(() => {
+      expect(errorText()).toBe('nope')
+    })
     click('#file-dialog-cancel')
     await first
 

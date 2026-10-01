@@ -24,6 +24,10 @@ function fakeClient(): {
 
 let client: ReturnType<typeof fakeClient> = fakeClient()
 
+async function afterTheUnloadSaveSettles(): Promise<void> {
+  await givenAsync(expect(client.save.mock.results.at(0)?.value).rejects.toThrow())
+}
+
 function loaded(content: string, etag = '"e1"'): { content: string; etag: string } {
   return { content, etag }
 }
@@ -277,11 +281,7 @@ describe('saveOnUnload', () => {
     await active.load('notes.md')
 
     active.saveOnUnload('notes.md', '# leaving')
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.save).toHaveBeenCalledTimes(1)
-      }),
-    )
+    await givenAsync(expect(client.save.mock.results[0]?.value).resolves.toBe('"survived"'))
     await active.save('notes.md', '# still here')
 
     expect(client.save).toHaveBeenLastCalledWith('notes.md', '# still here', '"survived"')
@@ -299,11 +299,7 @@ describe('saveOnUnload', () => {
 
     expect(leaving).not.toThrow()
 
-    await givenAsync(
-      vi.waitFor(() => {
-        expect(client.save).toHaveBeenCalledTimes(1)
-      }),
-    )
+    await afterTheUnloadSaveSettles()
   })
 })
 
