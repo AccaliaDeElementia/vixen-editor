@@ -874,3 +874,76 @@ describe('the directories under src are read in one order', () => {
     expect(mutualAreas(circular)).toStrictEqual(['src/client/a <-> src/client/b'])
   })
 })
+
+const GUIDES = ['CLAUDE.md', 'DESIGN.md', 'TESTING.md', 'README.md']
+const ANCHOR_PREFIXES: Readonly<Record<string, string>> = {
+  'CLAUDE.md': 'claude',
+  'DESIGN.md': 'design',
+  'TESTING.md': 'testing',
+  'README.md': 'readme',
+}
+const DECLARED_ANCHOR = /<a id="(?<id>[a-z]+-[0-9a-f]{6})"><\/a>/gv
+const ANCHOR_LINK = /\]\((?<file>[A-Z]+\.md)?#(?<id>[a-z]+-[0-9a-f]{6})\)/gv
+
+interface Anchor {
+  id: string
+  document: string
+}
+
+function guideText(document: string): string {
+  return readFileSync(path.join(REPO_ROOT, document), 'utf8')
+}
+
+function declaredAnchors(): Anchor[] {
+  return GUIDES.flatMap((document) =>
+    [...guideText(document).matchAll(DECLARED_ANCHOR)].map((match) => ({
+      id: match.groups?.id ?? '',
+      document,
+    })),
+  )
+}
+
+function anchorLinks(): string[] {
+  return GUIDES.flatMap((document) =>
+    [...guideText(document).matchAll(ANCHOR_LINK)].map(
+      (match) => `${match.groups?.file ?? document}#${match.groups?.id ?? ''}`,
+    ),
+  )
+}
+
+describe('the guides link to each other by anchors that cannot rot', () => {
+  it('leaves no link pointing at an anchor no document declares', () => {
+    const declared = new Set(declaredAnchors().map((anchor) => `${anchor.document}#${anchor.id}`))
+    const dangling = [...new Set(anchorLinks())].filter((target) => !declared.has(target)).sort()
+
+    expect(dangling).toStrictEqual([])
+  })
+
+  it('leaves no anchor id declared more than once, which would send two links to one place', () => {
+    const seen = new Map<string, number>()
+    for (const { id } of declaredAnchors()) seen.set(id, (seen.get(id) ?? 0) + 1)
+    const repeated = [...seen].filter(([, count]) => count > 1).map(([id]) => id)
+
+    expect(repeated.sort()).toStrictEqual([])
+  })
+
+  it('leaves no anchor whose prefix names a document other than the one holding it', () => {
+    const misfiled = declaredAnchors()
+      .filter((anchor) => !anchor.id.startsWith(`${ANCHOR_PREFIXES[anchor.document] ?? ''}-`))
+      .map((anchor) => `${anchor.document}#${anchor.id}`)
+
+    expect(misfiled.sort()).toStrictEqual([])
+  })
+
+  it('finds anchors at all, so those scans are not passing vacuously', () => {
+    expect(declaredAnchors().length).toBeGreaterThan(20)
+  })
+
+  it('finds links at all, so the dangling scan is not passing vacuously', () => {
+    expect(anchorLinks().length).toBeGreaterThan(10)
+  })
+
+  it('recognises a link to another document when it sees one', () => {
+    expect(anchorLinks()).toContain('DESIGN.md#design-9ca2c0')
+  })
+})

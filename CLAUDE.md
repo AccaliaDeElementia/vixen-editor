@@ -523,6 +523,11 @@ that**: some are only enforceable by review.
 - **A table that copies a rule the code owns gets a check that the two agree.**
   The name rules and the error codes each have one, because a prose copy went
   silently false before. → [TESTING](TESTING.md#testing-924694)
+- **A link between these documents uses an opaque anchor**, prefixed with the
+  document that holds it. `test/conventions/` fails the gate on a link to an
+  anchor nothing declares, on an id declared twice, and on an anchor whose
+  prefix names a different document — so a dead link cannot reach a reader.
+  → [TESTING](TESTING.md#testing-924694)
 
 ## Where the detail lives
 
