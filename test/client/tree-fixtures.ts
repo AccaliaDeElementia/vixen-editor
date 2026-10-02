@@ -5,6 +5,8 @@ import { vi } from 'vitest'
 import { ROW_SELECTOR } from '../../src/client/files/tree-view.ts'
 import type { TrashNode } from '../../src/client/files/tree-model.ts'
 
+import { renderPage } from './templates.ts'
+
 export const TRASHED: TrashNode = {
   id: 'aaaa',
   originalPath: 'gone.md',
@@ -38,29 +40,25 @@ export function fakeClient(nodes: unknown, trash: readonly TrashNode[] = []): Fa
   }
 }
 
-const TOOLBAR = `
-      <div id="toolbar">
-        <button id="new-document"></button>
-        <button id="new-folder"></button>
-        <button id="upload-file"></button>
-        <a id="download-archive" href="/api/files/archive"></a>
-        <button id="delete-entry"></button>
-        <button id="reveal-document"></button>
-        <button id="insert-entry" disabled></button>
-        <input id="upload-input" type="file">
-      </div>`
-
-const OPEN_SELECTED = '<button id="open-selected"></button>'
+const TOOLBAR_ACTIONS = [
+  '#new-document',
+  '#new-folder',
+  '#upload-file',
+  '#download-archive',
+  '#delete-entry',
+  '#reveal-document',
+  '#insert-entry',
+  '#upload-input',
+]
 
 export function treePage({ withToolbar = false, withOpenSelected = false } = {}): HTMLElement {
   document.body.innerHTML = ''
   const host = document.createElement('div')
-  host.innerHTML = `
-    <aside id="explorer">${withToolbar ? TOOLBAR : ''}${withOpenSelected ? OPEN_SELECTED : ''}
-      <ul id="file-tree" role="tree"></ul>
-    </aside>
-    <div id="status"></div>`
+  host.innerHTML = renderPage()
   document.body.append(host)
+
+  if (!withToolbar) for (const selector of TOOLBAR_ACTIONS) host.querySelector(selector)?.remove()
+  if (!withOpenSelected) host.querySelector('#open-selected')?.remove()
 
   return host
 }

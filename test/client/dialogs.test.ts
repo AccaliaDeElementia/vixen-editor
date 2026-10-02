@@ -4,24 +4,10 @@ import { given, givenAsync } from '../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDialogs } from '../../src/client/files/dialogs.ts'
+import { renderDialog } from './templates.ts'
 
 function page(): void {
-  document.body.innerHTML = `
-    <dialog id="file-dialog">
-      <form method="dialog">
-        <h2 id="file-dialog-title"></h2>
-        <p id="file-dialog-message"></p>
-        <p id="file-dialog-field">
-          <label id="file-dialog-label" for="file-dialog-entry">Name</label>
-          <input id="file-dialog-entry" type="text">
-        </p>
-        <p id="file-dialog-error"></p>
-        <div id="file-dialog-choices" hidden></div>
-        <div id="file-dialog-body" hidden tabindex="0"></div>
-        <button id="file-dialog-cancel" type="submit" value="cancel">Cancel</button>
-        <button id="file-dialog-confirm" type="submit" value="confirm"></button>
-      </form>
-    </dialog>`
+  document.body.innerHTML = renderDialog()
 }
 
 function dialog(): HTMLDialogElement {

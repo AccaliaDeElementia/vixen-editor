@@ -4,6 +4,10 @@ import type { EditorView } from '@codemirror/view'
 
 import { TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
+import { cast } from '../cast.ts'
+import type { Dialogs } from '../../src/client/files/dialogs.ts'
+import type { FilesClient } from '../../src/client/files/files-client.ts'
+import { renderPage } from './templates.ts'
 
 const { bootstrap } = TestOnly
 
@@ -22,37 +26,9 @@ export function recorded(): Recorded {
 
 const STATUS_SELECTOR = '#status'
 
-const WORKSPACE = `
-  <nav>
-    <button type="button" id="nav-back" disabled aria-disabled="true"></button>
-    <button type="button" id="nav-forward" disabled aria-disabled="true"></button>
-  </nav>
-  <span id="status"></span>
-  <p><span id="save-label"></span><span id="save-countdown"></span></p>
-  <p id="open-path"></p>
-  <p id="word-count"></p>
-  <div id="editor"></div>
-  <section class="view" id="view-pending" tabindex="-1" hidden></section>
-  <section class="view" id="view-image" tabindex="-1" hidden>
-    <p id="image-path"></p>
-    <a id="image-download" download></a>
-    <img id="image-file" alt="">
-  </section>
-  <section class="view" id="view-missing" tabindex="-1" hidden>
-    <code id="missing-path"></code>
-  </section>
-  <section class="view" id="view-deleted" tabindex="-1" hidden>
-    <p id="deleted-what"></p>
-    <p id="deleted-actions"><button type="button" id="deleted-restore">Restore</button></p>
-    <p id="deleted-blocked" hidden></p>
-  </section>
-  <section class="view" id="view-unreachable" tabindex="-1" hidden>
-    <p id="unreachable-reason"></p>
-  </section>`
-
 export function page({ withMount = true, withStatus = true } = {}): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = WORKSPACE
+  container.innerHTML = renderPage()
 
   if (!withMount) container.querySelector('#editor')?.remove()
   if (!withStatus) container.querySelector('#status')?.remove()
@@ -80,8 +56,28 @@ export function sessionRecording(into: Recorded, overrides: Partial<Session> = {
   }
 }
 
+export function filesAnsweringEmpty(): FilesClient {
+  return cast<FilesClient>({
+    trash: () => Promise.resolve([]),
+    tree: () => Promise.resolve([]),
+  })
+}
+
+export function dialogsDismissing(): Dialogs {
+  return {
+    prompt: () => Promise.resolve(false),
+    confirm: () => Promise.resolve(false),
+    choose: () => Promise.resolve(null),
+    inform: () => Promise.resolve(),
+  }
+}
+
 export async function openEditor(options: Parameters<typeof bootstrap>[0] = {}): Promise<EditorView> {
-  const { view, teardownEditor } = await bootstrap(options)
+  const { view, teardownEditor } = await bootstrap({
+    files: filesAnsweringEmpty(),
+    dialogs: dialogsDismissing(),
+    ...options,
+  })
   standing.push(teardownEditor)
 
   return view
