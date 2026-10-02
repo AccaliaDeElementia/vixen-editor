@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { openDocumentIn } from '../../src/client/navigation.ts'
+import { openDocumentIn } from '../../../src/client/navigation.ts'
 
 function root(): HTMLElement {
   const container = document.createElement('div')

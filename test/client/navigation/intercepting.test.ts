@@ -2,12 +2,12 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { given } from '../conditions.ts'
-import { looseRejectionsDuring } from '../rejections.ts'
+import { given } from '../../conditions.ts'
+import { looseRejectionsDuring } from '../../rejections.ts'
 
-import { interceptNavigation } from '../../src/client/navigation.ts'
+import { interceptNavigation } from '../../../src/client/navigation.ts'
 
-import { cast } from '../cast.ts'
+import { cast } from '../../cast.ts'
 
 interface FakeNavigation {
   addEventListener: (type: string, handler: (event: unknown) => void) => void

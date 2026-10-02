@@ -2,14 +2,14 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { initFileTree } from '../../src/client/files/index.ts'
-import { readOpenFolders } from '../../src/client/files/open-folders.ts'
-import { parseTree } from '../../src/client/files/tree-model.ts'
-import { TRASH_PATH } from '../../src/client/files/tree-view.ts'
-import type { FilesClient } from '../../src/client/files/files-client.ts'
-import { cast } from '../cast.ts'
-import { given } from '../conditions.ts'
-import { fakeClient, rowFor, rows, TRASHED, treePage } from './tree-fixtures.ts'
+import { initFileTree } from '../../../../src/client/files/index.ts'
+import { readOpenFolders } from '../../../../src/client/files/open-folders.ts'
+import { parseTree } from '../../../../src/client/files/tree-model.ts'
+import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
+import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { cast } from '../../../cast.ts'
+import { given } from '../../../conditions.ts'
+import { fakeClient, rowFor, rows, TRASHED, treePage } from '../../tree-fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [

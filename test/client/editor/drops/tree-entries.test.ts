@@ -2,10 +2,10 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bindEntryDrops, linkTo, TestOnly as DropTestOnly } from '../../../src/client/editor/drops.ts'
-import { TestOnly } from '../../../src/client/files/drag.ts'
+import { bindEntryDrops, linkTo, TestOnly as DropTestOnly } from '../../../../src/client/editor/drops.ts'
+import { TestOnly } from '../../../../src/client/files/drag.ts'
 
-import { cast } from '../../cast.ts'
+import { cast } from '../../../cast.ts'
 
 const { DRAG_KIND_MIME, DRAG_MIME } = TestOnly
 const { draggedEntry, linkFor } = DropTestOnly

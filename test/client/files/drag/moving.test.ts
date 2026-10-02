@@ -1,17 +1,17 @@
 'use sanity'
 
-import { given } from '../../conditions.ts'
+import { given } from '../../../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TestOnly } from '../../../src/client/files/drag.ts'
-import { FilesRequestError } from '../../../src/client/files/files-client.ts'
-import { initFileTree } from '../../../src/client/files/index.ts'
-import { parseTree } from '../../../src/client/files/tree-model.ts'
-import { TRASH_PATH, TREE_SELECTOR } from '../../../src/client/files/tree-view.ts'
-import type { Dialogs } from '../../../src/client/files/dialogs.ts'
-import type { FilesClient } from '../../../src/client/files/files-client.ts'
-import { cast } from '../../cast.ts'
-import { fakeClient, rowFor, rows, TRASHED, treePage, type FakeClient } from '../tree-fixtures.ts'
+import { TestOnly } from '../../../../src/client/files/drag.ts'
+import { FilesRequestError } from '../../../../src/client/files/files-client.ts'
+import { initFileTree } from '../../../../src/client/files/index.ts'
+import { parseTree } from '../../../../src/client/files/tree-model.ts'
+import { TRASH_PATH, TREE_SELECTOR } from '../../../../src/client/files/tree-view.ts'
+import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
+import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { cast } from '../../../cast.ts'
+import { fakeClient, rowFor, rows, TRASHED, treePage, type FakeClient } from '../../tree-fixtures.ts'
 
 const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf } = TestOnly
 

@@ -2,12 +2,12 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../src/client/files/drag.ts'
-import { initFileTree } from '../../src/client/files/index.ts'
-import { parseTree } from '../../src/client/files/tree-model.ts'
-import type { FilesClient } from '../../src/client/files/files-client.ts'
-import { cast } from '../cast.ts'
-import { fakeClient, rowFor, treePage } from './tree-fixtures.ts'
+import { TestOnly } from '../../../../src/client/files/drag.ts'
+import { initFileTree } from '../../../../src/client/files/index.ts'
+import { parseTree } from '../../../../src/client/files/tree-model.ts'
+import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { cast } from '../../../cast.ts'
+import { fakeClient, rowFor, treePage } from '../../tree-fixtures.ts'
 
 const { DRAG_KIND_MIME, DRAG_MIME } = TestOnly
 

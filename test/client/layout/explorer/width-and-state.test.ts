@@ -10,8 +10,8 @@ import {
   setExplorerWidth,
   toggleExplorer,
   TestOnly,
-} from '../../../src/client/layout/explorer.ts'
-import { writePreferences } from '../../../src/client/layout/preferences.ts'
+} from '../../../../src/client/layout/explorer.ts'
+import { writePreferences } from '../../../../src/client/layout/preferences.ts'
 
 const { clampExplorerWidth, readExplorerState, setExplorerOpen } = TestOnly
 

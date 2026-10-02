@@ -1,14 +1,14 @@
 'use sanity'
 
-import { givenAsync } from '../conditions.ts'
+import { givenAsync } from '../../../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { bindFileDrops, TestOnly } from '../../src/client/editor/drops.ts'
-import { FilesRequestError, type FilesClient } from '../../src/client/files/files-client.ts'
-import type { Dialogs } from '../../src/client/files/dialogs.ts'
-import type { Toast } from '../../src/client/layout/toast.ts'
+import { bindFileDrops, TestOnly } from '../../../../src/client/editor/drops.ts'
+import { FilesRequestError, type FilesClient } from '../../../../src/client/files/files-client.ts'
+import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
+import type { Toast } from '../../../../src/client/layout/toast.ts'
 
-import { cast } from '../cast.ts'
+import { cast } from '../../../cast.ts'
 
 const { insertionFor, receive, suggestedName } = TestOnly
 
