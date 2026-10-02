@@ -1,6 +1,6 @@
 'use sanity'
 
-import { startServer } from './server/main.ts'
+import { startServer } from './main.ts'
 
 /* v8 ignore next 3 -- import.meta.main is false under the test runner by
    construction, so this branch only ever executes when the file is launched

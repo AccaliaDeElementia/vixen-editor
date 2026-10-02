@@ -35,7 +35,7 @@ export async function buildClient(): Promise<void> {
 
 export async function buildServer(): Promise<void> {
   await build({
-    entryPoints: ['src/index.ts'],
+    entryPoints: ['src/server/index.ts'],
     outfile: 'dist/index.js',
     bundle: true,
     format: 'esm',

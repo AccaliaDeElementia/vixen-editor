@@ -995,8 +995,8 @@ nowhere else.
 
 ```
 src/
-  index.ts        process entry point; guarded one-liner, no wiring
   server/         Hono app, config, filesystem-backed document store
+    index.ts      process entry point; guarded one-liner, no wiring
     main.ts       composition root: createApp / startServer
   client/         CodeMirror 6 editor and API client
     main.ts       browser entry point; one line, no wiring
@@ -1306,7 +1306,7 @@ The resolution is a composition root plus a guard:
   `env` and `publicDir`, so a test asserts what `serve` was handed without
   binding a socket. `bootstrap` takes `root`, `search` and `session`, so a test
   drives it against a detached DOM.
-- **`src/index.ts` is inside the gate.** It is three lines guarded by
+- **`src/server/index.ts` is inside the gate.** It is three lines guarded by
   `import.meta.main`, which is false under the runner, so a test can import it
   inertly. Node 26 honours it and esbuild preserves it through bundling. One
   `v8 ignore` covers the guarded call. Add logic here and coverage will demand a

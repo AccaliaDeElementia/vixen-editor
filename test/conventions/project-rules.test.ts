@@ -89,7 +89,7 @@ describe('the source tree', () => {
     expect(sources.length).toBeGreaterThan(20)
   })
 
-  it.each(['src/index.ts', 'src/client/main.ts'])('includes the %s entry point', (entryPoint) => {
+  it.each(['src/server/index.ts', 'src/client/main.ts'])('includes the %s entry point', (entryPoint) => {
     expect(sources.map((source) => source.relativePath)).toContain(entryPoint)
   })
 
