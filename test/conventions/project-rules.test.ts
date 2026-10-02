@@ -33,6 +33,7 @@ const PROVES_THE_TIMER_GUARD = 'test/timers.test.ts'
 const MAY_SCHEDULE_A_TIMER = [RUNTIME_DECIDES_THE_MOMENT, PROVES_THE_TIMER_GUARD]
 const UNNAMED_TIMEOUT = /\{\s*timeout:\s*\d/v
 const UNNAMED_PAINT_WAIT = /waitForTimeout\(\s*\d/v
+const POLLED_PAINT_WAIT = /\bwaitForFunction\s*\(/v
 
 const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmv
 const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}/gmv
@@ -666,6 +667,16 @@ describe('waiting for work to finish', () => {
 
   it('recognises a bare paint wait when it sees one, so that scan is not passing vacuously', () => {
     expect(UNNAMED_PAINT_WAIT.test('await page.waitForTimeout(200)')).toBe(true)
+  })
+
+  it('leaves no polled wait on paint, because a retrying expect or a promise has always served instead', () => {
+    const polling = suiteFiles('test-browser/').filter((source) => POLLED_PAINT_WAIT.test(source.contents))
+
+    expect(polling.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('recognises a polled paint wait when it sees one, so that scan is not passing vacuously', () => {
+    expect(POLLED_PAINT_WAIT.test('await page.waitForFunction(() => true)')).toBe(true)
   })
 
   it('accepts a timeout that was given a name', () => {

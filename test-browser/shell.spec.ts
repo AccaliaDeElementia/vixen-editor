@@ -56,9 +56,12 @@ test('the page itself never scrolls', async ({ page }) => {
 
 test('the icon font actually loads, so buttons show glyphs and not their names', async ({ page }) => {
   await page.goto('/doc/')
-  await page.waitForFunction(() => document.fonts.status === 'loaded')
 
-  const loaded = await page.evaluate(() => document.fonts.check('24px "Material Symbols Outlined"'))
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.ready
+
+    return document.fonts.check('24px "Material Symbols Outlined"')
+  })
 
   expect(loaded).toBe(true)
 })

@@ -57,14 +57,24 @@ test('a tap away dismisses the tooltip without navigating', async ({ page, reque
   await request.delete(`/api/files/entries/${folder}`)
 })
 
-test('a tap on prose reveals nothing, and still places the caret', async ({ page, request }) => {
+test('a tap on prose reveals nothing', async ({ page, request }) => {
   const folder = `tapprose-${String(Date.now())}`
   await page.goto(await documentWithLink(request, folder))
 
   await page.locator('.cm-content').getByText('plain prose below').tap()
   await page.waitForTimeout(PAST_THE_HOVER_DELAY_MS)
 
-  await givenAsync(expect(page.locator(TOOLTIP)).toHaveCount(0))
+  await expect(page.locator(TOOLTIP)).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a tap on prose places the caret', async ({ page, request }) => {
+  const folder = `tapcaret-${String(Date.now())}`
+  await page.goto(await documentWithLink(request, folder))
+
+  await page.locator('.cm-content').getByText('plain prose below').tap()
+
   await expect(page.locator('.cm-cursor-primary')).toBeVisible()
 
   await request.delete(`/api/files/entries/${folder}`)

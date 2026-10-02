@@ -1288,9 +1288,25 @@ to exercise the thing the rule forbids: `test/rejections.ts`, where the thing
 awaited is the runtime's own unhandled-rejection reporting, which happens at a
 macrotask boundary by specification and has no earlier observable moment; and
 `test/timers.test.ts`, which has to schedule a timer to prove
-the guard below catches one. `test-browser/` is not covered: there
-`page.waitForTimeout` waits on real paint and animation, which is a different
-question and not yet settled.
+the guard below catches one.
+
+**`test-browser/` has two rules of its own rather than an exemption.** A
+`page.waitForTimeout` may not take a bare number: a kept duration has to name
+what it outlasts, and the ones that remain are derived from the production
+constant they must outlive, so they cannot drift from it. And
+`page.waitForFunction` is refused outright — polling is neither a signal nor a
+duration but a repeated guess, and a retrying `expect` or a promise has served
+instead every time. `document.fonts.ready` replaced the last one.
+
+A duration earns its place there only where the test proves a **non-event** —
+that a tooltip did not appear, or did not vanish — because nothing can signal
+something that does not happen.
+
+**The polling ban rests on one site rather than a survey**, which is weaker
+ground than the `vi.waitFor` ban above, where every one of its sites was
+examined first. It is there to hold the count at zero, not because every
+alternative has been proved. A change with no clean solution without it is
+grounds to relitigate the ban, not to work around it.
 
 ### A repeating timer may not outlive the test that started it
 
