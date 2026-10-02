@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { parser } from '@lezer/markdown'
 
-import { destinationsIn, VIXEN_MARKDOWN_EXTENSIONS } from '../../src/shared/markdown-tree.ts'
+import { destinationsIn, VIXEN_MARKDOWN_EXTENSIONS } from '../../../src/shared/markdown-tree.ts'
 
 const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 

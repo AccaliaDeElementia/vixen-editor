@@ -7,12 +7,12 @@ import path from 'node:path'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { given } from '../../conditions.ts'
-import { refusalOf } from './refusals.ts'
-import { buildApp } from '../../../src/server/app.ts'
-import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
-import { FOLDER_INDEX_NAME } from '../../../src/shared/documents.ts'
+import { given } from '../../../conditions.ts'
+import { refusalOf } from '../refusals.ts'
+import { buildApp } from '../../../../src/server/app.ts'
+import { DEFAULT_LIMITS } from '../../../../src/server/config.ts'
+import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
+import { FOLDER_INDEX_NAME } from '../../../../src/shared/documents.ts'
 
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')

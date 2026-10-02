@@ -4,7 +4,7 @@ import { markdown } from '@codemirror/lang-markdown'
 import { parser } from '@lezer/markdown'
 import { describe, expect, it } from 'vitest'
 
-import { destinationsIn, VIXEN_MARKDOWN_EXTENSIONS } from '../../src/shared/markdown-tree.ts'
+import { destinationsIn, VIXEN_MARKDOWN_EXTENSIONS } from '../../../src/shared/markdown-tree.ts'
 
 const { language: clientLanguage } = markdown({ extensions: VIXEN_MARKDOWN_EXTENSIONS })
 const { parser: clientParser } = clientLanguage

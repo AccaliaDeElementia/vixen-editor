@@ -2,16 +2,16 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { cast } from '../cast.ts'
+import { cast } from '../../cast.ts'
 
 import {
   MAX_EXPLORER_FRACTION,
   MIN_EXPLORER_PX,
   setExplorerWidth,
   TestOnly as explorerTestOnly,
-} from '../../src/client/layout/explorer.ts'
-import { initLayout, TestOnly as indexTestOnly } from '../../src/client/layout/index.ts'
-import { requestInsert } from '../../src/client/insert-entry.ts'
+} from '../../../src/client/layout/explorer.ts'
+import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/layout/index.ts'
+import { requestInsert } from '../../../src/client/insert-entry.ts'
 
 const { KEYBOARD_STEP_PX } = indexTestOnly
 const { readExplorerState } = explorerTestOnly

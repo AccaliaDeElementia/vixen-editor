@@ -4,15 +4,15 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { given } from '../../conditions.ts'
+import { given } from '../../../conditions.ts'
 import { Buffer } from 'node:buffer'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { refusalOf } from './refusals.ts'
-import { buildApp } from '../../../src/server/app.ts'
-import { DEFAULT_LIMITS } from '../../../src/server/config.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { refusalOf } from '../refusals.ts'
+import { buildApp } from '../../../../src/server/app.ts'
+import { DEFAULT_LIMITS } from '../../../../src/server/config.ts'
+import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')

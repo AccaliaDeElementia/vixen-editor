@@ -6,9 +6,9 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { buildApp } from '../../src/server/app.ts'
-import { applyDebugFilter } from '../../src/server/logging.ts'
-import { createFsDocumentStore } from '../../src/server/storage/fs-store.ts'
+import { buildApp } from '../../../src/server/app.ts'
+import { applyDebugFilter } from '../../../src/server/logging.ts'
+import { createFsDocumentStore } from '../../../src/server/storage/fs-store.ts'
 
 let root = ''
 let lines: string[] = []

@@ -477,7 +477,7 @@ the routes. One registration is enough: it covers routes added later in
 
 `HTTPException.getResponse()` builds a fresh `Response` that never sees headers
 buffered earlier in the request — and that is the path a malformed JSON body
-takes, so the gap is reachable from any client. `test/server/clacks.test.ts`
+takes, so the gap is reachable from any client. `test/server/app.test.ts`
 covers that case specifically.
 
 ## UI state
@@ -1248,7 +1248,7 @@ signal.
 on an element that is long-lived _in production_ but rebuilt per test is
 invisible to this guard, because the test's copy is discarded either way.
 Registration being bounded across repeated use of such an element is a claim a
-test has to make directly, and `test/client/dialogs.test.ts` makes it for the
+test has to make directly, and `test/client/files/dialogs.test.ts` makes it for the
 file dialog — the only element here with that shape.
 
 A `{ once: true }` registration counts as standing until it fires, since one
