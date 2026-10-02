@@ -19,11 +19,13 @@ test('every response from the real process carries the clacks header', async ({ 
   const overheads = await Promise.all(
     paths.map(async (path) => {
       const res = await request.get(path)
-      return `${path} -> ${res.headers()['x-clacks-overhead'] ?? 'MISSING'}`
+      const sent = res.headersArray().find((header) => header.name.toLowerCase() === 'x-clacks-overhead')
+
+      return `${path} -> ${sent === undefined ? 'MISSING' : `${sent.name}: ${sent.value}`}`
     }),
   )
 
-  expect(overheads).toStrictEqual(paths.map((path) => `${path} -> GNU Terry Pratchett`))
+  expect(overheads).toStrictEqual(paths.map((path) => `${path} -> X-Clacks-Overhead: GNU Terry Pratchett`))
 })
 
 test('renders the editor page from the pug template', async ({ request }) => {

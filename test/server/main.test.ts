@@ -206,6 +206,25 @@ describe('the write lock timeout is configurable', () => {
   })
 })
 
+interface Served {
+  answer: Promise<Response>
+  headersWritten: Array<[string, string]>
+}
+
+function servedBy(recorded: RecordedServe[], requested: string): Served {
+  const headersWritten: Array<[string, string]> = []
+  const env = {
+    outgoing: {
+      setHeader: (name: string, value: string) => {
+        headersWritten.push([name, value])
+      },
+    },
+  }
+  const handler = cast<(req: Request, env: unknown) => Promise<Response>>(recorded[0]?.options.fetch)
+
+  return { answer: handler(new Request(`http://localhost${requested}`), env), headersWritten }
+}
+
 describe('startServer', () => {
   it('loads the env file before reading configuration from it', async () => {
     const { runtime, order, recorded } = recordingRuntime()
@@ -270,10 +289,19 @@ describe('startServer', () => {
     const { runtime, recorded } = recordingRuntime()
 
     await startServer(runtime)
-    const fetchHandler = cast<(req: Request) => Response | Promise<Response>>(recorded[0]?.options.fetch)
-    const res = await fetchHandler(new Request('http://localhost/api/health'))
+    const res = await servedBy(recorded, '/api/health').answer
 
     await expect(res.json()).resolves.toStrictEqual({ status: 'ok' })
+  })
+
+  it('hands serve a fetch handler that writes the overhead to the socket', async () => {
+    const { runtime, recorded } = recordingRuntime()
+
+    await startServer(runtime)
+    const { answer, headersWritten } = servedBy(recorded, '/api/health')
+    await answer
+
+    expect(headersWritten).toStrictEqual([['X-Clacks-Overhead', 'GNU Terry Pratchett']])
   })
 
   it('returns whatever serve returns, so the caller can close it', async () => {

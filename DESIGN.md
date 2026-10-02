@@ -5,25 +5,37 @@
 ## Response headers
 
 **Every response carries `X-Clacks-Overhead: GNU Terry Pratchett`** — success,
-error, static asset, 404, all of it. The constants live in `src/server/app.ts`
-and are exported so tests assert the same strings the implementation uses.
+error, static asset, 404, all of it. The constants live in
+`src/server/clacks.ts` and are exported so tests assert the same strings the
+implementation uses.
 
-The header is set in a single `app.use('*', …)` registered in `buildApp` before
-the routes. One registration is enough: it covers routes added later in
-`createApp`, sub-apps mounted with `app.route()`, and static-asset 404s.
+**It is written on the Node response, not through Hono's context.** The Fetch
+`Headers` class lowercases every name it stores, so `c.header(…)` puts
+`x-clacks-overhead` on the wire — still correct HTTP, because field names are
+case-insensitive, but the spelling is the entire point of the tradition.
+`ServerResponse.setHeader` keeps the case it is given, and `@hono/node-server`
+leaves such a name alone unless the `Response` it is applying carries one that
+matches it.
 
-**It must be set _after_ `next()`, inside a `finally`.** Setting it before
-`next()` looks equivalent and is not:
+The two mechanisms are therefore exclusive rather than complementary: set both
+and the lowercase `Headers` copy lands on top, which is what shipped here for
+the life of the project.
 
-| Placement                      | 200 | 500 | HTTPException | 404 |
-| ------------------------------ | --- | --- | ------------- | --- |
-| after `next()`, in a `finally` | ✅  | ✅  | ✅            | ✅  |
-| before `next()`                | ✅  | ✅  | ❌            | ✅  |
+`withClacks` wraps the fetch handler `startServer` hands to `serve`, so the
+name is on the socket's response before Hono dispatches. Nothing a route does
+can miss it, and that retires a middleware-ordering hazard that used to need a
+table of its own — `HTTPException.getResponse()` builds a fresh `Response`, so
+a header buffered in the one before it never arrived.
 
-`HTTPException.getResponse()` builds a fresh `Response` that never sees headers
-buffered earlier in the request — and that is the path a malformed JSON body
-takes, so the gap is reachable from any client. `test/server/app.test.ts`
-covers that case specifically.
+`test/server/clacks.test.ts` drives the real app through the wrapper for every
+status it can answer with, asserting the recorded `setHeader` call: a `fetch`
+`Headers` object lowercases on read as well as write, so no unit test that
+reads a `Response` can see this defect at all. `test-browser/server.spec.ts`
+closes that with Playwright's `headersArray()`, which is the one client here
+that reports a name as it arrived.
+
+Under HTTP/2 the case is lost whatever we do, since HPACK requires lowercase
+field names. That costs nothing while `serve` is given no HTTP/2 options.
 
 <a id="design-e97042"></a>
 

@@ -6,6 +6,7 @@ import { config as loadDotenv } from 'dotenv'
 import type { Hono } from 'hono'
 
 import { buildApp } from './app.ts'
+import { withClacks } from './clacks.ts'
 import { loadConfig, type Config } from './config.ts'
 import { applyDebugFilter, createLogger } from './logging.ts'
 import { pageRoutes } from './routes/pages.ts'
@@ -69,7 +70,7 @@ export async function startServer(runtime: Runtime = defaultRuntime): Promise<Re
   await sweepBeforeServing(config.docsRoot)
   const app = createApp(config, runtime.publicDir)
 
-  return runtime.serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
+  return runtime.serve({ fetch: withClacks(app.fetch), port: config.port, hostname: config.host }, (info) => {
     logStartup('listening on http://%s:%d (docs: %s)', config.host, info.port, config.docsRoot)
   })
 }

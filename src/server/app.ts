@@ -13,9 +13,6 @@ import { API_PREFIX } from '../shared/api.ts'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
-const CLACKS_HEADER = 'X-Clacks-Overhead'
-const CLACKS_VALUE = 'GNU Terry Pratchett'
-
 const logError = createLogger('app', 'onError')
 
 interface AppDependencies {
@@ -25,14 +22,6 @@ interface AppDependencies {
 
 export function buildApp({ store, limits = DEFAULT_LIMITS }: AppDependencies): Hono {
   const app = new Hono()
-
-  app.use('*', async (c, next) => {
-    try {
-      await next()
-    } finally {
-      c.header(CLACKS_HEADER, CLACKS_VALUE)
-    }
-  })
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse()
@@ -48,5 +37,3 @@ export function buildApp({ store, limits = DEFAULT_LIMITS }: AppDependencies): H
 
   return app
 }
-
-export const TestOnly = { CLACKS_HEADER, CLACKS_VALUE }
