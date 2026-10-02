@@ -53,3 +53,21 @@ export async function workspace(request: APIRequestContext, folder: string): Pro
 
   return `/doc/${folder}/notes.md`
 }
+
+export const RIBBON = '.ribbon'
+export const EXPLORER = '#explorer'
+export const WORKSPACE = '.workspace'
+
+export interface Box {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export async function boxOf(page: Page, selector: string): Promise<Box> {
+  const found = await page.locator(selector).boundingBox()
+  if (found === null) throw new Error(`${selector} should be laid out, but has no bounding box`)
+
+  return found
+}

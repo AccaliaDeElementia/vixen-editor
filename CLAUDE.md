@@ -1420,7 +1420,7 @@ decision anyone made on purpose.
   `public/assets/` by `buildAssets()`. It ships **unsubsetted (316 KB) on
   purpose**: a subset is 1.6 KB but must be regenerated whenever an icon is
   added, and forgetting renders a blank glyph with no error. Do not "optimise"
-  it into that footgun. `test-browser/layout.spec.ts` asserts the font actually
+  it into that footgun. `test-browser/shell.spec.ts` asserts the font actually
   loads, because a broken `@font-face` path renders the literal ligature text
   (`library_books`) instead of a glyph.
 - **`public/` is entirely generated.** Source assets belong in `src/assets/`;
