@@ -2,16 +2,16 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { cast } from '../cast.ts'
-import { joinPath } from '../../src/shared/store-path.ts'
+import { cast } from '../../../cast.ts'
+import { joinPath } from '../../../../src/shared/store-path.ts'
 import { EditorState } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
-import type { FilesClient } from '../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 
-import { TestOnly } from '../../src/client/editor/bootstrap.ts'
-import type { Session } from '../../src/client/editor/session.ts'
+import { TestOnly } from '../../../../src/client/editor/bootstrap.ts'
+import type { Session } from '../../../../src/client/editor/session.ts'
 
-import { openEditor, page, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
+import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'
 
 const { startsALine } = TestOnly
 

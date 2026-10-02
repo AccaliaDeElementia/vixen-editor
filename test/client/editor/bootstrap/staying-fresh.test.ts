@@ -1,18 +1,18 @@
 'use sanity'
 
-import { given } from '../conditions.ts'
+import { given } from '../../../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { LoadedDocument, Session } from '../../src/client/editor/session.ts'
+import type { LoadedDocument, Session } from '../../../../src/client/editor/session.ts'
 
 import type { EditorView } from '@codemirror/view'
 
-import { DocumentRequestError } from '../../src/client/editor/document-client.ts'
-import type { Dialogs } from '../../src/client/files/dialogs.ts'
-import type { FilesClient } from '../../src/client/files/files-client.ts'
-import { cast } from '../cast.ts'
+import { DocumentRequestError } from '../../../../src/client/editor/document-client.ts'
+import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
+import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { cast } from '../../../cast.ts'
 
-import { openEditor, page, pressSave, recorded, sessionRecording, type Recorded } from './editor-fixtures.ts'
+import { openEditor, page, pressSave, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()

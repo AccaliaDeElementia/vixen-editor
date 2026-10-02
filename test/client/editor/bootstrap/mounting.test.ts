@@ -1,16 +1,16 @@
 'use sanity'
 
-import { given, givenAsync } from '../../conditions.ts'
+import { given, givenAsync } from '../../../conditions.ts'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { announceDocumentMoved } from '../../../src/client/document-moved.ts'
-import { requestInsert } from '../../../src/client/insert-entry.ts'
-import { recallCaret, rememberCaret } from '../../../src/client/editor/carets.ts'
-import { bootstrapOrReport, TestOnly } from '../../../src/client/editor/bootstrap.ts'
-import type { Session } from '../../../src/client/editor/session.ts'
+import { announceDocumentMoved } from '../../../../src/client/document-moved.ts'
+import { requestInsert } from '../../../../src/client/insert-entry.ts'
+import { recallCaret, rememberCaret } from '../../../../src/client/editor/carets.ts'
+import { bootstrapOrReport, TestOnly } from '../../../../src/client/editor/bootstrap.ts'
+import type { Session } from '../../../../src/client/editor/session.ts'
 
-import { cast } from '../../cast.ts'
+import { cast } from '../../../cast.ts'
 import {
   openEditor,
   page,
@@ -20,7 +20,7 @@ import {
   statusText,
   trackEditor,
   type Recorded,
-} from '../editor-fixtures.ts'
+} from '../../editor-fixtures.ts'
 
 const { MissingMountError } = TestOnly
 
@@ -585,5 +585,13 @@ describe('the default way to a different page', () => {
     TestOnly.openPage('/doc/journal/a.md')
 
     expect(assign).toHaveBeenCalledWith('/doc/journal/a.md')
+  })
+})
+
+describe('long lines', () => {
+  it('are marked for wrapping rather than left to scroll sideways', async () => {
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
+
+    expect(view.contentDOM.classList.contains('cm-lineWrapping')).toBe(true)
   })
 })

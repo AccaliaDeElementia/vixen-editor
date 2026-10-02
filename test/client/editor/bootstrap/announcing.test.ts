@@ -2,12 +2,12 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { Session } from '../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/editor/session.ts'
 
-import type { FilesClient } from '../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 
-import { cast } from '../cast.ts'
-import { openEditor, page, recorded, sessionRecording, statusText, type Recorded } from './editor-fixtures.ts'
+import { cast } from '../../../cast.ts'
+import { openEditor, page, recorded, sessionRecording, statusText, type Recorded } from '../../editor-fixtures.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
