@@ -5,7 +5,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
-async function workspace(request: APIRequestContext, folder: string, body: string): Promise<void> {
+async function sourceWithTargets(request: APIRequestContext, folder: string, body: string): Promise<void> {
   await request.post('/api/files/folders', { data: { path: folder } })
   await request.post('/api/files/documents', { data: { path: `${folder}/target.md`, content: '# the target' } })
   await request.post('/api/files/uploads', {
@@ -22,7 +22,7 @@ async function caretOnTheLink(page: Page): Promise<void> {
 
 test('Mod-Enter opens the link the caret is in', async ({ page, request }) => {
   const folder = `key-${String(Date.now())}`
-  await workspace(request, folder, 'see [the target](target.md) for more\n')
+  await sourceWithTargets(request, folder, 'see [the target](target.md) for more\n')
 
   await page.goto(`/doc/${folder}/source.md`)
   await caretOnTheLink(page)
@@ -37,7 +37,7 @@ test('Mod-Enter opens the link the caret is in', async ({ page, request }) => {
 
 test('Mod-Enter in ordinary prose navigates nowhere', async ({ page, request }) => {
   const folder = `keyp-${String(Date.now())}`
-  await workspace(request, folder, 'plain prose with no link at all\n')
+  await sourceWithTargets(request, folder, 'plain prose with no link at all\n')
 
   await page.goto(`/doc/${folder}/source.md`)
   await page.locator('.cm-content').click()
@@ -53,7 +53,7 @@ test('Mod-Enter in ordinary prose navigates nowhere', async ({ page, request }) 
 
 test('Mod-Enter in prose still inserts a blank line, which CodeMirror binds it to', async ({ page, request }) => {
   const folder = `keyb-${String(Date.now())}`
-  await workspace(request, folder, 'first line\nsecond line\n')
+  await sourceWithTargets(request, folder, 'first line\nsecond line\n')
 
   await page.goto(`/doc/${folder}/source.md`)
   await page.locator('.cm-content').click()
@@ -69,7 +69,7 @@ test('Mod-Enter in prose still inserts a blank line, which CodeMirror binds it t
 
 test('Mod-Enter on an image opens the image view', async ({ page, request }) => {
   const folder = `keyi-${String(Date.now())}`
-  await workspace(request, folder, 'here ![a cat](pic.png) inline\n')
+  await sourceWithTargets(request, folder, 'here ![a cat](pic.png) inline\n')
 
   await page.goto(`/doc/${folder}/source.md`)
   await caretOnTheLink(page)

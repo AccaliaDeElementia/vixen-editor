@@ -3,6 +3,8 @@
 import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
+import { openLayout } from './fixtures.ts'
+
 import { stringFieldOf } from './json.ts'
 
 const RIBBON = '.ribbon'
@@ -21,12 +23,6 @@ async function boxOf(page: Page, selector: string): Promise<Box> {
   if (found === null) throw new Error(`${selector} should be laid out, but has no bounding box`)
 
   return found
-}
-
-async function openLayout(page: Page, width = 1200, height = 700): Promise<void> {
-  await page.setViewportSize({ width, height })
-  await page.goto('/doc/')
-  await expect(page.locator('.cm-editor')).toBeVisible()
 }
 
 test('lays out three full-height columns', async ({ page }) => {

@@ -1,7 +1,9 @@
 'use sanity'
 
 import { given, givenAsync } from '../test/conditions.ts'
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+import { documentWithLink } from './fixtures.ts'
 
 import { TestOnly } from '../src/client/editor/link-tooltip.ts'
 
@@ -11,16 +13,6 @@ const PAST_THE_HOVER_DELAY_MS = HOVER_DELAY_MS * OUTLASTS_THE_HOVER_DELAY_BY
 
 const TOOLTIP = '.cm-vixen-link-tooltip'
 const LINK = '.cm-vixen-link'
-
-async function documentWithLink(request: APIRequestContext, folder: string): Promise<string> {
-  await request.post('/api/files/folders', { data: { path: folder } })
-  await request.post('/api/files/documents', { data: { path: `${folder}/target.md`, content: '# the target' } })
-  await request.post('/api/files/documents', {
-    data: { path: `${folder}/source.md`, content: 'see [the target](target.md) for more\n\nplain prose below\n' },
-  })
-
-  return `/doc/${folder}/source.md`
-}
 
 async function hoverTheLink(page: Page): Promise<void> {
   await page.locator(LINK).hover()

@@ -1,13 +1,9 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
-async function openLayout(page: Page, width = 1200, height = 700): Promise<void> {
-  await page.setViewportSize({ width, height })
-  await page.goto('/doc/')
-  await expect(page.locator('.cm-editor')).toBeVisible()
-}
+import { openLayout } from './fixtures.ts'
 
 test('widening a narrow viewport brings the explorer back', async ({ page }) => {
   await openLayout(page, 1400, 800)

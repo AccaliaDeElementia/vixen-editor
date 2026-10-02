@@ -1,18 +1,12 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+import { workspace } from './fixtures.ts'
 
 const PHONE = { width: 412, height: 800 }
 const DESKTOP = { width: 1400, height: 900 }
-
-async function workspace(request: APIRequestContext, folder: string): Promise<string> {
-  await request.post('/api/files/folders', { data: { path: folder } })
-  await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: '# notes\n' } })
-  await request.post('/api/files/documents', { data: { path: `${folder}/other.md`, content: '# other\n' } })
-
-  return `/doc/${folder}/notes.md`
-}
 
 async function openDrawer(page: Page): Promise<void> {
   await expect(page.locator('#app')).toHaveAttribute('data-explorer', 'closed')
