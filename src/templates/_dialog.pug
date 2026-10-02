@@ -20,6 +20,7 @@ dialog.modal#file-dialog(aria-labelledby='file-dialog-title')
         data-lpignore='true'
         data-form-type='other'
       )
+      span.modal__preview#file-dialog-preview(hidden aria-live='polite')
     p.modal__error#file-dialog-error(role='alert')
     .modal__body#file-dialog-body(hidden tabindex='0')
     .modal__choices#file-dialog-choices(hidden)

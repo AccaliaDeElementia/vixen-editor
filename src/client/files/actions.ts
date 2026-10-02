@@ -3,7 +3,8 @@
 import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../toast.ts'
 
-import type { Dialogs } from './dialogs.ts'
+import type { Dialogs, NameResolver } from './dialogs.ts'
+import { documentNameFor } from './document-name.ts'
 import { rebuildingRunner } from './rebuild.ts'
 import { FilesRequestError, type FilesClient } from './files-client.ts'
 import { archiveUrlFor } from '../../shared/api.ts'
@@ -43,6 +44,13 @@ export interface ActionContext {
   openSelected: () => void
   openCreated: (entryPath: string) => void
   insertSelected: () => void
+}
+
+interface CreateRequest {
+  title: string
+  label: string
+  nameFor?: NameResolver | undefined
+  create: (entryPath: string) => Promise<void>
 }
 
 function correctable(error: unknown): string | null {
@@ -105,7 +113,7 @@ export function bindActions(context: ActionContext): void {
     root.querySelector(selector)?.addEventListener('click', handler)
   }
 
-  function promptCreate(title: string, label: string, create: (entryPath: string) => Promise<void>): void {
+  function promptCreate({ title, label, nameFor, create }: CreateRequest): void {
     const directory = context.targetDirectory()
     let requested = ''
 
@@ -114,6 +122,7 @@ export function bindActions(context: ActionContext): void {
         title,
         label,
         confirmLabel: 'Create',
+        nameFor,
         submit: async (name) => {
           requested = joinPath(directory, name)
 
@@ -130,14 +139,23 @@ export function bindActions(context: ActionContext): void {
   }
 
   on(ACTION_SELECTORS.newDocument, () => {
-    promptCreate('New document', 'Document name', async (entryPath) => {
-      await client.createDocument(entryPath)
+    promptCreate({
+      title: 'New document',
+      label: 'Document name',
+      nameFor: documentNameFor,
+      create: async (entryPath) => {
+        await client.createDocument(entryPath)
+      },
     })
   })
 
   on(ACTION_SELECTORS.newFolder, () => {
-    promptCreate('New folder', 'Folder name', async (folderPath) => {
-      await client.createFolder(folderPath)
+    promptCreate({
+      title: 'New folder',
+      label: 'Folder name',
+      create: async (folderPath) => {
+        await client.createFolder(folderPath)
+      },
     })
   })
 

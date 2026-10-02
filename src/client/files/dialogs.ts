@@ -6,11 +6,14 @@ const DIALOG_SELECTOR = '#file-dialog'
 
 const CONFIRM_VALUE = 'confirm'
 
+export type NameResolver = (typed: string) => string
+
 interface PromptRequest {
   title: string
   label: string
   confirmLabel: string
   value?: string
+  nameFor?: NameResolver | undefined
   submit: (value: string) => Promise<RejectionMessage | null>
 }
 
@@ -54,6 +57,7 @@ interface FieldParts {
   label: HTMLElement
   input: HTMLInputElement
   error: HTMLElement
+  preview: HTMLElement
 }
 
 interface FrameParts {
@@ -73,11 +77,12 @@ function fieldPartsOf(root: ParentNode): FieldParts | null {
   const label = root.querySelector<HTMLElement>('#file-dialog-label')
   const input = root.querySelector<HTMLInputElement>('#file-dialog-entry')
   const error = root.querySelector<HTMLElement>('#file-dialog-error')
+  const preview = root.querySelector<HTMLElement>('#file-dialog-preview')
 
   if (field === null || label === null) return null
-  if (input === null || error === null) return null
+  if (input === null || error === null || preview === null) return null
 
-  return { field, label, input, error }
+  return { field, label, input, error, preview }
 }
 
 function framePartsOf(root: ParentNode): FrameParts | null {
@@ -113,6 +118,21 @@ function bindEnterToConfirm(parts: Parts): void {
   })
 }
 
+function nameToSubmit(parts: Parts, nameFor: NameResolver | undefined): string {
+  const typed = parts.input.value.trim()
+
+  return nameFor === undefined ? typed : nameFor(typed)
+}
+
+function writePreview(parts: Parts, nameFor: NameResolver | undefined): void {
+  const { input, preview } = parts
+  const nothingTyped = input.value.trim() === ''
+  const promised = nameFor === undefined || nothingTyped ? '' : nameToSubmit(parts, nameFor)
+
+  preview.textContent = promised === '' ? '' : `Creates ${promised}`
+  preview.hidden = promised === ''
+}
+
 async function settled(dialog: HTMLDialogElement): Promise<string> {
   const closed = Promise.withResolvers<string>()
 
@@ -136,12 +156,12 @@ function reset(parts: Parts, heading: string, confirmLabel: string): void {
 }
 
 async function attempt(parts: Parts, request: PromptRequest): Promise<boolean> {
-  const { dialog, input, error } = parts
+  const { dialog, error } = parts
 
   const outcome = await settled(dialog)
   if (outcome !== CONFIRM_VALUE) return false
 
-  const failure = await request.submit(input.value.trim())
+  const failure = await request.submit(nameToSubmit(parts, request.nameFor))
   if (failure === null) return true
 
   error.textContent = failure
@@ -159,6 +179,7 @@ async function promptWith(parts: Parts, request: PromptRequest): Promise<boolean
   label.textContent = fieldLabel
   field.hidden = false
   input.value = request.value ?? ''
+  writePreview(parts, request.nameFor)
   dialog.showModal()
 
   return await attempt(parts, request)
@@ -252,11 +273,27 @@ async function informWith(parts: Parts, request: InformRequest): Promise<void> {
 
 export function createDialogs(root: ParentNode = document): Dialogs {
   const parts = partsOf(root)
-  if (parts !== null) bindEnterToConfirm(parts)
+  let prompting: PromptRequest | null = null
+
+  if (parts !== null) {
+    bindEnterToConfirm(parts)
+    parts.input.addEventListener('input', () => {
+      if (prompting === null) return
+
+      writePreview(parts, prompting.nameFor)
+    })
+  }
 
   return {
     async prompt(request: PromptRequest): Promise<boolean> {
-      return parts === null ? false : await promptWith(parts, request)
+      if (parts === null) return false
+      prompting = request
+
+      try {
+        return await promptWith(parts, request)
+      } finally {
+        prompting = null
+      }
     },
 
     async confirm(request: ConfirmRequest): Promise<boolean> {

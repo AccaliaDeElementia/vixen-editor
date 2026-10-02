@@ -31,10 +31,17 @@ const SAMPLE = parseTree({
 
 let host: HTMLElement = document.createElement('div')
 
+let typed = 'typed-name.md'
+
+interface PromptLike {
+  nameFor?: (value: string) => string
+  submit: (value: string) => Promise<string | null>
+}
+
 function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<typeof vi.fn> } {
   return {
-    prompt: vi.fn(async (request: { submit: (value: string) => Promise<string | null> }) => {
-      await request.submit('typed-name.md')
+    prompt: vi.fn(async (request: PromptLike) => {
+      await request.submit(request.nameFor === undefined ? typed : request.nameFor(typed))
       return true
     }),
     confirm: vi.fn().mockResolvedValue(true),
@@ -69,6 +76,7 @@ beforeEach(() => {
   client = fakeClient(SAMPLE)
   dialogs = fakeDialogs()
   opened = []
+  typed = 'typed-name.md'
 })
 
 describe('the Insert action', () => {
@@ -590,5 +598,47 @@ describe('a new entry opens once it exists', () => {
     await settled()
 
     expect(rowFor('journal').getAttribute('aria-expanded')).toBe('true')
+  })
+})
+
+describe('a new document is markdown unless it says otherwise', () => {
+  it('appends .md to a name that carries no extension', async () => {
+    typed = 'plain-name'
+    await start()
+
+    press('#new-document')
+    await settled()
+
+    expect(client.createDocument).toHaveBeenCalledWith('plain-name.md')
+  })
+
+  it('leaves a name that already ends in .md alone, so nothing doubles up', async () => {
+    typed = 'already.md'
+    await start()
+
+    press('#new-document')
+    await settled()
+
+    expect(client.createDocument).toHaveBeenCalledWith('already.md')
+  })
+
+  it('takes a doubled extension the user typed on purpose', async () => {
+    typed = 'deliberate.md.md'
+    await start()
+
+    press('#new-document')
+    await settled()
+
+    expect(client.createDocument).toHaveBeenCalledWith('deliberate.md.md')
+  })
+
+  it('leaves a folder name alone, because a folder has no extension', async () => {
+    typed = 'plain-name'
+    await start()
+
+    press('#new-folder')
+    await settled()
+
+    expect(client.createFolder).toHaveBeenCalledWith('plain-name')
   })
 })

@@ -20,6 +20,7 @@ function type(value: string): void {
   const input = document.querySelector<HTMLInputElement>('#file-dialog-entry')
   if (input === null) throw new Error('missing input')
   input.value = value
+  input.dispatchEvent(new Event('input'))
 }
 
 function click(selector: string): void {
@@ -232,6 +233,102 @@ describe('prompt', () => {
   })
 })
 
+describe('the name a prompt will create', () => {
+  const nameFor = (typed: string): string => (typed.endsWith('.md') ? typed : `${typed}.md`)
+
+  function forcingAnExtension(): void {
+    void createDialogs(document).prompt({
+      title: 'New document',
+      label: 'Document name',
+      confirmLabel: 'Create',
+      nameFor,
+      submit: () => Promise.resolve(null),
+    })
+  }
+
+  it('shows what will be created as the name is typed', () => {
+    forcingAnExtension()
+
+    type('notes')
+
+    expect(document.querySelector('#file-dialog-preview')?.textContent).toBe('Creates notes.md')
+  })
+
+  it('stays out of the way while the field is empty', () => {
+    forcingAnExtension()
+
+    type('')
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-preview')?.hidden).toBe(true)
+  })
+
+  it('hands the submission the name it showed rather than the raw typing', async () => {
+    const submit = vi.fn().mockResolvedValue(null)
+    const dialogs = createDialogs(document)
+    const pending = dialogs.prompt({ title: 'New', label: 'Name', confirmLabel: 'Create', nameFor, submit })
+
+    type('notes')
+    click('#file-dialog-confirm')
+    await pending
+
+    expect(submit).toHaveBeenCalledWith('notes.md')
+  })
+
+  it('promises nothing for a prompt that forces no name, the way a folder does not', () => {
+    void createDialogs(document).prompt({
+      title: 'New folder',
+      label: 'Folder name',
+      confirmLabel: 'Create',
+      submit: () => Promise.resolve(null),
+    })
+
+    type('journal')
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-preview')?.hidden).toBe(true)
+  })
+
+  it('keeps showing while the layout and the editor share the same dialog element', () => {
+    const dialogs = createDialogs(document)
+    createDialogs(document)
+    createDialogs(document)
+    void dialogs.prompt({
+      title: 'New document',
+      label: 'Document name',
+      confirmLabel: 'Create',
+      nameFor,
+      submit: () => Promise.resolve(null),
+    })
+
+    type('notes')
+
+    expect(document.querySelector('#file-dialog-preview')?.textContent).toBe('Creates notes.md')
+  })
+
+  it('clears a stale promise when it opens again', async () => {
+    const dialogs = createDialogs(document)
+    const first = dialogs.prompt({
+      title: 'New',
+      label: 'Name',
+      confirmLabel: 'Create',
+      nameFor,
+      submit: () => Promise.resolve(null),
+    })
+    type('notes')
+    click('#file-dialog-cancel')
+    await first
+
+    void dialogs.prompt({
+      title: 'New',
+      label: 'Name',
+      confirmLabel: 'Create',
+      nameFor,
+      submit: () => Promise.resolve(null),
+    })
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-preview')?.hidden).toBe(true)
+  })
+})
+
 describe('confirm', () => {
   it('resolves true when confirmed', async () => {
     const dialogs = createDialogs(document)
@@ -358,6 +455,7 @@ const REQUIRED_IDS = [
   'file-dialog-label',
   'file-dialog-entry',
   'file-dialog-error',
+  'file-dialog-preview',
   'file-dialog-cancel',
   'file-dialog-confirm',
   'file-dialog-choices',

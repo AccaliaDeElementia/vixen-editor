@@ -70,6 +70,34 @@ test('a new folder leaves the editor on the document that was already open', asy
   await request.delete(`/api/files/entries/${held}`)
 })
 
+test('the dialog shows the name it will create, so .md is not typed twice', async ({ page }) => {
+  const name = `forced-${String(Date.now())}`
+  await page.goto('/doc/')
+
+  await page.locator('#new-document').click()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
+  await page.locator('#file-dialog-entry').fill(name)
+
+  await expect(page.locator('#file-dialog-preview')).toHaveText(`Creates ${name}.md`)
+
+  await page.locator('#file-dialog-cancel').click()
+})
+
+test('a document named without an extension is created as markdown', async ({ page, request }) => {
+  const name = `bare-${String(Date.now())}`
+  await page.goto('/doc/')
+
+  await page.locator('#new-document').click()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
+  await page.locator('#file-dialog-entry').fill(name)
+  await page.locator('#file-dialog-confirm').click()
+
+  await givenAsync(expect(page).toHaveURL(`/doc/${name}.md`))
+  await expect(page.locator('.cm-content')).toContainText(`# ${name}`)
+
+  await request.delete(`/api/files/entries/${name}.md`)
+})
+
 test('a rejected name stays in the dialog to be corrected', async ({ page, request }) => {
   const name = `taken-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: name } })
