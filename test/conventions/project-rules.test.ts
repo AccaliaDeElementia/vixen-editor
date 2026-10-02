@@ -264,7 +264,7 @@ const SHARED = 'src/shared/'
 const TEST_ONLY = 'TestOnly'
 
 async function guide(): Promise<string> {
-  return await fs.readFile(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf8')
+  return await fs.readFile(path.join(REPO_ROOT, 'DESIGN.md'), 'utf8')
 }
 
 function compare(a: string, b: string): number {
@@ -590,7 +590,7 @@ describe('the documented error codes match the ones the server emits', () => {
 
     return {
       emitted: emittedCodes(sources.join('\n')),
-      documented: documentedCodes(await fs.readFile(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf8')),
+      documented: documentedCodes(await guide()),
     }
   }
 
