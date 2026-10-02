@@ -49,7 +49,7 @@ export default defineConfig({
           setupFiles: ['./test/timers-setup.ts'],
           environment: 'node',
           testTimeout: IN_MEMORY_TIMEOUT_MS,
-          include: ['test/conventions/**/*.test.ts'],
+          include: ['test/conventions/**/*.test.ts', 'test/*.test.ts'],
           env: silentEnv,
         },
       },

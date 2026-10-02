@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { given, givenAsync } from '../conditions.ts'
+import { given, givenAsync } from './conditions.ts'
 
 describe('given, which marks an assertion as a gate rather than a claim', () => {
   it('runs what it was handed', () => {

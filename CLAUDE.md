@@ -1195,7 +1195,7 @@ difference. So `test/conventions/` also fails on a hand-rolled `setTimeout` or
 to exercise the thing the rule forbids: `test/rejections.ts`, where the thing
 awaited is the runtime's own unhandled-rejection reporting, which happens at a
 macrotask boundary by specification and has no earlier observable moment; and
-`test/conventions/timer-guard.test.ts`, which has to schedule a timer to prove
+`test/timers.test.ts`, which has to schedule a timer to prove
 the guard below catches one. `test-browser/` is not covered: there
 `page.waitForTimeout` waits on real paint and animation, which is a different
 question and not yet settled.

@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { given } from '../conditions.ts'
-import { failOnLeakedInterval } from '../timers.ts'
+import { given } from './conditions.ts'
+import { failOnLeakedInterval } from './timers.ts'
 
 const SOME_PERIOD_MS = 60_000
 
