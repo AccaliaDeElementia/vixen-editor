@@ -887,7 +887,7 @@ trace on the server at all.
 A password manager strips separators from an `id`, `name` or `class` and
 substring-matches the result. `file-dialog-input` squashes to
 `filedialoginput`, which contains **`login`**, and Bitwarden offered to fill
-it. `test/server/field-naming.test.ts` scans the rendered page for credential
+it. `test/conventions/field-naming.test.ts` scans the rendered page for credential
 words so this cannot come back; it is invisible to anyone reading the markup.
 
 ## Limits
@@ -979,7 +979,7 @@ is silently ignored, while the same value exported in the shell works fine.
 the env file; `debug.enable()` retroactively updates loggers that already exist.
 Anything else that mutates `DEBUG` at runtime must do the same.
 
-**The test suite must be completely silent.** `test/server/console-silence.test.ts`
+**The test suite must be completely silent.** `test/conventions/console-silence.test.ts`
 spies on every `console` method and asserts zero calls, and `vitest.config.ts`
 forces `DEBUG=''` so silence does not depend on the developer's shell.
 

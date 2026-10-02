@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildApp } from '../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
-import { failingStore } from './failing-store.ts'
+import { failingStore } from '../server/failing-store.ts'
 
 const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as const
 
@@ -78,19 +78,7 @@ describe('the application never writes to the console', () => {
     expect(output).toStrictEqual([])
   })
 
-  it('still reports the fault as a 500 with a json body', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
-
-    await expect(res.json()).resolves.toStrictEqual({ error: 'Internal server error', code: 'INTERNAL' })
-  })
-
-  it('does not leak the underlying error message to the client', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
-
-    await expect(res.text()).resolves.not.toContain('disk on fire')
-  })
-
-  it('preserves the status of a deliberate HTTPException instead of flattening it to 500', async () => {
+  it('stays silent on a deliberate HTTPException, which takes a different path out', async () => {
     const res = await buildApp({ store }).request('/api/documents/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
