@@ -9,6 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { TestOnly as safePathTestOnly } from '../../src/server/storage/safe-path.ts'
 import { isRecord } from '../../src/shared/guards.ts'
+import vitestConfig from '../../vitest.config.ts'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -42,6 +43,20 @@ const DIRECT_WRITE = /\bwriteFile\(/v
 const SUPPRESSION = /eslint-disable|v8 ignore/v
 const CLOSES_COVERAGE_REGION = /v8 ignore (?:stop|end)/v
 const RATIONALE = /--\s*\S/v
+
+const ANY_DIRECTORIES = String.raw`(?:[^\/]+\/)*`
+const ANY_NAME = String.raw`[^\/]*`
+
+function asRegExp(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+^$\{\}\(\)\|\[\]\\]/gv, String.raw`\$&`)
+  const expanded = escaped.replace(/\*\*\/|\*/gv, (token) => (token === '*' ? ANY_NAME : ANY_DIRECTORIES))
+
+  return new RegExp(`^${expanded}$`, 'v')
+}
+
+function matches(pattern: string, filePath: string): boolean {
+  return asRegExp(pattern).test(filePath)
+}
 
 interface SourceFile {
   relativePath: string
@@ -137,20 +152,6 @@ describe('every source file belongs to exactly one typecheck project', () => {
     if (typeof parsed !== 'object' || parsed === null) return []
     const { include } = parsed as { include?: unknown }
     return Array.isArray(include) ? include.filter((entry): entry is string => typeof entry === 'string') : []
-  }
-
-  const ANY_DIRECTORIES = String.raw`(?:[^\/]+\/)*`
-  const ANY_NAME = String.raw`[^\/]*`
-
-  function asRegExp(pattern: string): RegExp {
-    const escaped = pattern.replace(/[.+^$\{\}\(\)\|\[\]\\]/gv, String.raw`\$&`)
-    const expanded = escaped.replace(/\*\*\/|\*/gv, (token) => (token === '*' ? ANY_NAME : ANY_DIRECTORIES))
-
-    return new RegExp(`^${expanded}$`, 'v')
-  }
-
-  function matches(pattern: string, filePath: string): boolean {
-    return asRegExp(pattern).test(filePath)
   }
 
   function filedUnder(relativePath: string, configPaths: readonly string[]): string[] {
@@ -721,5 +722,85 @@ describe('one fact in several files', () => {
       { file: 'scripts/build.ts', found: 1 },
       { file: 'Dockerfile', found: 3 },
     ])
+  })
+})
+
+const UNIT_TEST = /^test\/.*\.test\.ts$/v
+const REPO_LEVEL_SUITE = 'test/conventions/'
+const RUN_BY_ONE_PROJECT = 1
+
+function unitTests(): SourceFile[] {
+  return sources.filter((source) => UNIT_TEST.test(source.relativePath))
+}
+
+function shadowedModule(relativePath: string): string | null {
+  const rest = relativePath.replace(/^test\//v, '').replace(/\.test\.ts$/v, '')
+  const present = (candidate: string): boolean => sources.some((source) => source.relativePath === candidate)
+
+  if (present(`src/${rest}.ts`)) return `src/${rest}.ts`
+
+  const holdingModule = rest.replace(/\/[^\/]+$/v, '')
+  if (holdingModule !== rest && present(`src/${holdingModule}.ts`)) return `src/${holdingModule}.ts`
+
+  return present(`test/${rest}.ts`) ? `test/${rest}.ts` : null
+}
+
+function projectIncludes(): string[][] {
+  const { test } = vitestConfig
+  const projects = isRecord(test) && Array.isArray(test.projects) ? test.projects : []
+
+  return projects.map((project) => {
+    if (!isRecord(project)) return []
+    const { test: settings } = project
+    if (!isRecord(settings)) return []
+    const { include } = settings
+
+    return Array.isArray(include) ? include.filter((entry): entry is string => typeof entry === 'string') : []
+  })
+}
+
+function projectsRunning(relativePath: string): number {
+  return projectIncludes().filter((includes) => includes.some((pattern) => matches(pattern, relativePath))).length
+}
+
+describe('every unit test names the module it tests', () => {
+  it('leaves no test outside the repo-level suite that shadows no module', () => {
+    const orphans = unitTests()
+      .filter((source) => !source.relativePath.startsWith(REPO_LEVEL_SUITE))
+      .filter((source) => shadowedModule(source.relativePath) === null)
+
+    expect(orphans.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('finds the modules they shadow, so that scan is not passing vacuously', () => {
+    const shadowing = unitTests().filter((source) => shadowedModule(source.relativePath) !== null)
+
+    expect(shadowing.length).toBeGreaterThan(20)
+  })
+
+  it('reports nothing for a test naming a module that does not exist', () => {
+    expect(shadowedModule('test/client/editor/invented.test.ts')).toBeNull()
+  })
+})
+
+describe('every unit test is run by exactly one vitest project', () => {
+  it('leaves none that no project would run, which fails silently rather than red', () => {
+    const unrun = unitTests().filter((source) => projectsRunning(source.relativePath) < RUN_BY_ONE_PROJECT)
+
+    expect(unrun.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('leaves none that two projects would each run', () => {
+    const doubled = unitTests().filter((source) => projectsRunning(source.relativePath) > RUN_BY_ONE_PROJECT)
+
+    expect(doubled.map((source) => source.relativePath)).toStrictEqual([])
+  })
+
+  it('reads the includes from the config at all, so those scans are not vacuous', () => {
+    expect(projectIncludes().flat().length).toBeGreaterThan(0)
+  })
+
+  it('reports no project for a path every include misses', () => {
+    expect(projectsRunning('test/stranded/orphan.test.ts')).toBe(0)
   })
 })

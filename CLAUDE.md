@@ -1122,6 +1122,28 @@ Tests are written first. Two suites, deliberately separate:
   `grep` against a `@setup` / `@teardown` tag, which is what lets two tests
   that are three lines apart stay in the same file.
 
+### A unit test shadows the module it tests
+
+`test/` mirrors `src/`, so the relative path from `test/` names the source: the
+test for `src/client/editor/autosave.ts` is
+`test/client/editor/autosave.test.ts`. Where one module needs several test
+files they go in a folder named for the module, which is what
+`test/client/editor/bootstrap/` is. A test utility is tested beside itself, so
+`test/client/listeners.ts` has `test/client/listeners.test.ts`.
+
+**`test/conventions/` is the one directory that does not mirror**, because its
+tests have no module under test. They assert properties of the repository
+rather than behaviour of the product: that the rules in this document hold,
+that the suite is silent, that the markup spells no credential word, that the
+assertion scanner is sound.
+
+Two checks hold this, and **the second matters more than the first**. The
+mirror is checked against the source tree; and every test file must match
+**exactly one** vitest project, because a mirrored path outside every `include`
+does not fail — it silently does not run. A basename collision once destroyed
+three test files here while the suite still reported a pass, and only counting
+files against `git ls-tree` found it.
+
 ### A test makes one claim
 
 Setup, an optional precondition, the action, and **one assertion for the
@@ -1272,6 +1294,8 @@ gate on:
 - an export nothing imports, or a test-only runtime export outside a
   `TestOnly` container (rule 6)
 - a file under `src/` matched by neither or both typecheck projects
+- a test under `test/` that shadows no module and is not in `test/conventions/`
+- a test under `test/` that no vitest project runs, or that two would run
 
 This exists because a rule that lives only in prose rots. `src/client/main.ts` grew
 to ~35 lines of untested logic inside a coverage exclusion while this file
