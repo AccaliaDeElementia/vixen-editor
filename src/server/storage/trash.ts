@@ -4,11 +4,11 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { ABSENT_CODES } from '../errors.ts'
+import { ABSENT_CODES } from '../node-errors.ts'
 import { createLogger } from '../logging.ts'
 
 import { createFileAtomic } from './atomic-write.ts'
-import { nullWhenAbsent } from './containment.ts'
+import { nullWhenAbsent } from './absence.ts'
 import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { asDocumentError, DocumentNotFoundError, EntryExistsError } from './store-errors.ts'
 import { classifyFile } from '../../shared/documents.ts'

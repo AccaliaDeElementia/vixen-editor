@@ -6,7 +6,8 @@ import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
 
-import { isAtOrInside, nullWhenAbsent } from './containment.ts'
+import { nullWhenAbsent } from './absence.ts'
+import { isAtOrInside } from './containment.ts'
 import { isAllowedName } from './safe-path.ts'
 import { compareNames } from './name-order.ts'
 import { classifyFile, type FileKind } from '../../shared/documents.ts'

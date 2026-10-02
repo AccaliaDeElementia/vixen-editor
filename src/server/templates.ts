@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { compileFile, type compileTemplate } from 'pug'
 
-import { ABSENT_CODES, hasErrorCode } from './errors.ts'
+import { ABSENT_CODES, hasErrorCode } from './node-errors.ts'
 
 const TEMPLATE_EXTENSION = '.pug'
 class TemplateNotFoundError extends Error {

@@ -3,7 +3,7 @@
 import type { Context } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
-import { toError } from '../errors.ts'
+import { toError } from '../node-errors.ts'
 import { createLogger } from '../logging.ts'
 import { LockTimeoutError } from '../storage/lock.ts'
 import { InvalidPathError } from '../storage/safe-path.ts'

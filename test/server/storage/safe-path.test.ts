@@ -6,7 +6,7 @@ import { DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS } from '../../../src/shared/docum
 
 import { describe, expect, it } from 'vitest'
 
-import { toError } from '../../../src/server/errors.ts'
+import { toError } from '../../../src/server/node-errors.ts'
 
 import {
   assertNormalisedName,

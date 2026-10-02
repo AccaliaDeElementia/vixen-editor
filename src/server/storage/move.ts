@@ -5,7 +5,8 @@ import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
 
-import { isAtOrInside, nullWhenAbsent } from './containment.ts'
+import { nullWhenAbsent } from './absence.ts'
+import { isAtOrInside } from './containment.ts'
 import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './safe-path.ts'
 import { mediaTypeOf } from './media-type.ts'
 import { EntryExistsError, InvalidMoveError } from './store-errors.ts'

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { hasErrorCode, toError } from '../errors.ts'
+import { hasErrorCode, toError } from '../node-errors.ts'
 
 export const ABSENT_ON_READ_CODES = ['ENOENT', 'ENOTDIR', 'EISDIR'] as const
 const OCCUPIED_CODES = ['EEXIST', 'ENOTDIR', 'EISDIR'] as const

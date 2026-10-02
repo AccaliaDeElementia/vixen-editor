@@ -9,7 +9,7 @@ import { createLogger } from '../logging.ts'
 import { compareNames } from './name-order.ts'
 
 import { isTemporaryName } from './atomic-write.ts'
-import { nullWhenAbsent } from './containment.ts'
+import { nullWhenAbsent } from './absence.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
 

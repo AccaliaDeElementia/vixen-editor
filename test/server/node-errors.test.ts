@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { hasErrorCode, toError } from '../../src/server/errors.ts'
+import { hasErrorCode, toError } from '../../src/server/node-errors.ts'
 
 function errnoError(code: string): Error {
   return Object.assign(new Error(code), { code })

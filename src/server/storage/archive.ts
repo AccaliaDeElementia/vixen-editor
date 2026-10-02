@@ -10,7 +10,7 @@ import { ZipFile } from 'yazl'
 
 import { createLogger } from '../logging.ts'
 
-import { nullWhenAbsent } from './containment.ts'
+import { nullWhenAbsent } from './absence.ts'
 import { resolveFolderPath } from './safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from './store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
