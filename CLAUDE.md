@@ -1040,6 +1040,67 @@ tree — so a single rule over the pair would ask for the stubbing this codebase
 has already measured and rejected. Checks go per file, proportionate to how
 silently each can be wrong.
 
+### What each directory under `src/` means
+
+The axis differs between the two sides, deliberately rather than by neglect.
+`src/shared/` has its own section below.
+
+| Directory          | Is                    | Holds                                        |
+| ------------------ | --------------------- | -------------------------------------------- |
+| `server/routes/`   | a layer               | HTTP in, store calls out                     |
+| `server/storage/`  | a layer               | everything that touches the filesystem       |
+| `server/markdown/` | a subject             | pure text manipulation, no IO                |
+| `client/editor/`   | an area of the screen | the CodeMirror surface and what drives it    |
+| `client/layout/`   | an area of the screen | the shell: explorer, views, status bar       |
+| `client/files/`    | a feature             | the file browser, and the client for its API |
+
+Forcing one axis across both sides was weighed and refused: it is a large
+refactor for a legibility gain nobody could demonstrate, and `markdown/` is a
+subject rather than a layer because it is _pure_, which is the fact worth
+knowing about it.
+
+**Each side's root holds two kinds of module**, which is what makes it look
+inconsistent at a glance. `server/index.ts`, `server/main.ts`, `server/app.ts`
+and `client/main.ts` are composition — they reach down into the areas.
+Everything else at a root is vocabulary or a service the areas share:
+`doc-path`, `help`, `toast`, `error-message`, `config`, `logging`,
+`node-errors`.
+
+**So a new file goes into the area that uses it.** When two areas on the same
+side both need it and neither sits below the other, it belongs at that side's
+root — that is what the root is for, and leaving it inside one area is what
+breaks the order described next.
+
+### Sibling areas are read in one order
+
+The areas on each side form a DAG, and `test/conventions/` fails the gate on a
+pair that imports each other at runtime:
+
+```
+client:  editor → layout → files
+server:  routes → storage → markdown
+```
+
+That is the order to read them in, and the reason the check exists. A cycle
+means there is no such order, so a newcomer has to hold a whole side in mind at
+once rather than one directory at a time. `toast` and `preferences` sat in
+`layout/` while `files/` imported them, which is precisely how the client lost
+its order — and nothing said so until the graph was measured.
+
+**The check covers sibling areas, not every directory.** Each side's root both
+reaches down into the areas and is reached up to by them, so root-against-area
+is mutual by construction and says nothing about whether the tree is readable.
+Treating that as a cycle would mean splitting composition from shared
+vocabulary on both sides, which buys nothing.
+
+**A type-only import is excluded, because the compiler erases it.** It creates
+no load order and cannot produce a runtime cycle. `layout/status-bar.ts` reaches
+into `editor/autosave.ts` for `SaveState`, and there is no cheap home for that
+type: the autosave machine owns the vocabulary, the status bar renders it, and
+rule 2 forbids a module that declares nothing but a type. **Prefer to avoid a
+type-only backlink where extracting the type or the common code is cheap and
+logical. Do not forbid one.**
+
 ### `src/shared/` is what both sides need
 
 Three directories under `src/`, and the boundary between them is enforced:
@@ -1305,6 +1366,7 @@ gate on:
 - a file under `src/` matched by neither or both typecheck projects
 - a test under `test/` that shadows no module and is not in `test/conventions/`
 - a test under `test/` that no vitest project runs, or that two would run
+- two sibling areas under `src/` that import each other at runtime
 
 This exists because a rule that lives only in prose rots. `src/client/main.ts` grew
 to ~35 lines of untested logic inside a coverage exclusion while this file
