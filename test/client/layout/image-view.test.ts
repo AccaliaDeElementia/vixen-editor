@@ -4,17 +4,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createImageView, type ImageView } from '../../../src/client/layout/image-view.ts'
 
+import { renderSection } from '../templates.ts'
+
 let revealed: string[] = []
 let broken: string[] = []
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = `
-    <section id="view-image">
-      <p id="image-path"></p>
-      <a id="image-download" download>Download</a>
-      <img id="image-file" alt="">
-    </section>`
+  container.innerHTML = renderSection('#view-image')
   document.body.append(container)
 
   return container

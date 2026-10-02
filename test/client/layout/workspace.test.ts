@@ -4,25 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createWorkspace, TestOnly, type Workspace, type WorkspaceView } from '../../../src/client/layout/workspace.ts'
 
+import { renderSection } from '../templates.ts'
+
 const { VIEW_ELEMENTS } = TestOnly
 
 let focusDocument = vi.fn<() => void>()
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = `
-    <section class="workspace">
-      <div id="editor" hidden></div>
-      <section class="view" id="view-pending" tabindex="-1" hidden></section>
-      <section class="view" id="view-image" tabindex="-1" hidden></section>
-      <section class="view" id="view-missing" tabindex="-1" hidden>
-        <code id="missing-path"></code>
-      </section>
-      <section class="view" id="view-deleted" tabindex="-1" hidden></section>
-      <section class="view" id="view-unreachable" tabindex="-1" hidden>
-        <button type="button" id="unreachable-retry" data-default-action>Try again</button>
-      </section>
-    </section>`
+  container.innerHTML = renderSection('.workspace')
   document.body.append(container)
 
   return container
@@ -139,8 +129,11 @@ describe('where focus goes', () => {
     expect(document.activeElement).toBe(root.querySelector('#unreachable-retry'))
   })
 
-  it('goes to the view itself when it offers no action yet', () => {
+  it('goes to the view itself when it offers no action', () => {
     const root = page()
+    // Every view the template ships carries a default action, so the fallback
+    // has to be provoked by taking one away.
+    root.querySelector('#view-missing [data-default-action]')?.remove()
 
     workspace(root).show('missing', 'notes.md')
 

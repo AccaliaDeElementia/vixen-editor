@@ -4,16 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createStatusBar, TestOnly, type StatusBar } from '../../../src/client/layout/status-bar.ts'
 
+import { renderSection } from '../templates.ts'
+
 const { COUNTDOWN_ATTRIBUTE, COUNTDOWN_PROPERTY, COUNTDOWN_RUNS, SAVE_LABELS } = TestOnly
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = `
-    <div class="statusbar">
-      <p class="statusbar__path" id="open-path"></p>
-      <p class="statusbar__save"><span id="save-label"></span><span id="save-countdown"></span></p>
-      <p class="statusbar__words" id="word-count"></p>
-    </div>`
+  container.innerHTML = renderSection('.statusbar')
   document.body.append(container)
 
   return container

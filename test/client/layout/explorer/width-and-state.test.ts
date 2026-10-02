@@ -13,6 +13,8 @@ import {
 } from '../../../../src/client/layout/explorer.ts'
 import { writePreferences } from '../../../../src/client/layout/preferences.ts'
 
+import { renderSection } from '../../templates.ts'
+
 const { clampExplorerWidth, readExplorerState, setExplorerOpen } = TestOnly
 
 const VIEWPORT = 1000
@@ -21,12 +23,7 @@ const ONE_PIXEL = 1
 let root: HTMLElement = document.createElement('div')
 
 function page(): HTMLElement {
-  document.body.innerHTML = `
-    <div class="app" id="app" data-explorer="open">
-      <button id="toggle-explorer" aria-expanded="true" aria-pressed="true"></button>
-      <aside id="explorer"></aside>
-      <button id="explorer-resizer" role="separator"></button>
-    </div>`
+  document.body.innerHTML = renderSection('#app')
   return document.body
 }
 

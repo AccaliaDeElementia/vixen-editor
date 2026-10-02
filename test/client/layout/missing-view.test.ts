@@ -9,6 +9,8 @@ import type { Toast } from '../../../src/client/layout/toast.ts'
 
 import { cast } from '../../cast.ts'
 
+import { renderSection } from '../templates.ts'
+
 const DELETED_AT = '2026-09-01T10:00:00.000Z'
 
 interface Fake {
@@ -37,18 +39,7 @@ function fakeClient(): Fake {
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = `
-    <section id="view-missing">
-      <code id="missing-path"></code>
-      <p>
-        <button type="button" id="missing-create">Create it</button>
-        <button type="button" id="missing-upload">Upload a file</button>
-        <input id="missing-upload-input" type="file" hidden>
-      </p>
-      <section id="missing-restore" hidden>
-        <ul id="missing-restore-list"></ul>
-      </section>
-    </section>`
+  container.innerHTML = renderSection('#view-missing')
   document.body.append(container)
 
   return container
@@ -374,11 +365,8 @@ describe('a picker that yields nothing', () => {
 describe('markup that does not match', () => {
   it('declines when only the restore list is missing, not just when every part is', () => {
     const partial = document.createElement('div')
-    partial.innerHTML = `
-      <button type="button" id="missing-create"></button>
-      <button type="button" id="missing-upload"></button>
-      <input id="missing-upload-input" type="file">
-      <section id="missing-restore" hidden></section>`
+    partial.innerHTML = renderSection('#view-missing')
+    partial.querySelector('#missing-restore-list')?.remove()
     document.body.append(partial)
 
     expect(() => {

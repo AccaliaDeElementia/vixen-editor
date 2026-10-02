@@ -9,6 +9,8 @@ import type { Toast } from '../../../src/client/layout/toast.ts'
 
 import { cast } from '../../cast.ts'
 
+import { renderSection } from '../templates.ts'
+
 const DELETED_AT = '2026-09-01T10:00:00.000Z'
 const ENTRY_ID = '0d5caef1-147f-45bf-8546-270886fcaa8f'
 
@@ -36,12 +38,7 @@ function fakeClient(): Fake {
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = `
-    <section id="view-deleted">
-      <p id="deleted-what"></p>
-      <p id="deleted-actions"><button type="button" id="deleted-restore">Restore</button></p>
-      <p id="deleted-blocked" hidden></p>
-    </section>`
+  container.innerHTML = renderSection('#view-deleted')
   document.body.append(container)
 
   return container

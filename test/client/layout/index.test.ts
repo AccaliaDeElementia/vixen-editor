@@ -13,6 +13,8 @@ import {
 import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/layout/index.ts'
 import { requestInsert } from '../../../src/client/insert-entry.ts'
 
+import { renderPage } from '../templates.ts'
+
 const { KEYBOARD_STEP_PX } = indexTestOnly
 const { readExplorerState } = explorerTestOnly
 
@@ -22,28 +24,7 @@ const EXPLORER_LEFT = 64
 let root: HTMLElement = document.createElement('div')
 
 function page(): HTMLElement {
-  document.body.innerHTML = `
-    <div class="app" id="app" data-explorer="open">
-      <button id="toggle-explorer" aria-expanded="true" aria-pressed="true"></button>
-      <button id="show-help"></button>
-      <aside id="explorer"></aside>
-      <button id="explorer-resizer" role="separator"></button>
-      <dialog id="file-dialog">
-        <form method="dialog">
-          <h2 id="file-dialog-title"></h2>
-          <p id="file-dialog-message"></p>
-          <p id="file-dialog-field">
-            <label id="file-dialog-label" for="file-dialog-entry"></label>
-            <input id="file-dialog-entry" type="text">
-          </p>
-          <p id="file-dialog-error"></p>
-          <div id="file-dialog-choices" hidden></div>
-          <div id="file-dialog-body" hidden></div>
-          <button id="file-dialog-cancel" type="submit" value="cancel"></button>
-          <button id="file-dialog-confirm" type="submit" value="confirm"></button>
-        </form>
-      </dialog>
-    </div>`
+  document.body.innerHTML = renderPage()
   const explorer = document.body.querySelector('#explorer')
   // happy-dom does not lay out, so the geometry the drag maths reads is stubbed.
   Object.defineProperty(explorer, 'getBoundingClientRect', {
