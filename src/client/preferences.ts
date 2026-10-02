@@ -1,8 +1,8 @@
 'use sanity'
 
-import { stringsIn } from '../json.ts'
-import { readJson, writeJson } from '../local-storage.ts'
-import { isRecord } from '../../shared/guards.ts'
+import { stringsIn } from './json.ts'
+import { readJson, writeJson } from './local-storage.ts'
+import { isRecord } from '../shared/guards.ts'
 
 const PREFERENCES_KEY = 'vixen-editor:explorer'
 

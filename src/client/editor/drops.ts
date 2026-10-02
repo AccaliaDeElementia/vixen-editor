@@ -9,7 +9,7 @@ import { serially } from '../../shared/serially.ts'
 import { errorMessage } from '../error-message.ts'
 import { FilesRequestError, type FilesClient } from '../files/files-client.ts'
 import type { Dialogs } from '../files/dialogs.ts'
-import type { Toast } from '../layout/toast.ts'
+import type { Toast } from '../toast.ts'
 
 const DRAG_MIME = 'application/x-vixen-path'
 const DRAG_KIND_MIME = 'application/x-vixen-kind'

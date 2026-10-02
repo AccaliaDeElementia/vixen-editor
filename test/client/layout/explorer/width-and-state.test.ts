@@ -11,7 +11,7 @@ import {
   toggleExplorer,
   TestOnly,
 } from '../../../../src/client/layout/explorer.ts'
-import { writePreferences } from '../../../../src/client/layout/preferences.ts'
+import { writePreferences } from '../../../../src/client/preferences.ts'
 
 import { renderSection } from '../../templates.ts'
 

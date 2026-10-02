@@ -7,7 +7,7 @@ import { errorMessage } from '../error-message.ts'
 import type { FilesClient } from '../files/files-client.ts'
 import { restoreCandidatesFor, type RestoreCandidate } from '../files/restore-candidates.ts'
 import { folderPathsIn, type TreeNode } from '../files/tree-model.ts'
-import type { Toast } from './toast.ts'
+import type { Toast } from '../toast.ts'
 
 const CREATE_SELECTOR = '#missing-create'
 const UPLOAD_SELECTOR = '#missing-upload'

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { readPreferences, writePreferences, type ExplorerPreferences } from './preferences.ts'
+import { readPreferences, writePreferences, type ExplorerPreferences } from '../preferences.ts'
 
 export const MIN_EXPLORER_PX = 160
 const MIN_EDITOR_PX = 672

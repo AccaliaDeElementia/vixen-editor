@@ -1,6 +1,6 @@
 'use sanity'
 
-import { readPreferences, writePreferences } from '../layout/preferences.ts'
+import { readPreferences, writePreferences } from '../preferences.ts'
 
 export function readOpenFolders(): Set<string> {
   return new Set(readPreferences().openFolders)

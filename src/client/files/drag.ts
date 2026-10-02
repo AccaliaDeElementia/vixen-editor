@@ -4,7 +4,7 @@ import type { DocumentMoved } from '../document-moved.ts'
 import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
 import { EMPTY } from '../../shared/sequences.ts'
 import { errorMessage } from '../error-message.ts'
-import type { Toast } from '../layout/toast.ts'
+import type { Toast } from '../toast.ts'
 
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'

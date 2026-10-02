@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { cast } from '../../cast.ts'
+import { cast } from '../cast.ts'
 
-import { readPreferences, writePreferences, TestOnly } from '../../../src/client/layout/preferences.ts'
+import { readPreferences, writePreferences, TestOnly } from '../../src/client/preferences.ts'
 
 const { DEFAULT_PREFERENCES, PREFERENCES_KEY } = TestOnly
 

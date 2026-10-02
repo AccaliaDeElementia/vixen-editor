@@ -1,7 +1,7 @@
 'use sanity'
 
 import { errorMessage } from '../error-message.ts'
-import type { Toast } from '../layout/toast.ts'
+import type { Toast } from '../toast.ts'
 
 import type { Dialogs } from './dialogs.ts'
 import { rebuildingRunner } from './rebuild.ts'

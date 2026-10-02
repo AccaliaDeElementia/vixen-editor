@@ -279,6 +279,9 @@ function runtimeExportsIn(contents: string): string[] {
 
 const IMPORT_CLAUSE =
   /^import\s+(?:type\s+)?(?<first>\{[^\}]*\}|\*\s+as\s+\w+|\w+)?\s*(?:,\s*(?<second>\{[^\}]*\}))?\s*from\s*'(?<from>[^']*)'/gmv
+const RUNTIME_IMPORT = /^import\s+(?!type\s)(?:\{[^\}]*\}|\*\s+as\s+\w+|\w+)[^']*from\s*'(?<from>[^']*)'/gmv
+const AREA_DEPTH = 3
+
 const REEXPORT_FROM = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}\s*from\s*'(?<from>[^']*)'/gmv
 
 function resolveSpecifier(importer: string, specifier: string): string | null {
@@ -802,5 +805,61 @@ describe('every unit test is run by exactly one vitest project', () => {
 
   it('reports no project for a path every include misses', () => {
     expect(projectsRunning('test/stranded/orphan.test.ts')).toBe(0)
+  })
+})
+
+function areaOf(relativePath: string): string | null {
+  const segments = relativePath.split('/')
+
+  return segments.length > AREA_DEPTH ? segments.slice(0, AREA_DEPTH).join('/') : null
+}
+
+function areaEdges(): Map<string, Set<string>> {
+  const edges = new Map<string, Set<string>>()
+
+  for (const source of sources) {
+    const from = areaOf(source.relativePath)
+    if (from === null) continue
+
+    for (const match of source.contents.matchAll(RUNTIME_IMPORT)) {
+      const target = resolveSpecifier(source.relativePath, match.groups?.from ?? '')
+      if (target === null) continue
+      const to = areaOf(target)
+      if (to === null || to === from) continue
+      edges.set(from, (edges.get(from) ?? new Set<string>()).add(to))
+    }
+  }
+
+  return edges
+}
+
+function mutualAreas(edges: ReadonlyMap<string, ReadonlySet<string>>): string[] {
+  const pairs = new Set<string>()
+
+  for (const [from, targets] of edges) {
+    for (const to of targets) {
+      if (edges.get(to)?.has(from) === true) pairs.add([from, to].sort().join(' <-> '))
+    }
+  }
+
+  return [...pairs].sort()
+}
+
+describe('the directories under src are read in one order', () => {
+  it('leaves no two areas that import each other at runtime', () => {
+    expect(mutualAreas(areaEdges())).toStrictEqual([])
+  })
+
+  it('resolves imports between areas at all, so that scan is not passing vacuously', () => {
+    expect(areaEdges().get('src/server/routes')?.has('src/server/storage')).toBe(true)
+  })
+
+  it('reports a pair that imports both ways, so the check is not blind to one', () => {
+    const circular = new Map([
+      ['src/client/a', new Set(['src/client/b'])],
+      ['src/client/b', new Set(['src/client/a'])],
+    ])
+
+    expect(mutualAreas(circular)).toStrictEqual(['src/client/a <-> src/client/b'])
   })
 })

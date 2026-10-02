@@ -8,7 +8,7 @@ import {
   readOpenFolders,
   setFolderOpen,
 } from '../../../src/client/files/open-folders.ts'
-import { readPreferences, writePreferences } from '../../../src/client/layout/preferences.ts'
+import { readPreferences, writePreferences } from '../../../src/client/preferences.ts'
 
 beforeEach(() => {
   localStorage.clear()

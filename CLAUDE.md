@@ -483,7 +483,7 @@ covers that case specifically.
 ## UI state
 
 Explorer width and open/closed state persist in **`localStorage`** under
-`vixen-editor:explorer`, via `src/client/layout/preferences.ts`.
+`vixen-editor:explorer`, via `src/client/preferences.ts`.
 
 `localStorage`, not `sessionStorage`: sessionStorage is cleared when the tab
 closes, so a width would survive a reload but not a browser relaunch — losing

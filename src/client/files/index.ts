@@ -3,7 +3,7 @@
 import { openDocumentIn, type OpenDocument } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 import { announceDocumentMoved } from '../document-moved.ts'
-import { createToast } from '../layout/toast.ts'
+import { createToast } from '../toast.ts'
 
 import {
   bindActions,

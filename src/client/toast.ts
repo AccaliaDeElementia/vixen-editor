@@ -1,6 +1,6 @@
 'use sanity'
 
-import { NOT_FOUND } from '../../shared/sequences.ts'
+import { NOT_FOUND } from '../shared/sequences.ts'
 
 const REGION_SELECTOR = '#status'
 const TOAST_CLASS = 'toast'

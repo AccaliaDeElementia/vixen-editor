@@ -2,9 +2,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { cast } from '../../cast.ts'
+import { cast } from '../cast.ts'
 
-import { createToast, TestOnly } from '../../../src/client/layout/toast.ts'
+import { createToast, TestOnly } from '../../src/client/toast.ts'
 
 const { FADE_MS, MAX_QUEUED, MAX_VISIBLE, OVERFLOW_TEXT, REDUCED_MOTION, TOAST_ERROR_MS, TOAST_VISIBLE_MS } = TestOnly
 

@@ -4,7 +4,7 @@ import { docUrlFor } from '../doc-path.ts'
 import { errorMessage } from '../error-message.ts'
 import type { FilesClient } from '../files/files-client.ts'
 import { entryPathsIn, type TrashNode } from '../files/tree-model.ts'
-import type { Toast } from './toast.ts'
+import type { Toast } from '../toast.ts'
 
 const WHAT_SELECTOR = '#deleted-what'
 const ACTIONS_SELECTOR = '#deleted-actions'
