@@ -1144,6 +1144,15 @@ does not fail — it silently does not run. A basename collision once destroyed
 three test files here while the suite still reported a pass, and only counting
 files against `git ls-tree` found it.
 
+**`test-browser/` is organised the other way round**, and deliberately so. It
+drives the built application rather than any one module, so a spec named for a
+module would name something it only reaches through five others. Its specs are
+named for the behaviour they exercise — `saving`, `navigation`, `trash`,
+`document-links` — and each holds one cohesive behaviour. That is a looser rule
+with real room for judgement about where one behaviour ends and the next
+begins, and that is accepted rather than worked around. Shared setup lives in
+`test-browser/fixtures.ts` so a spec does not carry its own copy.
+
 ### A test makes one claim
 
 Setup, an optional precondition, the action, and **one assertion for the
