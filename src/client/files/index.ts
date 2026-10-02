@@ -254,12 +254,30 @@ async function runFileTree({
     if (handleKey(event.key, current)) event.preventDefault()
   })
 
-  function revealPath(entryPath: string): void {
-    openFolders(ancestorsOf(entryPath))
+  function selectAndFocus(entryPath: string): void {
     selected = entryPath
     draw(readOpenFolders())
     rows()[indexOfPath(entryPath)]?.scrollIntoView({ block: 'nearest' })
     focusAt(indexOfPath(entryPath))
+  }
+
+  function revealPath(entryPath: string): void {
+    openFolders(ancestorsOf(entryPath))
+    selectAndFocus(entryPath)
+  }
+
+  function openPath(entryPath: string | null): void {
+    const row = visible.find((candidate) => candidate.path === entryPath)
+    if (row !== undefined) openRow(row)
+  }
+
+  function openCreated(entryPath: string): void {
+    const isFolder = folderPathsIn(nodes).includes(entryPath)
+
+    openFolders(isFolder ? [...ancestorsOf(entryPath), entryPath] : ancestorsOf(entryPath))
+    selectAndFocus(entryPath)
+
+    if (!isFolder) openPath(entryPath)
   }
 
   function reveal(): void {
@@ -286,9 +304,9 @@ async function runFileTree({
     track: runs.track,
     reveal,
     insertSelected,
+    openCreated,
     openSelected: () => {
-      const row = visible.find((candidate) => candidate.path === selected)
-      if (row !== undefined) openRow(row)
+      openPath(selected)
     },
   }
   bindActions(context)

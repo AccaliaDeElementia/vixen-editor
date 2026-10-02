@@ -41,6 +41,7 @@ export interface ActionContext {
   track: (rebuild: Promise<void>) => void
   reveal: () => void
   openSelected: () => void
+  openCreated: (entryPath: string) => void
   insertSelected: () => void
 }
 
@@ -98,6 +99,7 @@ function bindUpload(context: ActionContext, run: (work: () => Promise<void>) => 
 export function bindActions(context: ActionContext): void {
   const { root, client, dialogs } = context
   const run = runnerFor(context)
+  const rebuilding = rebuildingRunner(context)
 
   function on(selector: string, handler: () => void): void {
     root.querySelector(selector)?.addEventListener('click', handler)
@@ -105,14 +107,25 @@ export function bindActions(context: ActionContext): void {
 
   function promptCreate(title: string, label: string, create: (entryPath: string) => Promise<void>): void {
     const directory = context.targetDirectory()
+    let requested = ''
 
-    run(async () => {
-      await dialogs.prompt({
+    rebuilding(async () => {
+      const created = await dialogs.prompt({
         title,
         label,
         confirmLabel: 'Create',
-        submit: async (name) => await createVia(create, joinPath(directory, name)),
+        submit: async (name) => {
+          requested = joinPath(directory, name)
+
+          return await createVia(create, requested)
+        },
       })
+
+      if (!created) return undefined
+
+      return () => {
+        context.openCreated(requested)
+      }
     })
   }
 

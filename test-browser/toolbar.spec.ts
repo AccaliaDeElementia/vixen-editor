@@ -36,6 +36,40 @@ test('Enter in the name field confirms, though Cancel is the first button the fo
   await request.delete(`/api/files/entries/${name}`)
 })
 
+test('a new document opens in the editor, so the user lands in what they just made', async ({ page, request }) => {
+  const name = `opened-${String(Date.now())}`
+  await page.goto('/doc/')
+
+  await page.locator('#new-document').click()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
+  await page.locator('#file-dialog-entry').fill(`${name}.md`)
+  await page.locator('#file-dialog-confirm').click()
+
+  await givenAsync(expect(page).toHaveURL(`/doc/${name}.md`))
+  await expect(page.locator('.cm-content')).toContainText(`# ${name}`)
+
+  await request.delete(`/api/files/entries/${name}.md`)
+})
+
+test('a new folder leaves the editor on the document that was already open', async ({ page, request }) => {
+  const held = `held-${String(Date.now())}.md`
+  const folder = `grown-${String(Date.now())}`
+  await request.post('/api/files/documents', { data: { path: held, content: '# held open' } })
+  await page.goto(`/doc/${held}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# held open'))
+
+  await page.locator('#new-folder').click()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
+  await page.locator('#file-dialog-entry').fill(folder)
+  await page.locator('#file-dialog-confirm').click()
+
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${folder}"]`)).toHaveAttribute('aria-expanded', 'true'))
+  await expect(page).toHaveURL(`/doc/${held}`)
+
+  await request.delete(`/api/files/entries/${folder}`)
+  await request.delete(`/api/files/entries/${held}`)
+})
+
 test('a rejected name stays in the dialog to be corrected', async ({ page, request }) => {
   const name = `taken-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: name } })
