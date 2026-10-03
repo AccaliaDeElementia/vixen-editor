@@ -2,13 +2,14 @@
 
 import { afterEach } from 'vitest'
 
-import { failOnLeakedInterval, watchIntervals } from '../timers.ts'
+import { dropPendingTimeouts, failOnLeakedInterval, watchIntervals, watchTimeouts } from '../timers.ts'
 
 import { closeTrees } from './tree-fixtures.ts'
 import { closeEditors } from './editor-fixtures.ts'
 import { failOnLeakedListener, watchListeners } from './listeners.ts'
 
 watchIntervals()
+watchTimeouts()
 watchListeners()
 
 afterEach(() => {
@@ -16,4 +17,5 @@ afterEach(() => {
   closeTrees()
   failOnLeakedInterval()
   failOnLeakedListener()
+  dropPendingTimeouts()
 })

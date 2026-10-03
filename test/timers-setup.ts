@@ -2,8 +2,12 @@
 
 import { afterEach } from 'vitest'
 
-import { failOnLeakedInterval, watchIntervals } from './timers.ts'
+import { dropPendingTimeouts, failOnLeakedInterval, watchIntervals, watchTimeouts } from './timers.ts'
 
 watchIntervals()
+watchTimeouts()
 
-afterEach(failOnLeakedInterval)
+afterEach(() => {
+  failOnLeakedInterval()
+  dropPendingTimeouts()
+})

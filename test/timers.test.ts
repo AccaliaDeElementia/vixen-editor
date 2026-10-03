@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { given } from './conditions.ts'
-import { failOnLeakedInterval } from './timers.ts'
+import { dropPendingTimeouts, failOnLeakedInterval } from './timers.ts'
 
 const SOME_PERIOD_MS = 60_000
 
@@ -40,6 +40,62 @@ describe('the leaked-interval guard', () => {
 
     expect(() => {
       failOnLeakedInterval()
+    }).not.toThrow()
+  })
+})
+
+describe('a timeout the test walked away from', () => {
+  const TICK_MS = 20
+
+  async function afterARealTick(): Promise<void> {
+    const ticked: PromiseWithResolvers<void> = Promise.withResolvers()
+    setTimeout(() => {
+      ticked.resolve()
+    }, TICK_MS)
+
+    await ticked.promise
+  }
+
+  it('fires when nothing cancels it, which is what makes the next claim mean anything', async () => {
+    let fired = false
+    setTimeout(() => {
+      fired = true
+    }, 0)
+
+    await afterARealTick()
+
+    expect(fired).toBe(true)
+  })
+
+  it('does not fire once the test that scheduled it has ended', async () => {
+    let fired = false
+    setTimeout(() => {
+      fired = true
+    }, 0)
+
+    dropPendingTimeouts()
+    await afterARealTick()
+
+    expect(fired).toBe(false)
+  })
+
+  it('leaves a timer alone that was scheduled after the sweep', async () => {
+    dropPendingTimeouts()
+    let fired = false
+    setTimeout(() => {
+      fired = true
+    }, 0)
+
+    await afterARealTick()
+
+    expect(fired).toBe(true)
+  })
+
+  it('is untroubled by a timer the code already cancelled itself', () => {
+    clearTimeout(setTimeout(() => undefined, TICK_MS))
+
+    expect(() => {
+      dropPendingTimeouts()
     }).not.toThrow()
   })
 })

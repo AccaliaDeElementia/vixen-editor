@@ -235,21 +235,37 @@ grounds to relitigate the ban, not to work around it.
 
 <a id="testing-748822"></a>
 
-### A repeating timer may not outlive the test that started it
+### No timer outlives the test that started it
 
-`test/timers.ts` wraps `setInterval` and `clearInterval` and fails any test
-that ends with one still scheduled. Every project installs it through a setup
-file, so a leak is caught wherever it comes from rather than only where one was
-once found.
+`test/timers.ts` wraps both kinds and every project installs it through a setup
+file, so a stray timer is caught wherever it comes from rather than only where
+one was once found. **The two kinds are treated differently, and the line is
+principled rather than convenient.**
 
-**Intervals, not timeouts, and the line is principled rather than
-convenient.** An interval never completes, so one left behind goes on firing
-against a subject the test has abandoned — there is no reading of that which is
-not a defect. A pending `setTimeout` is in-flight scheduled work the test
+**An interval fails the test.** It never completes, so one left behind goes on
+firing against a subject the test has abandoned — there is no reading of that
+which is not a defect.
+
+**A timeout is cancelled, not failed.** It is in-flight scheduled work the test
 legitimately walked away from: a toast that will expire, an autosave window
-that will close. Holding tests to the stricter rule would mean teaching the
-toast and autosave lifecycles to be torn down, which is real work and not this
-guard's job.
+that will close. Nobody wrote a defect by leaving one pending, so failing would
+punish the wrong thing — but letting it survive the test is what made the gate
+flaky, so `dropPendingTimeouts` cancels what is still outstanding.
+
+**Why it had to change.** A pending timeout outlives the _environment_ as well
+as the test: its callback runs after happy-dom has taken `window` away, and the
+first thing a toast does on expiry is read `window.matchMedia`. The gate failed
+about one run in five with `ReferenceError: window is not defined`, reported
+against whichever file happened to be running, with every test passing and
+coverage at 100% — the exit code was the only thing that said anything was
+wrong. Measured before the fix: 269 tests ended holding at least one timer, and
+one file ended holding 184.
+
+An earlier note here predicted that enforcing this would mean teaching the toast
+and autosave lifecycles to be torn down. It did not, because cancelling is not
+enforcing: the harness drops what the test abandoned, and no production code
+changed. Nothing here is a reason to leave a timer pending on purpose — it is a
+reason not to have to care.
 
 The guard **cancels what it found** before failing, so one leak fails its own
 test rather than every test after it in the file. Timers created under
