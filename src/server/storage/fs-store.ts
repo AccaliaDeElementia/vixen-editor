@@ -9,7 +9,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createLogger } from '../logging.ts'
-import { compareNames } from './name-order.ts'
+import { compareNamesIn } from './name-order.ts'
 
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './atomic-write.ts'
@@ -47,8 +47,8 @@ const logStore = createLogger('storage/fs-store')
 const logEscape = createLogger('storage/fs-store', 'symlinkEscape')
 
 export interface DocumentStore {
-  list: () => Promise<string[]>
-  tree: () => Promise<TreeEntry[]>
+  list: (locale?: string) => Promise<string[]>
+  tree: (locale?: string) => Promise<TreeEntry[]>
   read: (id: string) => Promise<string>
   createDocument: (id: string, content: string) => Promise<string>
   createFolder: (folderPath: string, indexContent: string) => Promise<string>
@@ -121,14 +121,14 @@ export function createFsDocumentStore(
   const root = path.resolve(docsRoot)
 
   return {
-    async list(): Promise<string[]> {
+    async list(locale?: string): Promise<string[]> {
       const found: string[] = []
       await collectDocumentIds(root, '', found)
-      return found.sort(compareNames)
+      return found.sort(compareNamesIn(locale))
     },
 
-    async tree(): Promise<TreeEntry[]> {
-      return await readTree(root)
+    async tree(locale?: string): Promise<TreeEntry[]> {
+      return await readTree(root, locale)
     },
 
     async read(id: string): Promise<string> {

@@ -8,6 +8,7 @@ import { computeEtag } from '../storage/etag.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 
 import { matchesAny } from './conditional.ts'
+import { ACCEPT_LANGUAGE, preferredLocale, VARIES_BY_LANGUAGE } from './accept-language.ts'
 import { invalidBody, preconditionRequired, toErrorResponse } from './error-response.ts'
 
 const HTTP_OK = 200
@@ -21,7 +22,11 @@ const writeBodySchema = z.object({ content: z.string() })
 export function documentRoutes(store: DocumentStore): Hono {
   const routes = new Hono()
 
-  routes.get('/', async (c) => c.json({ documents: await store.list() }))
+  routes.get('/', async (c) => {
+    const documents = await store.list(preferredLocale(c.req.header(ACCEPT_LANGUAGE)))
+
+    return c.json({ documents }, HTTP_OK, VARIES_BY_LANGUAGE)
+  })
 
   routes.get('/:id{.+}', async (c) => {
     const id = c.req.param('id')

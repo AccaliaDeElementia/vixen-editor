@@ -64,3 +64,28 @@ test('a modified click opens a tab rather than being swallowed', async ({ page, 
   await tab.close()
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test.describe('a browser set to Swedish', () => {
+  test.use({ locale: 'sv-SE' })
+
+  test('gets the listing ordered the way a Swedish reader expects', async ({ page, request }, testInfo) => {
+    const stamp = `${String(Date.now())}-${testInfo.project.name}`
+    const zebra = `zebra-${stamp}.md`
+    const apple = `\u00e4pple-${stamp}.md`
+    await request.post('/api/files/documents', { data: { path: zebra, content: 'z' } })
+    await request.post('/api/files/documents', { data: { path: apple, content: 'a' } })
+
+    await page.goto('/doc/')
+    await givenAsync(expect(page.locator(`.tree__row[data-path="${zebra}"]`)).toBeVisible())
+    await givenAsync(expect(page.locator(`.tree__row[data-path="${apple}"]`)).toBeVisible())
+
+    const listed = await page
+      .locator('.tree__row')
+      .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-path')))
+
+    expect(listed.indexOf(zebra)).toBeLessThan(listed.indexOf(apple))
+
+    await request.delete(`/api/files/entries/${encodeURIComponent(zebra)}`)
+    await request.delete(`/api/files/entries/${encodeURIComponent(apple)}`)
+  })
+})

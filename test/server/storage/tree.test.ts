@@ -275,3 +275,26 @@ describe('a folder deleted while the walk is in progress', () => {
     expect(plan.files).toStrictEqual(['keep/a.md'])
   })
 })
+
+describe('the locale a tree is read for', () => {
+  it('orders the top level the way that reader expects', async () => {
+    await write('zebra.md')
+    await write('\u00e4pple.md')
+
+    expect(names(await readTree(root, 'sv'))).toStrictEqual(['zebra.md', '\u00e4pple.md'])
+  })
+
+  it('orders a nested folder the same way, not just the top level', async () => {
+    await write('journal/zebra.md')
+    await write('journal/\u00e4pple.md')
+
+    expect(names(folder(await readTree(root, 'sv'), 'journal').children)).toStrictEqual(['zebra.md', '\u00e4pple.md'])
+  })
+
+  it('keeps folders ahead of files whatever the locale', async () => {
+    await write('\u00e4pple.md')
+    await write('zebra/note.md')
+
+    expect(names(await readTree(root, 'sv'))).toStrictEqual(['zebra', '\u00e4pple.md'])
+  })
+})

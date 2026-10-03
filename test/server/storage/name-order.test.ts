@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { compareNames } from '../../../src/server/storage/name-order.ts'
+import { compareNames, compareNamesIn } from '../../../src/server/storage/name-order.ts'
 
 const SAME = 0
 
@@ -52,5 +52,25 @@ describe('names that compare equal numerically but are not the same name', () =>
 describe('a name against itself', () => {
   it('reports no difference, or a sort would never settle', () => {
     expect(compareNames('notes.md', 'notes.md')).toBe(SAME)
+  })
+})
+
+describe('the order a reader expects in their own language', () => {
+  const SWEDISH = ['zebra.md', '\u00e4pple.md']
+
+  it('puts a after z for a Swedish reader, which English order does not', () => {
+    expect([...SWEDISH].sort(compareNamesIn('sv'))).toStrictEqual(['zebra.md', '\u00e4pple.md'])
+  })
+
+  it('puts a before z for a German reader, from the same two names', () => {
+    expect([...SWEDISH].sort(compareNamesIn('de'))).toStrictEqual(['\u00e4pple.md', 'zebra.md'])
+  })
+
+  it('still counts digits the way a reader expects', () => {
+    expect(['file10.md', 'file9.md'].sort(compareNamesIn('sv'))).toStrictEqual(['file9.md', 'file10.md'])
+  })
+
+  it('falls back to the host locale when given none', () => {
+    expect(compareNamesIn()('file9.md', 'file10.md')).toBe(compareNames('file9.md', 'file10.md'))
   })
 })

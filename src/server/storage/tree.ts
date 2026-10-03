@@ -9,7 +9,7 @@ import { createLogger } from '../logging.ts'
 import { nullWhenAbsent } from './absence.ts'
 import { isAtOrInside } from './containment.ts'
 import { isAllowedName } from './safe-path.ts'
-import { compareNames } from './name-order.ts'
+import { compareNamesIn, type NameComparator } from './name-order.ts'
 import { classifyFile, type FileKind } from '../../shared/documents.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
@@ -40,10 +40,18 @@ const SORT_EQUAL = 0
 
 const FOLDERS_FIRST: Record<TreeEntry['kind'], number> = { folder: FOLDER_RANK, document: FILE_RANK, image: FILE_RANK }
 
-function compareEntries(a: TreeEntry, b: TreeEntry): number {
+function compareEntries(a: TreeEntry, b: TreeEntry, byName: NameComparator): number {
   const byKind = FOLDERS_FIRST[a.kind] - FOLDERS_FIRST[b.kind]
 
-  return byKind === SORT_EQUAL ? compareNames(a.name, b.name) : byKind
+  return byKind === SORT_EQUAL ? byName(a.name, b.name) : byKind
+}
+
+function sortTree(entries: TreeEntry[], byName: NameComparator): TreeEntry[] {
+  for (const entry of entries) {
+    if (entry.kind === 'folder') sortTree(entry.children, byName)
+  }
+
+  return entries.sort((a, b) => compareEntries(a, b, byName))
 }
 
 interface WalkScope {
@@ -125,7 +133,7 @@ async function buildEntries(entries: readonly Dirent[], at: Location): Promise<T
     if (built !== null) found.push(built)
   })
 
-  return found.sort(compareEntries)
+  return found
 }
 
 async function walkDirectory(dir: string, prefix: string, scope: WalkScope): Promise<TreeEntry[] | null> {
@@ -135,7 +143,7 @@ async function walkDirectory(dir: string, prefix: string, scope: WalkScope): Pro
   return await buildEntries(entries, { dir, prefix, scope })
 }
 
-export async function readTree(docsRoot: string): Promise<TreeEntry[]> {
+export async function readTree(docsRoot: string, locale?: string): Promise<TreeEntry[]> {
   const root = path.resolve(docsRoot)
 
   const entries = await nullWhenAbsent(async () => await fs.readdir(root, { withFileTypes: true }))
@@ -145,5 +153,5 @@ export async function readTree(docsRoot: string): Promise<TreeEntry[]> {
 
   const scope: WalkScope = { realRoot, realDir: realRoot, ancestors: new Set([realRoot]) }
 
-  return await buildEntries(entries, { dir: root, prefix: '', scope })
+  return sortTree(await buildEntries(entries, { dir: root, prefix: '', scope }), compareNamesIn(locale))
 }

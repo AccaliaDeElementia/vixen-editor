@@ -7,6 +7,7 @@ import path from 'node:path'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
 import { refusalOf } from '../refusals.ts'
 import { buildApp } from '../../../../src/server/app.ts'
@@ -581,5 +582,37 @@ describe('a rejected upload says what the bytes actually are', () => {
       code: 'CONTENT_MISMATCH',
       detected: null,
     })
+  })
+})
+
+describe('the listing follows the language the client asked for', () => {
+  async function treeNamed(headers: Record<string, string>): Promise<string[]> {
+    const res = await app.request('/api/files', { headers })
+    const { tree } = cast<{ tree: Array<{ name: string }> }>(await res.json())
+
+    return tree.map((entry) => entry.name)
+  }
+
+  beforeEach(async () => {
+    await store.createDocument('zebra.md', 'z')
+    await store.createDocument('\u00e4pple.md', 'a')
+  })
+
+  it('sorts for a Swedish reader when Swedish is asked for', async () => {
+    expect(await treeNamed({ 'accept-language': 'sv' })).toStrictEqual(['zebra.md', '\u00e4pple.md'])
+  })
+
+  it('sorts for a German reader from the same two documents', async () => {
+    expect(await treeNamed({ 'accept-language': 'de' })).toStrictEqual(['\u00e4pple.md', 'zebra.md'])
+  })
+
+  it('ignores a language no collator can serve', async () => {
+    expect(await treeNamed({ 'accept-language': 'zz-ZZ' })).toStrictEqual(await treeNamed({}))
+  })
+
+  it('says the listing varies by language, so nothing caches one reader answer for all', async () => {
+    const res = await app.request('/api/files', { headers: { 'accept-language': 'sv' } })
+
+    expect(res.headers.get('vary')).toBe('Accept-Language')
   })
 })

@@ -14,6 +14,7 @@ import { mediaTypeOf } from '../storage/media-type.ts'
 import { joinEntryPath } from '../storage/safe-path.ts'
 import { seedDocument, seedFolderIndex } from '../storage/seed.ts'
 
+import { ACCEPT_LANGUAGE, preferredLocale, VARIES_BY_LANGUAGE } from './accept-language.ts'
 import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 
@@ -80,7 +81,11 @@ function targetDirectory(body: Record<string, unknown>): string | null {
 export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
   const routes = new Hono()
 
-  routes.get('/', async (c) => c.json({ tree: await store.tree() }))
+  routes.get('/', async (c) => {
+    const tree = await store.tree(preferredLocale(c.req.header(ACCEPT_LANGUAGE)))
+
+    return c.json({ tree }, HTTP_OK, VARIES_BY_LANGUAGE)
+  })
 
   routes.get('/raw/:entryPath{.+}', async (c) => {
     const entryPath = c.req.param('entryPath')

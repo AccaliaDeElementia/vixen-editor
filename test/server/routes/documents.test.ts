@@ -460,3 +460,14 @@ describe('a conditional GET', () => {
     expect((await conditionalGet('notes.md', '*')).status).toBe(304)
   })
 })
+
+describe('the document list follows the language the client asked for', () => {
+  it('sorts for a Swedish reader when Swedish is asked for', async () => {
+    await store.createDocument('zebra.md', 'z')
+    await store.createDocument('\u00e4pple.md', 'a')
+
+    const res = await app.request('/api/documents', { headers: { 'accept-language': 'sv' } })
+
+    await expect(res.json()).resolves.toStrictEqual({ documents: ['zebra.md', '\u00e4pple.md'] })
+  })
+})
