@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { restoreSelection } from '../../../src/server/storage/trash-restore.ts'
 import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/storage/store-errors.ts'
+import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import { givenAsync } from '../../conditions.ts'
 
 let root = ''
@@ -322,5 +323,119 @@ describe('unwinding a move that needed no new folder', () => {
     await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md', '2026'] })).rejects.toThrow())
 
     expect(await exists('journal/b.md')).toBe(false)
+  })
+})
+
+describe('restoring one thing under a different name', () => {
+  it('puts it where it was told to go', async () => {
+    const entryId = await trashedJournal()
+
+    await restoreSelection(root, { entryId, paths: ['a.md'], to: 'journal/renamed.md' })
+
+    expect(await exists('journal/renamed.md')).toBe(true)
+  })
+
+  it('reports the path it actually went to', async () => {
+    const entryId = await trashedJournal()
+
+    const outcome = await restoreSelection(root, { entryId, paths: ['a.md'], to: 'elsewhere/kept.md' })
+
+    expect(outcome.restored).toStrictEqual(['elsewhere/kept.md'])
+  })
+
+  it('may send it to a different folder entirely', async () => {
+    const entryId = await trashedJournal()
+
+    await restoreSelection(root, { entryId, paths: ['a.md'], to: 'elsewhere/kept.md' })
+
+    expect(await exists('elsewhere/kept.md')).toBe(true)
+  })
+
+  it('rescues a name the validator would otherwise refuse', async () => {
+    const entryId = await trashedJournal()
+    await fs.writeFile(path.join(root, '.trash', entryId, 'payload', ' leading.md'), '# odd')
+
+    await restoreSelection(root, { entryId, paths: [' leading.md'], to: 'journal/fixed.md' })
+
+    expect(await exists('journal/fixed.md')).toBe(true)
+  })
+
+  it('refuses to change what the file claims to be', async () => {
+    const entryId = await trashedJournal()
+
+    await expect(restoreSelection(root, { entryId, paths: ['a.md'], to: 'journal/a.png' })).rejects.toThrow(
+      InvalidPathError,
+    )
+  })
+
+  it('refuses a destination that is already taken', async () => {
+    const entryId = await trashedJournal()
+    await write('taken.md', '# live')
+
+    await expect(restoreSelection(root, { entryId, paths: ['a.md'], to: 'taken.md' })).rejects.toThrow(
+      BlockedRestoreError,
+    )
+  })
+
+  it('keeps the names inside a renamed folder', async () => {
+    const entryId = await trashedJournal()
+
+    await restoreSelection(root, { entryId, paths: ['2026'], to: 'journal/renamed' })
+
+    expect(await exists('journal/renamed/march.md')).toBe(true)
+  })
+})
+
+describe('links inside something restored under a new name', () => {
+  async function trashedWithLink(): Promise<string> {
+    await write('journal/notes.md', '# notes\n\n[the other](./other.md) and [up](../top.md)\n')
+    await write('journal/other.md', '# other')
+    await write('top.md', '# top')
+    await write('elsewhere/pointer.md', '# pointer\n\n[at notes](../journal/notes.md)\n')
+
+    return await store.trash('journal/notes.md')
+  }
+
+  it('are re-based so they still reach what they named', async () => {
+    const entryId = await trashedWithLink()
+
+    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' })
+
+    await expect(store.read('deep/down/notes.md')).resolves.toContain('../../journal/other.md')
+  })
+
+  it('reach a file outside the folder just the same', async () => {
+    const entryId = await trashedWithLink()
+
+    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' })
+
+    await expect(store.read('deep/down/notes.md')).resolves.toContain('../../top.md')
+  })
+
+  it('leave the rest of the store alone, since those links were already dead', async () => {
+    const entryId = await trashedWithLink()
+
+    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' })
+
+    await expect(store.read('elsewhere/pointer.md')).resolves.toContain('../journal/notes.md')
+  })
+
+  it('are left exactly as written when it goes back where it came from', async () => {
+    const entryId = await trashedWithLink()
+
+    await restoreSelection(root, { entryId, paths: [''] })
+
+    await expect(store.read('journal/notes.md')).resolves.toContain('./other.md')
+  })
+})
+
+describe('an image restored under a different name', () => {
+  it('goes where it was asked, with nothing to relink inside it', async () => {
+    await write('pictures/shot.png', 'not really a png')
+    const entryId = await store.trash('pictures/shot.png')
+
+    await restoreSelection(root, { entryId, paths: [''], to: 'pictures/renamed.png' })
+
+    expect(await exists('pictures/renamed.png')).toBe(true)
   })
 })

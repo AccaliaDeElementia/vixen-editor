@@ -11,8 +11,11 @@ import { invalidBody, toErrorResponse } from './error-response.ts'
 const HTTP_NO_CONTENT = 204
 
 const AT_LEAST_ONE = 1
+const ONLY_ONE = 1
 
-const restoreBodySchema = z.object({ paths: z.array(z.string()).min(AT_LEAST_ONE) })
+const restoreBodySchema = z
+  .object({ paths: z.array(z.string()).min(AT_LEAST_ONE), to: z.string().optional() })
+  .refine((body) => body.to === undefined || body.paths.length === ONLY_ONE)
 
 export function trashRoutes(store: DocumentStore): Hono {
   const routes = new Hono()
@@ -31,9 +34,9 @@ export function trashRoutes(store: DocumentStore): Hono {
     '/:entryId/restores',
     zValidator('json', restoreBodySchema, (result, c) => (result.success ? undefined : invalidBody(c))),
     async (c) => {
-      const { paths } = c.req.valid('json')
+      const { paths, to } = c.req.valid('json')
       try {
-        return c.json(await store.restore({ entryId: c.req.param('entryId'), paths }))
+        return c.json(await store.restore({ entryId: c.req.param('entryId'), paths, to }))
       } catch (error) {
         return toErrorResponse(c, error)
       }

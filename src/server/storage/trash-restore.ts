@@ -8,8 +8,12 @@ import { createLogger } from '../logging.ts'
 import { nullWhenAbsent } from './absence.ts'
 import { compareNamesIn } from './name-order.ts'
 import { resolveFolderPath } from './safe-path.ts'
-import { BlockedRestoreError, DocumentNotFoundError } from './store-errors.ts'
-import { purgeFromTrash, readTrashMeta, trashPayloadPath } from './trash.ts'
+import { BlockedRestoreError } from './store-errors.ts'
+import { entryKindOf, purgeFromTrash, readTrashMeta, trashPayloadPath } from './trash.ts'
+import { assertKindSurvives } from './move.ts'
+import { documentIdsUnder } from './document-ids.ts'
+import { relinkAfterMove } from './relink-store.ts'
+import type { EntryKind } from '../../shared/documents.ts'
 import { isAtOrUnder, joinPath, STORE_ROOT } from '../../shared/store-path.ts'
 import { serially } from '../../shared/serially.ts'
 import { SEQUENCE_START } from '../../shared/sequences.ts'
@@ -23,6 +27,7 @@ const NOTHING_LEFT = 0
 export interface RestoreSelection {
   entryId: string
   paths: readonly string[]
+  to?: string | undefined
 }
 
 export interface RestoreOutcome {
@@ -34,6 +39,8 @@ interface Placement {
   within: string
   source: string
   destination: string
+  wasAt: string
+  kind: EntryKind
   target: string
 }
 
@@ -72,19 +79,21 @@ async function ancestorInTheWay(docsRoot: string, destination: string): Promise<
   return blocking.find((ancestor) => ancestor !== null) ?? null
 }
 
-async function placementFor(
-  docsRoot: string,
-  payload: string,
-  originalPath: string,
-  within: string,
-): Promise<Placement> {
-  const source = sourceOf(payload, within)
-  const present = await nullWhenAbsent(async () => await fs.stat(source))
-  if (present === null) throw new DocumentNotFoundError(within)
+interface Asked {
+  docsRoot: string
+  payload: string
+  originalPath: string
+  to: string | undefined
+}
 
-  const destination = destinationOf(originalPath, within)
+async function placementFor(asked: Asked, within: string): Promise<Placement> {
+  const source = sourceOf(asked.payload, within)
+  const wasAt = destinationOf(asked.originalPath, within)
+  const kind = await entryKindOf(wasAt, source)
+  const destination = asked.to ?? wasAt
+  if (asked.to !== undefined) assertKindSurvives(wasAt, asked.to, kind)
 
-  return { within, source, destination, target: resolveFolderPath(docsRoot, destination) }
+  return { within, source, destination, wasAt, kind, target: resolveFolderPath(asked.docsRoot, destination) }
 }
 
 async function blockerFor(docsRoot: string, placement: Placement): Promise<string | null> {
@@ -134,14 +143,35 @@ async function payloadIsEmpty(payload: string): Promise<boolean> {
   return left === null || left.length === NOTHING_LEFT
 }
 
+async function documentsIn(docsRoot: string, done: Placed): Promise<string[]> {
+  const { destination, kind } = done
+  if (kind === 'folder') return await documentIdsUnder(path.join(docsRoot, destination), destination)
+
+  return kind === 'document' ? [destination] : []
+}
+
+async function relinkRenamed(docsRoot: string, placed: readonly Placed[]): Promise<void> {
+  await serially(
+    placed.filter((done) => done.destination !== done.wasAt),
+    async (done) => {
+      const { wasAt, destination } = done
+      const moved = await documentsIn(docsRoot, done)
+      const asWritten = moved.map((id) => `${wasAt}${id.slice(destination.length)}`)
+
+      await relinkAfterMove(docsRoot, asWritten, [{ from: wasAt, to: destination }])
+    },
+  )
+}
+
 export async function restoreSelection(docsRoot: string, request: RestoreSelection): Promise<RestoreOutcome> {
   const { entryId } = request
   const meta = await readTrashMeta(docsRoot, entryId)
   const payload = trashPayloadPath(docsRoot, entryId)
+  const asked: Asked = { docsRoot, payload, originalPath: meta.originalPath, to: request.to }
 
   const placements: Placement[] = []
   await serially(rootsOf(request.paths), async (within) => {
-    placements.push(await placementFor(docsRoot, payload, meta.originalPath, within))
+    placements.push(await placementFor(asked, within))
   })
 
   const blocked = (await Promise.all(placements.map(async (placement) => await blockerFor(docsRoot, placement))))
@@ -158,6 +188,8 @@ export async function restoreSelection(docsRoot: string, request: RestoreSelecti
     await undo(placed)
     throw error
   }
+
+  await relinkRenamed(docsRoot, placed)
 
   const emptied = await payloadIsEmpty(payload)
   if (emptied) await purgeFromTrash(docsRoot, entryId)

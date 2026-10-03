@@ -14,7 +14,7 @@ export interface FilesClient {
   upload: (directory: string, file: File, filename?: string) => Promise<string>
   move: (from: string, to: string) => Promise<string[]>
   remove: (entryPath: string) => Promise<string>
-  restore: (entryId: string, paths?: readonly string[]) => Promise<void>
+  restore: (entryId: string, paths?: readonly string[], to?: string) => Promise<void>
   purge: (entryId: string) => Promise<void>
 }
 
@@ -119,8 +119,8 @@ export function createFilesClient(
       return isRecord(trashed) && typeof trashed.trashId === 'string' ? trashed.trashId : ''
     },
 
-    async restore(entryId: string, paths: readonly string[] = [STORE_ROOT]): Promise<void> {
-      await postJson(`${baseUrl}/trash/${encodeURIComponent(entryId)}/restores`, { paths })
+    async restore(entryId: string, paths: readonly string[] = [STORE_ROOT], to?: string): Promise<void> {
+      await postJson(`${baseUrl}/trash/${encodeURIComponent(entryId)}/restores`, { paths, to })
     },
 
     async purge(entryId: string): Promise<void> {

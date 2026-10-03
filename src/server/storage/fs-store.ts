@@ -1,10 +1,7 @@
 'use sanity'
 
 import { EMPTY } from '../../shared/sequences.ts'
-import { classifyFile, UPLOAD_EXTENSIONS } from '../../shared/documents.ts'
-import { serially } from '../../shared/serially.ts'
 
-import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -13,7 +10,8 @@ import { compareNamesIn } from './name-order.ts'
 
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './atomic-write.ts'
-import { nullWhenAbsent } from './absence.ts'
+import { documentIdsUnder } from './document-ids.ts'
+import { UPLOAD_EXTENSIONS } from '../../shared/documents.ts'
 import { isAtOrInside, realpathOrNull } from './containment.ts'
 import { computeEtag } from './etag.ts'
 import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from './lock.ts'
@@ -22,7 +20,6 @@ import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
 import {
   assertNormalisedName,
   InvalidPathError,
-  isAllowedName,
   joinEntryPath,
   resolveDocumentPath,
   resolveEntryPath,
@@ -43,7 +40,7 @@ import { readTrashEntry, type TrashEntryNode } from './trash-entries.ts'
 import { restoreSelection, type RestoreOutcome, type RestoreSelection } from './trash-restore.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 import { isBlank } from '../../shared/content.ts'
-import { joinPath } from '../../shared/store-path.ts'
+import { STORE_ROOT } from '../../shared/store-path.ts'
 
 const logStore = createLogger('storage/fs-store')
 const logEscape = createLogger('storage/fs-store', 'symlinkEscape')
@@ -92,31 +89,6 @@ async function assertResolvesInsideRoot(root: string, id: string, target: string
   }
 }
 
-async function readdirOrNull(dir: string): Promise<Dirent[] | null> {
-  return await nullWhenAbsent(async () => await fs.readdir(dir, { withFileTypes: true }))
-}
-
-function isDocumentFile(entry: Dirent): boolean {
-  return entry.isFile() && classifyFile(entry.name) === 'document'
-}
-
-async function collectDocumentIds(dir: string, prefix: string, found: string[]): Promise<void> {
-  const entries = await readdirOrNull(dir)
-  if (entries === null) return
-
-  await serially(entries, async (entry) => {
-    if (!isAllowedName(entry.name)) return
-
-    const id = joinPath(prefix, entry.name)
-
-    if (entry.isDirectory()) {
-      await collectDocumentIds(path.join(dir, entry.name), id, found)
-    } else if (isDocumentFile(entry)) {
-      found.push(id)
-    }
-  })
-}
-
 export function createFsDocumentStore(
   docsRoot: string,
   lock: WriteLock = createWriteLock(DEFAULT_WRITE_LOCK_TIMEOUT_MS),
@@ -125,9 +97,7 @@ export function createFsDocumentStore(
 
   return {
     async list(locale?: string): Promise<string[]> {
-      const found: string[] = []
-      await collectDocumentIds(root, '', found)
-      return found.sort(compareNamesIn(locale))
+      return (await documentIdsUnder(root, STORE_ROOT)).sort(compareNamesIn(locale))
     },
 
     async tree(locale?: string): Promise<TreeEntry[]> {
@@ -242,8 +212,7 @@ export function createFsDocumentStore(
 
     async move(request: MoveRequest): Promise<RelinkOutcome> {
       return await lock.run(async () => {
-        const before: string[] = []
-        await collectDocumentIds(root, '', before)
+        const before = await documentIdsUnder(root, STORE_ROOT)
         await moveEntry(root, request)
 
         return await relinkAfterMove(root, before, [{ from: request.from, to: request.to }])

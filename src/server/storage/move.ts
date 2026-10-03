@@ -21,7 +21,7 @@ export interface MoveRequest {
   to: string
 }
 
-function assertKindSurvives(from: string, to: string, fromKind: EntryKind): void {
+export function assertKindSurvives(from: string, to: string, fromKind: EntryKind): void {
   if (fromKind === 'folder') return
 
   if (classifyFile(path.basename(to)) !== fromKind) {

@@ -253,3 +253,32 @@ describe('GET /api/trash/:entryId/entries', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('restoring under a different name', () => {
+  it('puts the entry where the request asked', async () => {
+    await store.createDocument('notes.md', '# hello')
+    const id = await store.trash('notes.md')
+
+    const res = await app.request(`/api/trash/${id}/restores`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paths: [''], to: 'archive/kept.md' }),
+    })
+
+    await expect(res.json()).resolves.toStrictEqual({ restored: ['archive/kept.md'], entryRemains: false })
+  })
+
+  it('refuses a new name when more than one thing was named', async () => {
+    await store.createDocument('journal/a.md', '# a')
+    await store.createDocument('journal/b.md', '# b')
+    const id = await store.trash('journal')
+
+    const res = await app.request(`/api/trash/${id}/restores`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paths: ['a.md', 'b.md'], to: 'journal/one.md' }),
+    })
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
+  })
+})
