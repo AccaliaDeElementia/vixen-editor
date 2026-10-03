@@ -20,6 +20,7 @@ export function failingStore(): DocumentStore {
     move: fail,
     trash: fail,
     listTrash: fail,
+    trashEntry: fail,
     restore: fail,
     purge: fail,
   }

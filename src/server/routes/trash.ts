@@ -13,6 +13,14 @@ export function trashRoutes(store: DocumentStore): Hono {
 
   routes.get('/', async (c) => c.json({ entries: await store.listTrash() }))
 
+  routes.get('/:entryId/entries', async (c) => {
+    try {
+      return c.json({ entry: await store.trashEntry(c.req.param('entryId')) })
+    } catch (error) {
+      return toErrorResponse(c, error)
+    }
+  })
+
   routes.post('/:entryId/restore', async (c) => {
     try {
       return c.json({ path: await store.restore(c.req.param('entryId')) })

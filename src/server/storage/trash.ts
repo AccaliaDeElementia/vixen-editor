@@ -123,6 +123,17 @@ export async function readTrash(root: string): Promise<TrashEntry[]> {
     .sort(newestFirstThenIdForStableTies)
 }
 
+export async function readTrashMeta(root: string, entryId: string): Promise<Omit<TrashEntry, 'id'>> {
+  const meta = await readMeta(root, entryId)
+  if (meta === null) throw new DocumentNotFoundError(entryId)
+
+  return meta
+}
+
+export function trashPayloadPath(root: string, entryId: string): string {
+  return path.join(entryDirectory(root, entryId), TRASH_PAYLOAD_NAME)
+}
+
 export async function restoreFromTrash(root: string, entryId: string): Promise<string> {
   const directory = entryDirectory(root, entryId)
   const meta = await readMeta(root, entryId)

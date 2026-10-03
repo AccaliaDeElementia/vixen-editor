@@ -39,6 +39,7 @@ import {
 } from './store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
 import { moveToTrash, purgeFromTrash, readTrash, restoreFromTrash, type TrashEntry } from './trash.ts'
+import { readTrashEntry, type TrashEntryNode } from './trash-entries.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 import { isBlank } from '../../shared/content.ts'
 import { joinPath } from '../../shared/store-path.ts'
@@ -59,6 +60,7 @@ export interface DocumentStore {
   move: (request: MoveRequest) => Promise<RelinkOutcome>
   trash: (entryPath: string) => Promise<string>
   listTrash: () => Promise<TrashEntry[]>
+  trashEntry: (entryId: string) => Promise<TrashEntryNode>
   restore: (entryId: string) => Promise<string>
   purge: (entryId: string) => Promise<void>
 }
@@ -253,6 +255,10 @@ export function createFsDocumentStore(
 
     async listTrash(): Promise<TrashEntry[]> {
       return await readTrash(root)
+    },
+
+    async trashEntry(entryId: string): Promise<TrashEntryNode> {
+      return await readTrashEntry(root, entryId)
     },
 
     async restore(entryId: string): Promise<string> {

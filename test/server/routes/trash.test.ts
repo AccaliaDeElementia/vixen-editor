@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { given } from '../../conditions.ts'
 import { fieldOf, refusalOf } from './refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
+import { cast } from '../../cast.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 
 let root = ''
@@ -188,5 +189,33 @@ describe('DELETE /api/trash/:entryId', () => {
     const res = await app.request('/api/trash/not-a-uuid', { method: 'DELETE' })
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
+  })
+})
+
+describe('GET /api/trash/:entryId/entries', () => {
+  it('answers with what the entry holds', async () => {
+    await store.createDocument('journal/a.md', '# a')
+    const entryId = await store.trash('journal')
+
+    const res = await app.request(`/api/trash/${entryId}/entries`)
+    const { entry } = cast<{ entry: { name: string; children: Array<{ name: string }> } }>(await res.json())
+
+    expect({ status: res.status, name: entry.name, children: entry.children.map((c) => c.name) }).toStrictEqual({
+      status: 200,
+      name: 'journal',
+      children: ['a.md'],
+    })
+  })
+
+  it('refuses an id that is not a trash entry id at all', async () => {
+    const res = await app.request('/api/trash/not-a-uuid/entries')
+
+    expect(res.status).toBe(400)
+  })
+
+  it('answers 404 for an entry the trash does not hold', async () => {
+    const res = await app.request('/api/trash/0d5caef1-147f-45bf-8546-270886fcaa8f/entries')
+
+    expect(res.status).toBe(404)
   })
 })
