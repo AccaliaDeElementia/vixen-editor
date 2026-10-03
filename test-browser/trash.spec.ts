@@ -79,7 +79,7 @@ test('what reaches the trash is what was in the buffer, not what was on disk', a
   await givenAsync(expect(page).toHaveURL(/\/trash\/[0-9a-f\-]+$/v))
 
   const trashId = new URL(page.url()).pathname.split('/').at(-1) ?? ''
-  await request.post(`/api/trash/${trashId}/restore`)
+  await request.post(`/api/trash/${trashId}/restores`, { data: { paths: [''] } })
 
   expect(await (await request.get(`/api/documents/${name}`)).text()).toContain('TYPED-BUT-UNSAVED')
 

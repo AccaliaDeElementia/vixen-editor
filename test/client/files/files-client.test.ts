@@ -170,12 +170,26 @@ describe('mutations', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/files/entries/my%20folder/a%20b.md', expect.anything())
   })
 
-  it('restores a trash entry', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ path: 'a.md' }))
+  it('restores a whole trash entry when no part of it is named', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ restored: ['a.md'], entryRemains: false }))
 
     await client().restore('abc')
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/trash/abc/restore', expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/trash/abc/restores',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ paths: [''] }) }),
+    )
+  })
+
+  it('restores only the parts it was given', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ restored: ['journal/a.md'], entryRemains: true }))
+
+    await client().restore('abc', ['a.md'])
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/trash/abc/restores',
+      expect.objectContaining({ body: JSON.stringify({ paths: ['a.md'] }) }),
+    )
   })
 
   it('purges a trash entry', async () => {

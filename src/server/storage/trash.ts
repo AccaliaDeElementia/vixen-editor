@@ -4,13 +4,12 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { ABSENT_CODES } from '../node-errors.ts'
 import { createLogger } from '../logging.ts'
 
 import { createFileAtomic } from './atomic-write.ts'
 import { nullWhenAbsent } from './absence.ts'
 import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
-import { asDocumentError, DocumentNotFoundError, EntryExistsError } from './store-errors.ts'
+import { DocumentNotFoundError } from './store-errors.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { isRecord } from '../../shared/guards.ts'
 import type { EntryKind } from '../../shared/documents.ts'
@@ -132,29 +131,6 @@ export async function readTrashMeta(root: string, entryId: string): Promise<Omit
 
 export function trashPayloadPath(root: string, entryId: string): string {
   return path.join(entryDirectory(root, entryId), TRASH_PAYLOAD_NAME)
-}
-
-export async function restoreFromTrash(root: string, entryId: string): Promise<string> {
-  const directory = entryDirectory(root, entryId)
-  const meta = await readMeta(root, entryId)
-  if (meta === null) throw new DocumentNotFoundError(entryId)
-
-  const destination = resolveFolderPath(root, meta.originalPath)
-  const occupant = await nullWhenAbsent(async () => await fs.stat(destination))
-  if (occupant !== null) throw new EntryExistsError(meta.originalPath)
-
-  await fs.mkdir(path.dirname(destination), { recursive: true })
-
-  try {
-    await fs.rename(path.join(directory, TRASH_PAYLOAD_NAME), destination)
-  } catch (error) {
-    throw asDocumentError(entryId, error, ABSENT_CODES)
-  }
-
-  await fs.rm(directory, { recursive: true, force: true })
-  logTrash('restored %s to %s', entryId, meta.originalPath)
-
-  return meta.originalPath
 }
 
 export async function purgeFromTrash(root: string, entryId: string): Promise<void> {

@@ -13,6 +13,7 @@ import {
   ContentMismatchError,
   DocumentNotFoundError,
   EmptyContentError,
+  BlockedRestoreError,
   EntryExistsError,
   InvalidMoveError,
 } from '../storage/store-errors.ts'
@@ -82,6 +83,9 @@ export function toErrorResponse(c: Context, error: unknown): Response {
       error: 'Content does not match the file extension',
       detected: error.detected,
     })
+  }
+  if (error instanceof BlockedRestoreError) {
+    return refuse(c, HTTP_CONFLICT, 'ALREADY_EXISTS', { error: error.message, paths: error.paths })
   }
   if (error instanceof InvalidMoveError) {
     return refuse(c, HTTP_CONFLICT, 'INVALID_MOVE', { error: error.message })

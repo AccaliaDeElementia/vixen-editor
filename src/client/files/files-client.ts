@@ -2,6 +2,7 @@
 
 import { parseTrash, parseTree, type TrashNode, type TreeNode } from './tree-model.ts'
 import { API_PREFIX } from '../../shared/api.ts'
+import { STORE_ROOT } from '../../shared/store-path.ts'
 import { stringsIn } from '../json.ts'
 import { isRecord } from '../../shared/guards.ts'
 
@@ -13,7 +14,7 @@ export interface FilesClient {
   upload: (directory: string, file: File, filename?: string) => Promise<string>
   move: (from: string, to: string) => Promise<string[]>
   remove: (entryPath: string) => Promise<string>
-  restore: (entryId: string) => Promise<void>
+  restore: (entryId: string, paths?: readonly string[]) => Promise<void>
   purge: (entryId: string) => Promise<void>
 }
 
@@ -118,8 +119,8 @@ export function createFilesClient(
       return isRecord(trashed) && typeof trashed.trashId === 'string' ? trashed.trashId : ''
     },
 
-    async restore(entryId: string): Promise<void> {
-      await send(`${baseUrl}/trash/${encodeURIComponent(entryId)}/restore`, { method: 'POST' })
+    async restore(entryId: string, paths: readonly string[] = [STORE_ROOT]): Promise<void> {
+      await postJson(`${baseUrl}/trash/${encodeURIComponent(entryId)}/restores`, { paths })
     },
 
     async purge(entryId: string): Promise<void> {

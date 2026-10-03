@@ -48,6 +48,16 @@ export class EntryExistsError extends Error {
   }
 }
 
+export class BlockedRestoreError extends Error {
+  override readonly name = 'BlockedRestoreError'
+  readonly paths: readonly string[]
+
+  constructor(paths: readonly string[]) {
+    super(`Already exists: ${paths.join(', ')}`)
+    this.paths = paths
+  }
+}
+
 export function asDocumentError(id: string, error: unknown, codes: readonly string[]): Error {
   return hasErrorCode(error, codes) ? new DocumentNotFoundError(id) : toError(error)
 }

@@ -38,8 +38,9 @@ import {
   EmptyContentError,
 } from './store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
-import { moveToTrash, purgeFromTrash, readTrash, restoreFromTrash, type TrashEntry } from './trash.ts'
+import { moveToTrash, purgeFromTrash, readTrash, type TrashEntry } from './trash.ts'
 import { readTrashEntry, type TrashEntryNode } from './trash-entries.ts'
+import { restoreSelection, type RestoreOutcome, type RestoreSelection } from './trash-restore.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 import { isBlank } from '../../shared/content.ts'
 import { joinPath } from '../../shared/store-path.ts'
@@ -61,7 +62,7 @@ export interface DocumentStore {
   trash: (entryPath: string) => Promise<string>
   listTrash: () => Promise<TrashEntry[]>
   trashEntry: (entryId: string) => Promise<TrashEntryNode>
-  restore: (entryId: string) => Promise<string>
+  restore: (request: RestoreSelection) => Promise<RestoreOutcome>
   purge: (entryId: string) => Promise<void>
 }
 
@@ -261,8 +262,8 @@ export function createFsDocumentStore(
       return await readTrashEntry(root, entryId)
     },
 
-    async restore(entryId: string): Promise<string> {
-      return await lock.run(async () => await restoreFromTrash(root, entryId))
+    async restore(request: RestoreSelection): Promise<RestoreOutcome> {
+      return await lock.run(async () => await restoreSelection(root, request))
     },
 
     async purge(entryId: string): Promise<void> {

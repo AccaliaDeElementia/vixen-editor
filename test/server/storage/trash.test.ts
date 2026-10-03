@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
-import { DocumentNotFoundError, EntryExistsError } from '../../../src/server/storage/store-errors.ts'
+import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/storage/store-errors.ts'
 import { TestOnly } from '../../../src/server/storage/trash.ts'
 import { isRecord } from '../../../src/shared/guards.ts'
 
@@ -255,7 +255,7 @@ describe('restore', () => {
     await store.createDocument('journal/notes.md', '# hello')
     const id = await store.trash('journal/notes.md')
 
-    await store.restore(id)
+    await store.restore({ entryId: id, paths: [''] })
 
     await expect(store.read('journal/notes.md')).resolves.toBe('# hello')
   })
@@ -264,7 +264,7 @@ describe('restore', () => {
     await store.createDocument('notes.md', 'x')
     const id = await store.trash('notes.md')
 
-    await expect(store.restore(id)).resolves.toBe('notes.md')
+    await expect(store.restore({ entryId: id, paths: [''] })).resolves.toMatchObject({ restored: ['notes.md'] })
   })
 
   it('restores a folder with its contents', async () => {
@@ -272,7 +272,7 @@ describe('restore', () => {
     await store.createDocument('journal/entry.md', '# entry')
     const id = await store.trash('journal')
 
-    await store.restore(id)
+    await store.restore({ entryId: id, paths: [''] })
 
     await expect(store.read('journal/entry.md')).resolves.toBe('# entry')
   })
@@ -283,7 +283,7 @@ describe('restore', () => {
     const id = await store.trash('journal/notes.md')
     await store.trash('journal')
 
-    await store.restore(id)
+    await store.restore({ entryId: id, paths: [''] })
 
     await expect(store.read('journal/notes.md')).resolves.toBe('# hello')
   })
@@ -292,7 +292,7 @@ describe('restore', () => {
     await store.createDocument('notes.md', 'x')
     const id = await store.trash('notes.md')
 
-    await store.restore(id)
+    await store.restore({ entryId: id, paths: [''] })
 
     await expect(store.listTrash()).resolves.toStrictEqual([])
   })
@@ -302,7 +302,7 @@ describe('restore', () => {
     const id = await store.trash('notes.md')
     await store.createDocument('notes.md', 'second')
 
-    await expect(store.restore(id)).rejects.toThrow(EntryExistsError)
+    await expect(store.restore({ entryId: id, paths: [''] })).rejects.toThrow(BlockedRestoreError)
   })
 
   it('leaves the occupant untouched when it refuses', async () => {
@@ -310,7 +310,7 @@ describe('restore', () => {
     const id = await store.trash('notes.md')
     await store.createDocument('notes.md', 'second')
 
-    await givenAsync(expect(store.restore(id)).rejects.toThrow(EntryExistsError))
+    await givenAsync(expect(store.restore({ entryId: id, paths: [''] })).rejects.toThrow(BlockedRestoreError))
 
     await expect(store.read('notes.md')).resolves.toBe('second')
   })
@@ -320,17 +320,19 @@ describe('restore', () => {
     const id = await store.trash('notes.md')
     await store.createDocument('notes.md', 'second')
 
-    await givenAsync(expect(store.restore(id)).rejects.toThrow(EntryExistsError))
+    await givenAsync(expect(store.restore({ entryId: id, paths: [''] })).rejects.toThrow(BlockedRestoreError))
 
     await expect(store.listTrash()).resolves.toHaveLength(1)
   })
 
   it('throws DocumentNotFoundError for an unknown entry', async () => {
-    await expect(store.restore('00000000-0000-4000-8000-000000000000')).rejects.toThrow(DocumentNotFoundError)
+    await expect(store.restore({ entryId: '00000000-0000-4000-8000-000000000000', paths: [''] })).rejects.toThrow(
+      DocumentNotFoundError,
+    )
   })
 
   it('rejects an entry id that is not a uuid, which is what keeps it out of the path', async () => {
-    await expect(store.restore('../../escape')).rejects.toThrow(InvalidPathError)
+    await expect(store.restore({ entryId: '../../escape', paths: [''] })).rejects.toThrow(InvalidPathError)
   })
 
   it('throws DocumentNotFoundError when the payload is gone but the metadata is not', async () => {
@@ -338,7 +340,7 @@ describe('restore', () => {
     const id = await store.trash('notes.md')
     await fs.rm(trashPath(id, TRASH_PAYLOAD_NAME))
 
-    await expect(store.restore(id)).rejects.toThrow(DocumentNotFoundError)
+    await expect(store.restore({ entryId: id, paths: [''] })).rejects.toThrow(DocumentNotFoundError)
   })
 })
 

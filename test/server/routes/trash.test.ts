@@ -123,7 +123,15 @@ describe('GET /api/trash', () => {
   })
 })
 
-describe('POST /api/trash/:entryId/restore', () => {
+async function restoreRequest(entryId: string, paths: readonly string[]): Promise<Response> {
+  return await app.request(`/api/trash/${entryId}/restores`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  })
+}
+
+describe('POST /api/trash/:entryId/restores', () => {
   async function trashed(): Promise<string> {
     await store.createDocument('notes.md', '# hello')
     return await store.trash('notes.md')
@@ -132,13 +140,13 @@ describe('POST /api/trash/:entryId/restore', () => {
   it('puts the entry back and reports where', async () => {
     const id = await trashed()
 
-    const res = await app.request(`/api/trash/${id}/restore`, { method: 'POST' })
+    const res = await restoreRequest(id, [''])
 
     const body: unknown = await res.json()
 
     expect({ status: res.status, body, restored: await store.read('notes.md') }).toStrictEqual({
       status: 200,
-      body: { path: 'notes.md' },
+      body: { restored: ['notes.md'], entryRemains: false },
       restored: '# hello',
     })
   })
@@ -147,19 +155,32 @@ describe('POST /api/trash/:entryId/restore', () => {
     const id = await trashed()
     await store.createDocument('notes.md', 'something else')
 
-    const res = await app.request(`/api/trash/${id}/restore`, { method: 'POST' })
+    const res = await restoreRequest(id, [''])
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 409, code: 'ALREADY_EXISTS' })
   })
 
+  it('refuses a body that names no paths at all', async () => {
+    await store.createDocument('notes.md', '# hello')
+    const id = await store.trash('notes.md')
+
+    const res = await app.request(`/api/trash/${id}/restores`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paths: [] }),
+    })
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
+  })
+
   it('returns 404 for an unknown entry', async () => {
-    const res = await app.request('/api/trash/00000000-0000-4000-8000-000000000000/restore', { method: 'POST' })
+    const res = await restoreRequest('00000000-0000-4000-8000-000000000000', [''])
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it('rejects an entry id that is not a uuid', async () => {
-    const res = await app.request('/api/trash/not-a-uuid/restore', { method: 'POST' })
+    const res = await restoreRequest('not-a-uuid', [''])
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
@@ -177,6 +198,19 @@ describe('DELETE /api/trash/:entryId', () => {
     })
 
     await expect(store.listTrash()).resolves.toStrictEqual([])
+  })
+
+  it('refuses a body that names no paths at all', async () => {
+    await store.createDocument('notes.md', '# hello')
+    const id = await store.trash('notes.md')
+
+    const res = await app.request(`/api/trash/${id}/restores`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paths: [] }),
+    })
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 
   it('returns 404 for an unknown entry', async () => {
