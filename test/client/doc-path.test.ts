@@ -6,7 +6,8 @@ import {
   displayPathFromPath,
   docUrlFor,
   documentIdFromPath,
-  namesFolderIndex,
+  folderIndexAlternateFromPath,
+  TestOnly as docPathTestOnly,
   pathAfterMove,
   titleFor,
 } from '../../src/client/doc-path.ts'
@@ -112,6 +113,8 @@ describe('displayPathFromPath', () => {
   })
 })
 
+const { namesFolderIndex } = docPathTestOnly
+
 describe('namesFolderIndex', () => {
   it('is true for a folder url, which may legitimately have no index yet', () => {
     expect(namesFolderIndex('/doc/journal/')).toBe(true)
@@ -148,5 +151,19 @@ describe('titleFor', () => {
 
   it('has nothing to say at the store root, so the rendered title stands', () => {
     expect(titleFor('')).toBe('')
+  })
+})
+
+describe('folderIndexAlternateFromPath', () => {
+  it('names the other index a folder url could mean', () => {
+    expect(folderIndexAlternateFromPath('/doc/journal/')).toBe('journal/index.txt')
+  })
+
+  it('names the one at the store root', () => {
+    expect(folderIndexAlternateFromPath('/doc/')).toBe('index.txt')
+  })
+
+  it('offers nothing for a url that already names a document', () => {
+    expect(folderIndexAlternateFromPath('/doc/journal/a.md')).toBeNull()
   })
 })

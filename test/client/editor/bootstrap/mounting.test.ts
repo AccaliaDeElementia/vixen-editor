@@ -595,3 +595,66 @@ describe('long lines', () => {
     expect(view.contentDOM.classList.contains('cm-lineWrapping')).toBe(true)
   })
 })
+
+describe('a folder index that is not index.md', () => {
+  function holding(stored: string): Session {
+    return fakeSession({
+      load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: id === stored }),
+    })
+  }
+
+  it('opens index.txt when the folder has no index.md', async () => {
+    const view = await openEditor({ root, pathname: '/doc/journal/', session: holding('journal/index.txt') })
+
+    expect(view.state.doc.toString()).toBe('# journal/index.txt')
+  })
+
+  it('edits it under its own name, so saving cannot create index.md beside it', async () => {
+    await openEditor({ root, pathname: '/doc/journal/', session: holding('journal/index.txt') })
+
+    expect(statusText(root)).toContain('Editing journal/index.txt')
+  })
+
+  it('writes a save back to the index the folder actually holds', async () => {
+    const view = await openEditor({ root, pathname: '/doc/journal/', session: holding('journal/index.txt') })
+    view.dispatch({ changes: { from: view.state.doc.length, insert: '\nmore' } })
+
+    await pressSave(view, root)
+
+    expect(record.saved.map((write) => write.id)).toStrictEqual(['journal/index.txt'])
+  })
+
+  it('asks for index.md first, so a folder holding both opens the markdown one', async () => {
+    const loaded: string[] = []
+    const session = fakeSession({
+      load: (id: string) => {
+        loaded.push(id)
+
+        return Promise.resolve({ content: `# ${id}`, stored: true })
+      },
+    })
+
+    await openEditor({ root, pathname: '/doc/journal/', session })
+
+    expect(loaded).toStrictEqual(['journal/index.md'])
+  })
+
+  it('still offers a new index.md when the folder holds neither', async () => {
+    const view = await openEditor({ root, pathname: '/doc/journal/', session: holding('no index at all') })
+
+    expect(view.state.doc.toString()).toContain('# journal/index.md')
+  })
+
+  it('reports the folder unreachable when the second index cannot be read', async () => {
+    const session = fakeSession({
+      load: (id: string) =>
+        id === 'journal/index.txt'
+          ? Promise.reject(new Error('offline'))
+          : Promise.resolve({ content: '', stored: false }),
+    })
+
+    await openEditor({ root, pathname: '/doc/journal/', session })
+
+    expect(statusText(root)).toContain('offline')
+  })
+})

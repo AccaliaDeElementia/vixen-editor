@@ -3,6 +3,7 @@
 import { basenameOf } from './link-paths.ts'
 
 export const FOLDER_INDEX_NAME = 'index.md'
+export const FOLDER_INDEX_ALTERNATE = 'index.txt'
 
 const FILE_KINDS = ['document', 'image'] as const
 const ENTRY_KINDS = [...FILE_KINDS, 'folder'] as const

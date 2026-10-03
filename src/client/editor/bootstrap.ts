@@ -4,7 +4,13 @@ import { Prec, type EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
-import { displayPathFromPath, docUrlFor, documentIdFromPath, namesFolderIndex, pathAfterMove } from '../doc-path.ts'
+import {
+  displayPathFromPath,
+  docUrlFor,
+  documentIdFromPath,
+  folderIndexAlternateFromPath,
+  pathAfterMove,
+} from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
 import { interceptNavigation, openDocumentIn, type Navigator } from '../navigation.ts'
@@ -29,7 +35,8 @@ import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
-import { createSession, type LoadedDocument, type Session } from './session.ts'
+import { createSession, type Session } from './session.ts'
+import { resolveIndex } from './folder-index.ts'
 import { guardUnload } from './unload.ts'
 import { describeRefusal } from './leaving.ts'
 import { watchFreshness } from './freshness.ts'
@@ -65,16 +72,6 @@ interface BootstrapOptions {
   dialogs?: Dialogs
   freshnessMs?: number
   listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
-}
-
-type LoadOutcome = { reached: true; document: LoadedDocument } | { reached: false; error: unknown }
-
-async function loadOrReport(session: Session, id: string): Promise<LoadOutcome> {
-  try {
-    return { reached: true, document: await session.load(id) }
-  } catch (error) {
-    return { reached: false, error }
-  }
 }
 
 function reportUnreachable(root: ParentNode, at: string, error: unknown): string {
@@ -339,8 +336,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     return `${template}\n${cheatsheet()}`
   }
 
-  async function showDocument(entryPath: string, shown: string, isFolderIndex: boolean): Promise<void> {
-    const outcome = await loadOrReport(session, entryPath)
+  async function showDocument(entryPath: string, shown: string, alternate: string | null): Promise<void> {
+    const outcome = await resolveIndex(session, entryPath, alternate)
     if (!outcome.reached) {
       emptyTheBuffer()
       workspace.show('unreachable', shown)
@@ -349,25 +346,27 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       return
     }
 
-    const { document: loaded } = outcome
+    const { entryPath: opened, loaded } = outcome
     const { content: template, stored } = loaded
-    if (!stored && !isFolderIndex) {
-      showMissing(entryPath, shown)
+    if (!stored && alternate === null) {
+      showMissing(opened, shown)
 
       return
     }
 
-    const initial = stored ? template : await withCheatsheetIfNew(template, entryPath)
+    openDocument.commit(opened)
 
-    const caret = recallCaret(entryPath, initial.length)
+    const initial = stored ? template : await withCheatsheetIfNew(template, opened)
+
+    const caret = recallCaret(opened, initial.length)
     caretPosition = caret
     view.setState(stateFor(initial, caret))
-    holder.follow(view, entryPath)
+    holder.follow(view, opened)
     autosave.reset(initial)
     statusBar.showWordCount(initial)
     view.dispatch({ effects: EditorView.scrollIntoView(caret) })
     workspace.show('document', shown)
-    setStatus(`Editing ${entryPath} — press Ctrl/Cmd+S to save`)
+    setStatus(`Editing ${opened} — press Ctrl/Cmd+S to save`)
   }
 
   async function openPath(target: string): Promise<void> {
@@ -393,7 +392,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       return
     }
 
-    await showDocument(documentId(), shown, namesFolderIndex(target))
+    await showDocument(documentId(), shown, folderIndexAlternateFromPath(target))
   }
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {

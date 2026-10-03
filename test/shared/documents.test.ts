@@ -3,6 +3,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DOCUMENT_EXTENSIONS,
+  FOLDER_INDEX_ALTERNATE,
   FOLDER_INDEX_NAME,
   UPLOAD_EXTENSIONS,
   classifyFile,
@@ -70,5 +72,11 @@ describe('classifyFile', () => {
 
   it('agrees that every uploadable extension is one kind or the other', () => {
     expect(UPLOAD_EXTENSIONS.filter((extension) => classifyFile(`file${extension}`) === null)).toStrictEqual([])
+  })
+})
+
+describe('the names a folder index may have', () => {
+  it('covers every document extension, in the order they are preferred', () => {
+    expect([extensionOf(FOLDER_INDEX_NAME), extensionOf(FOLDER_INDEX_ALTERNATE)]).toStrictEqual(DOCUMENT_EXTENSIONS)
   })
 })

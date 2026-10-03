@@ -1,7 +1,7 @@
 'use sanity'
 
 import { SEQUENCE_START } from '../shared/sequences.ts'
-import { FOLDER_INDEX_NAME } from '../shared/documents.ts'
+import { FOLDER_INDEX_ALTERNATE, FOLDER_INDEX_NAME } from '../shared/documents.ts'
 import { DOC_PREFIX } from '../shared/page-urls.ts'
 
 const TITLE_SEGMENTS = 2
@@ -21,7 +21,7 @@ function decodedPath(pathname: string): string {
   return rest.split('/').map(decodeSegment).join('/')
 }
 
-export function namesFolderIndex(pathname: string): boolean {
+function namesFolderIndex(pathname: string): boolean {
   const decoded = decodedPath(pathname)
 
   return decoded === '' || decoded.endsWith('/')
@@ -31,6 +31,12 @@ export function documentIdFromPath(pathname: string): string {
   const decoded = decodedPath(pathname)
 
   return namesFolderIndex(pathname) ? `${decoded}${FOLDER_INDEX_NAME}` : decoded
+}
+
+export function folderIndexAlternateFromPath(pathname: string): string | null {
+  if (!namesFolderIndex(pathname)) return null
+
+  return `${decodedPath(pathname)}${FOLDER_INDEX_ALTERNATE}`
 }
 
 export function displayPathFromPath(pathname: string): string {
@@ -57,3 +63,5 @@ export function pathAfterMove({ from, to }: EntryMove, entryPath: string): strin
 
   return entryPath.startsWith(`${from}/`) ? `${to}${entryPath.slice(from.length)}` : entryPath
 }
+
+export const TestOnly = { namesFolderIndex }
