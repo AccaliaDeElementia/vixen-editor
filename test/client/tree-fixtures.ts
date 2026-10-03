@@ -2,6 +2,7 @@
 
 import { vi } from 'vitest'
 
+import { initFileTree } from '../../src/client/files/index.ts'
 import { ROW_SELECTOR } from '../../src/client/files/tree-view.ts'
 import type { TrashNode } from '../../src/client/files/tree-model.ts'
 
@@ -76,4 +77,17 @@ export function rowFor(entryPath: string): HTMLElement {
 
 export function statusText(): string {
   return [...document.querySelectorAll('#status .toast')].at(-1)?.textContent ?? ''
+}
+
+const standing: Array<() => void> = []
+
+export async function mountTree(options: Parameters<typeof initFileTree>[0] = {}): Promise<() => Promise<void>> {
+  const { settled, teardownFileTree } = await initFileTree(options)
+  standing.push(teardownFileTree)
+
+  return settled
+}
+
+export function closeTrees(): void {
+  for (const teardownFileTree of standing.splice(0)) teardownFileTree()
 }

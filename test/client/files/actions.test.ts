@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TestOnly } from '../../../src/client/files/actions.ts'
 import { FilesRequestError } from '../../../src/client/files/files-client.ts'
-import { initFileTree } from '../../../src/client/files/index.ts'
 import { onDeletionPending, onEntryTrashed, type TrashedEntry } from '../../../src/client/entry-deletion.ts'
 import { onInsertRequested } from '../../../src/client/insert-entry.ts'
 import { openDocumentIn } from '../../../src/client/navigation.ts'
@@ -14,7 +13,7 @@ import type { Dialogs } from '../../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import { cast } from '../../cast.ts'
 import { given } from '../../conditions.ts'
-import { fakeClient, rowFor, statusText, TRASHED, treePage, type FakeClient } from '../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, statusText, treePage, type FakeClient } from '../tree-fixtures.ts'
 
 const { trashActionOf } = TestOnly
 
@@ -56,7 +55,7 @@ let settled: () => Promise<void> = () => Promise.resolve()
 let opened: string[] = []
 
 async function start(pathname = '/doc/'): Promise<void> {
-  settled = await initFileTree({
+  settled = await mountTree({
     root: host,
     pathname,
     client: cast<FilesClient>(client),

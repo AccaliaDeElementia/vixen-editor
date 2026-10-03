@@ -4,6 +4,7 @@ import { docUrlFor } from '../doc-path.ts'
 import { errorMessage } from '../error-message.ts'
 import type { FilesClient } from '../files/files-client.ts'
 import { entryPathsIn, type TrashNode } from '../files/tree-model.ts'
+import { announceStoreChanged } from '../store-changed.ts'
 import type { Toast } from '../toast.ts'
 
 const WHAT_SELECTOR = '#deleted-what'
@@ -62,6 +63,7 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
   async function restoreEntry(target: TrashNode): Promise<void> {
     try {
       await options.client.restore(target.id)
+      announceStoreChanged(options.root)
       options.openUrl(docUrlFor(target.originalPath))
     } catch (error) {
       options.toast.error(`Restore failed: ${errorMessage(error)}`)

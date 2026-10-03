@@ -2,14 +2,14 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { initFileTree } from '../../../../src/client/files/index.ts'
 import { readOpenFolders } from '../../../../src/client/files/open-folders.ts'
+import { announceStoreChanged } from '../../../../src/client/store-changed.ts'
 import { parseTree } from '../../../../src/client/files/tree-model.ts'
 import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
-import { fakeClient, rowFor, rows, TRASHED, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, rows, treePage } from '../../tree-fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [
@@ -34,7 +34,7 @@ const SAMPLE = parseTree({
 let host: HTMLElement = document.createElement('div')
 
 async function start(pathname = '/doc/', client = fakeClient(SAMPLE)): Promise<void> {
-  await initFileTree({ root: host, pathname, client: cast<FilesClient>(client) })
+  await mountTree({ root: host, pathname, client: cast<FilesClient>(client) })
 }
 
 function paths(): Array<string | undefined> {
@@ -110,7 +110,7 @@ describe('defaults', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    await initFileTree()
+    await mountTree()
 
     expect(paths()).toStrictEqual(['a.md', TRASH_PATH])
     vi.unstubAllGlobals()
@@ -384,7 +384,7 @@ describe('markup with no tree to render', () => {
     const bare = document.createElement('div')
     document.body.append(bare)
 
-    const settled = await initFileTree({ root: bare, client: cast<FilesClient>(fakeClient(SAMPLE)) })
+    const settled = await mountTree({ root: bare, client: cast<FilesClient>(fakeClient(SAMPLE)) })
 
     await expect(settled()).resolves.toBeUndefined()
   })
@@ -394,8 +394,23 @@ describe('markup with no tree to render', () => {
     document.body.append(bare)
     const client = fakeClient(SAMPLE)
 
-    await initFileTree({ root: bare, client: cast<FilesClient>(client) })
+    await mountTree({ root: bare, client: cast<FilesClient>(client) })
 
     expect(client.tree).not.toHaveBeenCalled()
+  })
+})
+
+describe('something else changing the store', () => {
+  it('redraws the tree, so a restore elsewhere does not leave it stale', async () => {
+    const client = fakeClient(SAMPLE)
+    const settled = await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(client) })
+    given(() => {
+      expect(client.tree).toHaveBeenCalledTimes(1)
+    })
+
+    announceStoreChanged(host)
+    await settled()
+
+    expect(client.tree).toHaveBeenCalledTimes(2)
   })
 })

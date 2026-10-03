@@ -9,6 +9,8 @@ import type { Toast } from '../../../src/client/toast.ts'
 
 import { cast } from '../../cast.ts'
 
+import { onStoreChanged } from '../../../src/client/store-changed.ts'
+
 import { renderSection } from '../templates.ts'
 
 const DELETED_AT = '2026-09-01T10:00:00.000Z'
@@ -171,6 +173,41 @@ describe('an entry that is in the trash', () => {
     await afterRestore()
 
     expect(opened).toStrictEqual(['/doc/journal/a.md'])
+  })
+
+  it('tells the rest of the app the store changed, so the file browser stops showing it deleted', async () => {
+    client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
+    const root = page()
+    const heard: string[] = []
+    onStoreChanged(root, () => {
+      heard.push('changed')
+    })
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+
+    await afterRestore()
+
+    expect(heard).toStrictEqual(['changed'])
+  })
+
+  it('says nothing changed when the restore was refused', async () => {
+    client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
+    client.restore.mockRejectedValue(new Error('Already exists'))
+    const root = page()
+    const heard: string[] = []
+    onStoreChanged(root, () => {
+      heard.push('changed')
+    })
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+
+    await afterReport()
+
+    expect(heard).toStrictEqual([])
   })
 
   it('reports a refused restore rather than looking as though nothing happened', async () => {

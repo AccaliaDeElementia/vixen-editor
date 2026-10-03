@@ -4,6 +4,7 @@ import { openDocumentIn, type OpenDocument } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 import { announceDocumentMoved } from '../document-moved.ts'
 import { createToast } from '../toast.ts'
+import { onStoreChanged } from '../store-changed.ts'
 
 import {
   bindActions,
@@ -53,10 +54,15 @@ interface Mounted {
   navigate: (url: string) => void
 }
 
-export async function initFileTree(options: FileTreeOptions = {}): Promise<() => Promise<void>> {
+interface FileTree {
+  settled: () => Promise<void>
+  teardownFileTree: () => void
+}
+
+export async function initFileTree(options: FileTreeOptions = {}): Promise<FileTree> {
   const root = options.root ?? document
   const tree = root.querySelector<HTMLElement>(TREE_SELECTOR)
-  if (tree === null) return collectRuns().settled
+  if (tree === null) return { settled: collectRuns().settled, teardownFileTree: () => undefined }
 
   return await runFileTree({
     tree,
@@ -68,14 +74,7 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<() =>
   })
 }
 
-async function runFileTree({
-  tree,
-  root,
-  client,
-  dialogs,
-  openDocument,
-  navigate,
-}: Mounted): Promise<() => Promise<void>> {
+async function runFileTree({ tree, root, client, dialogs, openDocument, navigate }: Mounted): Promise<FileTree> {
   const toast = createToast(root)
   let nodes: readonly TreeNode[] = []
   let trash: readonly TrashNode[] = []
@@ -326,11 +325,19 @@ async function runFileTree({
     tree,
   )
 
-  try {
-    await load()
-  } catch (error) {
-    toast.error(`Could not load the file browser: ${errorMessage(error)}`)
+  async function reload(): Promise<void> {
+    try {
+      await load()
+    } catch (error) {
+      toast.error(`Could not load the file browser: ${errorMessage(error)}`)
+    }
   }
 
-  return runs.settled
+  const { offStoreChanged } = onStoreChanged(root, () => {
+    runs.track(reload())
+  })
+
+  await reload()
+
+  return { settled: runs.settled, teardownFileTree: offStoreChanged }
 }

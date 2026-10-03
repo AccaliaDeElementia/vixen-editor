@@ -84,3 +84,18 @@ test('what reaches the trash is what was in the buffer, not what was on disk', a
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('restoring from a trash entry page brings the file back into the browser', async ({ page, request }) => {
+  const name = `stale-${String(Date.now())}.md`
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#deleted-restore')).toBeVisible())
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${name}"]`)).toHaveCount(0))
+
+  await page.locator('#deleted-restore').click()
+
+  await expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})

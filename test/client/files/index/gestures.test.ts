@@ -2,13 +2,12 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { initFileTree } from '../../../../src/client/files/index.ts'
 import { onInsertRequested } from '../../../../src/client/insert-entry.ts'
 import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 
 import { cast } from '../../../cast.ts'
-import { fakeClient, rowFor, statusText, TRASHED, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, statusText, treePage } from '../../tree-fixtures.ts'
 
 const SAMPLE = [
   { name: 'journal', path: 'journal', kind: 'folder' as const, children: [] },
@@ -20,7 +19,7 @@ let host: HTMLElement = document.createElement('div')
 let opened: string[] = []
 
 async function start(pathname = '/doc/'): Promise<void> {
-  await initFileTree({
+  await mountTree({
     root: host,
     pathname,
     client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])),
