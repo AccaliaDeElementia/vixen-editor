@@ -4,6 +4,7 @@ import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from '@playwright/test'
 
 import { deletedEntry } from './fixtures.ts'
+import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
 test('a trashed document is offered back at the path it came from', async ({ page, request }) => {
   const name = `trashed-${String(Date.now())}.md`
@@ -98,4 +99,96 @@ test('restoring from a trash entry page brings the file back into the browser', 
   await expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible()
 
   await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a trash entry is deleted for good from its own page, not from the file browser', async ({ page, request }) => {
+  const name = `purged-${String(Date.now())}.md`
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#deleted-purge')).toBeVisible())
+  await page.locator('#deleted-purge').click()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
+  await page.locator('#file-dialog-confirm').click()
+
+  await expect(page.locator('#deleted-what')).toHaveText(`${name} was deleted for good.`)
+})
+
+test('the file browser offers no trash buttons of its own', async ({ page, request }) => {
+  const name = `nobtn-${String(Date.now())}.md`
+  await deletedEntry(request, name)
+
+  await page.goto('/doc/')
+  await page.locator('.tree__row[data-kind="trash-root"]').click()
+  await givenAsync(expect(page.locator('[role="treeitem"][data-path^=".trash/"]').first()).toBeVisible())
+
+  await expect(page.locator('.tree__row button')).toHaveCount(0)
+})
+
+test('deleting the open image shows it in the trash, expanded and selected', async ({ page, request }) => {
+  const name = `shown-${String(Date.now())}.png`
+  await request.post('/api/files/uploads', {
+    multipart: { path: '', file: { name, mimeType: 'image/png', buffer: DECODABLE_64PX_PNG_BYTES } },
+  })
+
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible())
+  await page.locator(`.tree__row[data-path="${name}"]`).click()
+  await page.locator('#delete-entry').click()
+  await page.locator('#file-dialog-confirm').click()
+  await givenAsync(expect(page).toHaveURL(/\/trash\//v))
+
+  await expect(page.locator('.tree__row[data-kind="trash-root"]')).toHaveAttribute('aria-expanded', 'true')
+})
+
+test('the deleted entry is the one selected in the file browser', async ({ page, request }) => {
+  const name = `picked-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# picked' } })
+
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible())
+  await page.locator(`.tree__row[data-path="${name}"]`).click()
+  await page.locator('#delete-entry').click()
+  await page.locator('#file-dialog-confirm').click()
+  await givenAsync(expect(page).toHaveURL(/\/trash\//v))
+
+  const trashId = new URL(page.url()).pathname.split('/').at(-1) ?? ''
+  await expect(page.locator(`.tree__row[data-path=".trash/${trashId}"]`)).toHaveAttribute('aria-selected', 'true')
+})
+
+test('a restored file is selected, so the toolbar aims at where it came back to', async ({ page, request }) => {
+  const folder = `back-${String(Date.now())}`
+  const name = `${folder}/doc.md`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: name, content: '# back' } })
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#deleted-restore')).toBeVisible())
+  await page.locator('#deleted-restore').click()
+
+  await expect(page.locator(`.tree__row[data-path="${name}"]`)).toHaveAttribute('aria-selected', 'true')
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a new document after a restore lands beside it, not at the store root', async ({ page, request }) => {
+  const folder = `beside-${String(Date.now())}`
+  const name = `${folder}/doc.md`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: name, content: '# back' } })
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#deleted-restore')).toBeVisible())
+  await page.locator('#deleted-restore').click()
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${name}"]`)).toHaveAttribute('aria-selected', 'true'))
+
+  await page.locator('#new-document').click()
+  await page.locator('#file-dialog-entry').fill('fresh')
+  await page.locator('#file-dialog-confirm').click()
+
+  await expect(page.locator(`.tree__row[data-path="${folder}/fresh.md"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${folder}`)
 })

@@ -321,43 +321,6 @@
   }
 }
 
-.tree__actions {
-  display: flex;
-  margin-left: auto;
-  gap: 0.15em;
-}
-
-.tree__action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  min-height: 24px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: $muted;
-  cursor: pointer;
-
-  .icon {
-    font-size: 1.05em;
-  }
-
-  &:hover {
-    color: $body-color;
-  }
-
-  &:focus-visible {
-    outline: 2px solid $primary;
-    outline-offset: -2px;
-  }
-
-  &--danger:hover,
-  &--danger:focus-visible {
-    color: $danger;
-  }
-}
-
 .modal {
   padding: 0;
   border: 1px solid $border;
@@ -528,6 +491,10 @@
   &:focus-visible {
     outline: 2px solid $primary;
     outline-offset: 2px;
+  }
+
+  &--danger:hover {
+    background: $danger;
   }
 }
 

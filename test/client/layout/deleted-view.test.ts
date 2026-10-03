@@ -3,12 +3,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDeletedView, type DeletedView } from '../../../src/client/layout/deleted-view.ts'
+import type { Dialogs } from '../../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import type { TrashNode, TreeNode } from '../../../src/client/files/tree-model.ts'
 import type { Toast } from '../../../src/client/toast.ts'
 
 import { cast } from '../../cast.ts'
 
+import { onRevealRequested } from '../../../src/client/reveal-request.ts'
 import { onStoreChanged } from '../../../src/client/store-changed.ts'
 
 import { renderSection } from '../templates.ts'
@@ -20,9 +22,12 @@ interface Fake {
   trash: ReturnType<typeof vi.fn>
   tree: ReturnType<typeof vi.fn>
   restore: ReturnType<typeof vi.fn>
+  purge: ReturnType<typeof vi.fn>
 }
 
 let client: Fake = fakeClient()
+let confirms = true
+let asked: PromiseWithResolvers<void> = Promise.withResolvers()
 let opened: string[] = []
 let revealed: string[] = []
 let errors: string[] = []
@@ -35,6 +40,7 @@ function fakeClient(): Fake {
     trash: vi.fn().mockResolvedValue([]),
     tree: vi.fn().mockResolvedValue([]),
     restore: vi.fn().mockResolvedValue(undefined),
+    purge: vi.fn().mockResolvedValue(undefined),
   }
 }
 
@@ -58,6 +64,13 @@ function view(root: ParentNode): DeletedView {
   return createDeletedView({
     root,
     client: cast<FilesClient>(client),
+    dialogs: cast<Dialogs>({
+      confirm: () => {
+        asked.resolve()
+
+        return Promise.resolve(confirms)
+      },
+    }),
     toast,
     reveal: (at: string) => {
       revealed.push(at)
@@ -97,6 +110,8 @@ async function afterReport(): Promise<void> {
 beforeEach(() => {
   document.body.innerHTML = ''
   client = fakeClient()
+  confirms = true
+  asked = Promise.withResolvers()
   opened = []
   revealed = []
   errors = []
@@ -279,6 +294,16 @@ describe('an entry that is no longer in the trash', () => {
 
     expect(client.restore).not.toHaveBeenCalled()
   })
+
+  it('does nothing when the delete button is pressed anyway', async () => {
+    const root = page()
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    root.querySelector<HTMLButtonElement>('#deleted-purge')?.click()
+
+    expect(client.purge).not.toHaveBeenCalled()
+  })
 })
 
 describe('a second entry opened after the first', () => {
@@ -318,5 +343,128 @@ describe('markup that does not match', () => {
     expect(() => {
       view(bare).offer(ENTRY_ID)
     }).not.toThrow()
+  })
+})
+
+describe('deleting an entry for good', () => {
+  async function offering(): Promise<HTMLElement> {
+    client.trash.mockResolvedValue([trashed('journal/gone.md', 'document')])
+    const root = page()
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    return root
+  }
+
+  function pressPurge(root: ParentNode): void {
+    root.querySelector<HTMLButtonElement>('#deleted-purge')?.click()
+  }
+
+  function watchForChange(root: ParentNode): Promise<void> {
+    const changed: PromiseWithResolvers<void> = Promise.withResolvers()
+    onStoreChanged(root, () => {
+      changed.resolve()
+    })
+
+    return changed.promise
+  }
+
+  it('asks before destroying anything', async () => {
+    const root = await offering()
+    confirms = false
+
+    pressPurge(root)
+    await asked.promise
+
+    expect(client.purge).not.toHaveBeenCalled()
+  })
+
+  it('purges the entry once that is confirmed', async () => {
+    const root = await offering()
+    const changed = watchForChange(root)
+
+    pressPurge(root)
+    await changed
+
+    expect(client.purge).toHaveBeenCalledWith(ENTRY_ID)
+  })
+
+  it('says so afterwards, rather than still offering it back', async () => {
+    const root = await offering()
+    const changed = watchForChange(root)
+
+    pressPurge(root)
+    await changed
+
+    expect(textOf(root, '#deleted-what')).toBe('journal/gone.md was deleted for good.')
+  })
+
+  it('takes the actions away, since there is nothing left to restore', async () => {
+    const root = await offering()
+    const changed = watchForChange(root)
+
+    pressPurge(root)
+    await changed
+
+    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(true)
+  })
+
+  it('reports a refused purge rather than looking as though nothing happened', async () => {
+    const root = await offering()
+    client.purge.mockRejectedValue(new Error('gone already'))
+
+    pressPurge(root)
+    await afterReport()
+
+    expect(errors).toStrictEqual(['Delete failed: gone already'])
+  })
+})
+
+describe('keeping the file browser in step', () => {
+  function watchReveals(root: ParentNode): string[] {
+    const shown: string[] = []
+    onRevealRequested(root, (entryPath) => {
+      shown.push(entryPath)
+    })
+
+    return shown
+  }
+
+  it('asks it to show the entry being looked at', async () => {
+    client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
+    const root = page()
+    const shown = watchReveals(root)
+
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    expect(shown).toStrictEqual([`.trash/${ENTRY_ID}`])
+  })
+
+  it('asks it to show the restored path, so the toolbar aims at it', async () => {
+    client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
+    const root = page()
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+    const shown = watchReveals(root)
+
+    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    await afterRestore()
+
+    expect(shown).toStrictEqual(['journal/a.md'])
+  })
+
+  it('asks nothing when the restore was refused', async () => {
+    client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
+    client.restore.mockRejectedValue(new Error('Already exists'))
+    const root = page()
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+    const shown = watchReveals(root)
+
+    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    await afterReport()
+
+    expect(shown).toStrictEqual([])
   })
 })

@@ -1,15 +1,20 @@
 'use sanity'
 
 import { docUrlFor } from '../doc-path.ts'
+import { joinPath } from '../../shared/store-path.ts'
 import { errorMessage } from '../error-message.ts'
+import type { Dialogs } from '../files/dialogs.ts'
 import type { FilesClient } from '../files/files-client.ts'
 import { entryPathsIn, type TrashNode } from '../files/tree-model.ts'
+import { TRASH_PATH } from '../files/tree-view.ts'
+import { requestReveal } from '../reveal-request.ts'
 import { announceStoreChanged } from '../store-changed.ts'
 import type { Toast } from '../toast.ts'
 
 const WHAT_SELECTOR = '#deleted-what'
 const ACTIONS_SELECTOR = '#deleted-actions'
 const RESTORE_SELECTOR = '#deleted-restore'
+const PURGE_SELECTOR = '#deleted-purge'
 const BLOCKED_SELECTOR = '#deleted-blocked'
 
 export interface DeletedView {
@@ -19,6 +24,7 @@ export interface DeletedView {
 interface DeletedViewOptions {
   root: ParentNode
   client: FilesClient
+  dialogs: Dialogs
   toast: Toast
   reveal: (at: string) => void
   openUrl: (url: string) => void
@@ -28,6 +34,7 @@ interface Parts {
   what: HTMLElement
   actions: HTMLElement
   restore: HTMLButtonElement
+  purge: HTMLButtonElement
   blocked: HTMLElement
 }
 
@@ -35,11 +42,12 @@ function partsOf(root: ParentNode): Parts | null {
   const what = root.querySelector<HTMLElement>(WHAT_SELECTOR)
   const actions = root.querySelector<HTMLElement>(ACTIONS_SELECTOR)
   const restore = root.querySelector<HTMLButtonElement>(RESTORE_SELECTOR)
+  const purge = root.querySelector<HTMLButtonElement>(PURGE_SELECTOR)
   const blocked = root.querySelector<HTMLElement>(BLOCKED_SELECTOR)
 
-  if (what === null || actions === null || restore === null || blocked === null) return null
+  if (what === null || actions === null || restore === null || purge === null || blocked === null) return null
 
-  return { what, actions, restore, blocked }
+  return { what, actions, restore, purge, blocked }
 }
 
 function describe(entry: TrashNode): string {
@@ -57,17 +65,43 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
   const parts = partsOf(options.root)
   if (parts === null) return INERT
 
-  const { what, actions, restore, blocked } = parts
+  const { what, actions, restore, purge, blocked } = parts
   let entry: TrashNode | null = null
 
   async function restoreEntry(target: TrashNode): Promise<void> {
     try {
       await options.client.restore(target.id)
       announceStoreChanged(options.root)
+      requestReveal(options.root, target.originalPath)
       options.openUrl(docUrlFor(target.originalPath))
     } catch (error) {
       options.toast.error(`Restore failed: ${errorMessage(error)}`)
     }
+  }
+
+  async function purgeEntry(target: TrashNode): Promise<void> {
+    const confirmed = await options.dialogs.confirm({
+      title: 'Delete for good',
+      message: `${target.originalPath} cannot be brought back after this.`,
+      confirmLabel: 'Delete for good',
+    })
+    if (!confirmed) return
+
+    try {
+      await options.client.purge(target.id)
+      announceStoreChanged(options.root)
+      showPurged(target.originalPath)
+    } catch (error) {
+      options.toast.error(`Delete failed: ${errorMessage(error)}`)
+    }
+  }
+
+  function showPurged(originalPath: string): void {
+    entry = null
+    what.textContent = `${originalPath} was deleted for good.`
+    actions.hidden = true
+    blocked.hidden = true
+    options.reveal('')
   }
 
   function showGone(entryId: string): void {
@@ -84,6 +118,7 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
     actions.hidden = occupied
     blocked.hidden = !occupied
     blocked.textContent = occupied ? `${found.originalPath} is in use again, so this cannot be restored.` : ''
+    requestReveal(options.root, joinPath(TRASH_PATH, found.id))
     options.reveal(found.originalPath)
   }
 
@@ -101,6 +136,10 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
 
   restore.addEventListener('click', () => {
     if (entry !== null) void restoreEntry(entry)
+  })
+
+  purge.addEventListener('click', () => {
+    if (entry !== null) void purgeEntry(entry)
   })
 
   return {

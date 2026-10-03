@@ -365,7 +365,7 @@ describe('rowIndexOf', () => {
   })
 })
 
-describe('telling the two trash actions apart', () => {
+describe('a trash entry row', () => {
   const entry: TrashNode = {
     id: 'aaaa',
     originalPath: 'journal/gone.md',
@@ -373,50 +373,15 @@ describe('telling the two trash actions apart', () => {
     deletedAt: '2026-01-01T00:00:00.000Z',
   }
 
-  function actionButton(name: string): HTMLElement {
-    const found = tree.querySelector<HTMLElement>(`[data-action="${name}"]`)
-    if (found === null) throw new Error(`no ${name} button`)
-    return found
-  }
-
   beforeEach(() => {
     render({ trash: [entry], open: new Set([TRASH_PATH]) })
   })
 
-  it.each(['restore', 'purge'])('gives %s its own tooltip rather than the row deletion time', (action) => {
-    expect(actionButton(action).title).not.toContain('2026-01-01')
-  })
-
-  it.each([
-    ['restore', 'Restore journal/gone.md'],
-    ['purge', 'Delete journal/gone.md for good'],
-  ])('says what %s will do', (action, expected) => {
-    expect(actionButton(action).title).toBe(expected)
-  })
-
-  it.each(['restore', 'purge'])(
-    'gives %s a label matching its tooltip, for anyone reading rather than hovering',
-    (action) => {
-      expect(actionButton(action).getAttribute('aria-label')).toBe(actionButton(action).title)
-    },
-  )
-
-  it.each([
-    ['restore', 'restore'],
-    ['purge', 'delete_forever'],
-  ])('gives %s its own silhouette, so the two are not both trash cans', (action, expected) => {
-    expect(actionButton(action).querySelector('.icon')?.textContent).toBe(expected)
-  })
-
-  it('marks the irreversible action, so it can be coloured apart', () => {
-    expect(actionButton('purge').className).toContain('tree__action--danger')
-  })
-
-  it('leaves the reversible one unmarked', () => {
-    expect(actionButton('restore').className).not.toContain('tree__action--danger')
-  })
-
   it('keeps the deletion time on the row, where it belongs', () => {
     expect(rowFor(joinPath(TRASH_PATH, entry.id)).title).toContain('2026-01-01')
+  })
+
+  it('carries no buttons of its own, since the entry page owns those', () => {
+    expect(rowFor(joinPath(TRASH_PATH, entry.id)).querySelector('button')).toBeNull()
   })
 })

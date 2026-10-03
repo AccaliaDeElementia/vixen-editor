@@ -4,15 +4,10 @@ import { openDocumentIn, type OpenDocument } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 import { announceDocumentMoved } from '../document-moved.ts'
 import { createToast } from '../toast.ts'
+import { onRevealRequested } from '../reveal-request.ts'
 import { onStoreChanged } from '../store-changed.ts'
 
-import {
-  bindActions,
-  bindTrashActions,
-  updateArchiveLink,
-  updateInsertAvailability,
-  type ActionContext,
-} from './actions.ts'
+import { bindActions, updateArchiveLink, updateInsertAvailability, type ActionContext } from './actions.ts'
 import { createDialogs, type Dialogs } from './dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
@@ -254,16 +249,16 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     if (handleKey(event.key, current)) event.preventDefault()
   })
 
-  function selectAndFocus(entryPath: string): void {
+  function showPath(entryPath: string): void {
+    openFolders(ancestorsOf(entryPath))
     selected = entryPath
     draw(readOpenFolders())
     rows()[indexOfPath(entryPath)]?.scrollIntoView({ block: 'nearest' })
-    focusAt(indexOfPath(entryPath))
   }
 
   function revealPath(entryPath: string): void {
-    openFolders(ancestorsOf(entryPath))
-    selectAndFocus(entryPath)
+    showPath(entryPath)
+    focusAt(indexOfPath(entryPath))
   }
 
   function openPath(entryPath: string | null): void {
@@ -275,7 +270,9 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     const isFolder = folderPathsIn(nodes).includes(entryPath)
 
     openFolders(isFolder ? [...ancestorsOf(entryPath), entryPath] : ancestorsOf(entryPath))
-    selectAndFocus(entryPath)
+    selected = entryPath
+    draw(readOpenFolders())
+    focusAt(indexOfPath(entryPath))
 
     if (!isFolder) openPath(entryPath)
   }
@@ -310,7 +307,6 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     },
   }
   bindActions(context)
-  bindTrashActions(context, tree)
   bindDragAndDrop(
     {
       client,
@@ -338,7 +334,15 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     runs.track(reload())
   })
 
+  const { offRevealRequested } = onRevealRequested(root, showPath)
+
   await reload()
 
-  return { settled: runs.settled, teardownFileTree: offStoreChanged }
+  return {
+    settled: runs.settled,
+    teardownFileTree: () => {
+      offStoreChanged()
+      offRevealRequested()
+    },
+  }
 }

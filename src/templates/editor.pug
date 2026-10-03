@@ -36,6 +36,7 @@ block content
       p.view__message#deleted-what
       p.view__actions#deleted-actions
         button.view__action#deleted-restore(type='button' data-default-action) Restore
+        button.view__action.view__action--danger#deleted-purge(type='button') Delete for good
       p.view__message#deleted-blocked(hidden)
     section.view#view-unreachable(tabindex='-1' aria-label='Unreachable' hidden)
       h1.view__title Cannot reach the server

@@ -3,10 +3,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { readOpenFolders } from '../../../../src/client/files/open-folders.ts'
+import { requestReveal } from '../../../../src/client/reveal-request.ts'
 import { announceStoreChanged } from '../../../../src/client/store-changed.ts'
 import { parseTree } from '../../../../src/client/files/tree-model.ts'
 import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { joinPath } from '../../../../src/shared/store-path.ts'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
 import { TRASHED, fakeClient, mountTree, rowFor, rows, treePage } from '../../tree-fixtures.ts'
@@ -412,5 +414,37 @@ describe('something else changing the store', () => {
     await settled()
 
     expect(client.tree).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('being asked to show an entry', () => {
+  it('opens the trash so a deleted entry can be seen', async () => {
+    await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])) })
+    given(() => {
+      expect(rowFor(TRASH_PATH).getAttribute('aria-expanded')).toBe('false')
+    })
+
+    requestReveal(host, joinPath(TRASH_PATH, TRASHED.id))
+
+    expect(rowFor(TRASH_PATH).getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('selects the entry, so it is obvious which one is meant', async () => {
+    await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])) })
+
+    requestReveal(host, joinPath(TRASH_PATH, TRASHED.id))
+
+    expect(rowFor(joinPath(TRASH_PATH, TRASHED.id)).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('leaves the keyboard where it was, since the reader did not ask for it', async () => {
+    await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])) })
+    const elsewhere = document.createElement('button')
+    document.body.append(elsewhere)
+    elsewhere.focus()
+
+    requestReveal(host, joinPath(TRASH_PATH, TRASHED.id))
+
+    expect(document.activeElement).toBe(elsewhere)
   })
 })

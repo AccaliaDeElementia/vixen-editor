@@ -1,9 +1,7 @@
 'use sanity'
 
-import { given, givenAsync } from '../test/conditions.ts'
+import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from '@playwright/test'
-
-import { stringFieldOf } from './json.ts'
 
 test('the toolbar creates a folder through a real modal dialog', async ({ page, request }) => {
   const name = `made-${String(Date.now())}`
@@ -134,33 +132,4 @@ test('closing the explorer takes its actions away rather than disabling them', a
   await page.locator('#toggle-explorer').click()
 
   await expect(page.locator('#new-folder')).toBeHidden()
-})
-
-test('the trash actions are distinguishable by sight and by tooltip', async ({ page, request }) => {
-  const name = `bin-${String(Date.now())}.md`
-  await request.post('/api/files/documents', { data: { path: name } })
-  const trashed = await request.delete(`/api/files/entries/${name}`)
-  const trashId = await stringFieldOf(trashed, 'trashId')
-
-  await page.goto('/doc/')
-  await page.locator('.tree__row[data-kind="trash-root"]').click()
-
-  const restore = page.locator(`[data-action="restore"][data-trash-id="${trashId}"]`)
-  const purge = page.locator(`[data-action="purge"][data-trash-id="${trashId}"]`)
-
-  await givenAsync(expect(restore).toHaveAttribute('title', `Restore ${name}`))
-  await givenAsync(expect(purge).toHaveAttribute('title', `Delete ${name} for good`))
-
-  const restoreBox = await restore.locator('.icon').boundingBox()
-  const purgeBox = await purge.locator('.icon').boundingBox()
-  given(() => {
-    expect(restoreBox?.width ?? 0).toBeGreaterThan(0)
-  })
-  given(() => {
-    expect(purgeBox?.width ?? 0).toBeGreaterThan(0)
-  })
-
-  await expect(purge).toHaveClass(/tree__action--danger/v)
-
-  await request.delete(`/api/trash/${trashId}`)
 })

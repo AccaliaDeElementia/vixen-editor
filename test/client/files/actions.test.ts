@@ -2,7 +2,6 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TestOnly } from '../../../src/client/files/actions.ts'
 import { FilesRequestError } from '../../../src/client/files/files-client.ts'
 import { onDeletionPending, onEntryTrashed, type TrashedEntry } from '../../../src/client/entry-deletion.ts'
 import { onInsertRequested } from '../../../src/client/insert-entry.ts'
@@ -14,9 +13,7 @@ import type { Dialogs } from '../../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import { cast } from '../../cast.ts'
 import { given } from '../../conditions.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, statusText, treePage, type FakeClient } from '../tree-fixtures.ts'
-
-const { trashActionOf } = TestOnly
+import { fakeClient, mountTree, rowFor, statusText, treePage, type FakeClient } from '../tree-fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [
@@ -333,105 +330,6 @@ describe('revealing the open document', () => {
     press('#reveal-document')
 
     expect(rowFor('journal/entry.md').getAttribute('aria-selected')).toBe('true')
-  })
-})
-
-describe('trash actions', () => {
-  beforeEach(() => {
-    client = fakeClient(SAMPLE, [TRASHED])
-  })
-
-  it('restores an entry', async () => {
-    await start()
-    rowFor(TRASH_PATH).click()
-
-    document.querySelector<HTMLElement>('[data-action="restore"]')?.click()
-
-    await settled()
-
-    expect(client.restore).toHaveBeenCalledWith('aaaa')
-  })
-
-  it('asks before purging, because that cannot be undone', async () => {
-    await start()
-    rowFor(TRASH_PATH).click()
-
-    document.querySelector<HTMLElement>('[data-action="purge"]')?.click()
-
-    await settled()
-    given(() => {
-      expect(client.purge).toHaveBeenCalledWith('aaaa')
-    })
-    expect(dialogs.confirm).toHaveBeenCalled()
-  })
-
-  it('leaves the entry alone when the purge is declined', async () => {
-    dialogs.confirm.mockResolvedValue(false)
-    await start()
-    rowFor(TRASH_PATH).click()
-
-    document.querySelector<HTMLElement>('[data-action="purge"]')?.click()
-    await settled()
-    given(() => {
-      expect(client.tree).toHaveBeenCalledTimes(2)
-    })
-
-    expect(client.purge).not.toHaveBeenCalled()
-  })
-
-  it('does not toggle the trash open state when an action is pressed', async () => {
-    await start()
-    rowFor(TRASH_PATH).click()
-
-    document.querySelector<HTMLElement>('[data-action="restore"]')?.click()
-
-    expect(document.querySelectorAll('[role="treeitem"][data-trash-id]').length).toBeGreaterThan(0)
-  })
-
-  it('reports a failed restore', async () => {
-    client.restore.mockRejectedValue(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS', []))
-    await start()
-    rowFor(TRASH_PATH).click()
-
-    document.querySelector<HTMLElement>('[data-action="restore"]')?.click()
-
-    await settled()
-
-    expect(statusText()).toContain('Already exists')
-  })
-})
-
-describe('trashActionOf', () => {
-  it('reads the action and the entry from a button', () => {
-    document.body.innerHTML = '<button data-action="purge" data-trash-id="abc"></button>'
-
-    expect(trashActionOf(document.querySelector('button'))).toStrictEqual({ action: 'purge', trashId: 'abc' })
-  })
-
-  it('finds the button when the event came from something inside it', () => {
-    document.body.innerHTML = '<button data-action="restore" data-trash-id="abc"><span></span></button>'
-
-    expect(trashActionOf(document.querySelector('span'))).toMatchObject({ action: 'restore' })
-  })
-
-  it('reports nothing for an element that is not an action', () => {
-    document.body.innerHTML = '<div id="plain"></div>'
-
-    expect(trashActionOf(document.querySelector('#plain'))).toBeNull()
-  })
-
-  it('reports nothing for an action button carrying no entry', () => {
-    document.body.innerHTML = '<button data-action="purge"></button>'
-
-    expect(trashActionOf(document.querySelector('button'))).toBeNull()
-  })
-
-  it('reports nothing for a target that is not an element at all', () => {
-    expect(trashActionOf(new EventTarget())).toBeNull()
-  })
-
-  it('reports nothing for no target', () => {
-    expect(trashActionOf(null)).toBeNull()
   })
 })
 

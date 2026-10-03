@@ -296,6 +296,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const deletedView = createDeletedView({
     root,
     client: files,
+    dialogs,
     toast,
     openUrl,
     reveal: (at) => {

@@ -109,50 +109,6 @@ function row(options: RowOptions): HTMLElement {
   return element
 }
 
-interface ActionSpec {
-  name: string
-  glyph: string
-  label: string
-  danger: boolean
-}
-
-function action(spec: ActionSpec, entry: TrashNode): HTMLElement {
-  const { name, glyph, label: description, danger } = spec
-  const { id } = entry
-  const element = document.createElement('button')
-  element.type = 'button'
-  element.className = danger ? 'tree__action tree__action--danger' : 'tree__action'
-  element.dataset.action = name
-  element.dataset.trashId = id
-  element.setAttribute('aria-label', description)
-
-  element.title = description
-
-  const symbol = document.createElement('span')
-  symbol.className = 'icon'
-  symbol.setAttribute('aria-hidden', 'true')
-  symbol.textContent = glyph
-  element.append(symbol)
-
-  return element
-}
-
-// A clock-arrow against a crossed-out bin: two trash-can glyphs side by side
-// read as the same button at this size, whatever their detail.
-function trashActions(entry: TrashNode): HTMLElement {
-  const element = document.createElement('span')
-  element.className = 'tree__actions'
-  element.append(
-    action({ name: 'restore', glyph: 'restore', label: `Restore ${entry.originalPath}`, danger: false }, entry),
-    action(
-      { name: 'purge', glyph: 'delete_forever', label: `Delete ${entry.originalPath} for good`, danger: true },
-      entry,
-    ),
-  )
-
-  return element
-}
-
 function group(): HTMLElement {
   const element = document.createElement('ul')
   element.className = 'tree__group'
@@ -216,7 +172,14 @@ function renderTrash(model: TreeViewModel): Rendered {
   const expanded = model.open.has(TRASH_PATH)
   const name = `Trash (${String(model.trash.length)})`
   const element = item(
-    row({ path: TRASH_PATH, kind: 'trash-root', name, depth: ROOT_DEPTH, expanded, selected: false }),
+    row({
+      path: TRASH_PATH,
+      kind: 'trash-root',
+      name,
+      depth: ROOT_DEPTH,
+      selected: model.selected === TRASH_PATH,
+      expanded,
+    }),
   )
   const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash-root', opens: null }]
 
@@ -233,12 +196,11 @@ function renderTrash(model: TreeViewModel): Rendered {
       name: originalPath,
       depth: TRASH_ENTRY_DEPTH,
       expanded: null,
-      selected: false,
+      selected: model.selected === entryKey,
       href,
     })
     deleted.dataset.trashId = id
     deleted.title = `Deleted ${deletedAt}`
-    deleted.append(trashActions(entry))
     children.append(item(deleted))
     visible.push({ path: entryKey, expandable: false, kind: 'trash-entry', opens: href })
   }
