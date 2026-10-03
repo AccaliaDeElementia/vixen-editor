@@ -26,6 +26,7 @@ import { createAutosave } from './autosave.ts'
 import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
 import { createEditorState } from './markdown-setup.ts'
+import { followDeletion } from './follow-deletion.ts'
 import { trashEntryIdFromPath } from '../../shared/page-urls.ts'
 import { createToast } from '../toast.ts'
 import { createFilesClient, type FilesClient } from '../files/files-client.ts'
@@ -413,6 +414,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
+  const { stopFollowingDeletion } = followDeletion({ root, documentId, autosave, openUrl })
+
   const { offInsertRequested } = onInsertRequested(root, (entryPath) => {
     if (workspace.showing() !== 'document') {
       toast.error(`Open a document before inserting ${entryPath}`)
@@ -520,6 +523,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       unwatchFreshness()
       unguardUnload()
       offDocumentMoved()
+      stopFollowingDeletion()
       offInsertRequested()
       navigator.stopIntercepting()
       view.destroy()

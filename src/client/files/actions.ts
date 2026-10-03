@@ -1,5 +1,6 @@
 'use sanity'
 
+import { announceEntryTrashed, settleBeforeDeleting } from '../entry-deletion.ts'
 import { errorMessage } from '../error-message.ts'
 import type { Toast } from '../toast.ts'
 
@@ -177,7 +178,10 @@ export function bindActions(context: ActionContext): void {
         message: `${entryPath} can be restored from the trash afterwards.`,
         confirmLabel: 'Delete',
       })
-      if (confirmed) await client.remove(entryPath)
+      if (!confirmed) return
+
+      await settleBeforeDeleting(root, entryPath)
+      announceEntryTrashed(root, { entryPath, trashId: await client.remove(entryPath) })
     })
   })
 

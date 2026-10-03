@@ -48,3 +48,39 @@ test('a trash entry that is no longer there says so', async ({ page }) => {
 
   await expect(page.locator('#deleted-what')).toContainText('already have been restored or purged')
 })
+
+test('deleting the document being edited lands on its trash entry', async ({ page, request }) => {
+  const name = `open-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# open' } })
+
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# open'))
+  await page.locator(`.tree__row[data-path="${name}"]`).click()
+  await page.locator('#delete-entry').click()
+  await page.locator('#file-dialog-confirm').click()
+
+  await expect(page).toHaveURL(/\/trash\/[0-9a-f\-]+$/v)
+})
+
+test('what reaches the trash is what was in the buffer, not what was on disk', async ({ page, request }) => {
+  const name = `typed-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# on disk' } })
+
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# on disk'))
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type(' TYPED-BUT-UNSAVED')
+
+  await page.locator(`.tree__row[data-path="${name}"]`).click()
+  await page.locator('#delete-entry').click()
+  await page.locator('#file-dialog-confirm').click()
+  await givenAsync(expect(page).toHaveURL(/\/trash\/[0-9a-f\-]+$/v))
+
+  const trashId = new URL(page.url()).pathname.split('/').at(-1) ?? ''
+  await request.post(`/api/trash/${trashId}/restore`)
+
+  expect(await (await request.get(`/api/documents/${name}`)).text()).toContain('TYPED-BUT-UNSAVED')
+
+  await request.delete(`/api/files/entries/${name}`)
+})

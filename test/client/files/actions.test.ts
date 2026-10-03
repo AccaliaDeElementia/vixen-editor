@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TestOnly } from '../../../src/client/files/actions.ts'
 import { FilesRequestError } from '../../../src/client/files/files-client.ts'
 import { initFileTree } from '../../../src/client/files/index.ts'
+import { onDeletionPending, onEntryTrashed, type TrashedEntry } from '../../../src/client/entry-deletion.ts'
 import { onInsertRequested } from '../../../src/client/insert-entry.ts'
 import { openDocumentIn } from '../../../src/client/navigation.ts'
 import { parseTree, type TreeNode } from '../../../src/client/files/tree-model.ts'
@@ -640,5 +641,73 @@ describe('a new document is markdown unless it says otherwise', () => {
     await settled()
 
     expect(client.createFolder).toHaveBeenCalledWith('plain-name')
+  })
+})
+
+describe('deleting tells the rest of the app', () => {
+  it('asks whoever is editing to settle before the entry goes', async () => {
+    await start()
+    let goneAlready = true
+    onDeletionPending(host, (): Promise<void> => {
+      goneAlready = client.remove.mock.calls.length > 0
+
+      return Promise.resolve()
+    })
+    rowFor('notes.md').click()
+
+    press('#delete-entry')
+    await settled()
+
+    expect(goneAlready).toBe(false)
+  })
+
+  it('waits for that settling rather than racing it', async () => {
+    await start()
+    const saving = Promise.withResolvers<undefined>()
+    let goneWhileSaving = true
+    onDeletionPending(host, async () => {
+      await saving.promise
+      goneWhileSaving = client.remove.mock.calls.length > 0
+    })
+    rowFor('notes.md').click()
+
+    press('#delete-entry')
+    saving.resolve(undefined)
+    await settled()
+    given(() => {
+      expect(client.remove).toHaveBeenCalledWith('notes.md')
+    })
+
+    expect(goneWhileSaving).toBe(false)
+  })
+
+  it('announces the trash entry the delete created', async () => {
+    await start()
+    const heard: TrashedEntry[] = []
+    onEntryTrashed(host, (trashed) => {
+      heard.push(trashed)
+    })
+    client.remove.mockResolvedValue('abc')
+    rowFor('notes.md').click()
+
+    press('#delete-entry')
+    await settled()
+
+    expect(heard).toStrictEqual([{ entryPath: 'notes.md', trashId: 'abc' }])
+  })
+
+  it('announces nothing when the confirmation is declined', async () => {
+    await start()
+    const heard: TrashedEntry[] = []
+    onEntryTrashed(host, (trashed) => {
+      heard.push(trashed)
+    })
+    dialogs.confirm.mockResolvedValue(false)
+    rowFor('notes.md').click()
+
+    press('#delete-entry')
+    await settled()
+
+    expect(heard).toStrictEqual([])
   })
 })

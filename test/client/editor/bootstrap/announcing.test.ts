@@ -2,6 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { EditorView } from '@codemirror/view'
+
+import { announceEntryTrashed, settleBeforeDeleting } from '../../../../src/client/entry-deletion.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
 
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
@@ -92,5 +95,41 @@ describe('what a screen reader is told when the workspace changes', () => {
     await openEditor({ root, pathname: '/doc/notes.md', session })
 
     expect(statusText(root)).toContain('could not be loaded')
+  })
+})
+
+describe('when the document being edited is deleted', () => {
+  let opened: string[] = []
+
+  async function editing(pathname: string): Promise<EditorView> {
+    return await openEditor({
+      root,
+      pathname,
+      session: fakeSession(),
+      openUrl: (url: string) => {
+        opened.push(url)
+      },
+    })
+  }
+
+  beforeEach(() => {
+    opened = []
+  })
+
+  it('is asked to save before the entry goes', async () => {
+    const view = await editing('/doc/journal/a.md')
+    view.dispatch({ changes: { from: view.state.doc.length, insert: '\nunsaved' } })
+
+    await settleBeforeDeleting(root, 'journal/a.md')
+
+    expect(record.saved.map((write) => write.id)).toStrictEqual(['journal/a.md'])
+  })
+
+  it('follows the document to the trash entry it became', async () => {
+    await editing('/doc/journal/a.md')
+
+    announceEntryTrashed(root, { entryPath: 'journal/a.md', trashId: 'abc-123' })
+
+    expect(opened).toStrictEqual(['/trash/abc-123'])
   })
 })

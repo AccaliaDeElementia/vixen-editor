@@ -12,7 +12,7 @@ export interface FilesClient {
   createFolder: (folderPath: string) => Promise<void>
   upload: (directory: string, file: File, filename?: string) => Promise<string>
   move: (from: string, to: string) => Promise<string[]>
-  remove: (entryPath: string) => Promise<void>
+  remove: (entryPath: string) => Promise<string>
   restore: (entryId: string) => Promise<void>
   purge: (entryId: string) => Promise<void>
 }
@@ -110,8 +110,12 @@ export function createFilesClient(
       return outcome.rewritten.filter((entry): entry is string => typeof entry === 'string')
     },
 
-    async remove(entryPath: string): Promise<void> {
-      await send(`${baseUrl}/files/entries/${encodePath(entryPath)}`, { method: 'DELETE' })
+    async remove(entryPath: string): Promise<string> {
+      const trashed: unknown = await send(`${baseUrl}/files/entries/${encodePath(entryPath)}`, {
+        method: 'DELETE',
+      }).then(async (response): Promise<unknown> => await response.json())
+
+      return isRecord(trashed) && typeof trashed.trashId === 'string' ? trashed.trashId : ''
     },
 
     async restore(entryId: string): Promise<void> {

@@ -150,6 +150,18 @@ describe('mutations', () => {
     )
   })
 
+  it('hands back the trash entry the delete created, so the editor can follow it', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ trashId: 'abc' }))
+
+    await expect(client().remove('journal/a.md')).resolves.toBe('abc')
+  })
+
+  it('hands back an empty id when the server names none, rather than inventing one', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}))
+
+    await expect(client().remove('journal/a.md')).resolves.toBe('')
+  })
+
   it('encodes each path segment of a delete without encoding the separators', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ trashId: 'abc' }))
 

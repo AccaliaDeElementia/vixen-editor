@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { joinPath, STORE_ROOT } from '../../src/shared/store-path.ts'
+import { isAtOrUnder, joinPath, STORE_ROOT } from '../../src/shared/store-path.ts'
 
 describe('STORE_ROOT', () => {
   it('is how the root of the store is addressed', () => {
@@ -25,5 +25,31 @@ describe('joinPath', () => {
 
   it('leaves a name at the root unprefixed, which is what both sides relied on separately', () => {
     expect(joinPath(STORE_ROOT, 'notes.md')).toBe('notes.md')
+  })
+})
+
+describe('isAtOrUnder', () => {
+  it('holds for the entry itself', () => {
+    expect(isAtOrUnder('journal', 'journal')).toBe(true)
+  })
+
+  it('holds for something directly inside it', () => {
+    expect(isAtOrUnder('journal', 'journal/a.md')).toBe(true)
+  })
+
+  it('holds however deep the entry sits', () => {
+    expect(isAtOrUnder('journal', 'journal/2026/march/a.md')).toBe(true)
+  })
+
+  it('does not hold for a sibling whose name merely starts the same', () => {
+    expect(isAtOrUnder('journal', 'journal-archive/a.md')).toBe(false)
+  })
+
+  it('does not hold the other way round', () => {
+    expect(isAtOrUnder('journal/a.md', 'journal')).toBe(false)
+  })
+
+  it('holds for anything at all under the store root', () => {
+    expect(isAtOrUnder(STORE_ROOT, 'journal/a.md')).toBe(true)
   })
 })
