@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { onInsertRequested } from '../../../../src/client/insert-entry.ts'
+import { joinPath } from '../../../../src/shared/store-path.ts'
 import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 
@@ -98,7 +99,7 @@ describe('a double click', () => {
     await start()
     rowFor(TRASH_PATH).click()
 
-    doubleClick('gone.md')
+    doubleClick(joinPath(TRASH_PATH, TRASHED.id))
 
     expect(opened).toStrictEqual(['/trash/aaaa'])
   })
@@ -253,7 +254,7 @@ describe('the Open selected action', () => {
   it('opens a trash entry the same way, by its id', async () => {
     await start()
     rowFor(TRASH_PATH).click()
-    click('gone.md')
+    click(joinPath(TRASH_PATH, TRASHED.id))
 
     pressOpen()
 

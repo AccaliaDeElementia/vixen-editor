@@ -20,7 +20,7 @@ import { collectRuns } from './rebuild.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
-import { STORE_ROOT } from '../../shared/store-path.ts'
+import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
 import { requestInsert } from '../insert-entry.ts'
 import { KEYS } from '../help.ts'
 import { renderTree, rowIndexOf, ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR, type VisibleRow } from './tree-view.ts'
@@ -119,12 +119,13 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
 
   function insertableSelection(): string | null {
     const entryPath = visibleSelection()
+    if (entryPath === null || isAtOrUnder(TRASH_PATH, entryPath)) return null
 
-    return entryPath === TRASH_PATH ? null : entryPath
+    return entryPath
   }
 
   function targetDirectory(): string {
-    if (selected === null || selected === TRASH_PATH) return STORE_ROOT
+    if (selected === null || isAtOrUnder(TRASH_PATH, selected)) return STORE_ROOT
 
     const row = visible.find((candidate) => candidate.path === selected)
     if (row === undefined) return STORE_ROOT

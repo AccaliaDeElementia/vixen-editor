@@ -7,8 +7,9 @@ import { FilesRequestError } from '../../../src/client/files/files-client.ts'
 import { onDeletionPending, onEntryTrashed, type TrashedEntry } from '../../../src/client/entry-deletion.ts'
 import { onInsertRequested } from '../../../src/client/insert-entry.ts'
 import { openDocumentIn } from '../../../src/client/navigation.ts'
-import { parseTree, type TreeNode } from '../../../src/client/files/tree-model.ts'
+import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TRASH_PATH } from '../../../src/client/files/tree-view.ts'
+import { joinPath } from '../../../src/shared/store-path.ts'
 import type { Dialogs } from '../../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import { cast } from '../../cast.ts'
@@ -708,5 +709,36 @@ describe('deleting tells the rest of the app', () => {
     await settled()
 
     expect(heard).toStrictEqual([])
+  })
+})
+
+describe('a trash entry is not a place in the store', () => {
+  const DELETED: TrashNode = {
+    id: 'bbbb',
+    originalPath: 'journal/gone.md',
+    kind: 'document',
+    deletedAt: '2026-01-01T00:00:00.000Z',
+  }
+
+  async function withTrashEntrySelected(): Promise<void> {
+    client = fakeClient(SAMPLE, [DELETED])
+    await start()
+    rowFor(TRASH_PATH).click()
+    rowFor(joinPath(TRASH_PATH, DELETED.id)).click()
+  }
+
+  it('aims a new document at the store root, not the live folder it was deleted from', async () => {
+    await withTrashEntrySelected()
+
+    press('#new-document')
+    await settled()
+
+    expect(client.createDocument).toHaveBeenCalledWith('typed-name.md')
+  })
+
+  it('offers nothing to insert, since the link would point at something deleted', async () => {
+    await withTrashEntrySelected()
+
+    expect(document.querySelector<HTMLButtonElement>('#insert-entry')?.disabled).toBe(true)
   })
 })

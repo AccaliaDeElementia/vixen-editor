@@ -4,6 +4,7 @@ import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
 
 import { docUrlFor } from '../doc-path.ts'
 import { trashUrlFor } from '../../shared/page-urls.ts'
+import { joinPath } from '../../shared/store-path.ts'
 
 import type { TrashNode, TreeNode } from './tree-model.ts'
 import type { EntryKind } from '../../shared/documents.ts'
@@ -225,8 +226,9 @@ function renderTrash(model: TreeViewModel): Rendered {
   for (const entry of model.trash) {
     const { id, originalPath, kind, deletedAt } = entry
     const href = trashUrlFor(id)
+    const entryKey = joinPath(TRASH_PATH, id)
     const deleted = row({
-      path: originalPath,
+      path: entryKey,
       kind,
       name: originalPath,
       depth: TRASH_ENTRY_DEPTH,
@@ -238,7 +240,7 @@ function renderTrash(model: TreeViewModel): Rendered {
     deleted.title = `Deleted ${deletedAt}`
     deleted.append(trashActions(entry))
     children.append(item(deleted))
-    visible.push({ path: originalPath, expandable: false, kind: 'trash-entry', opens: href })
+    visible.push({ path: entryKey, expandable: false, kind: 'trash-entry', opens: href })
   }
   element.append(children)
 

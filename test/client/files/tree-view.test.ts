@@ -4,6 +4,7 @@ import { given } from '../../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/files/tree-model.ts'
+import { joinPath } from '../../../src/shared/store-path.ts'
 import {
   renderTree,
   rowIndexOf,
@@ -416,6 +417,6 @@ describe('telling the two trash actions apart', () => {
   })
 
   it('keeps the deletion time on the row, where it belongs', () => {
-    expect(rowFor('journal/gone.md').title).toContain('2026-01-01')
+    expect(rowFor(joinPath(TRASH_PATH, entry.id)).title).toContain('2026-01-01')
   })
 })
