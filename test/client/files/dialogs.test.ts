@@ -254,6 +254,79 @@ describe('the one dialog a page has', () => {
   })
 })
 
+async function hasSettled(pending: Promise<unknown>): Promise<boolean> {
+  const stillWaiting = Symbol('still waiting')
+
+  return (await Promise.race([pending, Promise.resolve(stillWaiting)])) !== stillWaiting
+}
+
+describe('two parts of the app wanting the dialog at once', () => {
+  function promptFor(
+    dialogs: ReturnType<typeof createDialogs>,
+    submit: () => Promise<string | null> = () => Promise.resolve(null),
+  ): Promise<boolean> {
+    return dialogs.prompt({ title: 'New document', label: 'Document name', confirmLabel: 'Create', submit })
+  }
+
+  function helpFrom(dialogs: ReturnType<typeof createDialogs>): Promise<void> {
+    return dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: [] })
+  }
+
+  function titleShown(): string {
+    return document.querySelector('#file-dialog-title')?.textContent ?? ''
+  }
+
+  it('leaves the second waiting rather than opening it over the first', () => {
+    const dialogs = createDialogs(document)
+
+    void promptFor(dialogs)
+    void helpFrom(dialogs)
+
+    expect(titleShown()).toBe('New document')
+  })
+
+  it('opens the one that was waiting once the first is closed', async () => {
+    const dialogs = createDialogs(document)
+    const prompt = promptFor(dialogs)
+    void helpFrom(dialogs)
+
+    type('notes.md')
+    click('#file-dialog-confirm')
+    await prompt
+
+    expect(titleShown()).toBe('Help')
+  })
+
+  it('does not answer the second with the close that answered the first', async () => {
+    const dialogs = createDialogs(document)
+    const prompt = promptFor(dialogs)
+    const help = helpFrom(dialogs)
+
+    type('notes.md')
+    click('#file-dialog-confirm')
+    await prompt
+
+    expect(await hasSettled(help)).toBe(false)
+  })
+
+  it('frees the dialog for the next caller even when the first fails', async () => {
+    const dialogs = createDialogs(document)
+    const failing = dialogs.prompt({
+      title: 'New document',
+      label: 'Document name',
+      confirmLabel: 'Create',
+      submit: () => Promise.reject(new Error('boom')),
+    })
+    void helpFrom(dialogs)
+
+    type('notes.md')
+    click('#file-dialog-confirm')
+    await givenAsync(expect(failing).rejects.toThrow('boom'))
+
+    expect(titleShown()).toBe('Help')
+  })
+})
+
 describe('the name a prompt will create', () => {
   const nameFor = (typed: string): string => (typed.endsWith('.md') ? typed : `${typed}.md`)
 

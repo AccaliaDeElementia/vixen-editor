@@ -275,6 +275,23 @@ const owners = new WeakMap<HTMLDialogElement, Dialogs>()
 
 function buildDialogs(parts: Parts | null): Dialogs {
   let prompting: PromptRequest | null = null
+  let lastInQueue: Promise<unknown> | null = null
+
+  async function inTurn<T>(show: () => Promise<T>): Promise<T> {
+    const ahead = lastInQueue
+    const ours = Promise.withResolvers<undefined>()
+    const { promise } = ours
+    lastInQueue = promise
+
+    if (ahead !== null) await ahead
+
+    try {
+      return await show()
+    } finally {
+      if (lastInQueue === promise) lastInQueue = null
+      ours.resolve(undefined)
+    }
+  }
 
   if (parts !== null) {
     bindEnterToConfirm(parts)
@@ -288,25 +305,32 @@ function buildDialogs(parts: Parts | null): Dialogs {
   return {
     async prompt(request: PromptRequest): Promise<boolean> {
       if (parts === null) return false
-      prompting = request
 
-      try {
-        return await promptWith(parts, request)
-      } finally {
-        prompting = null
-      }
+      return await inTurn(async () => {
+        prompting = request
+
+        try {
+          return await promptWith(parts, request)
+        } finally {
+          prompting = null
+        }
+      })
     },
 
     async confirm(request: ConfirmRequest): Promise<boolean> {
-      return parts === null ? false : await confirmWith(parts, request)
+      return parts === null ? false : await inTurn(async () => await confirmWith(parts, request))
     },
 
     async choose(request: ChooseRequest): Promise<string | null> {
-      return parts === null ? null : await chooseWith(parts, request)
+      return parts === null ? null : await inTurn(async () => await chooseWith(parts, request))
     },
 
     async inform(request: InformRequest): Promise<void> {
-      if (parts !== null) await informWith(parts, request)
+      if (parts !== null) {
+        await inTurn(async () => {
+          await informWith(parts, request)
+        })
+      }
     },
   }
 }
