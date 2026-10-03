@@ -271,8 +271,9 @@ async function informWith(parts: Parts, request: InformRequest): Promise<void> {
   cancel.hidden = false
 }
 
-export function createDialogs(root: ParentNode = document): Dialogs {
-  const parts = partsOf(root)
+const owners = new WeakMap<HTMLDialogElement, Dialogs>()
+
+function buildDialogs(parts: Parts | null): Dialogs {
   let prompting: PromptRequest | null = null
 
   if (parts !== null) {
@@ -308,4 +309,17 @@ export function createDialogs(root: ParentNode = document): Dialogs {
       if (parts !== null) await informWith(parts, request)
     },
   }
+}
+
+export function createDialogs(root: ParentNode = document): Dialogs {
+  const parts = partsOf(root)
+  if (parts === null) return buildDialogs(null)
+
+  const existing = owners.get(parts.dialog)
+  if (existing !== undefined) return existing
+
+  const created = buildDialogs(parts)
+  owners.set(parts.dialog, created)
+
+  return created
 }

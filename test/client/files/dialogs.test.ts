@@ -233,6 +233,27 @@ describe('prompt', () => {
   })
 })
 
+describe('the one dialog a page has', () => {
+  it('is owned by a single dialogs, however many parts of the app ask for one', () => {
+    expect(createDialogs(document)).toBe(createDialogs(document))
+  })
+
+  it('is not shared with a page that has a dialog element of its own', () => {
+    const elsewhere = document.createElement('div')
+    elsewhere.innerHTML = renderDialog()
+
+    expect(createDialogs(elsewhere)).not.toBe(createDialogs(document))
+  })
+
+  it('writes nothing into the field while no prompt is open', () => {
+    createDialogs(document)
+
+    type('notes')
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-preview')?.hidden).toBe(true)
+  })
+})
+
 describe('the name a prompt will create', () => {
   const nameFor = (typed: string): string => (typed.endsWith('.md') ? typed : `${typed}.md`)
 
