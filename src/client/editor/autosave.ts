@@ -11,6 +11,7 @@ export interface Autosave {
   changed: (content: string) => void
   reset: (content: string) => void
   flush: () => Promise<void>
+  stop: () => void
   state: () => SaveState
   dueAt: () => number | null
 }
@@ -37,6 +38,7 @@ export function createAutosave(options: AutosaveOptions): Autosave {
   let refused: string | null = null
   let inFlight: Promise<void> | null = null
   let tracking = {}
+  let stopped = false
 
   function dirty(): boolean {
     return current !== saved
@@ -142,6 +144,8 @@ export function createAutosave(options: AutosaveOptions): Autosave {
 
   return {
     changed(content: string): void {
+      if (stopped) return
+
       current = content
       schedule()
     },
@@ -154,6 +158,12 @@ export function createAutosave(options: AutosaveOptions): Autosave {
       current = content
       refused = null
       announce()
+    },
+
+    stop(): void {
+      stopped = true
+      stopIdle()
+      stopCeiling()
     },
 
     async flush(): Promise<void> {

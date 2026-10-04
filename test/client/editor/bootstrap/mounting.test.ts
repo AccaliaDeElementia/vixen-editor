@@ -28,6 +28,7 @@ let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
 
 const LONG_ENOUGH = 5000
+const LONG_AFTER_EVERY_DEADLINE = 300_000
 
 function fakeSession(overrides: Partial<Session> = {}): Session {
   return sessionRecording(record, overrides)
@@ -656,5 +657,27 @@ describe('a folder index that is not index.md', () => {
     await openEditor({ root, pathname: '/doc/journal/', session })
 
     expect(statusText(root)).toContain('offline')
+  })
+})
+
+describe('tearing the editor down', () => {
+  async function typedInto(): Promise<{ teardownEditor: () => void }> {
+    const editor = await bootstrapOrReport({ root, pathname: '/doc/a.md', session: fakeSession() })
+    if (editor === null) throw new Error('the editor did not start')
+
+    editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: ' typed' } })
+
+    return editor
+  }
+
+  it('leaves no autosave waiting to write over a buffer that has gone', async () => {
+    vi.useFakeTimers()
+    const editor = await typedInto()
+
+    editor.teardownEditor()
+    await vi.advanceTimersByTimeAsync(LONG_AFTER_EVERY_DEADLINE)
+
+    expect(record.saved).toStrictEqual([])
+    vi.useRealTimers()
   })
 })

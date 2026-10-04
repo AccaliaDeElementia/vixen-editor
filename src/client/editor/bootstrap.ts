@@ -521,6 +521,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   return {
     view,
     teardownEditor: () => {
+      autosave.stop()
       unwatchFreshness()
       unguardUnload()
       offDocumentMoved()

@@ -399,3 +399,73 @@ describe('what the indicator is told', () => {
     expect(autosave.state()).toBe('clean')
   })
 })
+
+describe('stopping', () => {
+  it('cancels the write the idle window was waiting to make', async () => {
+    const { autosave, recorded } = accepting()
+    autosave.reset('start')
+    autosave.changed('start and more')
+
+    autosave.stop()
+    await vi.advanceTimersByTimeAsync(IDLE_MS)
+
+    expect(recorded.writes).toStrictEqual([])
+  })
+
+  it('cancels the ceiling too, so a long edit cannot land later either', async () => {
+    const { autosave, recorded } = accepting()
+    autosave.reset('')
+    await typeWithoutPausing(autosave, EDITS_SHORT_OF_THE_CEILING)
+
+    autosave.stop()
+    await vi.advanceTimersByTimeAsync(CEILING_MS)
+
+    expect(recorded.writes).toStrictEqual([])
+  })
+
+  it('leaves nothing scheduled, so a torn-down editor holds no timer', () => {
+    const { autosave } = accepting()
+    autosave.reset('start')
+    autosave.changed('start and more')
+    given(() => {
+      expect(autosave.dueAt()).not.toBeNull()
+    })
+
+    autosave.stop()
+
+    expect(autosave.dueAt()).toBeNull()
+  })
+
+  it('ignores a later edit rather than quietly scheduling again', async () => {
+    const { autosave, recorded } = accepting()
+    autosave.reset('start')
+    autosave.stop()
+
+    autosave.changed('start and more')
+    await vi.advanceTimersByTimeAsync(CEILING_MS)
+
+    expect(recorded.writes).toStrictEqual([])
+  })
+
+  it('still reports what was left unsaved, so a caller can say so', () => {
+    const { autosave } = accepting()
+    autosave.reset('start')
+    autosave.changed('start and more')
+
+    autosave.stop()
+
+    expect(autosave.state()).toBe('pending')
+  })
+
+  it('lets a write already in flight finish, because abandoning it would lose it', async () => {
+    const { autosave, recorded } = accepting()
+    autosave.reset('start')
+    autosave.changed('start and more')
+    const flushed = autosave.flush()
+
+    autosave.stop()
+    await flushed
+
+    expect(recorded.writes).toStrictEqual(['start and more'])
+  })
+})
