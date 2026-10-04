@@ -86,6 +86,24 @@ describe('trash', () => {
   })
 })
 
+describe('what one trash entry holds', () => {
+  const ENTRY = { name: 'journal', path: '', kind: 'folder', restorable: true, blockedBy: null, children: [] }
+
+  it('asks for the entry by its id', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ entry: ENTRY }))
+
+    await client().trashEntry('a b')
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/trash/a%20b/entries', expect.objectContaining({ method: 'GET' }))
+  })
+
+  it('returns the tree the server described', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ entry: ENTRY }))
+
+    await expect(client().trashEntry('abc')).resolves.toStrictEqual(ENTRY)
+  })
+})
+
 describe('defaults', () => {
   it('uses globalThis.fetch and the /api base url when none are given', async () => {
     const globalFetch = vi.fn().mockResolvedValue(jsonResponse({ tree: [] }))
@@ -190,6 +208,30 @@ describe('mutations', () => {
       '/api/trash/abc/restores',
       expect.objectContaining({ body: JSON.stringify({ paths: ['a.md'] }) }),
     )
+  })
+
+  it('reports what actually came back, which may be less than was asked for', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ restored: ['journal/a.md'], entryRemains: true }))
+
+    const outcome = await client().restore('abc', ['a.md'])
+
+    expect(outcome.restored).toStrictEqual(['journal/a.md'])
+  })
+
+  it('reports whether anything is left in the entry, so the view knows where to go', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ restored: ['journal/a.md'], entryRemains: true }))
+
+    const outcome = await client().restore('abc', ['a.md'])
+
+    expect(outcome.entryRemains).toBe(true)
+  })
+
+  it('treats a reply it cannot read as nothing restored, rather than guessing', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }))
+
+    const outcome = await client().restore('abc')
+
+    expect(outcome).toStrictEqual({ restored: [], entryRemains: false })
   })
 
   it('purges a trash entry', async () => {

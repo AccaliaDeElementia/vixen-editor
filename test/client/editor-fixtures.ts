@@ -60,6 +60,7 @@ export function filesAnsweringEmpty(): FilesClient {
   return cast<FilesClient>({
     trash: () => Promise.resolve([]),
     tree: () => Promise.resolve([]),
+    trashEntry: () => Promise.resolve(null),
   })
 }
 

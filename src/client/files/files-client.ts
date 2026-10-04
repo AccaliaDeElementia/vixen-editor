@@ -1,6 +1,7 @@
 'use sanity'
 
 import { parseTrash, parseTree, type TrashNode, type TreeNode } from './tree-model.ts'
+import { parseTrashEntry, type TrashEntryNode } from './trash-entry.ts'
 import { API_PREFIX } from '../../shared/api.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { stringsIn } from '../json.ts'
@@ -9,16 +10,28 @@ import { isRecord } from '../../shared/guards.ts'
 export interface FilesClient {
   tree: () => Promise<TreeNode[]>
   trash: () => Promise<TrashNode[]>
+  trashEntry: (entryId: string) => Promise<TrashEntryNode | null>
   createDocument: (entryPath: string, content?: string) => Promise<void>
   createFolder: (folderPath: string) => Promise<void>
   upload: (directory: string, file: File, filename?: string) => Promise<string>
   move: (from: string, to: string) => Promise<string[]>
   remove: (entryPath: string) => Promise<string>
-  restore: (entryId: string, paths?: readonly string[], to?: string) => Promise<void>
+  restore: (entryId: string, paths?: readonly string[], to?: string) => Promise<RestoreOutcome>
   purge: (entryId: string) => Promise<void>
 }
 
 type RepairedPath = string
+
+interface RestoreOutcome {
+  restored: string[]
+  entryRemains: boolean
+}
+
+function parseRestoreOutcome(payload: unknown): RestoreOutcome {
+  if (!isRecord(payload)) return { restored: [], entryRemains: false }
+
+  return { restored: stringsIn(payload.restored), entryRemains: payload.entryRemains === true }
+}
 
 export class FilesRequestError extends Error {
   override readonly name = 'FilesRequestError'
@@ -76,6 +89,10 @@ export function createFilesClient(
       return parseTree(await payloadOf(`${baseUrl}/files`))
     },
 
+    async trashEntry(entryId: string): Promise<TrashEntryNode | null> {
+      return parseTrashEntry(await payloadOf(`${baseUrl}/trash/${encodeURIComponent(entryId)}/entries`))
+    },
+
     async trash(): Promise<TrashNode[]> {
       return parseTrash(await payloadOf(`${baseUrl}/trash`))
     },
@@ -119,8 +136,13 @@ export function createFilesClient(
       return isRecord(trashed) && typeof trashed.trashId === 'string' ? trashed.trashId : ''
     },
 
-    async restore(entryId: string, paths: readonly string[] = [STORE_ROOT], to?: string): Promise<void> {
-      await postJson(`${baseUrl}/trash/${encodeURIComponent(entryId)}/restores`, { paths, to })
+    async restore(entryId: string, paths: readonly string[] = [STORE_ROOT], to?: string): Promise<RestoreOutcome> {
+      const outcome: unknown = await postJson(`${baseUrl}/trash/${encodeURIComponent(entryId)}/restores`, {
+        paths,
+        to,
+      }).then(async (response): Promise<unknown> => await response.json().catch(() => null))
+
+      return parseRestoreOutcome(outcome)
     },
 
     async purge(entryId: string): Promise<void> {

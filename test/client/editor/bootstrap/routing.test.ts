@@ -142,7 +142,11 @@ describe('a trash entry url', () => {
 
   it('shows the deleted view rather than trying to load a document', async () => {
     const trash = [{ id: 'entry-1', originalPath: 'journal/a.md', kind: 'document' as const, deletedAt: NOW }]
-    const files = cast<FilesClient>({ trash: () => Promise.resolve(trash), tree: () => Promise.resolve([]) })
+    const files = cast<FilesClient>({
+      trash: () => Promise.resolve(trash),
+      tree: () => Promise.resolve([]),
+      trashEntry: () => Promise.resolve(null),
+    })
 
     await openEditor({ root, pathname: '/trash/entry-1', session: fakeSession(), files })
 

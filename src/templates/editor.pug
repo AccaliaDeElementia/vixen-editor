@@ -34,6 +34,7 @@ block content
     section.view#view-deleted(tabindex='-1' aria-label='Deleted' hidden)
       h1.view__title In the trash
       p.view__message#deleted-what
+      .restore-tree__host#deleted-contents(hidden)
       p.view__actions#deleted-actions
         button.view__action#deleted-restore(type='button' data-default-action) Restore
         button.view__action.view__action--danger#deleted-purge(type='button') Delete for good

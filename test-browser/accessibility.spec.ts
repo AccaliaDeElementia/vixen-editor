@@ -4,6 +4,7 @@ import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test, type Page } from '@playwright/test'
 
 import { violationsOn } from './axe.ts'
+import { stringFieldOf } from './json.ts'
 
 async function workspaceWith(page: Page, request: Page['request'], folder: string): Promise<void> {
   await request.post('/api/files/folders', { data: { path: folder } })
@@ -102,6 +103,20 @@ test('the help dialog lists the gestures, and has no accessibility violations', 
 
   await page.keyboard.press('Escape')
   await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('the deleted view and its restore tree have no accessibility violations', async ({ page, request }) => {
+  const folder = `a11y-trash-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+  const trashId = await stringFieldOf(await request.delete(`/api/files/entries/${folder}`), 'trashId')
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#deleted-contents')).toBeVisible())
+  await givenAsync(expect(page.locator('#deleted-contents [role="tree"]')).toBeVisible())
+
+  expect(await violationsOn(page)).toStrictEqual([])
+
+  await request.delete(`/api/trash/${trashId}`)
 })
 
 test('a keyboard user can skip the chrome and land in the editor', async ({ page, request }) => {

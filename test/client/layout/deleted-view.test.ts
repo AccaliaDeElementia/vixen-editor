@@ -9,8 +9,10 @@ import type { TrashNode, TreeNode } from '../../../src/client/files/tree-model.t
 import type { Toast } from '../../../src/client/toast.ts'
 
 import { cast } from '../../cast.ts'
+import { givenAsync } from '../../conditions.ts'
 
 import { onRevealRequested } from '../../../src/client/reveal-request.ts'
+import { parseTrashEntry } from '../../../src/client/files/trash-entry.ts'
 import { onStoreChanged } from '../../../src/client/store-changed.ts'
 
 import { renderSection } from '../templates.ts'
@@ -19,6 +21,7 @@ const DELETED_AT = '2026-09-01T10:00:00.000Z'
 const ENTRY_ID = '0d5caef1-147f-45bf-8546-270886fcaa8f'
 
 interface Fake {
+  trashEntry: ReturnType<typeof vi.fn>
   trash: ReturnType<typeof vi.fn>
   tree: ReturnType<typeof vi.fn>
   restore: ReturnType<typeof vi.fn>
@@ -39,7 +42,8 @@ function fakeClient(): Fake {
   return {
     trash: vi.fn().mockResolvedValue([]),
     tree: vi.fn().mockResolvedValue([]),
-    restore: vi.fn().mockResolvedValue(undefined),
+    restore: vi.fn().mockResolvedValue({ restored: ['journal/a.md'], entryRemains: false }),
+    trashEntry: vi.fn().mockResolvedValue(null),
     purge: vi.fn().mockResolvedValue(undefined),
   }
 }
@@ -97,6 +101,12 @@ function textOf(root: ParentNode, selector: string): string {
 
 async function afterLoad(): Promise<void> {
   await loaded.promise
+}
+
+function reloading(): Promise<void> {
+  loaded = Promise.withResolvers()
+
+  return loaded.promise
 }
 
 async function afterRestore(): Promise<void> {
@@ -174,7 +184,7 @@ describe('an entry that is in the trash', () => {
 
     await afterRestore()
 
-    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID)
+    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID, [''])
   })
 
   it('opens the document at the path it came back to', async () => {
@@ -249,7 +259,18 @@ describe('an entry whose old path is in use again', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLButtonElement>('#deleted-restore')?.disabled).toBe(true)
+  })
+
+  it('still offers to be rid of it, which nothing in the way can prevent', async () => {
+    client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
+    client.tree.mockResolvedValue([fileNode('journal/a.md')])
+    const root = page()
+
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
   })
 
   it('says which path is in the way', async () => {
@@ -343,6 +364,15 @@ describe('markup that does not match', () => {
     expect(() => {
       view(bare).offer(ENTRY_ID)
     }).not.toThrow()
+  })
+
+  it('declines when it has the actions but nowhere to list what was deleted', () => {
+    const root = page()
+    root.querySelector('#deleted-contents')?.remove()
+
+    view(root).offer(ENTRY_ID)
+
+    expect(client.trash).not.toHaveBeenCalled()
   })
 })
 
@@ -466,5 +496,198 @@ describe('keeping the file browser in step', () => {
     await afterReport()
 
     expect(shown).toStrictEqual([])
+  })
+})
+
+function watchPurge(root: ParentNode): Promise<void> {
+  const changed: PromiseWithResolvers<void> = Promise.withResolvers()
+  onStoreChanged(root, () => {
+    changed.resolve()
+  })
+
+  return changed.promise
+}
+
+describe('what the entry holds', () => {
+  const HELD = {
+    entry: {
+      name: 'journal',
+      path: '',
+      kind: 'folder',
+      restorable: true,
+      blockedBy: null,
+      children: [{ name: 'a.md', path: 'a.md', kind: 'document', restorable: true, blockedBy: null, children: [] }],
+    },
+  }
+
+  async function showing(): Promise<HTMLElement> {
+    client.trash.mockResolvedValue([trashed('journal', 'folder')])
+    client.trashEntry.mockResolvedValue(parseTrashEntry(HELD))
+    const root = page()
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    return root
+  }
+
+  it('is asked for by the entry being shown', async () => {
+    await showing()
+
+    expect(client.trashEntry).toHaveBeenCalledWith(ENTRY_ID)
+  })
+
+  it('is listed, so the reader can see what they would get back', async () => {
+    const root = await showing()
+
+    expect([...root.querySelectorAll('.restore-tree__row')].map((row) => row.textContent)).toStrictEqual([
+      'check_boxfolder_openjournal',
+      'check_boxdescriptiona.md',
+    ])
+  })
+
+  it('stays out of sight when the server could not describe it', async () => {
+    client.trash.mockResolvedValue([trashed('journal', 'folder')])
+    client.trashEntry.mockResolvedValue(null)
+    const root = page()
+
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    expect(root.querySelector<HTMLElement>('#deleted-contents')?.hidden).toBe(true)
+  })
+
+  it('is cleared away once the entry has been purged', async () => {
+    const root = await showing()
+
+    root.querySelector<HTMLButtonElement>('#deleted-purge')?.click()
+    await givenAsync(watchPurge(root))
+
+    expect(root.querySelector<HTMLElement>('#deleted-contents')?.hidden).toBe(true)
+  })
+})
+
+describe('restoring part of what was deleted', () => {
+  function folder(children: unknown[]): unknown {
+    return {
+      entry: { name: 'journal', path: '', kind: 'folder', restorable: true, blockedBy: null, children },
+    }
+  }
+
+  function inside(name: string): unknown {
+    return { name, path: name, kind: 'document', restorable: true, blockedBy: null, children: [] }
+  }
+
+  async function showing(children: unknown[]): Promise<HTMLElement> {
+    client.trash.mockResolvedValue([trashed('journal', 'folder')])
+    client.trashEntry.mockResolvedValue(parseTrashEntry(folder(children)))
+    const root = page()
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    return root
+  }
+
+  function untick(root: ParentNode, path: string): void {
+    root.querySelector<HTMLElement>(`.restore-tree__row[data-path="${path}"]`)?.click()
+  }
+
+  function clickRestore(root: ParentNode): void {
+    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+  }
+
+  it('asks for the whole entry while nothing has been unticked', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+
+    clickRestore(root)
+    await afterRestore()
+
+    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID, [''])
+  })
+
+  it('asks only for the parts still ticked', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    client.restore.mockResolvedValue({ restored: ['journal/a.md'], entryRemains: true })
+
+    const shown = reloading()
+    untick(root, 'b.md')
+
+    clickRestore(root)
+    await givenAsync(shown)
+
+    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID, ['a.md'])
+  })
+
+  it('offers no restore once nothing is left ticked', async () => {
+    const root = await showing([inside('a.md')])
+
+    untick(root, '')
+
+    expect(root.querySelector<HTMLButtonElement>('#deleted-restore')?.disabled).toBe(true)
+  })
+
+  it('opens what came back when nothing is left in the entry', async () => {
+    const root = await showing([inside('a.md')])
+    client.restore.mockResolvedValue({ restored: ['journal/a.md'], entryRemains: false })
+
+    clickRestore(root)
+    await afterRestore()
+
+    expect(opened).toStrictEqual(['/doc/journal/a.md'])
+  })
+
+  it('lands on the folder that holds everything that came back', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    client.restore.mockResolvedValue({ restored: ['journal/a.md', 'journal/b.md'], entryRemains: false })
+
+    clickRestore(root)
+    await afterRestore()
+
+    expect(opened).toStrictEqual(['/doc/journal/'])
+  })
+
+  it('goes to the store root when what came back has no folder in common', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    client.restore.mockResolvedValue({ restored: ['journal/a.md', 'notes.md'], entryRemains: false })
+
+    clickRestore(root)
+    await afterRestore()
+
+    expect(opened).toStrictEqual(['/doc/'])
+  })
+
+  it('goes to the store root when the server says nothing came back', async () => {
+    const root = await showing([inside('a.md')])
+    client.restore.mockResolvedValue({ restored: [], entryRemains: false })
+
+    clickRestore(root)
+    await afterRestore()
+
+    expect(opened).toStrictEqual(['/doc/'])
+  })
+
+  it('shows what is still in the trash when the entry outlives the restore', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    client.restore.mockResolvedValue({ restored: ['journal/a.md'], entryRemains: true })
+    client.trashEntry.mockResolvedValue(parseTrashEntry(folder([inside('b.md')])))
+    const shown = reloading()
+
+    clickRestore(root)
+    await givenAsync(shown)
+
+    expect([...root.querySelectorAll<HTMLElement>('.restore-tree__row')].map((row) => row.dataset.path)).toStrictEqual([
+      '',
+      'b.md',
+    ])
+  })
+
+  it('stays put rather than opening a document when the entry outlives the restore', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    client.restore.mockResolvedValue({ restored: ['journal/a.md'], entryRemains: true })
+    const shown = reloading()
+
+    clickRestore(root)
+    await givenAsync(shown)
+
+    expect(opened).toStrictEqual([])
   })
 })

@@ -469,6 +469,49 @@
   word-break: break-all;
 }
 
+.restore-tree__host[hidden] {
+  display: none;
+}
+
+.restore-tree,
+.restore-tree__group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.restore-tree__row {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  padding: 0.15em 0;
+  cursor: pointer;
+}
+
+.restore-tree__row:focus-visible {
+  outline: 2px solid $info;
+  outline-offset: 2px;
+}
+
+.restore-tree__tick {
+  color: $info;
+}
+
+.restore-tree__row[aria-checked='false'] .restore-tree__tick {
+  color: $muted;
+}
+
+.restore-tree__label {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.restore-tree__blocked {
+  color: $muted;
+  font-size: $font-size-sm;
+}
+
 .view__actions {
   display: flex;
   gap: $space-sm;

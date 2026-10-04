@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { isAtOrUnder, joinPath, STORE_ROOT } from '../../src/shared/store-path.ts'
+import { isAtOrUnder, joinPath, STORE_ROOT, deepestSharedFolder } from '../../src/shared/store-path.ts'
 
 describe('STORE_ROOT', () => {
   it('is how the root of the store is addressed', () => {
@@ -51,5 +51,35 @@ describe('isAtOrUnder', () => {
 
   it('holds for anything at all under the store root', () => {
     expect(isAtOrUnder(STORE_ROOT, 'journal/a.md')).toBe(true)
+  })
+})
+
+describe('deepestSharedFolder', () => {
+  it('is the folder two siblings share', () => {
+    expect(deepestSharedFolder(['journal/a.md', 'journal/b.md'])).toBe('journal')
+  })
+
+  it('is the store root when the paths diverge at the top', () => {
+    expect(deepestSharedFolder(['journal/a.md', 'notes.md'])).toBe('')
+  })
+
+  it('stops at the shallower of two paths on the same branch', () => {
+    expect(deepestSharedFolder(['journal/2026/a.md', 'journal/b.md'])).toBe('journal')
+  })
+
+  it('holds a path within itself, since a folder contains its own contents', () => {
+    expect(deepestSharedFolder(['journal/2026', 'journal/2026/a.md'])).toBe('journal/2026')
+  })
+
+  it('is the store root once the whole store is in the running', () => {
+    expect(deepestSharedFolder(['', 'journal/a.md'])).toBe('')
+  })
+
+  it('is the store root for nothing at all', () => {
+    expect(deepestSharedFolder([])).toBe('')
+  })
+
+  it('does not mistake a name that merely starts the same for a shared folder', () => {
+    expect(deepestSharedFolder(['journal/a.md', 'journalism/a.md'])).toBe('')
   })
 })
