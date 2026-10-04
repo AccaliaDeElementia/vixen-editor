@@ -34,6 +34,10 @@ let asked: PromiseWithResolvers<void> = Promise.withResolvers()
 let opened: string[] = []
 let revealed: string[] = []
 let errors: string[] = []
+let prompted: Array<Parameters<Dialogs['prompt']>[0]> = []
+let refusals: Array<string | null> = []
+let typed: string | null = null
+let answered: PromiseWithResolvers<void> = Promise.withResolvers()
 let loaded: PromiseWithResolvers<void> = Promise.withResolvers()
 let restored: PromiseWithResolvers<void> = Promise.withResolvers()
 let reported: PromiseWithResolvers<void> = Promise.withResolvers()
@@ -74,6 +78,14 @@ function view(root: ParentNode): DeletedView {
 
         return Promise.resolve(confirms)
       },
+      prompt: async (request: Parameters<Dialogs['prompt']>[0]) => {
+        prompted.push(request)
+        const refusal = await request.submit(typed ?? request.value ?? '')
+        refusals.push(refusal)
+        answered.resolve()
+
+        return refusal === null
+      },
     }),
     toast,
     reveal: (at: string) => {
@@ -113,6 +125,12 @@ async function afterRestore(): Promise<void> {
   await restored.promise
 }
 
+function settledPrompt(): Promise<void> {
+  answered = Promise.withResolvers()
+
+  return answered.promise
+}
+
 async function afterReport(): Promise<void> {
   await reported.promise
 }
@@ -124,6 +142,10 @@ beforeEach(() => {
   asked = Promise.withResolvers()
   opened = []
   revealed = []
+  prompted = []
+  refusals = []
+  typed = null
+  answered = Promise.withResolvers()
   errors = []
   loaded = Promise.withResolvers()
   restored = Promise.withResolvers()
@@ -539,10 +561,9 @@ describe('what the entry holds', () => {
   it('is listed, so the reader can see what they would get back', async () => {
     const root = await showing()
 
-    expect([...root.querySelectorAll('.restore-tree__row')].map((row) => row.textContent)).toStrictEqual([
-      'check_boxfolder_openjournal',
-      'check_boxdescriptiona.md',
-    ])
+    expect([...root.querySelectorAll('.restore-tree__row')].map((row) => row.getAttribute('aria-label'))).toStrictEqual(
+      ['journal', 'a.md'],
+    )
   })
 
   it('stays out of sight when the server could not describe it', async () => {
@@ -689,5 +710,132 @@ describe('restoring part of what was deleted', () => {
     await givenAsync(shown)
 
     expect(opened).toStrictEqual([])
+  })
+})
+
+describe('putting one part back somewhere else', () => {
+  function folder(children: unknown[]): unknown {
+    return {
+      entry: { name: 'journal', path: '', kind: 'folder', restorable: true, blockedBy: null, children },
+    }
+  }
+
+  function inside(name: string, extra: Record<string, unknown> = {}): unknown {
+    return { name, path: name, kind: 'document', restorable: true, blockedBy: null, children: [], ...extra }
+  }
+
+  async function showing(children: unknown[]): Promise<HTMLElement> {
+    client.trash.mockResolvedValue([trashed('journal', 'folder')])
+    client.trashEntry.mockResolvedValue(parseTrashEntry(folder(children)))
+    const root = page()
+    view(root).offer(ENTRY_ID)
+    await afterLoad()
+
+    return root
+  }
+
+  function renameIn(root: ParentNode, path: string): void {
+    root.querySelector<HTMLButtonElement>(`[data-path="${path}"] .restore-tree__rename`)?.click()
+  }
+
+  it('starts the reader off at the path it would have gone back to', async () => {
+    const root = await showing([inside('a.md')])
+
+    const asked = settledPrompt()
+    renameIn(root, 'a.md')
+    await givenAsync(asked)
+
+    expect(prompted.at(0)?.value).toBe('journal/a.md')
+  })
+
+  it('restores only that one, to the path the reader chose', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    typed = 'elsewhere/a.md'
+
+    const asked = settledPrompt()
+    renameIn(root, 'a.md')
+    await givenAsync(asked)
+
+    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID, ['a.md'], 'elsewhere/a.md')
+  })
+
+  it('is the way back for a name the store no longer allows', async () => {
+    const root = await showing([inside(' odd.md', { restorable: false })])
+    typed = 'journal/odd.md'
+
+    const asked = settledPrompt()
+    renameIn(root, ' odd.md')
+    await givenAsync(asked)
+
+    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID, [' odd.md'], 'journal/odd.md')
+  })
+
+  it('says why the server refused inside the dialog, where the reader still is', async () => {
+    const root = await showing([inside('a.md')])
+    client.restore.mockRejectedValue(new Error('Already exists'))
+
+    const asked = settledPrompt()
+    renameIn(root, 'a.md')
+    await givenAsync(asked)
+
+    expect(refusals).toStrictEqual(['Already exists'])
+  })
+
+  it('says nothing to the page when the dialog has already said it', async () => {
+    const root = await showing([inside('a.md')])
+    client.restore.mockRejectedValue(new Error('Already exists'))
+
+    const asked = settledPrompt()
+    renameIn(root, 'a.md')
+    await givenAsync(asked)
+
+    expect(errors).toStrictEqual([])
+  })
+
+  it('opens what came back when nothing is left in the entry', async () => {
+    const root = await showing([inside('a.md')])
+    client.restore.mockResolvedValue({ restored: ['elsewhere/a.md'], entryRemains: false })
+
+    renameIn(root, 'a.md')
+    await afterRestore()
+
+    expect(opened).toStrictEqual(['/doc/elsewhere/a.md'])
+  })
+
+  it('shows what is still in the trash when the entry outlives it', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    client.restore.mockResolvedValue({ restored: ['elsewhere/a.md'], entryRemains: true })
+    client.trashEntry.mockResolvedValue(parseTrashEntry(folder([inside('b.md')])))
+    const shown = reloading()
+
+    renameIn(root, 'a.md')
+    await givenAsync(shown)
+
+    expect([...root.querySelectorAll<HTMLElement>('.restore-tree__row')].map((row) => row.dataset.path)).toStrictEqual([
+      '',
+      'b.md',
+    ])
+  })
+
+  it('leaves the ticked choice untouched, so reaching for it costs nothing', async () => {
+    const root = await showing([inside('a.md'), inside('b.md')])
+    client.restore.mockResolvedValue({ restored: ['elsewhere/a.md'], entryRemains: true })
+    const shown = reloading()
+
+    renameIn(root, 'a.md')
+    await givenAsync(shown)
+
+    expect(root.querySelector('[data-path=""]')?.getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('offers the whole entry a new home too, which is the way back for a blocked one', async () => {
+    const root = await showing([inside('a.md')])
+    typed = 'journal-restored'
+
+    const asked = settledPrompt()
+    renameIn(root, '')
+    await givenAsync(asked)
+
+    expect(client.restore).toHaveBeenCalledWith(ENTRY_ID, [''], 'journal-restored')
   })
 })

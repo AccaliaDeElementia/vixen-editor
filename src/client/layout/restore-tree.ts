@@ -3,6 +3,7 @@
 import { createRestoreSelection, type RestoreSelection, type TickState } from './restore-selection.ts'
 import type { TrashEntryNode } from '../files/trash-entry.ts'
 import type { EntryKind } from '../../shared/documents.ts'
+import { KEYS } from '../help.ts'
 
 const ROW_CLASS = 'restore-tree__row'
 const ROOT_DEPTH = 0
@@ -32,9 +33,15 @@ export interface RestoreTree {
   roots: () => string[]
 }
 
+interface RestoreTreeOptions {
+  onChanged: () => void
+  onRename: (path: string) => void
+}
+
 interface Row {
   element: HTMLElement
   tick: HTMLElement
+  rename: HTMLButtonElement
   path: string
 }
 
@@ -60,12 +67,28 @@ function label(node: TrashEntryNode, depth: number): HTMLElement {
   return element
 }
 
-function blockedNote(node: TrashEntryNode): HTMLElement | null {
+function blockingReason(node: TrashEntryNode): string | null {
   if (node.blockedBy === null && node.restorable) return null
 
+  return node.blockedBy === null ? 'name no longer allowed' : `${node.blockedBy} is back`
+}
+
+function blockedNote(reason: string): HTMLElement {
   const element = document.createElement('span')
   element.className = 'restore-tree__blocked'
-  element.textContent = node.blockedBy === null ? 'name no longer allowed' : `${node.blockedBy} is back`
+  element.textContent = reason
+
+  return element
+}
+
+function renameAction(node: TrashEntryNode): HTMLButtonElement {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = 'restore-tree__rename'
+  element.tabIndex = PASSED_OVER
+  element.setAttribute('aria-label', `Put ${node.name} back somewhere else`)
+  element.title = 'Put back somewhere else'
+  element.append(icon('drive_file_rename_outline', 'icon'))
 
   return element
 }
@@ -81,11 +104,15 @@ function rowFor(node: TrashEntryNode, depth: number): Row {
   if (kind === 'folder') element.setAttribute('aria-expanded', 'true')
 
   const tick = icon(TICKS.off.glyph, 'icon restore-tree__tick')
+  const rename = renameAction(node)
   element.append(tick, label(node, depth))
-  const blocked = blockedNote(node)
-  if (blocked !== null) element.append(blocked)
 
-  return { element, tick, path }
+  const reason = blockingReason(node)
+  element.setAttribute('aria-label', reason === null ? node.name : `${node.name}, ${reason}`)
+  if (reason !== null) element.append(blockedNote(reason))
+  element.append(rename)
+
+  return { element, tick, rename, path }
 }
 
 function itemFor(node: TrashEntryNode, depth: number, into: Row[]): HTMLElement {
@@ -127,13 +154,13 @@ function focusRow(rows: readonly Row[], index: number): void {
   rows[index]?.element.focus()
 }
 
-const TOGGLE_KEYS = new Set([' ', 'Enter'])
+const TOGGLE_KEYS = new Set([KEYS.tickRow, KEYS.openRow])
 const STEPS = new Map([
-  ['ArrowDown', ONE_ROW],
-  ['ArrowUp', -ONE_ROW],
+  [KEYS.nextRow, ONE_ROW],
+  [KEYS.previousRow, -ONE_ROW],
 ])
 
-export function renderRestoreTree(into: HTMLElement, entry: TrashEntryNode, onChanged: () => void): RestoreTree {
+export function renderRestoreTree(into: HTMLElement, entry: TrashEntryNode, options: RestoreTreeOptions): RestoreTree {
   const selection = createRestoreSelection(entry)
   const rows: Row[] = []
 
@@ -147,7 +174,7 @@ export function renderRestoreTree(into: HTMLElement, entry: TrashEntryNode, onCh
   function toggle(row: Row): void {
     selection.toggle(row.path)
     paint(rows, selection)
-    onChanged()
+    options.onChanged()
   }
 
   function step(from: number, by: number): void {
@@ -159,6 +186,7 @@ export function renderRestoreTree(into: HTMLElement, entry: TrashEntryNode, onCh
     const by = STEPS.get(event.key)
     if (by !== undefined) step(at, by)
     else if (TOGGLE_KEYS.has(event.key)) toggle(row)
+    else if (event.key === KEYS.rowAction) row.rename.focus()
     else return
 
     event.preventDefault()
@@ -170,6 +198,16 @@ export function renderRestoreTree(into: HTMLElement, entry: TrashEntryNode, onCh
     })
     row.element.addEventListener('keydown', (event: KeyboardEvent) => {
       onKey(event, row, at)
+    })
+    row.rename.addEventListener('click', (event: MouseEvent) => {
+      event.stopPropagation()
+      options.onRename(row.path)
+    })
+    row.rename.addEventListener('keydown', (event: KeyboardEvent) => {
+      if (event.key !== KEYS.leaveRowAction) return
+
+      row.element.focus()
+      event.preventDefault()
     })
   }
 

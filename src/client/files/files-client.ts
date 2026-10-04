@@ -22,7 +22,7 @@ export interface FilesClient {
 
 type RepairedPath = string
 
-interface RestoreOutcome {
+export interface RestoreOutcome {
   restored: string[]
   entryRemains: boolean
 }

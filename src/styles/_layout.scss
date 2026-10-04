@@ -497,6 +497,27 @@
   color: $info;
 }
 
+.restore-tree__rename {
+  margin-inline-start: auto;
+  padding: 0 0.2em;
+  border: 0;
+  background: none;
+  color: $muted;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.restore-tree__row:hover .restore-tree__rename,
+.restore-tree__rename:focus-visible {
+  color: $info;
+  opacity: 1;
+}
+
+.restore-tree__rename:focus-visible {
+  outline: 2px solid $info;
+  outline-offset: 2px;
+}
+
 .restore-tree__row[aria-checked='false'] .restore-tree__tick {
   color: $muted;
 }

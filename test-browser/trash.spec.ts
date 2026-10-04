@@ -1,9 +1,10 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 import { deletedEntry } from './fixtures.ts'
+import { stringFieldOf } from './json.ts'
 import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
 test('a trashed document is offered back at the path it came from', async ({ page, request }) => {
@@ -191,4 +192,56 @@ test('a new document after a restore lands beside it, not at the store root', as
   await expect(page.locator(`.tree__row[data-path="${folder}/fresh.md"]`)).toBeVisible()
 
   await request.delete(`/api/files/entries/${folder}`)
+})
+
+async function cherryPicked(page: Page, request: APIRequestContext, folder: string): Promise<string> {
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: `${folder}/kept.md`, content: '# kept' } })
+  await request.post('/api/files/documents', { data: { path: `${folder}/left.md`, content: '# left' } })
+  const trashId = await stringFieldOf(await request.delete(`/api/files/entries/${folder}`), 'trashId')
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#deleted-contents [role="tree"]')).toBeVisible())
+  await page.locator('.restore-tree__row[data-path="left.md"]').click()
+  await page.locator('#deleted-restore').click()
+
+  return trashId
+}
+
+test('a selection inside a trashed folder brings the rest of it back', async ({ page, request }) => {
+  const folder = `cherry-${String(Date.now())}`
+  const trashId = await cherryPicked(page, request, folder)
+
+  await expect(page.locator(`.tree__row[data-path="${folder}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${folder}`)
+  await request.delete(`/api/trash/${trashId}`)
+})
+
+test('what was unticked stays in the trash, and the entry still shows it', async ({ page, request }) => {
+  const folder = `leftover-${String(Date.now())}`
+  const trashId = await cherryPicked(page, request, folder)
+  await givenAsync(expect(page.locator('.restore-tree__row')).toHaveCount(2))
+
+  await expect(page.locator('.restore-tree__row[data-path="left.md"]')).toBeVisible()
+
+  await request.delete(`/api/files/entries/${folder}`)
+  await request.delete(`/api/trash/${trashId}`)
+})
+
+test('a row offers to put its own item back somewhere else', async ({ page, request }) => {
+  const name = `elsewhere-${String(Date.now())}.md`
+  const moved = `moved-${name}`
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#deleted-contents [role="tree"]')).toBeVisible())
+  await page.locator('.restore-tree__row[data-path=""] .restore-tree__rename').click()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
+  await page.locator('#file-dialog-entry').fill(moved)
+  await page.locator('#file-dialog-confirm').click()
+
+  await expect(page.locator('.cm-content')).toContainText('# gone')
+
+  await request.delete(`/api/files/entries/${moved}`)
 })

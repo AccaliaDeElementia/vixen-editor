@@ -15,6 +15,9 @@ export const KEYS = {
   expandRow: 'ArrowRight',
   collapseRow: 'ArrowLeft',
   openRow: 'Enter',
+  tickRow: ' ',
+  rowAction: 'ArrowRight',
+  leaveRowAction: 'ArrowLeft',
   insert: 'i',
   narrower: 'ArrowLeft',
   wider: 'ArrowRight',
@@ -33,6 +36,11 @@ const SHORTCUTS: readonly Entry[] = [
   },
   { does: 'Open the row the focus is on', how: 'Enter', keys: [KEYS.openRow] },
   { does: 'Insert a link to the selected file', how: 'Ctrl/Cmd + I in the file browser', keys: [KEYS.insert] },
+  {
+    does: 'Choose what comes back from the trash',
+    how: 'Space on a row, and the right arrow to put one back elsewhere',
+    keys: [KEYS.tickRow, KEYS.rowAction, KEYS.leaveRowAction],
+  },
   {
     does: 'Resize the file browser',
     how: 'Arrow keys on the handle',

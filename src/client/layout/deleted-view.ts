@@ -4,7 +4,7 @@ import { docUrlFor } from '../doc-path.ts'
 import { deepestSharedFolder, joinPath, STORE_ROOT } from '../../shared/store-path.ts'
 import { errorMessage } from '../error-message.ts'
 import type { Dialogs } from '../files/dialogs.ts'
-import type { FilesClient } from '../files/files-client.ts'
+import type { FilesClient, RestoreOutcome } from '../files/files-client.ts'
 import { entryPathsIn, type TrashNode } from '../files/tree-model.ts'
 import { renderRestoreTree, type RestoreTree } from './restore-tree.ts'
 import { TRASH_PATH } from '../files/tree-view.ts'
@@ -18,6 +18,8 @@ const RESTORE_SELECTOR = '#deleted-restore'
 const PURGE_SELECTOR = '#deleted-purge'
 const BLOCKED_SELECTOR = '#deleted-blocked'
 const CONTENTS_SELECTOR = '#deleted-contents'
+
+type Refusal = string
 
 const NOTHING_CHOSEN = 0
 const NOTHING_MORE = 0
@@ -98,22 +100,56 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
     return holder === STORE_ROOT ? STORE_ROOT : `${holder}/`
   }
 
+  async function settle(target: TrashNode, outcome: RestoreOutcome): Promise<void> {
+    announceStoreChanged(options.root)
+
+    if (outcome.entryRemains) {
+      await load(target.id)
+      return
+    }
+
+    const landed = landingFor(outcome.restored)
+    requestReveal(options.root, landed)
+    options.openUrl(docUrlFor(landed))
+  }
+
   async function restoreEntry(target: TrashNode): Promise<void> {
     try {
-      const outcome = await options.client.restore(target.id, chosenRoots())
-      announceStoreChanged(options.root)
-
-      if (outcome.entryRemains) {
-        await load(target.id)
-        return
-      }
-
-      const landed = landingFor(outcome.restored)
-      requestReveal(options.root, landed)
-      options.openUrl(docUrlFor(landed))
+      await settle(target, await options.client.restore(target.id, chosenRoots()))
     } catch (error) {
       options.toast.error(`Restore failed: ${errorMessage(error)}`)
     }
+  }
+
+  function wasAt(target: TrashNode, within: string): string {
+    return within === STORE_ROOT ? target.originalPath : joinPath(target.originalPath, within)
+  }
+
+  async function restoredOrRefusal(target: TrashNode, within: string, to: string): Promise<RestoreOutcome | Refusal> {
+    try {
+      return await options.client.restore(target.id, [within], to)
+    } catch (error) {
+      return errorMessage(error)
+    }
+  }
+
+  async function placeAt(target: TrashNode, within: string, to: string): Promise<Refusal | null> {
+    const placed = await restoredOrRefusal(target, within, to)
+    if (typeof placed === 'string') return placed
+
+    await settle(target, placed)
+
+    return null
+  }
+
+  async function placeElsewhere(target: TrashNode, within: string): Promise<void> {
+    await options.dialogs.prompt({
+      title: 'Put back somewhere else',
+      label: 'Path',
+      confirmLabel: 'Put back',
+      value: wasAt(target, within),
+      submit: async (to: string): Promise<Refusal | null> => await placeAt(target, within, to),
+    })
   }
 
   async function purgeEntry(target: TrashNode): Promise<void> {
@@ -154,6 +190,7 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
     chosenIn = null
     placeTaken = false
     contents.hidden = true
+    contents.replaceChildren()
   }
 
   function showEntry(found: TrashNode, occupied: boolean): void {
@@ -168,10 +205,18 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
     options.reveal(found.originalPath)
   }
 
-  async function showContents(entryId: string): Promise<void> {
-    const held = await options.client.trashEntry(entryId)
+  async function showContents(found: TrashNode): Promise<void> {
+    const held = await options.client.trashEntry(found.id)
     contents.hidden = held === null
-    chosenIn = held === null ? null : renderRestoreTree(contents, held, offerRestore)
+    chosenIn =
+      held === null
+        ? null
+        : renderRestoreTree(contents, held, {
+            onChanged: offerRestore,
+            onRename: (within: string) => {
+              void placeElsewhere(found, within)
+            },
+          })
     offerRestore()
   }
 
@@ -185,7 +230,7 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
     }
 
     showEntry(found, new Set(entryPathsIn(tree)).has(found.originalPath))
-    await showContents(entryId)
+    await showContents(found)
   }
 
   restore.addEventListener('click', () => {
