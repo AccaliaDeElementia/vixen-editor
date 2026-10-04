@@ -43,6 +43,8 @@ export function trashRoutes(store: DocumentStore): Hono {
     },
   )
 
+  routes.delete('/', async (c) => c.json({ purged: await store.emptyTrash() }))
+
   routes.delete('/:entryId', async (c) => {
     try {
       await store.purge(c.req.param('entryId'))

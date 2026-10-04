@@ -18,7 +18,15 @@ import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tre
 import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
 import { requestInsert } from '../insert-entry.ts'
 import { KEYS } from '../help.ts'
-import { renderTree, rowIndexOf, ROW_SELECTOR, TRASH_PATH, TREE_SELECTOR, type VisibleRow } from './tree-view.ts'
+import {
+  EMPTY_TRASH_SELECTOR,
+  renderTree,
+  rowIndexOf,
+  ROW_SELECTOR,
+  TRASH_PATH,
+  TREE_SELECTOR,
+  type VisibleRow,
+} from './tree-view.ts'
 
 interface FileTreeOptions {
   root?: ParentNode
@@ -29,6 +37,7 @@ interface FileTreeOptions {
 }
 
 const NEXT_ROW = 1
+const ONE_ENTRY = 1
 const PREVIOUS_ROW = -1
 const LAST_ANCESTOR = -1
 
@@ -104,8 +113,31 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   function draw(next: ReadonlySet<string>, focusPath?: string): void {
     open = next
     visible = renderTree(tree, { nodes, trash, open, selected })
+    bindEmptyTrash()
     reflectSelection()
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
+  }
+
+  function bindEmptyTrash(): void {
+    const button = tree.querySelector<HTMLElement>(EMPTY_TRASH_SELECTOR)
+
+    button?.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (button.dataset.armed === undefined) {
+        button.dataset.armed = 'yes'
+        button.replaceChildren(`Delete ${entriesIn(trash.length)} for good`)
+
+        return
+      }
+
+      runs.track(
+        emptyTrash().catch((error: unknown) => {
+          toast.error(errorMessage(error))
+        }),
+      )
+    })
   }
 
   function visibleSelection(): string | null {
@@ -200,6 +232,15 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     }
 
     requestInsert(tree, entryPath)
+  }
+
+  function entriesIn(count: number): string {
+    return `${String(count)} ${count === ONE_ENTRY ? 'entry' : 'entries'}`
+  }
+
+  async function emptyTrash(): Promise<void> {
+    toast.show(`Deleted ${entriesIn(await client.emptyTrash())} for good`)
+    await load()
   }
 
   tree.addEventListener('click', (event) => {

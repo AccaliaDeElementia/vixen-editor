@@ -289,6 +289,13 @@ entry is skipped by the listing rather than breaking it.
 There is **one** delete. `DELETE /api/documents/:id` was removed so that
 existence is managed in one place.
 
+**Emptying the trash works on the directory, not on the listing.** Because the
+listing skips a damaged entry, purging what it shows would leave that entry
+there for good, with nothing in the interface able to reach it. `DELETE
+/api/trash` therefore removes every child of `.trash` and answers with how many
+went, which is why the count it reports can exceed the count the Trash row
+shows.
+
 <a id="design-6025c7"></a>
 
 ### Moving

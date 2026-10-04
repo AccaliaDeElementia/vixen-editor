@@ -18,7 +18,10 @@ export interface FilesClient {
   remove: (entryPath: string) => Promise<string>
   restore: (entryId: string, paths?: readonly string[], to?: string) => Promise<RestoreOutcome>
   purge: (entryId: string) => Promise<void>
+  emptyTrash: () => Promise<number>
 }
+
+const NOTHING_PURGED = 0
 
 type RepairedPath = string
 
@@ -147,6 +150,14 @@ export function createFilesClient(
 
     async purge(entryId: string): Promise<void> {
       await send(`${baseUrl}/trash/${encodeURIComponent(entryId)}`, { method: 'DELETE' })
+    },
+
+    async emptyTrash(): Promise<number> {
+      const outcome: unknown = await send(`${baseUrl}/trash`, { method: 'DELETE' }).then(
+        async (response): Promise<unknown> => await response.json().catch(() => null),
+      )
+
+      return isRecord(outcome) && typeof outcome.purged === 'number' ? outcome.purged : NOTHING_PURGED
     },
   }
 }

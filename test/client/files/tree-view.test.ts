@@ -10,6 +10,7 @@ import {
   rowIndexOf,
   ROW_SELECTOR,
   TRASH_PATH,
+  EMPTY_TRASH_SELECTOR,
   type TreeViewModel,
 } from '../../../src/client/files/tree-view.ts'
 
@@ -268,6 +269,34 @@ describe('the trash pseudo-folder', () => {
     render({ trash: [entry] })
 
     expect(rowFor(TRASH_PATH).textContent).toContain('Trash (1)')
+  })
+
+  it('offers a way to be rid of everything in it', () => {
+    render({ trash: [entry] })
+
+    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)).not.toBeNull()
+  })
+
+  it('offers nothing to empty while it is already empty', () => {
+    render()
+
+    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)).toBeNull()
+  })
+
+  it('names what emptying it would cost, for anything reading the row aloud', () => {
+    render({ trash: [entry] })
+
+    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)?.getAttribute('aria-label')).toBe(
+      'Empty the trash of 1 entry',
+    )
+  })
+
+  it('counts the entries rather than what is inside them', () => {
+    render({ trash: [entry, { ...entry, id: 'bbbb' }] })
+
+    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)?.getAttribute('aria-label')).toBe(
+      'Empty the trash of 2 entries',
+    )
   })
 
   it('hides its entries until opened', () => {

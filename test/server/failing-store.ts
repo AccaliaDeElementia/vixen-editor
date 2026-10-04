@@ -23,5 +23,6 @@ export function failingStore(): DocumentStore {
     trashEntry: fail,
     restore: fail,
     purge: fail,
+    emptyTrash: fail,
   }
 }

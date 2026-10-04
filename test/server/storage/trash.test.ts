@@ -392,3 +392,96 @@ describe('purge', () => {
     await expect(store.purge('../../escape')).rejects.toThrow(InvalidPathError)
   })
 })
+
+describe('emptying the trash', () => {
+  it('counts nothing when there is nothing in it', async () => {
+    expect(await store.emptyTrash()).toBe(0)
+  })
+
+  it('removes every entry it held', async () => {
+    await store.createDocument('a.md', '# a')
+    await store.createDocument('b.md', '# b')
+    await store.trash('a.md')
+    await store.trash('b.md')
+
+    await store.emptyTrash()
+
+    await expect(store.listTrash()).resolves.toStrictEqual([])
+  })
+
+  it('reports how many entries went', async () => {
+    await store.createDocument('a.md', '# a')
+    await store.createDocument('b.md', '# b')
+    await store.trash('a.md')
+    await store.trash('b.md')
+
+    expect(await store.emptyTrash()).toBe(2)
+  })
+
+  it('takes the content with it, not merely the listing', async () => {
+    await store.createDocument('a.md', '# a')
+    const entryId = await store.trash('a.md')
+
+    await store.emptyTrash()
+
+    expect(await exists(trashPath(entryId))).toBe(false)
+  })
+
+  it('clears an entry the listing hides, so damage cannot outlive the trash', async () => {
+    await store.createDocument('a.md', '# a')
+    const entryId = await store.trash('a.md')
+    await fs.rm(trashPath(entryId, TRASH_META_NAME))
+    await givenAsync(expect(store.listTrash()).resolves.toStrictEqual([]))
+
+    await store.emptyTrash()
+
+    expect(await exists(trashPath(entryId))).toBe(false)
+  })
+
+  it('counts a damaged entry too, since it was something the reader could see no way to remove', async () => {
+    await store.createDocument('a.md', '# a')
+    const entryId = await store.trash('a.md')
+    await fs.rm(trashPath(entryId, TRASH_META_NAME))
+
+    expect(await store.emptyTrash()).toBe(1)
+  })
+
+  it('leaves the live tree alone', async () => {
+    await store.createDocument('kept.md', '# kept')
+    await store.createDocument('gone.md', '# gone')
+    await store.trash('gone.md')
+
+    await store.emptyTrash()
+
+    await expect(store.read('kept.md')).resolves.toBe('# kept')
+  })
+
+  it('leaves the trash itself in place, ready for the next delete', async () => {
+    await store.createDocument('a.md', '# a')
+    await store.trash('a.md')
+
+    await store.emptyTrash()
+
+    expect(await exists(trashPath())).toBe(true)
+  })
+
+  it('removes a link left in the trash without following it out of the store', async () => {
+    const outside = path.join(root, 'outside.md')
+    await fs.writeFile(outside, '# outside', 'utf8')
+    await fs.mkdir(trashPath(), { recursive: true })
+    await fs.symlink(outside, trashPath('escaping'))
+
+    await store.emptyTrash()
+
+    expect(await exists(outside)).toBe(true)
+  })
+
+  it('counts a link it removed, because it was in the trash', async () => {
+    const outside = path.join(root, 'outside.md')
+    await fs.writeFile(outside, '# outside', 'utf8')
+    await fs.mkdir(trashPath(), { recursive: true })
+    await fs.symlink(outside, trashPath('escaping'))
+
+    expect(await store.emptyTrash()).toBe(1)
+  })
+})

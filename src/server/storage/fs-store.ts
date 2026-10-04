@@ -35,7 +35,7 @@ import {
   EmptyContentError,
 } from './store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
-import { moveToTrash, purgeFromTrash, readTrash, type TrashEntry } from './trash.ts'
+import { emptyTrash, moveToTrash, purgeFromTrash, readTrash, type TrashEntry } from './trash.ts'
 import { readTrashEntry, type TrashEntryNode } from './trash-entries.ts'
 import { restoreSelection, type RestoreOutcome, type RestoreSelection } from './trash-restore.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
@@ -61,6 +61,7 @@ export interface DocumentStore {
   trashEntry: (entryId: string) => Promise<TrashEntryNode>
   restore: (request: RestoreSelection) => Promise<RestoreOutcome>
   purge: (entryId: string) => Promise<void>
+  emptyTrash: () => Promise<number>
 }
 
 function assertNotBlank(id: string, content: string): void {
@@ -239,6 +240,10 @@ export function createFsDocumentStore(
       await lock.run(async () => {
         await purgeFromTrash(root, entryId)
       })
+    },
+
+    async emptyTrash(): Promise<number> {
+      return await lock.run(async () => await emptyTrash(root))
     },
   }
 }

@@ -282,3 +282,38 @@ describe('restoring under a different name', () => {
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 })
+
+describe('DELETE /api/trash', () => {
+  async function emptied(): Promise<Response> {
+    return await app.request('/api/trash', { method: 'DELETE' })
+  }
+
+  it('answers with how many entries it purged', async () => {
+    await store.createDocument('a.md', 'x')
+    await store.createDocument('b.md', 'y')
+    await remove('a.md')
+    await remove('b.md')
+
+    expect(await fieldOf(await emptied(), 'purged')).toBe(2)
+  })
+
+  it('leaves the trash empty', async () => {
+    await store.createDocument('a.md', 'x')
+    await remove('a.md')
+    await emptied()
+
+    expect(await store.listTrash()).toStrictEqual([])
+  })
+
+  it('answers plainly when the trash was already empty', async () => {
+    expect(await fieldOf(await emptied(), 'purged')).toBe(0)
+  })
+
+  it('is not reached by a path that names one entry', async () => {
+    await store.createDocument('a.md', 'x')
+    const entryId = await fieldOf(await remove('a.md'), 'trashId')
+    await app.request(`/api/trash/${String(entryId)}`, { method: 'DELETE' })
+
+    expect(await fieldOf(await emptied(), 'purged')).toBe(0)
+  })
+})

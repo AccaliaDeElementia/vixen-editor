@@ -14,6 +14,10 @@ import type { EntryKind } from '../../shared/documents.ts'
 export const TREE_SELECTOR = '#file-tree'
 export const ROW_SELECTOR = '[role="treeitem"]'
 export const TRASH_PATH = '.trash'
+export const EMPTY_TRASH_SELECTOR = '.tree__empty-trash'
+
+const NOTHING_DELETED = 0
+const ONE_ENTRY = 1
 
 export interface VisibleRow {
   path: string
@@ -128,19 +132,31 @@ const ROOT_DEPTH = 0
 const TRASH_ENTRY_DEPTH = 1
 const ONE_LEVEL_DEEPER = 1
 
+function emptyTrashAction(held: number): HTMLElement {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = 'tree__empty-trash'
+  element.setAttribute('aria-label', `Empty the trash of ${String(held)} ${held === ONE_ENTRY ? 'entry' : 'entries'}`)
+  element.title = 'Empty the trash'
+  element.append(decorativeIcon('delete_sweep', 'icon'))
+
+  return element
+}
+
 function renderTrash(model: TreeViewModel): Rendered {
   const expanded = model.open.has(TRASH_PATH)
   const name = `Trash (${String(model.trash.length)})`
-  const element = treeItem(
-    row({
-      path: TRASH_PATH,
-      kind: 'trash-root',
-      name,
-      depth: ROOT_DEPTH,
-      selected: model.selected === TRASH_PATH,
-      expanded,
-    }),
-  )
+  const trashRow = row({
+    path: TRASH_PATH,
+    kind: 'trash-root',
+    name,
+    depth: ROOT_DEPTH,
+    selected: model.selected === TRASH_PATH,
+    expanded,
+  })
+  if (model.trash.length > NOTHING_DELETED) trashRow.append(emptyTrashAction(model.trash.length))
+
+  const element = treeItem(trashRow)
   const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash-root', opens: null }]
 
   if (!expanded) return { items: [element], visible }

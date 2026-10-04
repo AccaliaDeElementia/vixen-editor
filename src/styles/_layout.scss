@@ -272,6 +272,22 @@
   }
 }
 
+.tree__empty-trash {
+  margin-inline-start: auto;
+  padding: 0 0.3em;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: $muted;
+  font-size: $font-size-sm;
+  cursor: pointer;
+}
+
+.tree__empty-trash[data-armed] {
+  background: $danger;
+  color: $white;
+}
+
 .tree__name {
   overflow: hidden;
   text-overflow: ellipsis;

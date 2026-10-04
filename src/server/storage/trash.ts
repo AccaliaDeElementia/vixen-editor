@@ -25,6 +25,7 @@ const TRASH_PAYLOAD_NAME = 'payload'
 const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iv
 
 const SORT_EQUAL = 0
+const NOTHING_HELD = 0
 
 export interface TrashEntry {
   id: string
@@ -140,6 +141,22 @@ export async function purgeFromTrash(root: string, entryId: string): Promise<voi
 
   await fs.rm(directory, { recursive: true, force: true })
   logTrash('purged %s', entryId)
+}
+
+export async function emptyTrash(root: string): Promise<number> {
+  const directory = trashRoot(root)
+  const held = await nullWhenAbsent(async () => await fs.readdir(directory))
+  if (held === null) return NOTHING_HELD
+
+  await Promise.all(
+    held.map(async (name) => {
+      await fs.rm(path.join(directory, name), { recursive: true, force: true })
+    }),
+  )
+
+  logTrash('emptied the trash of %d', held.length)
+
+  return held.length
 }
 
 export const TestOnly = { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME }

@@ -25,6 +25,7 @@ export interface FakeClient {
   remove: ReturnType<typeof vi.fn>
   restore: ReturnType<typeof vi.fn>
   purge: ReturnType<typeof vi.fn>
+  emptyTrash: ReturnType<typeof vi.fn>
 }
 
 export function fakeClient(nodes: unknown, trash: readonly TrashNode[] = []): FakeClient {
@@ -38,6 +39,7 @@ export function fakeClient(nodes: unknown, trash: readonly TrashNode[] = []): Fa
     remove: vi.fn().mockResolvedValue(undefined),
     restore: vi.fn().mockResolvedValue(undefined),
     purge: vi.fn().mockResolvedValue(undefined),
+    emptyTrash: vi.fn().mockResolvedValue(0),
   }
 }
 

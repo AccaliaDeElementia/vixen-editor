@@ -234,6 +234,26 @@ describe('mutations', () => {
     expect(outcome).toStrictEqual({ restored: [], entryRemains: false })
   })
 
+  it('empties the whole trash in one request', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ purged: 3 }))
+
+    await client().emptyTrash()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/trash', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('reports how many entries the server actually removed', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ purged: 3 }))
+
+    await expect(client().emptyTrash()).resolves.toBe(3)
+  })
+
+  it('reports nothing removed when the reply cannot be read', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }))
+
+    await expect(client().emptyTrash()).resolves.toBe(0)
+  })
+
   it('purges a trash entry', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
 

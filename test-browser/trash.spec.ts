@@ -5,6 +5,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 import { deletedEntry } from './fixtures.ts'
 import { stringFieldOf } from './json.ts'
+import { TRASH_PATH } from '../src/client/files/tree-view.ts'
 import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
 test('a trashed document is offered back at the path it came from', async ({ page, request }) => {
@@ -115,7 +116,7 @@ test('a trash entry is deleted for good from its own page, not from the file bro
   await expect(page.locator('#deleted-what')).toHaveText(`${name} was deleted for good.`)
 })
 
-test('the file browser offers no trash buttons of its own', async ({ page, request }) => {
+test('the file browser offers no buttons on a deleted entry of its own', async ({ page, request }) => {
   const name = `nobtn-${String(Date.now())}.md`
   await deletedEntry(request, name)
 
@@ -123,7 +124,7 @@ test('the file browser offers no trash buttons of its own', async ({ page, reque
   await page.locator('.tree__row[data-kind="trash-root"]').click()
   await givenAsync(expect(page.locator('[role="treeitem"][data-path^=".trash/"]').first()).toBeVisible())
 
-  await expect(page.locator('.tree__row button')).toHaveCount(0)
+  await expect(page.locator('[role="treeitem"][data-path^=".trash/"] button')).toHaveCount(0)
 })
 
 test('deleting the open image shows it in the trash, expanded and selected', async ({ page, request }) => {
@@ -244,4 +245,44 @@ test('a row offers to put its own item back somewhere else', async ({ page, requ
   await expect(page.locator('.cm-content')).toContainText('# gone')
 
   await request.delete(`/api/files/entries/${moved}`)
+})
+
+// This suite is fullyParallel against one store, and emptying the trash is the
+// one action that would reach every other spec's fixtures. The second click is
+// answered rather than carried out, so the path from the button to the request
+// is still exercised.
+test('a second click asks the server to empty the trash, and says what went', async ({ page, request }) => {
+  const name = `sweep-${String(Date.now())}.md`
+  const trashId = await deletedEntry(request, name)
+  await page.route('**/api/trash', async (route) => {
+    if (route.request().method() === 'DELETE') await route.fulfill({ json: { purged: 2 } })
+    else await route.fallback()
+  })
+
+  await page.goto('/doc/')
+  const control = page.locator('.tree__empty-trash')
+  await givenAsync(expect(control).toBeVisible())
+  await control.click()
+  await givenAsync(expect(control).toHaveText(/Delete \d+ (?:entry|entries) for good/v))
+
+  await control.click()
+
+  await expect(page.locator('#status')).toContainText('Deleted 2 entries for good')
+
+  await request.delete(`/api/trash/${trashId}`)
+})
+
+test('arming the trash does not also open it', async ({ page, request }) => {
+  const name = `armed-${String(Date.now())}.md`
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto('/doc/')
+  const control = page.locator('.tree__empty-trash')
+  await givenAsync(expect(control).toBeVisible())
+
+  await control.click()
+
+  await expect(page.locator(`.tree__row[data-path="${TRASH_PATH}"]`)).toHaveAttribute('aria-expanded', 'false')
+
+  await request.delete(`/api/trash/${trashId}`)
 })
