@@ -2,6 +2,8 @@
 
 import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
 
+import { decorativeIcon, ENTRY_GLYPHS, makeReachable, treeGroup, treeItem, treeRow } from '../tree-rows.ts'
+
 import { docUrlFor } from '../doc-path.ts'
 import { trashUrlFor } from '../../shared/page-urls.ts'
 import { joinPath } from '../../shared/store-path.ts'
@@ -12,12 +14,6 @@ import type { EntryKind } from '../../shared/documents.ts'
 export const TREE_SELECTOR = '#file-tree'
 export const ROW_SELECTOR = '[role="treeitem"]'
 export const TRASH_PATH = '.trash'
-
-const ENTRY_ICONS: Readonly<Record<EntryKind, string>> = {
-  folder: 'folder',
-  document: 'description',
-  image: 'image',
-}
 
 export interface VisibleRow {
   path: string
@@ -44,21 +40,11 @@ export interface TreeViewModel {
 }
 
 function icon(name: string, modifier: string): HTMLElement {
-  const element = document.createElement('span')
-  element.className = `icon tree__icon tree__icon--${modifier}`
-  element.setAttribute('aria-hidden', 'true')
-  element.textContent = name
-
-  return element
+  return decorativeIcon(name, `icon tree__icon tree__icon--${modifier}`)
 }
 
 function twisty(expanded: boolean | null): HTMLElement {
-  const element = document.createElement('span')
-  element.className = 'icon tree__twisty'
-  element.setAttribute('aria-hidden', 'true')
-  element.textContent = expanded === null ? '' : expanded ? 'expand_more' : 'chevron_right'
-
-  return element
+  return decorativeIcon(expanded === null ? '' : expanded ? 'expand_more' : 'chevron_right', 'icon tree__twisty')
 }
 
 function label(text: string): HTMLElement {
@@ -80,49 +66,23 @@ interface RowOptions {
   href?: string
 }
 
-function rowElement(href: string | undefined): HTMLElement {
-  if (href === undefined) return document.createElement('div')
-
-  const anchor = document.createElement('a')
-  anchor.href = href
-
-  return anchor
-}
-
 function row(options: RowOptions): HTMLElement {
   const { path, kind, draggable, name, depth, expanded, selected, href } = options
-  const element = rowElement(href)
+  const element = treeRow({ path, kind, depth }, href)
 
   element.className = 'tree__row'
-  element.setAttribute('role', 'treeitem')
   element.setAttribute('aria-selected', String(selected))
-  element.setAttribute('tabindex', '-1')
-  element.style.setProperty('--depth', String(depth))
-  element.dataset.path = path
-  element.dataset.kind = kind
   if (draggable === true) element.draggable = true
 
   if (expanded !== null) element.setAttribute('aria-expanded', String(expanded))
 
-  element.append(twisty(expanded), icon(ENTRY_ICONS[kind === 'trash-root' ? 'folder' : kind], kind), label(name))
+  element.append(twisty(expanded), icon(ENTRY_GLYPHS[kind === 'trash-root' ? 'folder' : kind], kind), label(name))
 
   return element
 }
 
 function group(): HTMLElement {
-  const element = document.createElement('ul')
-  element.className = 'tree__group'
-  element.setAttribute('role', 'group')
-
-  return element
-}
-
-function item(content: HTMLElement): HTMLElement {
-  const element = document.createElement('li')
-  element.setAttribute('role', 'none')
-  element.append(content)
-
-  return element
+  return treeGroup('tree__group')
 }
 
 interface Rendered {
@@ -140,13 +100,13 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
     if (node.kind !== 'folder') {
       const href = docUrlFor(node.path)
       const options = { path: node.path, kind: node.kind, name: node.name, depth, expanded: null, selected, href }
-      items.push(item(row({ ...options, draggable: true })))
+      items.push(treeItem(row({ ...options, draggable: true })))
       visible.push({ path: node.path, expandable: false, kind: node.kind, opens: href })
       continue
     }
 
     const expanded = model.open.has(node.path)
-    const element = item(
+    const element = treeItem(
       row({ path: node.path, kind: 'folder', name: node.name, depth, expanded, selected, draggable: true }),
     )
     items.push(element)
@@ -171,7 +131,7 @@ const ONE_LEVEL_DEEPER = 1
 function renderTrash(model: TreeViewModel): Rendered {
   const expanded = model.open.has(TRASH_PATH)
   const name = `Trash (${String(model.trash.length)})`
-  const element = item(
+  const element = treeItem(
     row({
       path: TRASH_PATH,
       kind: 'trash-root',
@@ -201,7 +161,7 @@ function renderTrash(model: TreeViewModel): Rendered {
     })
     deleted.dataset.trashId = id
     deleted.title = `Deleted ${deletedAt}`
-    children.append(item(deleted))
+    children.append(treeItem(deleted))
     visible.push({ path: entryKey, expandable: false, kind: 'trash-entry', opens: href })
   }
   element.append(children)
@@ -211,9 +171,9 @@ function renderTrash(model: TreeViewModel): Rendered {
 
 function applyRovingTabindex(tree: Element): void {
   const rows = [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
-  const focusable = rows.find((candidate) => candidate.getAttribute('aria-selected') === 'true') ?? rows[SEQUENCE_START]
+  const selected = rows.findIndex((candidate) => candidate.getAttribute('aria-selected') === 'true')
 
-  focusable?.setAttribute('tabindex', '0')
+  makeReachable(rows, selected === NOT_FOUND ? SEQUENCE_START : selected)
 }
 
 export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {

@@ -213,13 +213,11 @@
 }
 
 .tree__row {
-  // Depth is carried as a custom property so nesting is expressed once here
-  // rather than as an inline pixel value on every row.
   display: flex;
   align-items: center;
   gap: 0.35em;
   min-height: 24px;
-  padding: 0.15em $space-sm 0.15em calc(#{$space-sm} + (var(--depth, 0) * 1.1em));
+  padding: 0.15em $space-sm 0.15em calc(#{$space-sm} + (var(--depth, 0) * #{$tree-indent-step}));
   color: $body-color;
   text-decoration: none;
   cursor: pointer;
@@ -484,7 +482,7 @@
   display: flex;
   align-items: center;
   gap: $space-sm;
-  padding: 0.15em 0;
+  padding: 0.15em 0 0.15em calc(var(--depth, 0) * #{$tree-indent-step});
   cursor: pointer;
 }
 

@@ -84,10 +84,10 @@ describe('showing what a trashed entry holds', () => {
     expect(rows().at(1)?.hasAttribute('aria-expanded')).toBe(false)
   })
 
-  it('indents by the label rather than by the row', () => {
+  it('says how deep a row sits, so the stylesheet owns the indent', () => {
     renderRestoreTree(into, entryOf([file('a.md')]), { onChanged: () => undefined, onRename: () => undefined })
 
-    expect(rows().at(1)?.querySelector<HTMLElement>('.restore-tree__label')?.style.paddingInlineStart).not.toBe('')
+    expect(rows().at(1)?.style.getPropertyValue('--depth')).toBe('1')
   })
 
   it('replaces what was shown before, rather than stacking entries', () => {
