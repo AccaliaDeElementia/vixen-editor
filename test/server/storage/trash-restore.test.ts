@@ -439,3 +439,26 @@ describe('an image restored under a different name', () => {
     expect(await exists('pictures/renamed.png')).toBe(true)
   })
 })
+
+describe('a path that tries to climb out of the payload', () => {
+  async function climbing(within: string): Promise<unknown> {
+    const entryId = await trashedJournal()
+    await write('secret.md', '# secret')
+
+    return await restoreSelection(root, { entryId, paths: [within] }).catch((error: unknown) => error)
+  }
+
+  it('is refused rather than reaching a sibling of the store root', async () => {
+    expect(await climbing('../../secret.md')).toBeInstanceOf(InvalidPathError)
+  })
+
+  it('is refused rather than naming the trash itself', async () => {
+    expect(await climbing('..')).toBeInstanceOf(InvalidPathError)
+  })
+
+  it('leaves what it tried to reach exactly where it was', async () => {
+    await climbing('../../secret.md')
+
+    expect(await exists('secret.md')).toBe(true)
+  })
+})

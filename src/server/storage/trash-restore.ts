@@ -7,7 +7,8 @@ import { createLogger } from '../logging.ts'
 
 import { nullWhenAbsent } from './absence.ts'
 import { compareNamesIn } from './name-order.ts'
-import { resolveFolderPath } from './safe-path.ts'
+import { InvalidPathError, resolveFolderPath } from './safe-path.ts'
+import { isAtOrInside } from './containment.ts'
 import { BlockedRestoreError } from './store-errors.ts'
 import { entryKindOf, purgeFromTrash, readTrashMeta, trashPayloadPath } from './trash.ts'
 import { assertKindSurvives } from './move.ts'
@@ -88,6 +89,8 @@ interface Asked {
 
 async function placementFor(asked: Asked, within: string): Promise<Placement> {
   const source = sourceOf(asked.payload, within)
+  if (!isAtOrInside(asked.payload, source)) throw new InvalidPathError(within, 'is not inside the trashed entry')
+
   const wasAt = destinationOf(asked.originalPath, within)
   const kind = await entryKindOf(wasAt, source)
   const destination = asked.to ?? wasAt
