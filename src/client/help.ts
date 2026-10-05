@@ -42,7 +42,7 @@ const SHORTCUTS: readonly Entry[] = [
     keys: [KEYS.tickRow, KEYS.rowAction, KEYS.leaveRowAction],
   },
   {
-    does: 'Resize the file browser',
+    does: 'Resize the file browser, or the split between editors',
     how: 'Arrow keys on the handle',
     keys: [KEYS.narrower, KEYS.wider, KEYS.narrowest, KEYS.widest],
   },

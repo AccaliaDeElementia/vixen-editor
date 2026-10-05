@@ -5,5 +5,15 @@ include _pane.pug
 block content
   main.workspace#workspace(aria-label='Editor')
     h1.visually-hidden#workspace-title Editor
-    +pane(true)
+    .panes(data-part='panes')
+      +pane(true)
+      .split-resizer(
+        data-part='split-resizer'
+        role='separator'
+        tabindex='0'
+        aria-orientation='vertical'
+        aria-label='Resize the split'
+      )
+      template(data-part='second-pane')
+        +pane(false)
     .toasts#status(role='status' aria-live='polite' aria-atomic='false')

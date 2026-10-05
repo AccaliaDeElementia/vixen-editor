@@ -324,3 +324,245 @@ describe('inserting from a drawer that covers the document', () => {
     expect(readExplorerState(NARROW).open).toBe(false)
   })
 })
+
+describe('splitting the workspace', () => {
+  const PANES_WIDTH = 1200
+  const PANES_HEIGHT = 800
+
+  function panes(): HTMLElement {
+    const element = root.querySelector<HTMLElement>('[data-part="panes"]')
+    if (element === null) throw new Error('missing panes')
+    Object.defineProperty(element, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        left: 0,
+        top: 0,
+        width: PANES_WIDTH,
+        height: PANES_HEIGHT,
+        right: PANES_WIDTH,
+        bottom: PANES_HEIGHT,
+        x: 0,
+        y: 0,
+      }),
+    })
+
+    return element
+  }
+
+  function started(): void {
+    panes()
+    initLayout({ root, view: fakeView() })
+  }
+
+  function button(which: string): HTMLElement {
+    const element = root.querySelector<HTMLElement>(`#split-${which}`)
+    if (element === null) throw new Error(`missing #split-${which}`)
+    return element
+  }
+
+  function splitResizer(): HTMLElement {
+    const element = root.querySelector<HTMLElement>('[data-part="split-resizer"]')
+    if (element === null) throw new Error('missing split resizer')
+    return element
+  }
+
+  function share(): number {
+    return Number.parseFloat(panes().style.getPropertyValue('--split'))
+  }
+
+  it('tells the stylesheet to lay the panes out side by side', () => {
+    started()
+
+    button('beside').click()
+
+    expect(panes().dataset.split).toBe('beside')
+  })
+
+  it('marks the control it is currently using', () => {
+    started()
+
+    button('below').click()
+
+    expect(button('below').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('leaves the other control unmarked, since one orientation is in force at a time', () => {
+    started()
+
+    button('below').click()
+
+    expect(button('beside').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('returns to one pane when the control in force is pressed again', () => {
+    started()
+    button('beside').click()
+
+    button('beside').click()
+
+    expect(panes().dataset.split).toBeUndefined()
+  })
+
+  it('moves the divider where it was dragged', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(pointer('pointerdown', 0))
+    splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
+
+    expect(share()).toBeCloseTo(0.7)
+  })
+
+  it('ignores a drag that never started, so a stray move does not resize', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
+
+    expect(share()).toBeCloseTo(0.5)
+  })
+
+  it('ignores a release that no drag preceded', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(pointer('pointerup', PANES_WIDTH * 0.35))
+
+    expect(share()).toBeCloseTo(0.5)
+  })
+
+  it('settles where the pointer was let go', () => {
+    started()
+    button('beside').click()
+    splitResizer().dispatchEvent(pointer('pointerdown', 0))
+
+    splitResizer().dispatchEvent(pointer('pointerup', PANES_WIDTH * 0.35))
+
+    expect(share()).toBeCloseTo(0.35)
+  })
+
+  it('narrows a step at a time from the keyboard', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }))
+
+    expect(share()).toBeCloseTo(0.45)
+  })
+
+  it('widens a step at a time from the keyboard', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))
+
+    expect(share()).toBeCloseTo(0.55)
+  })
+
+  it('goes to the narrowest the first pane may be', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }))
+
+    expect(share()).toBeCloseTo(280 / PANES_WIDTH)
+  })
+
+  it('goes to the widest the first pane may be', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }))
+
+    expect(share()).toBeCloseTo(1 - 280 / PANES_WIDTH)
+  })
+
+  it('leaves a key it does not handle to the browser', () => {
+    started()
+    button('beside').click()
+
+    const event = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true })
+    splitResizer().dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('re-applies the split when the window changes size, since the floor is in pixels', () => {
+    started()
+    button('beside').click()
+
+    root.ownerDocument.defaultView?.dispatchEvent(new Event('resize'))
+
+    expect(share()).toBeCloseTo(0.5)
+  })
+})
+
+describe('splitting above and below', () => {
+  const PANES_WIDTH = 1200
+  const PANES_HEIGHT = 800
+
+  function measuredPanes(): HTMLElement {
+    const element = root.querySelector<HTMLElement>('[data-part="panes"]')
+    if (element === null) throw new Error('missing panes')
+    Object.defineProperty(element, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        left: 0,
+        top: 0,
+        width: PANES_WIDTH,
+        height: PANES_HEIGHT,
+        right: PANES_WIDTH,
+        bottom: PANES_HEIGHT,
+        x: 0,
+        y: 0,
+      }),
+    })
+
+    return element
+  }
+
+  function resizerFor(): HTMLElement {
+    const element = root.querySelector<HTMLElement>('[data-part="split-resizer"]')
+    if (element === null) throw new Error('missing split resizer')
+    return element
+  }
+
+  function verticalPointer(type: string, clientY: number): PointerEvent {
+    return new PointerEvent(type, { clientY, pointerId: 1, bubbles: true, cancelable: true })
+  }
+
+  it('measures the drag down the page rather than across it', () => {
+    const panes = measuredPanes()
+    initLayout({ root, view: fakeView() })
+    root.querySelector<HTMLElement>('#split-below')?.click()
+
+    resizerFor().dispatchEvent(verticalPointer('pointerdown', 0))
+    resizerFor().dispatchEvent(verticalPointer('pointermove', PANES_HEIGHT * 0.3))
+
+    expect(Number.parseFloat(panes.style.getPropertyValue('--split'))).toBeCloseTo(0.3)
+  })
+})
+
+describe('splitting a page that has no panes', () => {
+  it('is left alone rather than failing', () => {
+    root.querySelector('[data-part="panes"]')?.remove()
+    initLayout({ root, view: fakeView() })
+
+    root.querySelector<HTMLElement>('#split-beside')?.click()
+
+    expect(root.querySelector('[data-part="panes"]')).toBeNull()
+  })
+})
+
+describe('a divider dragged before anything has been laid out', () => {
+  it('leaves the share alone rather than dividing by nothing', () => {
+    initLayout({ root, view: fakeView() })
+    root.querySelector<HTMLElement>('#split-beside')?.click()
+    const panes = root.querySelector<HTMLElement>('[data-part="panes"]')
+
+    root.querySelector<HTMLElement>('[data-part="split-resizer"]')?.dispatchEvent(pointer('pointerdown', 0))
+    root.querySelector<HTMLElement>('[data-part="split-resizer"]')?.dispatchEvent(pointer('pointermove', 400))
+
+    expect(Number.parseFloat(panes?.style.getPropertyValue('--split') ?? '')).toBeCloseTo(0.5)
+  })
+})
