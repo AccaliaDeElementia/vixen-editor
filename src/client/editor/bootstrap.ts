@@ -27,6 +27,7 @@ import { createDeletedView } from '../layout/deleted-view.ts'
 import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
+import { createOpenTabs } from '../layout/open-tabs.ts'
 import { createTabStrip } from '../layout/tab-strip.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
@@ -116,19 +117,35 @@ class MissingMountError extends Error {
   }
 }
 
-function stripIn(root: ParentNode, openUrl: (url: string) => void): { show: (at: string) => void } {
-  const host = root.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
-  if (host === null) return { show: () => undefined }
+interface Strip {
+  opened: (at: string) => void
+  left: () => void
+}
 
-  const strip = createTabStrip(host, {
-    onActivate: ({ path }) => {
-      openUrl(docUrlFor(path))
-    },
-  })
+function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
+  const tabs = createOpenTabs()
+  const host = root.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
+  const strip =
+    host === null
+      ? null
+      : createTabStrip(host, {
+          onActivate: ({ path }) => {
+            openUrl(docUrlFor(path))
+          },
+        })
+
+  function draw(): void {
+    strip?.show(tabs.all(), tabs.active())
+  }
 
   return {
-    show: (at: string) => {
-      strip.show([{ path: at, view: 'editor' }], { path: at, view: 'editor' })
+    opened: (at: string) => {
+      tabs.open({ path: at, view: 'editor' })
+      draw()
+    },
+    left: () => {
+      tabs.leave()
+      draw()
     },
   }
 }
@@ -187,6 +204,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   function showMissing(entryPath: string, shown: string): void {
     tab.empty()
+    strip.left()
     workspace.show('missing', shown)
     missingView.offer(entryPath)
     setStatus(`${shown} is not in the store`)
@@ -215,6 +233,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const outcome = await resolveIndex(session, entryPath, alternate)
     if (!outcome.reached) {
       tab.empty()
+      strip.left()
       workspace.show('unreachable', shown)
       reportUnreachable(root, shown, outcome.error)
 
@@ -234,7 +253,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const initial = stored ? template : await withCheatsheetIfNew(template, opened)
 
     tab.open(opened, initial)
-    strip.show(opened)
+    strip.opened(opened)
     workspace.show('document', shown)
     setStatus(`Editing ${opened} — press Ctrl/Cmd+S to save`)
   }
@@ -247,6 +266,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const trashEntryId = trashEntryIdFromPath(target)
     if (trashEntryId !== null) {
       tab.empty()
+      strip.left()
       deletedView.offer(trashEntryId)
       setStatus('This entry is in the trash')
 
@@ -256,6 +276,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     openDocument.commit(documentIdFromPath(target))
     if (classifyFile(documentId()) === 'image') {
       tab.empty()
+      strip.left()
       imageView.offer(documentId())
       setStatus(`Viewing ${documentId()}`)
 

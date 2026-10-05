@@ -860,3 +860,104 @@ describe('the tab strip', () => {
     expect(opened).toStrictEqual(['/doc/journal/a.md'])
   })
 })
+
+describe('several tabs', () => {
+  function stripTabs(): HTMLElement[] {
+    return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
+  }
+
+  function paths(): Array<string | undefined> {
+    return stripTabs().map((tab) => tab.dataset.path)
+  }
+
+  function selected(): Array<string | undefined> {
+    return stripTabs()
+      .filter((tab) => tab.getAttribute('aria-selected') === 'true')
+      .map((tab) => tab.dataset.path)
+  }
+
+  function walking(): { navigation: Navigation; go: (url: string) => Promise<void> } {
+    const handlers = new Map<string, (event?: unknown) => void>()
+
+    return {
+      go: async (url: string) => {
+        let navigated: Promise<void> = Promise.resolve()
+        handlers.get('navigate')?.({
+          canIntercept: true,
+          hashChange: false,
+          downloadRequest: null,
+          formData: null,
+          destination: { url: new URL(url, 'https://example.test').href },
+          intercept: (intercepted: { handler: () => Promise<void> }) => {
+            navigated = intercepted.handler()
+          },
+        })
+        await navigated
+      },
+      navigation: cast<Navigation>({
+        addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+        removeEventListener: (type: string) => handlers.delete(type),
+        canGoBack: false,
+        canGoForward: false,
+        back: () => undefined,
+        forward: () => undefined,
+      }),
+    }
+  }
+
+  it('keeps a tab for every document opened, in the order they were opened', async () => {
+    const walk = walking()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+
+    await walk.go('/doc/b.md')
+
+    expect(paths()).toStrictEqual(['a.md', 'b.md'])
+  })
+
+  it('marks the document being shown as the active tab', async () => {
+    const walk = walking()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+
+    await walk.go('/doc/b.md')
+
+    expect(selected()).toStrictEqual(['b.md'])
+  })
+
+  it('raises a document already open rather than holding it twice', async () => {
+    const walk = walking()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+    await walk.go('/doc/b.md')
+
+    await walk.go('/doc/a.md')
+
+    expect(paths()).toStrictEqual(['a.md', 'b.md'])
+  })
+
+  it('makes the one it raised the active tab', async () => {
+    const walk = walking()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+    await walk.go('/doc/b.md')
+
+    await walk.go('/doc/a.md')
+
+    expect(selected()).toStrictEqual(['a.md'])
+  })
+
+  it('marks no tab active while the workspace shows a trash entry', async () => {
+    const walk = walking()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+
+    await walk.go('/trash/entry-1')
+
+    expect(selected()).toStrictEqual([])
+  })
+
+  it('keeps the tabs while the workspace shows a trash entry, so nothing is lost by looking', async () => {
+    const walk = walking()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+
+    await walk.go('/trash/entry-1')
+
+    expect(paths()).toStrictEqual(['a.md'])
+  })
+})

@@ -1,17 +1,11 @@
 'use sanity'
 
 import { basenameOf } from '../../shared/link-paths.ts'
+import { tabIdentity, type TabAt } from './open-tabs.ts'
 
 const TAB_CLASS = 'tabs__tab'
 const REACHABLE = 0
 const PASSED_OVER = -1
-
-type TabView = 'editor' | 'source' | 'markup'
-
-interface TabAt {
-  path: string
-  view: TabView
-}
 
 interface ShownTab extends TabAt {
   name?: string
@@ -22,11 +16,7 @@ interface TabStripOptions {
 }
 
 export interface TabStrip {
-  show: (tabs: readonly ShownTab[], active: TabAt) => void
-}
-
-function identityOf({ path, view }: TabAt): string {
-  return `${view}:${path}`
+  show: (tabs: readonly ShownTab[], active: TabAt | null) => void
 }
 
 function labelFor(tab: ShownTab): string {
@@ -45,7 +35,7 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     element.tabIndex = active ? REACHABLE : PASSED_OVER
 
     const { path, view } = tab
-    element.dataset.tab = identityOf(tab)
+    element.dataset.tab = tabIdentity(tab)
     element.dataset.path = path
     element.dataset.view = view
     element.textContent = labelFor(tab)
@@ -58,10 +48,10 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
   }
 
   return {
-    show(tabs: readonly ShownTab[], active: TabAt): void {
-      const wanted = identityOf(active)
+    show(tabs: readonly ShownTab[], active: TabAt | null): void {
+      const wanted = active === null ? null : tabIdentity(active)
 
-      host.replaceChildren(...tabs.map((tab) => tabFor(tab, identityOf(tab) === wanted)))
+      host.replaceChildren(...tabs.map((tab) => tabFor(tab, tabIdentity(tab) === wanted)))
     },
   }
 }
