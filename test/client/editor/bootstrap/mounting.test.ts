@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { announceDocumentMoved } from '../../../../src/client/document-moved.ts'
 import { requestInsert } from '../../../../src/client/insert-entry.ts'
+import { requestKeep } from '../../../../src/client/keep-request.ts'
 import { recallCaret, rememberCaret } from '../../../../src/client/editor/carets.ts'
 import { bootstrapOrReport, TestOnly } from '../../../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
@@ -861,6 +862,35 @@ describe('the tab strip', () => {
   })
 })
 
+function walkingTabs(): { navigation: Navigation; go: (url: string) => Promise<void> } {
+  const handlers = new Map<string, (event?: unknown) => void>()
+
+  return {
+    go: async (url: string) => {
+      let navigated: Promise<void> = Promise.resolve()
+      handlers.get('navigate')?.({
+        canIntercept: true,
+        hashChange: false,
+        downloadRequest: null,
+        formData: null,
+        destination: { url: new URL(url, 'https://example.test').href },
+        intercept: (intercepted: { handler: () => Promise<void> }) => {
+          navigated = intercepted.handler()
+        },
+      })
+      await navigated
+    },
+    navigation: cast<Navigation>({
+      addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+      removeEventListener: (type: string) => handlers.delete(type),
+      canGoBack: false,
+      canGoForward: false,
+      back: () => undefined,
+      forward: () => undefined,
+    }),
+  }
+}
+
 describe('several tabs', () => {
   function stripTabs(): HTMLElement[] {
     return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
@@ -1010,5 +1040,44 @@ describe('several tabs', () => {
     await walk.go('/trash/entry-1')
 
     expect(paths()).toStrictEqual(['a.md'])
+  })
+})
+
+describe('keeping a tab the explorer asked for', () => {
+  function stripTabs(): HTMLElement[] {
+    return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
+  }
+
+  function looking(): Array<boolean | undefined> {
+    return stripTabs().map((tab) => tab.classList.contains('tabs__tab--looking'))
+  }
+
+  it('keeps a tab that is already open', async () => {
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
+
+    requestKeep(root, 'a.md')
+
+    expect(looking()).toStrictEqual([false])
+  })
+
+  it('keeps one asked for before it finished opening, which is what a double click does', async () => {
+    const walk = walkingTabs()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+
+    requestKeep(root, 'b.md')
+    await walk.go('/doc/b.md')
+
+    expect(looking()).toStrictEqual([false])
+  })
+
+  it('leaves the next thing opened alone, so a stale request cannot keep it', async () => {
+    const walk = walkingTabs()
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+    requestKeep(root, 'b.md')
+    await walk.go('/doc/c.md')
+
+    await walk.go('/doc/d.md')
+
+    expect(looking()).toStrictEqual([true])
   })
 })

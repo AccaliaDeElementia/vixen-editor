@@ -39,6 +39,7 @@ import { resolveIndex } from './folder-index.ts'
 import { guardUnload } from './unload.ts'
 import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
+import { onKeepRequested } from '../keep-request.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
@@ -131,7 +132,10 @@ function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
     strip?.show(tabs.all(), tabs.active())
   }
 
+  let awaited: string | null = null
+
   function keep(at: string): void {
+    awaited = at
     tabs.promote({ path: at, view: 'editor' })
     draw()
   }
@@ -151,6 +155,8 @@ function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
   return {
     opened: (at: string) => {
       tabs.open({ path: at, view: 'editor' })
+      if (awaited === at) tabs.promote({ path: at, view: 'editor' })
+      awaited = null
       draw()
     },
     keep,
@@ -318,6 +324,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
+  const { offKeepRequested } = onKeepRequested(root, (entryPath) => {
+    strip.keep(entryPath)
+  })
+
   const { stopFollowingDeletion } = followDeletion({
     root,
     documentId,
@@ -360,6 +370,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     offDocumentMoved()
     stopFollowingDeletion()
     offInsertRequested()
+    offKeepRequested()
     toast.dismissRaised()
     tab.teardownDocument()
   }

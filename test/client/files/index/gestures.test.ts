@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { onInsertRequested } from '../../../../src/client/insert-entry.ts'
+import { onKeepRequested } from '../../../../src/client/keep-request.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
 import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
@@ -52,20 +53,34 @@ beforeEach(() => {
 })
 
 describe('a plain click', () => {
-  it('selects a document without opening it', async () => {
+  it('opens a document and selects it, which is one act rather than two', async () => {
     await start()
 
     click('notes.md')
 
-    expect({ opened, selected: selectedPaths() }).toStrictEqual({ opened: [], selected: ['notes.md'] })
+    expect({ opened, selected: selectedPaths() }).toStrictEqual({
+      opened: ['/doc/notes.md'],
+      selected: ['notes.md'],
+    })
   })
 
-  it('selects an image on the same terms', async () => {
+  it('opens an image on the same terms', async () => {
     await start()
 
     click('photo.png')
 
-    expect({ opened, selected: selectedPaths() }).toStrictEqual({ opened: [], selected: ['photo.png'] })
+    expect({ opened, selected: selectedPaths() }).toStrictEqual({
+      opened: ['/doc/photo.png'],
+      selected: ['photo.png'],
+    })
+  })
+
+  it('selects a folder without opening it, so the toolbar can be aimed without leaving', async () => {
+    await start()
+
+    click('journal')
+
+    expect({ opened, selected: selectedPaths() }).toStrictEqual({ opened: [], selected: ['journal'] })
   })
 
   it('moves the selection rather than adding to it', async () => {
@@ -79,35 +94,46 @@ describe('a plain click', () => {
 })
 
 describe('a double click', () => {
-  it('opens the document', async () => {
+  function keepRequests(): string[] {
+    const asked: string[] = []
+    onKeepRequested(host, (entryPath) => {
+      asked.push(entryPath)
+    })
+
+    return asked
+  }
+
+  it('asks for the document to be kept, rather than opening it a second time', async () => {
     await start()
+    const asked = keepRequests()
+    click('notes.md')
 
     doubleClick('notes.md')
 
-    expect(opened).toStrictEqual(['/doc/notes.md'])
+    expect({ asked, opened }).toStrictEqual({ asked: ['notes.md'], opened: ['/doc/notes.md'] })
   })
 
-  it('opens an image at its own url, which the image view answers', async () => {
+  it('asks the same for an image, which is a tab like any other', async () => {
     await start()
+    const asked = keepRequests()
 
     doubleClick('photo.png')
 
-    expect(opened).toStrictEqual(['/doc/photo.png'])
+    expect(asked).toStrictEqual(['photo.png'])
   })
 
-  it('opens a trash entry by its id, not by the path it used to have', async () => {
-    await start()
-    rowFor(TRASH_PATH).click()
-
-    doubleClick(joinPath(TRASH_PATH, TRASHED.id))
-
-    expect(opened).toStrictEqual(['/trash/aaaa'])
-  })
-
-  it('does nothing on a folder, which a single click already toggles', async () => {
+  it('opens a folder’s index, which a single click deliberately does not', async () => {
     await start()
 
     doubleClick('journal')
+
+    expect(opened).toStrictEqual(['/doc/journal/'])
+  })
+
+  it('opens no index for a row that is not in the store', async () => {
+    await start()
+
+    doubleClick(TRASH_PATH)
 
     expect(opened).toStrictEqual([])
   })
@@ -147,7 +173,7 @@ describe('Enter', () => {
     rowFor(entryPath).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
   }
 
-  it('opens a document, the keyboard equivalent of a double click', async () => {
+  it('opens a document, the keyboard equivalent of a single click', async () => {
     await start()
 
     press('notes.md')
@@ -245,6 +271,7 @@ describe('the Open selected action', () => {
   it('opens whatever a single click selected', async () => {
     await start()
     click('notes.md')
+    opened.length = 0
 
     pressOpen()
 
@@ -255,6 +282,7 @@ describe('the Open selected action', () => {
     await start()
     rowFor(TRASH_PATH).click()
     click(joinPath(TRASH_PATH, TRASHED.id))
+    opened.length = 0
 
     pressOpen()
 
@@ -274,6 +302,30 @@ describe('the Open selected action', () => {
     await start('/doc/absent.md')
 
     pressOpen()
+
+    expect(opened).toStrictEqual([])
+  })
+})
+
+describe('moving through the tree with the keyboard', () => {
+  function move(entryPath: string, key: string): void {
+    rowFor(entryPath).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  }
+
+  it('selects what it lands on, so a file can be aimed at without opening it', async () => {
+    await start()
+    rowFor('notes.md').focus()
+
+    move('notes.md', 'ArrowDown')
+
+    expect(selectedPaths()).toStrictEqual(['photo.png'])
+  })
+
+  it('opens nothing on the way, which is the whole point of moving rather than clicking', async () => {
+    await start()
+    rowFor('notes.md').focus()
+
+    move('notes.md', 'ArrowDown')
 
     expect(opened).toStrictEqual([])
   })

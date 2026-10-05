@@ -25,6 +25,25 @@ test('dragging a document from the tree inserts a link at the drop point', async
   await request.delete(`/api/files/entries/${dragged}`)
 })
 
+test('dragging a document into the editor inserts without opening it', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const open = `dropstay-${stamp}.md`
+  const dragged = `stayput-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: open, content: 'before after' } })
+  await request.post('/api/files/documents', { data: { path: dragged, content: '# dragged' } })
+
+  await page.goto(`/doc/${open}`)
+  await givenAsync(expect(page.locator(`[role="treeitem"][data-path="${dragged}"]`)).toBeVisible())
+
+  await page.locator(`[role="treeitem"][data-path="${dragged}"]`).dragTo(page.locator('.cm-content'))
+  await givenAsync(expect(page.locator('.cm-content')).toContainText(`[${dragged}](${dragged})`))
+
+  expect(new URL(page.url()).pathname).toBe(`/doc/${open}`)
+
+  await request.delete(`/api/files/entries/${open}`)
+  await request.delete(`/api/files/entries/${dragged}`)
+})
+
 test('dragging an image inserts an embed rather than a link', async ({ page, request }) => {
   const stamp = String(Date.now())
   const open = `embedinto-${stamp}.md`

@@ -17,9 +17,13 @@ import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from '.
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
 import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
 import { requestInsert } from '../insert-entry.ts'
+import { requestKeep } from '../keep-request.ts'
+import { docUrlFor } from '../doc-path.ts'
+import { focusRowAt } from '../tree-rows.ts'
 import { KEYS } from '../help.ts'
 import {
   EMPTY_TRASH_SELECTOR,
+  isStoreRow,
   renderTree,
   rowIndexOf,
   ROW_SELECTOR,
@@ -165,13 +169,11 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   }
 
   function focusAt(index: number): boolean {
-    const rowsInTree = rows()
-    const { [index]: next } = rowsInTree
-    if (next === undefined) return false
+    const { [index]: row } = visible
+    if (row === undefined) return false
 
-    for (const candidate of rowsInTree) candidate.setAttribute('tabindex', '-1')
-    next.setAttribute('tabindex', '0')
-    next.focus()
+    focusRowAt(rows(), index)
+    markSelected(row.path)
 
     return true
   }
@@ -202,8 +204,12 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     return parent !== undefined && focusAt(indexOfPath(parent))
   }
 
-  // Enter on a file is left to the browser: the row is a real link, so the
-  // navigation, and opening it in a new tab, come for free.
+  function openFolderIndex(current: VisibleRow): void {
+    if (!isStoreRow(current)) return
+
+    navigate(`${docUrlFor(current.path)}/`)
+  }
+
   function activate(current: VisibleRow): boolean {
     if (!current.expandable) return openRow(current)
 
@@ -253,6 +259,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
 
       event.preventDefault()
       markSelected(current.path)
+      openRow(current)
       return
     }
 
@@ -265,10 +272,15 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   tree.addEventListener('dblclick', (event) => {
     const index = rowIndexOf(tree, event.target)
     const current = index === null ? undefined : visible[index]
-    if (current === undefined || current.expandable) return
+    if (current === undefined) return
 
     event.preventDefault()
-    openRow(current)
+    if (current.expandable) {
+      openFolderIndex(current)
+      return
+    }
+
+    requestKeep(tree, current.path)
   })
 
   function insertsSelected(event: KeyboardEvent): boolean {

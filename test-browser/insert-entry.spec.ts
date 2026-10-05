@@ -5,8 +5,12 @@ import { expect, test, type Page } from '@playwright/test'
 
 import { workspace } from './fixtures.ts'
 
-async function select(page: Page, folder: string, name: string): Promise<void> {
-  await page.locator(`[role="treeitem"][data-path="${folder}/${name}"]`).click()
+async function selectWithoutOpening(page: Page, folder: string, name: string): Promise<void> {
+  const row = page.locator(`[role="treeitem"][data-path="${folder}/${name}"]`)
+  await row.focus()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowUp')
+  await givenAsync(expect(row).toHaveAttribute('aria-selected', 'true'))
 }
 
 test('the insert button is off when the selection is not a file', async ({ page, request }) => {
@@ -20,7 +24,7 @@ test('the insert button is off when the selection is not a file', async ({ page,
 
   await givenAsync(expect(page.locator('#insert-entry')).toBeDisabled())
 
-  await select(page, folder, 'other.md')
+  await selectWithoutOpening(page, folder, 'other.md')
 
   await expect(page.locator('#insert-entry')).toBeEnabled()
 
@@ -32,7 +36,7 @@ test('the button inserts a relative link at the caret and says so', async ({ pag
   await page.goto(await workspace(request, folder))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+End')
-  await select(page, folder, 'other.md')
+  await selectWithoutOpening(page, folder, 'other.md')
 
   await page.locator('#insert-entry').click()
 
@@ -47,7 +51,7 @@ test('Mod-i on the tree inserts the selected file', async ({ page, request }) =>
   await page.goto(await workspace(request, folder))
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+End')
-  await select(page, folder, 'other.md')
+  await selectWithoutOpening(page, folder, 'other.md')
 
   await page.locator(`[role="treeitem"][data-path="${folder}/other.md"]`).focus()
   await page.keyboard.press('ControlOrMeta+i')
@@ -79,7 +83,7 @@ test('a folder inserts a link, exactly as dragging one does', async ({ page, req
   await page.reload()
   await page.locator('.cm-content').click()
   await page.keyboard.press('Control+End')
-  await select(page, folder, 'sub')
+  await selectWithoutOpening(page, folder, 'sub')
 
   await page.locator('#insert-entry').click()
 

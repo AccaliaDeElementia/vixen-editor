@@ -43,13 +43,29 @@ test('an unselected sibling is painted differently from the selected row', async
   await request.delete(`/api/files/entries/other-${stamp}.md`)
 })
 
-test('a single click selects a document without opening it', async ({ page, request }) => {
+test('a single click opens a document and selects it', async ({ page, request }) => {
   const name = `select-${String(Date.now())}.md`
   await request.post('/api/files/documents', { data: { path: name, content: '# seed' } })
   await page.goto('/doc/')
 
   const row = page.locator(`[role="treeitem"][data-path="${name}"]`)
   await row.click()
+
+  await givenAsync(expect(row).toHaveAttribute('aria-selected', 'true'))
+  expect(new URL(page.url()).pathname).toBe(`/doc/${name}`)
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('moving through the tree selects without opening, so a file can be aimed at', async ({ page, request }) => {
+  const name = `aim-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# seed' } })
+  await page.goto('/doc/')
+
+  const row = page.locator(`[role="treeitem"][data-path="${name}"]`)
+  await row.focus()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowUp')
 
   await givenAsync(expect(row).toHaveAttribute('aria-selected', 'true'))
   expect(new URL(page.url()).pathname).toBe('/doc/')
