@@ -60,14 +60,22 @@ const ALIASES: ReadonlyMap<string, string> = new Map([
   ['yml', 'yaml'],
 ])
 
+interface ResolvedLanguage {
+  name: string
+  language: Language
+}
+
 function named(info: string): string {
   const name = info.trim().toLowerCase()
 
   return ALIASES.get(name) ?? name
 }
 
-function languageFor(info: string): Language | null {
-  return LANGUAGES.get(named(info)) ?? null
+export function resolveLanguage(info: string): ResolvedLanguage | null {
+  const name = named(info)
+  const language = LANGUAGES.get(name)
+
+  return language === undefined ? null : { name, language }
 }
 
 function token(text: string, classes: string): Node {
@@ -80,7 +88,7 @@ function token(text: string, classes: string): Node {
   return span
 }
 
-function highlightCode(code: string, language: Language | null): DocumentFragment {
+export function highlightCode(code: string, language: Language | null): DocumentFragment {
   const fragment = document.createDocumentFragment()
   if (language === null) {
     fragment.append(code)
@@ -98,5 +106,3 @@ function highlightCode(code: string, language: Language | null): DocumentFragmen
 
   return fragment
 }
-
-export const TestOnly = { highlightCode, languageFor }

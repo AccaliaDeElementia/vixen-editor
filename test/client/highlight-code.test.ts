@@ -1,10 +1,13 @@
 'use sanity'
 
 import { describe, expect, it } from 'vitest'
+import type { Language } from '@codemirror/language'
 
-import { TestOnly } from '../../src/client/highlight-code.ts'
+import { highlightCode, resolveLanguage } from '../../src/client/highlight-code.ts'
 
-const { highlightCode, languageFor } = TestOnly
+function languageFor(info: string): Language | null {
+  return resolveLanguage(info)?.language ?? null
+}
 
 function rendered(code: string, info: string): HTMLElement {
   const host = document.createElement('pre')
