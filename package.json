@@ -29,6 +29,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@codemirror/legacy-modes": "^6.5.4",
     "@hono/node-server": "^2.1.1",
     "@hono/zod-validator": "^0.9.1",
     "@lezer/markdown": "^1.7.2",
