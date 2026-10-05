@@ -4,12 +4,17 @@ import { onDeletionPending, onEntryTrashed } from '../entry-deletion.ts'
 import { trashUrlFor } from '../../shared/page-urls.ts'
 import { isAtOrUnder } from '../../shared/store-path.ts'
 
-import type { Autosave } from './autosave.ts'
+import type { SaveState } from './autosave.ts'
+
+interface Saving {
+  state: () => SaveState
+  flush: () => Promise<void>
+}
 
 interface FollowOptions {
   root: ParentNode
   documentId: () => string
-  autosave: Autosave
+  autosave: Saving
   openUrl: (url: string) => void
 }
 

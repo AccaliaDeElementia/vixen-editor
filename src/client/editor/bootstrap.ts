@@ -1,9 +1,5 @@
 'use sanity'
 
-import { Prec, type EditorState } from '@codemirror/state'
-import { EditorView, keymap } from '@codemirror/view'
-import { basicSetup } from 'codemirror'
-
 import {
   displayPathFromPath,
   docUrlFor,
@@ -16,16 +12,13 @@ import { onDocumentMoved } from '../document-moved.ts'
 import { interceptNavigation, openDocumentIn } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 
-import { isBlank } from '../../shared/content.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { EMPTY } from '../../shared/sequences.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { cheatsheet } from '../help.ts'
 
-import { createAutosave } from './autosave.ts'
-import { caretsFollowMove, recallCaret, rememberCaret } from './carets.ts'
+import { caretsFollowMove } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
-import { createEditorState } from './markdown-setup.ts'
 import { followDeletion } from './follow-deletion.ts'
 import { trashEntryIdFromPath } from '../../shared/page-urls.ts'
 import { createToast } from '../toast.ts'
@@ -36,25 +29,19 @@ import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
+import type { EditorView } from '@codemirror/view'
+
+import { createDocumentTab, startsALine } from './document-tab.ts'
 import { createSession, type Session } from './session.ts'
 import { resolveIndex } from './folder-index.ts'
 import { guardUnload } from './unload.ts'
-import { describeRefusal } from './leaving.ts'
-import { watchFreshness } from './freshness.ts'
-import { isConflict, offerResolution } from './conflict.ts'
-import { createMergeControl } from './merging.ts'
-import { createHolderControl, holderOf } from './holder.ts'
-import { linkTargetAt } from './link-targets.ts'
-import { bindLinkClicks } from './link-clicks.ts'
-import { bindEntryDrops, bindFileDrops, linkTo } from './drops.ts'
+import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
-import { KEYS } from '../help.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const MOUNT_SELECTOR = '#editor'
 const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
-const TOP_OF_DOCUMENT = 0
 
 interface Editor {
   view: EditorView
@@ -83,14 +70,6 @@ function reportUnreachable(root: ParentNode, at: string, error: unknown): void {
   const element = root.querySelector(UNREACHABLE_REASON_SELECTOR)
 
   if (element !== null) element.textContent = `${subject} could not be loaded: ${errorMessage(error)}`
-}
-
-function startsALine(state: EditorState, position: number | null): boolean {
-  return position === null || position === state.doc.lineAt(position).from
-}
-
-function caretIn(state: EditorState): number {
-  return state.selection.main.head
 }
 
 function replaceAddress(url: string): void {
@@ -155,115 +134,23 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  let caretPosition = TOP_OF_DOCUMENT
-  let lastRefusal: unknown = null
-
-  const holder = createHolderControl()
-
-  const merging = createMergeControl(() => {
-    setStatus(`${documentId()} merged — every change resolved`)
-  })
-
-  async function writeDocument(content: string): Promise<void> {
-    const target = documentId()
-    try {
-      await session.save(target, content)
-      lastRefusal = null
-      rememberCaret(target, caretPosition)
-    } catch (error) {
-      lastRefusal = error
-      toast.error(`Save failed: ${errorMessage(error)}`)
-      throw error
-    }
-  }
-
-  const autosave = createAutosave({
-    save: writeDocument,
-    report: (state) => {
-      statusBar.showSaveState(state, autosave.dueAt())
-      if (state === 'failed' && isConflict(lastRefusal)) void checkFreshness()
-    },
-  })
-
-  const openLinkAtCaret = (editor: EditorView): boolean => {
-    const found = linkTargetAt(editor.state, caretIn(editor.state))
-    if (found === null) return false
-
-    openUrl(docUrlFor(found.target))
-
-    return true
-  }
-
-  const save = (): boolean => {
-    const target = documentId()
-    if (autosave.state() === 'clean') {
-      setStatus(`No changes in ${target}`)
-      return true
-    }
-
-    void autosave.flush().then(() => {
-      if (autosave.state() === 'clean') setStatus(`Saved ${target}`)
-    })
-
-    return true
-  }
-
-  function stateFor(doc: string, caret: number): EditorState {
-    return createEditorState({
-      doc,
-      selection: { anchor: caret },
-      extensions: [
-        basicSetup,
-        holder.unset,
-        merging.inactive,
-        EditorView.lineWrapping,
-        Prec.high(
-          keymap.of([
-            { key: KEYS.save, preventDefault: true, run: save },
-            { key: KEYS.openLink, run: openLinkAtCaret },
-          ]),
-        ),
-        EditorView.updateListener.of((update) => {
-          caretPosition = caretIn(update.state)
-          merging.endWhenResolved(update.view)
-          if (!update.docChanged) return
-
-          const content = update.state.doc.toString()
-          autosave.changed(content)
-          statusBar.showWordCount(content)
-        }),
-      ],
-    })
-  }
-
-  const view = new EditorView({ parent: mount, state: stateFor('', TOP_OF_DOCUMENT) })
-
   const dialogs = options.dialogs ?? createDialogs(root)
 
-  const dropPosition = (event: DragEvent): number | null => view.posAtCoords({ x: event.clientX, y: event.clientY })
-
-  const insertAt = (text: string, at: number | null): void => {
-    const from = at ?? view.state.selection.main.head
-    view.dispatch({ changes: { from, insert: text }, selection: { anchor: from + text.length } })
-    view.focus()
-  }
-
-  bindEntryDrops(view.contentDOM, dropPosition, { holder: documentId, insert: insertAt })
-
-  bindFileDrops(view.contentDOM, dropPosition, (position) => startsALine(view.state, position), {
-    holder: documentId,
-    client: files,
+  const tab = createDocumentTab({
+    mount,
+    session,
+    files,
     dialogs,
     toast,
-    insert: insertAt,
+    statusBar,
+    documentId,
+    openUrl,
+    announce: setStatus,
+    showingDocument: () => workspace.showing() === 'document',
+    freshnessMs: options.freshnessMs,
+    listenForFocus: options.listenForFocus,
   })
-
-  bindLinkClicks(view.contentDOM, {
-    holder: () => holderOf(view.state),
-    open: (entryPath) => {
-      openUrl(docUrlFor(entryPath))
-    },
-  })
+  const { view } = tab
 
   const deletedView = createDeletedView({
     root,
@@ -278,14 +165,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const missingView = createMissingView({ root, client: files, toast, reopen })
 
-  function emptyTheBuffer(): void {
-    view.setState(stateFor('', TOP_OF_DOCUMENT))
-    autosave.reset('')
-    statusBar.showWordCount('')
-  }
-
   function showMissing(entryPath: string, shown: string): void {
-    emptyTheBuffer()
+    tab.empty()
     workspace.show('missing', shown)
     missingView.offer(entryPath)
     setStatus(`${shown} is not in the store`)
@@ -313,7 +194,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   async function showDocument(entryPath: string, shown: string, alternate: string | null): Promise<void> {
     const outcome = await resolveIndex(session, entryPath, alternate)
     if (!outcome.reached) {
-      emptyTheBuffer()
+      tab.empty()
       workspace.show('unreachable', shown)
       reportUnreachable(root, shown, outcome.error)
 
@@ -332,13 +213,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
     const initial = stored ? template : await withCheatsheetIfNew(template, opened)
 
-    const caret = recallCaret(opened, initial.length)
-    caretPosition = caret
-    view.setState(stateFor(initial, caret))
-    holder.follow(view, opened)
-    autosave.reset(initial)
-    statusBar.showWordCount(initial)
-    view.dispatch({ effects: EditorView.scrollIntoView(caret) })
+    tab.open(opened, initial)
     workspace.show('document', shown)
     setStatus(`Editing ${opened} — press Ctrl/Cmd+S to save`)
   }
@@ -350,7 +225,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
     const trashEntryId = trashEntryIdFromPath(target)
     if (trashEntryId !== null) {
-      emptyTheBuffer()
+      tab.empty()
       deletedView.offer(trashEntryId)
       setStatus('This entry is in the trash')
 
@@ -359,7 +234,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
     openDocument.commit(documentIdFromPath(target))
     if (classifyFile(documentId()) === 'image') {
-      emptyTheBuffer()
+      tab.empty()
       imageView.offer(documentId())
       setStatus(`Viewing ${documentId()}`)
 
@@ -376,7 +251,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (moved !== documentId()) {
       session.rename(documentId(), moved)
       openDocument.commit(moved)
-      holder.follow(view, moved)
+      tab.followMove(moved)
       navigate(docUrlFor(moved))
       statusBar.showPath(moved)
       setStatus(`Now editing ${moved}`)
@@ -387,7 +262,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
-  const { stopFollowingDeletion } = followDeletion({ root, documentId, autosave, openUrl })
+  const { stopFollowingDeletion } = followDeletion({
+    root,
+    documentId,
+    autosave: { state: tab.saveState, flush: tab.flush },
+    openUrl,
+  })
 
   const { offInsertRequested } = onInsertRequested(root, (entryPath) => {
     if (workspace.showing() !== 'document') {
@@ -396,91 +276,21 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       return
     }
 
-    insertAt(linkTo(entryPath, documentId()), caretPosition)
+    tab.insertAt(linkTo(entryPath, documentId()), tab.caret())
     setStatus(`Inserted a link to ${entryPath}`)
   })
 
   const { unguardUnload } = guardUnload({
-    unsaved: () => autosave.state() !== 'clean',
-    rescue: () => {
-      const content = view.state.doc.toString()
-      if (!isBlank(content)) session.saveOnUnload(documentId(), content)
-    },
+    unsaved: () => tab.saveState() !== 'clean',
+    rescue: tab.rescue,
     listen: options.listenForUnload,
-  })
-
-  async function settleBeforeLeaving(): Promise<boolean> {
-    await autosave.flush()
-
-    const refusal = describeRefusal(autosave.state(), lastRefusal)
-    if (refusal === null) return true
-
-    const leaveAnyway = await dialogs.confirm({
-      title: `${documentId()} could not be saved`,
-      message: `${refusal} Leaving now discards the changes you made.`,
-      confirmLabel: 'Discard and leave',
-    })
-    if (leaveAnyway) autosave.reset(view.state.doc.toString())
-
-    return leaveAnyway
-  }
-
-  function loadIntoBuffer(content: string): void {
-    const caret = Math.min(caretPosition, content.length)
-    view.setState(stateFor(content, caret))
-    autosave.reset(content)
-    statusBar.showWordCount(content)
-  }
-
-  async function resolveConflict(target: string, theirs: string): Promise<void> {
-    const resolved = await offerResolution(
-      {
-        dialogs,
-        files,
-        announce: setStatus,
-        takeTheirs: loadIntoBuffer,
-        keepMine: async () => {
-          await autosave.flush()
-        },
-        merge: (onDisk: string) => {
-          merging.begin(view, onDisk)
-          setStatus(`Merging ${target} — accept or reject each change, then it saves as usual`)
-        },
-      },
-      { target, theirs, mine: view.state.doc.toString() },
-    )
-    if (!resolved) toast.error(`${target} changed on disk — your unsaved changes can no longer be saved as they are`)
-  }
-
-  async function checkFreshness(): Promise<void> {
-    if (workspace.showing() !== 'document' || autosave.state() === 'saving') return
-
-    const target = documentId()
-    const loaded = await session.reread(target).catch(() => null)
-    if (loaded === null || target !== documentId()) return
-
-    const { content } = loaded
-    if (autosave.state() !== 'clean') {
-      await resolveConflict(target, content)
-
-      return
-    }
-
-    loadIntoBuffer(content)
-    setStatus(`${target} changed on disk — reloaded`)
-  }
-
-  const { unwatchFreshness } = watchFreshness({
-    check: checkFreshness,
-    intervalMs: options.freshnessMs,
-    listen: options.listenForFocus,
   })
 
   const navigator = interceptNavigation({
     navigation: options.navigation ?? globalThis.navigation,
     open: openPath,
-    mayLeave: () => autosave.state() === 'clean',
-    settle: settleBeforeLeaving,
+    mayLeave: () => tab.saveState() === 'clean',
+    settle: tab.settleBeforeLeaving,
     onSettled: () => {
       refreshHistoryButtons(root, navigator)
     },
@@ -491,13 +301,11 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   refreshHistoryButtons(root, navigator)
 
   function teardownDocument(): void {
-    autosave.stop()
-    unwatchFreshness()
     offDocumentMoved()
     stopFollowingDeletion()
     offInsertRequested()
     toast.dismissRaised()
-    view.destroy()
+    tab.teardownDocument()
   }
 
   function teardownApplication(): void {
