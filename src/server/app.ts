@@ -3,9 +3,12 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
+import { announcingStore } from './announcing-store.ts'
+import { createChanges, type Changes } from './changes.ts'
 import { DEFAULT_LIMITS, type Limits } from './config.ts'
 import { createLogger } from './logging.ts'
 import { documentRoutes } from './routes/documents.ts'
+import { eventRoutes } from './routes/events.ts'
 import { fileRoutes } from './routes/files.ts'
 import { trashRoutes } from './routes/trash.ts'
 import type { DocumentStore } from './storage/fs-store.ts'
@@ -18,10 +21,12 @@ const logError = createLogger('app', 'onError')
 interface AppDependencies {
   store: DocumentStore
   limits?: Limits
+  changes?: Changes
 }
 
-export function buildApp({ store, limits = DEFAULT_LIMITS }: AppDependencies): Hono {
+export function buildApp({ store, limits = DEFAULT_LIMITS, changes = createChanges() }: AppDependencies): Hono {
   const app = new Hono()
+  const announcing = announcingStore(store, changes)
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse()
@@ -31,9 +36,10 @@ export function buildApp({ store, limits = DEFAULT_LIMITS }: AppDependencies): H
   })
 
   app.get(`${API_PREFIX}/health`, (c) => c.json({ status: 'ok' }))
-  app.route(`${API_PREFIX}/documents`, documentRoutes(store))
-  app.route(`${API_PREFIX}/files`, fileRoutes(store, limits))
-  app.route(`${API_PREFIX}/trash`, trashRoutes(store))
+  app.route(`${API_PREFIX}/documents`, documentRoutes(announcing))
+  app.route(`${API_PREFIX}/files`, fileRoutes(announcing, limits))
+  app.route(`${API_PREFIX}/trash`, trashRoutes(announcing))
+  app.route(`${API_PREFIX}/events`, eventRoutes(changes))
 
   return app
 }
