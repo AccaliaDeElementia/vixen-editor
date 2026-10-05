@@ -3,6 +3,7 @@ extends layout
 block content
   main.workspace#workspace(aria-label='Editor')
     h1.visually-hidden#workspace-title Editor
+    .tabs#tab-strip(aria-label='Open documents')
     .statusbar
       p.statusbar__path#open-path
       p.statusbar__save

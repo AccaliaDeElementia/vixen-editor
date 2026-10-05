@@ -27,6 +27,7 @@ import { createDeletedView } from '../layout/deleted-view.ts'
 import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
+import { createTabStrip } from '../layout/tab-strip.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -41,6 +42,7 @@ import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const MOUNT_SELECTOR = '#editor'
+const TAB_STRIP_SELECTOR = '#tab-strip'
 const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
 
 interface Editor {
@@ -114,6 +116,23 @@ class MissingMountError extends Error {
   }
 }
 
+function stripIn(root: ParentNode, openUrl: (url: string) => void): { show: (at: string) => void } {
+  const host = root.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
+  if (host === null) return { show: () => undefined }
+
+  const strip = createTabStrip(host, {
+    onActivate: ({ path }) => {
+      openUrl(docUrlFor(path))
+    },
+  })
+
+  return {
+    show: (at: string) => {
+      strip.show([{ path: at, view: 'editor' }], { path: at, view: 'editor' })
+    },
+  }
+}
+
 async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { root, pathname, session, navigate, files, reopen, openUrl } = wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
@@ -128,6 +147,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const documentId = (): string => openDocument.path()
   const statusBar = createStatusBar(root)
+  const strip = stripIn(root, openUrl)
   const workspace = createWorkspace(root, {
     focusDocument: () => {
       view.focus()
@@ -214,6 +234,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const initial = stored ? template : await withCheatsheetIfNew(template, opened)
 
     tab.open(opened, initial)
+    strip.show(opened)
     workspace.show('document', shown)
     setStatus(`Editing ${opened} — press Ctrl/Cmd+S to save`)
   }

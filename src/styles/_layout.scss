@@ -792,3 +792,41 @@
     transform: none;
   }
 }
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  overflow-x: auto;
+  background: $gray-900;
+  border-bottom: 1px solid $border;
+}
+
+.tabs__tab {
+  flex: 0 1 auto;
+  min-width: 8ch;
+  max-width: 24ch;
+  padding: 0.35em $space-sm;
+  border: 0;
+  background: transparent;
+  color: $muted;
+  font-size: $font-size-sm;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  cursor: pointer;
+
+  &:hover {
+    color: $body-color;
+  }
+
+  &[aria-selected='true'] {
+    background: $surface;
+    color: $body-color;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $info;
+    outline-offset: -2px;
+  }
+}

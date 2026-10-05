@@ -812,3 +812,51 @@ describe('the two halves of a teardown', () => {
     expect(watched.stillIntercepting()).toBe(true)
   })
 })
+
+describe('the tab strip', () => {
+  function stripTabs(): HTMLElement[] {
+    return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
+  }
+
+  it('shows the open document as a tab', async () => {
+    await openEditor({ root, pathname: '/doc/journal/a.md', session: fakeSession() })
+
+    expect(stripTabs().map((tab) => tab.dataset.path)).toStrictEqual(['journal/a.md'])
+  })
+
+  it('names the tab by the file, not the path it sits under', async () => {
+    await openEditor({ root, pathname: '/doc/journal/a.md', session: fakeSession() })
+
+    expect(stripTabs().at(0)?.textContent).toBe('a.md')
+  })
+
+  it('follows the document that is open, rather than stacking what has been seen', async () => {
+    const editor = trackEditor(await bootstrapOrReport({ root, pathname: '/doc/journal/a.md', session: fakeSession() }))
+    if (editor === null) throw new Error('the editor did not start')
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession() })
+
+    expect(stripTabs().map((tab) => tab.dataset.path)).toStrictEqual(['notes.md'])
+  })
+
+  it('shows nothing of a path that is not a document', async () => {
+    await openEditor({ root, pathname: '/trash/entry-1', session: fakeSession() })
+
+    expect(stripTabs()).toStrictEqual([])
+  })
+
+  it('opens the document a tab names when it is chosen', async () => {
+    const opened: string[] = []
+    await openEditor({
+      root,
+      pathname: '/doc/journal/a.md',
+      session: fakeSession(),
+      openUrl: (url: string) => {
+        opened.push(url)
+      },
+    })
+
+    stripTabs().at(0)?.click()
+
+    expect(opened).toStrictEqual(['/doc/journal/a.md'])
+  })
+})
