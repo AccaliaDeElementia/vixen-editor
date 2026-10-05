@@ -1,21 +1,11 @@
 'use sanity'
 
+import type { StoreChange } from '../shared/store-change.ts'
 import { createLogger } from './logging.ts'
 
 const logRefused = createLogger('changes', 'refusedListener')
 
-interface PathChanged {
-  kind: 'written' | 'removed'
-  path: string
-}
-
-interface PathMoved {
-  kind: 'moved'
-  from: string
-  to: string
-}
-
-export type StoreChange = PathChanged | PathMoved
+export type { StoreChange }
 
 type Hear = (change: StoreChange) => void
 

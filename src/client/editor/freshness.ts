@@ -1,15 +1,13 @@
 'use sanity'
 
-const CHECK_INTERVAL_MS = 60_000
-
 interface FreshnessOptions {
   check: () => Promise<void>
-  intervalMs?: number | undefined
   listen?: ((wake: () => void, settled: () => Promise<void>) => () => void) | undefined
 }
 
 interface FreshnessWatcher {
   unwatchFreshness: () => void
+  recheck: () => Promise<void>
 }
 
 function onTabFocus(wake: () => void): () => void {
@@ -40,15 +38,13 @@ export function watchFreshness(options: FreshnessOptions): FreshnessWatcher {
     await (inFlight ?? Promise.resolve())
   }
 
-  const timer = setInterval(wake, options.intervalMs ?? CHECK_INTERVAL_MS)
   const unlisten = listen(wake, settled)
 
   return {
-    unwatchFreshness: () => {
-      clearInterval(timer)
-      unlisten()
+    unwatchFreshness: unlisten,
+    recheck: async () => {
+      wake()
+      await settled()
     },
   }
 }
-
-export const TestOnly = { CHECK_INTERVAL_MS }

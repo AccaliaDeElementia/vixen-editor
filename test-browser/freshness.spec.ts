@@ -28,6 +28,24 @@ test('a clean buffer reloads when the document changes underneath it', async ({ 
   await request.delete(`/api/files/entries/${name}`)
 })
 
+test('a change the server announces reloads the document with no prompting at all', async ({ page, request }) => {
+  const name = `announced-${String(Date.now())}.md`
+  const created = await request.post('/api/files/documents', { data: { path: name, content: '# first' } })
+  const etag = await stringFieldOf(created, 'etag')
+
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('# first'))
+
+  await request.put(`/api/documents/${name}`, {
+    headers: { 'if-match': etag, 'content-type': 'application/json' },
+    data: { content: '# announced by the server' },
+  })
+
+  await expect(page.locator('.cm-content')).toContainText('# announced by the server')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
 test('an unchanged document costs no body', async ({ request }) => {
   const name = `nochange-${String(Date.now())}.md`
   const created = await request.post('/api/files/documents', { data: { path: name, content: '# steady' } })

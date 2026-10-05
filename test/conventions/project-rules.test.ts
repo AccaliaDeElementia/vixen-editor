@@ -178,12 +178,7 @@ describe('every source file belongs to exactly one typecheck project', () => {
   })
 })
 
-const TIMER_OWNERS = [
-  'src/client/editor/autosave.ts',
-  'src/client/editor/freshness.ts',
-  'src/client/toast.ts',
-  'src/server/storage/lock.ts',
-]
+const TIMER_OWNERS = ['src/client/editor/autosave.ts', 'src/client/toast.ts', 'src/server/storage/lock.ts']
 
 const SCHEDULES = /\bset(?:Timeout|Interval)\b/v
 

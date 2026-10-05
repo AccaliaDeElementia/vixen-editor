@@ -2,15 +2,15 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TestOnly, watchFreshness } from '../../../src/client/editor/freshness.ts'
-
-const { CHECK_INTERVAL_MS } = TestOnly
+import { watchFreshness } from '../../../src/client/editor/freshness.ts'
 
 let checks = 0
 
 let release: Array<() => void> = []
 
-function watching(options: { listen?: (wake: () => void) => () => void; intervalMs?: number } = {}): () => void {
+const LONGER_THAN_THE_OLD_POLL = 180_000
+
+function watching(options: { listen?: (wake: () => void) => () => void } = {}): () => void {
   const { unwatchFreshness } = watchFreshness({
     check: async () => {
       checks += 1
@@ -34,36 +34,11 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('the periodic check', () => {
-  it('asks nothing before the first interval has passed', async () => {
+describe('what no longer happens on a timer', () => {
+  it('asks nothing while nobody looks, because the server says when something changed', async () => {
     watching()
 
-    await vi.advanceTimersByTimeAsync(CHECK_INTERVAL_MS - 1)
-
-    expect(checks).toBe(0)
-  })
-
-  it('asks once the interval has passed', async () => {
-    watching()
-
-    await vi.advanceTimersByTimeAsync(CHECK_INTERVAL_MS)
-
-    expect(checks).toBe(1)
-  })
-
-  it('keeps asking, so a long session notices a change eventually', async () => {
-    watching()
-
-    await vi.advanceTimersByTimeAsync(CHECK_INTERVAL_MS * 3)
-
-    expect(checks).toBe(3)
-  })
-
-  it('stops once it is released, so a closed editor keeps polling nothing', async () => {
-    const stop = watching()
-
-    stop()
-    await vi.advanceTimersByTimeAsync(CHECK_INTERVAL_MS * 3)
+    await vi.advanceTimersByTimeAsync(LONGER_THAN_THE_OLD_POLL)
 
     expect(checks).toBe(0)
   })

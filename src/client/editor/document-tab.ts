@@ -42,12 +42,12 @@ interface DocumentTabOptions {
   showingDocument: () => boolean
   announce: (text: string) => void
   onEdited: () => void
-  freshnessMs?: number | undefined
   listenForFocus?: FocusListener | undefined
 }
 
 interface DocumentTab {
   view: EditorView
+  recheck: () => Promise<void>
   caret: () => number
   saveState: () => SaveState
   flush: () => Promise<void>
@@ -58,7 +58,6 @@ interface DocumentTab {
   followMove: (to: string) => void
   rescue: () => void
   settleBeforeLeaving: () => Promise<boolean>
-  checkFreshness: () => Promise<void>
   teardownDocument: () => void
 }
 
@@ -259,14 +258,14 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     announce(`${target} changed on disk — reloaded`)
   }
 
-  const { unwatchFreshness } = watchFreshness({
+  const { unwatchFreshness, recheck } = watchFreshness({
     check: checkFreshness,
-    intervalMs: options.freshnessMs,
     listen: options.listenForFocus,
   })
 
   return {
     view,
+    recheck,
     caret: () => caretPosition,
     saveState: autosave.state,
     flush: autosave.flush,
@@ -282,7 +281,6 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
       if (!isBlank(content)) session.saveOnUnload(documentId(), content)
     },
     settleBeforeLeaving,
-    checkFreshness,
     teardownDocument: () => {
       autosave.stop()
       unwatchFreshness()

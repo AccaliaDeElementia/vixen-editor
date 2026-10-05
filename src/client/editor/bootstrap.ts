@@ -10,6 +10,8 @@ import {
 } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
+import { connectToChanges } from '../store-events.ts'
+import { changeTouches } from '../../shared/store-change.ts'
 import { interceptNavigation, openDocumentIn } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 
@@ -64,10 +66,10 @@ interface BootstrapOptions {
   listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => () => void
   files?: FilesClient
   reopen?: () => void
+  openChanges?: (url: string) => EventSource
   openUrl?: (url: string) => void
   navigation?: Navigation
   dialogs?: Dialogs
-  freshnessMs?: number
   listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
 }
 
@@ -219,7 +221,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       strip.keep(documentId())
     },
     showingDocument: () => workspace.showing() === 'document',
-    freshnessMs: options.freshnessMs,
     listenForFocus: options.listenForFocus,
   })
   const { view } = tab
@@ -391,9 +392,20 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     tab.teardownDocument()
   }
 
+  const changes = connectToChanges({
+    open: options.openChanges,
+    onChange: (change) => {
+      if (changeTouches(change, documentId())) void tab.recheck()
+    },
+    onConnected: () => {
+      void tab.recheck()
+    },
+  })
+
   function teardownApplication(): void {
     unguardUnload()
     navigator.stopIntercepting()
+    changes.disconnect()
   }
 
   return {
