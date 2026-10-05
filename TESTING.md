@@ -137,6 +137,52 @@ with real room for judgement about where one behaviour ends and the next
 begins, and that is accepted rather than worked around. Shared setup lives in
 `test-browser/fixtures.ts` so a spec does not carry its own copy.
 
+<a id="testing-3b7e1c"></a>
+
+### The browser suite shares one store, and specs must survive each other
+
+`test-browser/` runs `fullyParallel` against a single `DOCS_ROOT`, so every
+spec's writes reach every other spec's open page. That is not an accident to be
+engineered away. A change made by another client is something the running
+application has to survive, and the shared store is the only place this project
+exercises it at all.
+
+It earned its keep the first time the client listened to the change channel, by
+finding two faults that would reach a user and that nothing else was watching:
+`renderTree` rebuilt every row on each draw, so a gesture spanning a redraw
+died; and the empty-trash button kept its confirmation state in `dataset.armed`
+on an element the tree owns, so a redraw silently disarmed it and a second click
+re-armed instead of deleting.
+
+**So resilience is a requirement, and it gets tests of its own.** A spec that
+drives change while the page is in use — a second client writing, moving and
+deleting while a drag, a two-click confirmation or a focused row is in flight —
+is a _chaos spec_, and it belongs in `test-browser/` named for the behaviour it
+protects.
+
+**Write them deliberately rather than harvesting the suite's own cross-talk.**
+Cross-talk fails in whichever spec happens to be mid-gesture, so the red test
+names something unrelated to the cause, the set changes between runs, and
+nothing tells you whether a fix worked. Eight failures were collected that way
+once, across six specs, none of which had anything to do with the change that
+caused them. A chaos spec fails in one place, for one reason, every time.
+
+**Where a spec genuinely cannot survive the store being shared, stub the
+collision rather than serialising the suite.** Emptying the trash is the
+example, because it is the one action that reaches every other spec's fixtures:
+`trash.spec.ts` intercepts that request and answers it, so the path from the
+button to the request is still exercised.
+
+**A contamination stub is the narrowest thing that removes the collision, and
+never a line wider.** Every stub buys isolation by taking a piece of the system
+out of the test, so it can hide a regression nothing else would catch. Before
+writing one, name the unit test that fails if the stubbed behaviour breaks — if
+there is none, the stub is covering untested ground, and the test to write is
+that one rather than the stub. Prefer narrowing an assertion to the spec's own
+fixtures over stubbing at all, which is what a timestamped fixture name is for;
+then a single request over a client, a client over a module, and a module over
+any mode of the suite.
+
 <a id="testing-16daba"></a>
 
 ### A test makes one claim

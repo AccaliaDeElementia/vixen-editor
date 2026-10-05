@@ -510,6 +510,12 @@ that**: some are only enforceable by review.
   directory that does not mirror. → [TESTING](TESTING.md#testing-4c6769)
 - **A spec under `test-browser/` is named for one cohesive behaviour**, not for
   a module. → [TESTING](TESTING.md#testing-4c6769)
+- **Resilience to another client's changes is tested deliberately**, in a chaos
+  spec under `test-browser/`, never left to the browser suite's own cross-talk
+  to find. → [TESTING](TESTING.md#testing-3b7e1c)
+- **A contamination stub is the narrowest thing that removes the collision**,
+  and the unit test that fails when the stubbed behaviour breaks is named before
+  the stub is written. → [TESTING](TESTING.md#testing-3b7e1c)
 - **Coverage stays at 100% on all four metrics**, and `src/client/main.ts` is
   the only exclusion. Do not add another; prefer making a branch testable over
   suppressing it. → [TESTING](TESTING.md#testing-c07f46)
