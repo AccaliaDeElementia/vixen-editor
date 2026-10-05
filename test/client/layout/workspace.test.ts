@@ -39,6 +39,7 @@ describe('which view is on screen', () => {
   it.each<[WorkspaceView, string]>([
     ['pending', 'view-pending'],
     ['document', 'editor'],
+    ['source', 'view-source'],
     ['image', 'view-image'],
     ['missing', 'view-missing'],
     ['deleted', 'view-deleted'],
@@ -193,6 +194,7 @@ describe('markup that does not match', () => {
     expect(VIEW_ELEMENTS.map(([view]) => view)).toStrictEqual([
       'pending',
       'document',
+      'source',
       'image',
       'missing',
       'deleted',

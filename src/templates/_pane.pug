@@ -12,6 +12,9 @@ mixin pane(primary)
         a.view__action(data-part='image-download' download data-default-action) Download
       .image__frame
         img.image__file(data-part='image-file' alt='')
+    section.view.view--fill(data-part='view-source' tabindex='-1' aria-label='Source' hidden)
+      pre.source
+        code.source__body(data-part='source-body')
     section.view(data-part='view-pending' tabindex='-1' aria-label='Loading' hidden)
       p.view__message Loading…
     section.view(data-part='view-missing' tabindex='-1' aria-label='Not found' hidden)

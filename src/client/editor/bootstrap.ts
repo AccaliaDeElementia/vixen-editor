@@ -31,6 +31,8 @@ import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createOpenTabs } from '../layout/open-tabs.ts'
+import { createSourceView } from '../layout/source-view.ts'
+import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { readKeptTabs, writeKeptTabs } from '../layout/kept-tabs.ts'
 import { createTabStrip } from '../layout/tab-strip.ts'
 import { createWorkspace } from '../layout/workspace.ts'
@@ -43,11 +45,16 @@ import { resolveIndex } from './folder-index.ts'
 import { guardUnload } from './unload.ts'
 import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
+import { KEYS } from '../help.ts'
 import { onKeepRequested } from '../keep-request.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
+const PANES_SELECTOR = '[data-part="panes"]'
+const PREVIEW_SOURCE_SELECTOR = '#preview-source'
+const BESIDE = 'beside'
+const NOTHING_MEASURED = 0
 const MOUNT_SELECTOR = '[data-part="editor"]'
 const TAB_STRIP_SELECTOR = '[data-part="tabs"]'
 const UNREACHABLE_REASON_SELECTOR = '[data-part="unreachable-reason"]'
@@ -352,6 +359,29 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
+  function showSourcePreview(): void {
+    const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
+    openSplit(root, BESIDE, panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width)
+
+    const second = secondPaneIn(root)
+    if (second === null) return
+
+    createSourceView(second).show(view.state.doc.toString())
+    setStatus(`Showing the source of ${documentId()}`)
+  }
+
+  root.querySelector<HTMLElement>(PREVIEW_SOURCE_SELECTOR)?.addEventListener('click', showSourcePreview)
+
+  const onPreviewKey = (event: Event): void => {
+    if (!(event instanceof KeyboardEvent)) return
+    if (event.key !== KEYS.previewSource || !event.altKey || !event.shiftKey) return
+
+    event.preventDefault()
+    showSourcePreview()
+  }
+
+  root.addEventListener('keydown', onPreviewKey)
+
   const { offKeepRequested } = onKeepRequested(root, (entryPath) => {
     strip.keep(entryPath)
   })
@@ -414,6 +444,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
 
   function teardownApplication(): void {
+    root.removeEventListener('keydown', onPreviewKey)
     unguardUnload()
     navigator.stopIntercepting()
     changes.disconnect()

@@ -90,3 +90,43 @@ test('a share survives a reload, so a reader sets it once', async ({ page, reque
   const [first, second] = await widths(page)
   expect(first ?? 0).toBeLessThan(second ?? 0)
 })
+
+test('the source preview opens beside the editor and shows the markup', async ({ page, request }) => {
+  const name = `source-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# A heading\n\nA **bold** word' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('A heading'))
+
+  await page.locator('#preview-source').click()
+
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  await expect(page.locator('[data-part="source-body"]').last()).toContainText('A **bold** word')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('the source preview highlights the markup rather than rendering it', async ({ page, request }) => {
+  const name = `highlit-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# A heading' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('A heading'))
+
+  await page.locator('#preview-source').click()
+
+  await expect(page.locator('[data-part="source-body"]').last().locator('span').first()).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('Alt+Shift+P reaches the source preview', async ({ page, request }) => {
+  const name = `keyed-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# keyed' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('keyed'))
+
+  await page.keyboard.press('Alt+Shift+P')
+
+  await expect(page.locator(PANE)).toHaveCount(2)
+
+  await request.delete(`/api/files/entries/${name}`)
+})

@@ -111,3 +111,17 @@
   text-decoration: underline;
   white-space: nowrap;
 }
+
+.source {
+  height: 100%;
+  margin: 0;
+  overflow: auto;
+  font-size: $font-size-base;
+  background: $body-bg;
+  padding: $space-md;
+}
+
+.source__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

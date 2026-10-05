@@ -106,6 +106,19 @@ export function toggleSplit(root: ParentNode, orientation: SplitOrientation, axi
   applySplit(root, axisPx)
 }
 
+export function openSplit(root: ParentNode, orientation: SplitOrientation, axisPx: number): void {
+  const { orientation: current, fraction } = readSplit()
+  if (current === null) write({ orientation, fraction })
+
+  applySplit(root, axisPx)
+}
+
+export function secondPaneIn(root: ParentNode): HTMLElement | null {
+  const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
+
+  return panes === null ? null : secondPaneOf(panes)
+}
+
 export function setSplitFraction(root: ParentNode, fraction: number, axisPx: number): void {
   const { orientation } = readSplit()
   if (orientation === null) return
