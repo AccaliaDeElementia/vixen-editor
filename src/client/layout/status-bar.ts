@@ -1,9 +1,7 @@
 'use sanity'
 
 import type { SaveState } from '../editor/autosave.ts'
-import { STORE_ROOT } from '../../shared/store-path.ts'
 
-const PATH_SELECTOR = '#open-path'
 const SAVE_LABEL_SELECTOR = '#save-label'
 const COUNTDOWN_SELECTOR = '#save-countdown'
 const WORD_COUNT_SELECTOR = '#word-count'
@@ -11,7 +9,6 @@ const WORD_COUNT_SELECTOR = '#word-count'
 const COUNTDOWN_ATTRIBUTE = 'data-running'
 const COUNTDOWN_PROPERTY = '--countdown'
 
-const ROOT_LABEL = 'All documents'
 const SAVED_LABEL = 'Saved'
 const NOTHING_TO_SAY = ''
 
@@ -31,7 +28,7 @@ const NO_TIME_LEFT = 0
 const WHITESPACE = /\s+/v
 
 export interface StatusBar {
-  showPath: (displayPath: string) => void
+  forgetSaveState: () => void
   showSaveState: (state: SaveState, dueAt: number | null) => void
   showWordCount: (content: string) => void
 }
@@ -49,7 +46,6 @@ function countWords(content: string): string {
 }
 
 export function createStatusBar(root: ParentNode): StatusBar {
-  const pathElement = root.querySelector(PATH_SELECTOR)
   const labelElement = root.querySelector(SAVE_LABEL_SELECTOR)
   const countdownElement = root.querySelector<HTMLElement>(COUNTDOWN_SELECTOR)
   const wordCountElement = root.querySelector(WORD_COUNT_SELECTOR)
@@ -82,13 +78,10 @@ export function createStatusBar(root: ParentNode): StatusBar {
   }
 
   return {
-    showPath(displayPath: string): void {
+    forgetSaveState(): void {
       written = false
       previous = null
       if (labelElement !== null) labelElement.textContent = NOTHING_TO_SAY
-      if (pathElement === null) return
-
-      pathElement.textContent = displayPath === STORE_ROOT ? ROOT_LABEL : displayPath
     },
 
     showSaveState(state: SaveState, dueAt: number | null): void {

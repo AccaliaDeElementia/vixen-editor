@@ -10,7 +10,7 @@ const { COUNTDOWN_ATTRIBUTE, COUNTDOWN_PROPERTY, COUNTDOWN_RUNS, SAVE_LABELS } =
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = renderSection('.statusbar')
+  container.innerHTML = renderSection('.footing')
   document.body.append(container)
 
   return container
@@ -27,34 +27,6 @@ function textOf(root: ParentNode, selector: string): string {
 beforeEach(() => {
   document.body.innerHTML = ''
   vi.useRealTimers()
-})
-
-describe('the open path', () => {
-  it('shows the path in full, not the shortened title', () => {
-    const root = page()
-
-    bar(root).showPath('journal/2026/a.md')
-
-    expect(textOf(root, '#open-path')).toBe('journal/2026/a.md')
-  })
-
-  it('names the store root rather than showing nothing', () => {
-    const root = page()
-
-    bar(root).showPath('')
-
-    expect(textOf(root, '#open-path')).toBe('All documents')
-  })
-
-  it('follows the document when it moves', () => {
-    const root = page()
-    const status = bar(root)
-
-    status.showPath('notes.md')
-    status.showPath('archive/notes.md')
-
-    expect(textOf(root, '#open-path')).toBe('archive/notes.md')
-  })
 })
 
 describe('the word count', () => {
@@ -224,21 +196,33 @@ describe('markup that does not match', () => {
 
     expect(() => {
       const status = createStatusBar(bare)
-      status.showPath('notes.md')
+      status.forgetSaveState()
       status.showWordCount('one two')
       status.showSaveState('pending', Date.now() + 1000)
     }).not.toThrow()
   })
 })
 
-describe('showing a different path', () => {
+describe('opening a different document', () => {
+  it('does not call a new document saved on the strength of the last one', () => {
+    const root = page()
+    const status = bar(root)
+    status.showSaveState('saving', null)
+    status.showSaveState('clean', null)
+
+    status.forgetSaveState()
+    status.showSaveState('clean', null)
+
+    expect(textOf(root, '#save-label')).not.toBe('Saved')
+  })
+
   it('forgets that anything was saved, because it was saved to the previous document', () => {
     const root = page()
     const status = bar(root)
 
     status.showSaveState('saving', null)
     status.showSaveState('clean', null)
-    status.showPath('other.md')
+    status.forgetSaveState()
 
     expect(textOf(root, '#save-label')).toBe('')
   })
@@ -247,7 +231,7 @@ describe('showing a different path', () => {
     const root = page()
     const status = bar(root)
 
-    status.showPath('other.md')
+    status.forgetSaveState()
     status.showSaveState('saving', null)
     status.showSaveState('clean', null)
 

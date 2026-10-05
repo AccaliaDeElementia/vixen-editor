@@ -261,7 +261,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   async function openPath(target: string): Promise<void> {
     const shown = displayPathFromPath(target)
     workspace.show('pending', shown)
-    statusBar.showPath(shown)
+    statusBar.forgetSaveState()
 
     const trashEntryId = trashEntryIdFromPath(target)
     if (trashEntryId !== null) {
@@ -295,7 +295,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       openDocument.commit(moved)
       tab.followMove(moved)
       navigate(docUrlFor(moved))
-      statusBar.showPath(moved)
+      statusBar.forgetSaveState()
       setStatus(`Now editing ${moved}`)
     }
 

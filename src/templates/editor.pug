@@ -4,13 +4,11 @@ block content
   main.workspace#workspace(aria-label='Editor')
     h1.visually-hidden#workspace-title Editor
     .tabs#tab-strip(aria-label='Open documents')
-    .statusbar
-      p.statusbar__path#open-path
-      p.statusbar__save
-        span.statusbar__label#save-label(role='status')
-        span.statusbar__countdown#save-countdown(aria-hidden='true')
-      p.statusbar__words#word-count
     #editor(hidden tabindex='-1')
+    .footing#editor-footing(hidden)
+      span.footing__save#save-label(role='status')
+      span.footing__countdown#save-countdown(aria-hidden='true')
+      span.footing__words#word-count
     section.view.view--fill#view-image(tabindex='-1' aria-label='Image' hidden)
       .image__chrome
         p.image__path#image-path

@@ -15,6 +15,7 @@ const VIEW_ELEMENTS: ReadonlyArray<readonly [WorkspaceView, string]> = [
 
 const DEFAULT_ACTION_SELECTOR = '[data-default-action]'
 const MISSING_PATH_SELECTOR = '#missing-path'
+const FOOTING_SELECTOR = '#editor-footing'
 
 export interface Workspace {
   show: (view: WorkspaceView, at: string) => void
@@ -38,10 +39,12 @@ interface WorkspaceOptions {
 
 export function createWorkspace(root: ParentNode, options: WorkspaceOptions): Workspace {
   const elements = elementsOf(root)
+  const footing = root.querySelector<HTMLElement>(FOOTING_SELECTOR)
   let current: WorkspaceView | null = null
 
   function reveal(view: WorkspaceView): HTMLElement | undefined {
     for (const [candidate, element] of elements) element.hidden = candidate !== view
+    if (footing !== null) footing.hidden = view !== 'document'
 
     return elements.get(view)
   }

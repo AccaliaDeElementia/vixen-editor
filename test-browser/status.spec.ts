@@ -3,7 +3,7 @@
 import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from '@playwright/test'
 
-import { storedDocument } from './fixtures.ts'
+import { deletedEntry, storedDocument } from './fixtures.ts'
 
 test('the title names the last two path segments', async ({ page, request }) => {
   await page.goto(await storedDocument(request, 'titled.md'))
@@ -14,7 +14,9 @@ test('the title names the last two path segments', async ({ page, request }) => 
 test('counts the words in the open document', async ({ page, request }) => {
   await page.goto(await storedDocument(request, 'status.md', '# one two three'))
 
-  await givenAsync(expect(page.locator('#open-path')).toHaveText('status.md'))
+  await givenAsync(
+    expect(page.locator('#tab-strip [role="tab"][aria-selected="true"]')).toHaveAttribute('data-path', 'status.md'),
+  )
 
   await expect(page.locator('#word-count')).toHaveText('4 words')
 })
@@ -59,4 +61,23 @@ test('a further edit restarts the countdown rather than letting it run down', as
   await page.keyboard.type(' second')
 
   await expect.poll(width, { timeout: 4000 }).toBeGreaterThan(shrunk)
+})
+
+test('the save state floats over the document rather than taking a row of its own', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `footing-${String(Date.now())}.md`, '# one'))
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+
+  await expect(page.locator('#editor-footing')).toBeVisible()
+})
+
+test('the save state is out of the way when no document is open', async ({ page, request }) => {
+  const name = `footing-gone-${String(Date.now())}.md`
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('#view-deleted')).toBeVisible())
+
+  await expect(page.locator('#editor-footing')).toBeHidden()
+
+  await request.delete(`/api/trash/${trashId}`)
 })
