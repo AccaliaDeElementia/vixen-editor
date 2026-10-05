@@ -178,6 +178,32 @@ describe('every source file belongs to exactly one typecheck project', () => {
   })
 })
 
+const TIMER_OWNERS = [
+  'src/client/editor/autosave.ts',
+  'src/client/editor/freshness.ts',
+  'src/client/toast.ts',
+  'src/server/storage/lock.ts',
+]
+
+const SCHEDULES = /\bset(?:Timeout|Interval)\b/v
+
+describe('only a named module schedules work for later', () => {
+  function scheduling(): string[] {
+    return sources
+      .filter((source) => source.relativePath.startsWith('src/') && SCHEDULES.test(source.contents))
+      .map((source) => source.relativePath)
+      .toSorted((a, b) => a.localeCompare(b))
+  }
+
+  it('finds the ones that do, so the comparison is not passing vacuously', () => {
+    expect(scheduling().length).toBeGreaterThan(0)
+  })
+
+  it('matches the approved list, so a new owner cannot land unreviewed', () => {
+    expect(scheduling()).toStrictEqual(TIMER_OWNERS.toSorted((a, b) => a.localeCompare(b)))
+  })
+})
+
 const APPROVED_OVERRIDES = [
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/no-magic-numbers' },
   { files: ['test/**/*.ts', 'test-browser/**/*.ts'], rule: '@typescript-eslint/promise-function-async' },
