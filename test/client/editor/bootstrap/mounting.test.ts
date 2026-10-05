@@ -661,14 +661,26 @@ describe('a folder index that is not index.md', () => {
 })
 
 describe('tearing the editor down', () => {
-  async function typedInto(): Promise<{ teardownEditor: () => void }> {
-    const editor = await bootstrapOrReport({ root, pathname: '/doc/a.md', session: fakeSession() })
+  async function typedInto(): Promise<{ view: EditorView; teardownEditor: () => void }> {
+    const editor = trackEditor(await bootstrapOrReport({ root, pathname: '/doc/a.md', session: fakeSession() }))
     if (editor === null) throw new Error('the editor did not start')
 
     editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: ' typed' } })
 
     return editor
   }
+
+  it('takes its own message back down, so it cannot outlive the editor that said it', async () => {
+    const editor = await typedInto()
+    await pressSave(editor.view, root)
+    given(() => {
+      expect(statusText(root)).toContain('Saved')
+    })
+
+    editor.teardownEditor()
+
+    expect(statusText(root)).not.toContain('Saved')
+  })
 
   it('leaves no autosave waiting to write over a buffer that has gone', async () => {
     vi.useFakeTimers()

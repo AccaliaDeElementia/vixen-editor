@@ -375,6 +375,59 @@ describe('dismissing through the handle', () => {
   })
 })
 
+describe('withdrawing what one caller raised', () => {
+  it('takes back the message it put up', () => {
+    const toast = createToast(root)
+    toast.show('Saved notes.md')
+
+    toast.dismissRaised()
+    settle()
+
+    expect(texts()).toStrictEqual([])
+  })
+
+  it('takes back every one of them, not merely the last', () => {
+    const toast = createToast(root)
+    toast.show('one')
+    toast.error('two')
+
+    toast.dismissRaised()
+    settle()
+
+    expect(texts()).toStrictEqual([])
+  })
+
+  it('leaves a message another caller raised, so an unexpected one still shows', () => {
+    const mine = createToast(root)
+    const theirs = createToast(root)
+    mine.show('mine')
+    theirs.show('theirs')
+
+    mine.dismissRaised()
+    settle()
+
+    expect(texts()).toStrictEqual(['theirs'])
+  })
+
+  it('has nothing more to take back once it has, so a second teardown is harmless', () => {
+    const toast = createToast(root)
+    toast.show('one')
+    toast.dismissRaised()
+
+    expect(() => {
+      toast.dismissRaised()
+    }).not.toThrow()
+  })
+
+  it('declines quietly on a page with no region', () => {
+    const toast = createToast(page({ withRegion: false }))
+
+    expect(() => {
+      toast.dismissRaised()
+    }).not.toThrow()
+  })
+})
+
 describe('a page with no region', () => {
   it('hands back a handle that does nothing rather than nothing at all', () => {
     const handle = createToast(page({ withRegion: false })).error('boom')

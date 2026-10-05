@@ -528,6 +528,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       stopFollowingDeletion()
       offInsertRequested()
       navigator.stopIntercepting()
+      toast.dismissRaised()
       view.destroy()
     },
   }

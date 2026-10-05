@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { initFileTree } from '../../../../src/client/files/index.ts'
 import { readOpenFolders } from '../../../../src/client/files/open-folders.ts'
 import { requestReveal } from '../../../../src/client/reveal-request.ts'
 import { announceStoreChanged } from '../../../../src/client/store-changed.ts'
@@ -88,6 +89,19 @@ describe('loading', () => {
       expect(document.body.textContent).toContain(fragment)
     },
   )
+
+  it('takes its own message back down when the browser is torn down', async () => {
+    const client = fakeClient(SAMPLE)
+    client.tree.mockRejectedValue(new Error('network down'))
+    const { teardownFileTree } = await initFileTree({ root: host, client: cast<FilesClient>(client) })
+    given(() => {
+      expect(document.body.textContent).toContain('network down')
+    })
+
+    teardownFileTree()
+
+    expect(document.body.textContent).not.toContain('network down')
+  })
 
   it('reports a failure that is not an Error at all', async () => {
     const client = fakeClient(SAMPLE)

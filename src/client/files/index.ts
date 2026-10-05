@@ -384,6 +384,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     teardownFileTree: () => {
       offStoreChanged()
       offRevealRequested()
+      toast.dismissRaised()
     },
   }
 }

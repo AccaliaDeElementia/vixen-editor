@@ -28,6 +28,7 @@ interface ToastHandle {
 export interface Toast {
   show: (message: string) => ToastHandle
   error: (message: string) => ToastHandle
+  dismissRaised: () => void
 }
 
 interface Slot {
@@ -266,12 +267,23 @@ function controllerFor(region: HTMLElement): Controller {
 
 export function createToast(root: ParentNode = document): Toast {
   const region = root.querySelector<HTMLElement>(REGION_SELECTOR)
+  const raised = new Set<ToastHandle>()
 
   function add(severity: Severity, message: string): ToastHandle {
-    return region === null ? INERT : controllerFor(region).add(severity, message)
+    if (region === null) return INERT
+
+    const handle = controllerFor(region).add(severity, message)
+    raised.add(handle)
+
+    return handle
   }
 
   return {
+    dismissRaised(): void {
+      for (const handle of raised) handle.dismiss()
+      raised.clear()
+    },
+
     show: (message: string) => add('info', message),
     error: (message: string) => add('error', message),
   }
