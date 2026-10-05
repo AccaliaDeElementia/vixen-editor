@@ -25,7 +25,7 @@ function fakeSession(overrides: Partial<Session> = {}): Session {
 }
 
 function stripTabs(): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
+  return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
 }
 
 function paths(): Array<string | undefined> {

@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createWorkspace, TestOnly, type Workspace, type WorkspaceView } from '../../../src/client/layout/workspace.ts'
 
-import { renderSection } from '../templates.ts'
+import { given } from '../../conditions.ts'
+import { renderPane, renderSection } from '../templates.ts'
 
 const { VIEW_ELEMENTS } = TestOnly
 
@@ -23,9 +24,9 @@ function workspace(root: ParentNode): Workspace {
 }
 
 function visible(root: ParentNode): string[] {
-  return [...root.querySelectorAll<HTMLElement>('#editor, .view')]
+  return [...root.querySelectorAll<HTMLElement>('[data-part="editor"], .view')]
     .filter((view) => view.hidden === false)
-    .map((view) => view.id)
+    .flatMap((view) => view.dataset.part ?? [])
 }
 
 beforeEach(() => {
@@ -81,7 +82,7 @@ describe('which view is on screen', () => {
 
     workspace(root).show('document', 'notes.md')
 
-    expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="view-missing"]')?.hidden).toBe(true)
   })
 })
 
@@ -126,18 +127,18 @@ describe('where focus goes', () => {
 
     workspace(root).show('unreachable', 'notes.md')
 
-    expect(document.activeElement).toBe(root.querySelector('#unreachable-retry'))
+    expect(document.activeElement).toBe(root.querySelector('[data-part="unreachable-retry"]'))
   })
 
   it('goes to the view itself when it offers no action', () => {
     const root = page()
     // Every view the template ships carries a default action, so the fallback
     // has to be provoked by taking one away.
-    root.querySelector('#view-missing [data-default-action]')?.remove()
+    root.querySelector('[data-part="view-missing"] [data-default-action]')?.remove()
 
     workspace(root).show('missing', 'notes.md')
 
-    expect(document.activeElement).toBe(root.querySelector('#view-missing'))
+    expect(document.activeElement).toBe(root.querySelector('[data-part="view-missing"]'))
   })
 
   it('takes no focus while loading, so it cannot steal it from the tree', () => {
@@ -164,7 +165,7 @@ describe('the missing view', () => {
 
     workspace(root).show('missing', 'journal/gone.md')
 
-    expect(root.querySelector('#missing-path')?.textContent).toBe('journal/gone.md')
+    expect(root.querySelector('[data-part="missing-path"]')?.textContent).toBe('journal/gone.md')
   })
 })
 
@@ -197,5 +198,47 @@ describe('markup that does not match', () => {
       'deleted',
       'unreachable',
     ])
+  })
+})
+
+describe('a second pane', () => {
+  function panes(): { first: HTMLElement; second: HTMLElement } {
+    const container = document.createElement('div')
+    container.innerHTML = renderPane() + renderPane()
+    document.body.append(container)
+
+    const [first, second] = [...container.querySelectorAll<HTMLElement>('.pane')]
+    if (first === undefined || second === undefined) throw new Error('the two panes did not render')
+
+    return { first, second }
+  }
+
+  it('shows its own view without disturbing what the first pane shows', () => {
+    const { first, second } = panes()
+    given(() => {
+      workspace(first).show('document', 'a.md')
+    })
+
+    workspace(second).show('missing', 'b.md')
+
+    expect(visible(first)).toStrictEqual(['editor'])
+  })
+
+  it('shows what it was asked for rather than what its neighbour was', () => {
+    const { first, second } = panes()
+    workspace(first).show('document', 'a.md')
+
+    workspace(second).show('missing', 'b.md')
+
+    expect(visible(second)).toStrictEqual(['view-missing'])
+  })
+
+  it('names the missing path in its own markup, not in the other pane', () => {
+    const { first, second } = panes()
+    workspace(first).show('document', 'a.md')
+
+    workspace(second).show('missing', 'b.md')
+
+    expect(first.querySelector('[data-part="missing-path"]')?.textContent).toBe('')
   })
 })

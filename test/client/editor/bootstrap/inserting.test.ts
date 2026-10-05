@@ -109,7 +109,7 @@ describe('dropping an entry from the file browser', () => {
 
     dropOn(view, { 'application/x-vixen-path': 'a.md', 'application/x-vixen-kind': 'document' })
 
-    expect(root.querySelector('#save-label')?.textContent).toBe('Save pending')
+    expect(root.querySelector('[data-part="save-label"]')?.textContent).toBe('Save pending')
   })
 })
 

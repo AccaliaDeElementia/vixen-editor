@@ -41,7 +41,7 @@ describe('the word count', () => {
 
     bar(root).showWordCount(content)
 
-    expect(textOf(root, '#word-count')).toBe(expected)
+    expect(textOf(root, '[data-part="word-count"]')).toBe(expected)
   })
 
   it('says one word in the singular, because a count nobody reads is still read', () => {
@@ -49,7 +49,7 @@ describe('the word count', () => {
 
     bar(root).showWordCount('solo')
 
-    expect(textOf(root, '#word-count')).toBe('1 word')
+    expect(textOf(root, '[data-part="word-count"]')).toBe('1 word')
   })
 })
 
@@ -64,7 +64,7 @@ describe('what the save state says', () => {
 
     bar(root).showSaveState(state, null)
 
-    expect(textOf(root, '#save-label')).toBe(expected)
+    expect(textOf(root, '[data-part="save-label"]')).toBe(expected)
   })
 
   it('says nothing before anything has been written, rather than claiming a save', () => {
@@ -72,7 +72,7 @@ describe('what the save state says', () => {
 
     bar(root).showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe('')
+    expect(textOf(root, '[data-part="save-label"]')).toBe('')
   })
 
   it('says saved once a write has actually landed', () => {
@@ -82,7 +82,7 @@ describe('what the save state says', () => {
     status.showSaveState('saving', null)
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe('Saved')
+    expect(textOf(root, '[data-part="save-label"]')).toBe('Saved')
   })
 
   it('keeps saying saved on later clean reports', () => {
@@ -94,7 +94,7 @@ describe('what the save state says', () => {
     status.showSaveState('pending', Date.now() + 1000)
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe('Saved')
+    expect(textOf(root, '[data-part="save-label"]')).toBe('Saved')
   })
 })
 
@@ -108,7 +108,7 @@ describe('the countdown to the next save', () => {
 
     bar(root).showSaveState('pending', Date.now() + 30_000)
 
-    expect(root.querySelector('#save-countdown')?.hasAttribute(COUNTDOWN_ATTRIBUTE)).toBe(true)
+    expect(root.querySelector('[data-part="save-countdown"]')?.hasAttribute(COUNTDOWN_ATTRIBUTE)).toBe(true)
   })
 
   it('carries the time remaining, so the bar means time until the next save', () => {
@@ -116,7 +116,7 @@ describe('the countdown to the next save', () => {
 
     bar(root).showSaveState('pending', Date.now() + 30_000)
 
-    const countdown = root.querySelector<HTMLElement>('#save-countdown')
+    const countdown = root.querySelector<HTMLElement>('[data-part="save-countdown"]')
 
     expect(countdown?.style.getPropertyValue(COUNTDOWN_PROPERTY)).toBe('30000ms')
   })
@@ -126,7 +126,7 @@ describe('the countdown to the next save', () => {
 
     bar(root).showSaveState('pending', Date.now() + 4000)
 
-    const countdown = root.querySelector<HTMLElement>('#save-countdown')
+    const countdown = root.querySelector<HTMLElement>('[data-part="save-countdown"]')
 
     expect(countdown?.style.getPropertyValue(COUNTDOWN_PROPERTY)).toBe('4000ms')
   })
@@ -140,7 +140,7 @@ describe('the countdown to the next save', () => {
       status.showSaveState('pending', Date.now() + 30_000)
       status.showSaveState(state, Date.now() + 30_000)
 
-      expect(root.querySelector('#save-countdown')?.hasAttribute(COUNTDOWN_ATTRIBUTE)).toBe(false)
+      expect(root.querySelector('[data-part="save-countdown"]')?.hasAttribute(COUNTDOWN_ATTRIBUTE)).toBe(false)
     },
   )
 
@@ -149,7 +149,7 @@ describe('the countdown to the next save', () => {
 
     bar(root).showSaveState('pending', null)
 
-    expect(root.querySelector('#save-countdown')?.hasAttribute(COUNTDOWN_ATTRIBUTE)).toBe(false)
+    expect(root.querySelector('[data-part="save-countdown"]')?.hasAttribute(COUNTDOWN_ATTRIBUTE)).toBe(false)
   })
 
   it('never asks for a negative duration, however late the deadline is read', () => {
@@ -157,7 +157,7 @@ describe('the countdown to the next save', () => {
 
     bar(root).showSaveState('pending', Date.now() - 5000)
 
-    const countdown = root.querySelector<HTMLElement>('#save-countdown')
+    const countdown = root.querySelector<HTMLElement>('[data-part="save-countdown"]')
 
     expect(countdown?.style.getPropertyValue(COUNTDOWN_PROPERTY)).toBe('0ms')
   })
@@ -165,7 +165,7 @@ describe('the countdown to the next save', () => {
   it('names a different run when the countdown restarts, because that is what restarts the animation', () => {
     const root = page()
     const status = bar(root)
-    const countdown = root.querySelector<HTMLElement>('#save-countdown')
+    const countdown = root.querySelector<HTMLElement>('[data-part="save-countdown"]')
 
     status.showSaveState('pending', Date.now() + 30_000)
     const first = countdown?.getAttribute(COUNTDOWN_ATTRIBUTE)
@@ -177,7 +177,7 @@ describe('the countdown to the next save', () => {
   it('alternates between the two runs the stylesheet knows about', () => {
     const root = page()
     const status = bar(root)
-    const countdown = root.querySelector<HTMLElement>('#save-countdown')
+    const countdown = root.querySelector<HTMLElement>('[data-part="save-countdown"]')
     const seen: Array<string | null> = []
 
     for (const dueIn of [30_000, 30_000, 30_000]) {
@@ -213,7 +213,7 @@ describe('opening a different document', () => {
     status.forgetSaveState()
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).not.toBe('Saved')
+    expect(textOf(root, '[data-part="save-label"]')).not.toBe('Saved')
   })
 
   it('forgets that anything was saved, because it was saved to the previous document', () => {
@@ -224,7 +224,7 @@ describe('opening a different document', () => {
     status.showSaveState('clean', null)
     status.forgetSaveState()
 
-    expect(textOf(root, '#save-label')).toBe('')
+    expect(textOf(root, '[data-part="save-label"]')).toBe('')
   })
 
   it('says saved again once the new document has been written', () => {
@@ -235,7 +235,7 @@ describe('opening a different document', () => {
     status.showSaveState('saving', null)
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe('Saved')
+    expect(textOf(root, '[data-part="save-label"]')).toBe('Saved')
   })
 })
 
@@ -249,6 +249,6 @@ describe('a save that was attempted but refused', () => {
     status.showSaveState('failed', null)
     status.showSaveState('clean', null)
 
-    expect(textOf(root, '#save-label')).toBe('')
+    expect(textOf(root, '[data-part="save-label"]')).toBe('')
   })
 })

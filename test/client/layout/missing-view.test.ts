@@ -39,7 +39,7 @@ function fakeClient(): Fake {
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = renderSection('#view-missing')
+  container.innerHTML = renderSection('[data-part="view-missing"]')
   document.body.append(container)
 
   return container
@@ -54,7 +54,7 @@ function view(root: ParentNode): MissingView {
     },
   })
 
-  return createMissingView({ root, client: cast<FilesClient>(client), toast, reopen })
+  return createMissingView({ host: root, client: cast<FilesClient>(client), toast, reopen })
 }
 
 function trashed(originalPath: string, kind: TrashNode['kind'], id = originalPath): TrashNode {
@@ -74,7 +74,7 @@ async function afterReport(): Promise<void> {
 }
 
 async function afterTheTrashIsRead(root: ParentNode): Promise<void> {
-  const section = root.querySelector('#missing-restore')
+  const section = root.querySelector('[data-part="missing-restore"]')
   if (section === null) throw new Error('no restore section to watch')
 
   const read: PromiseWithResolvers<void> = Promise.withResolvers()
@@ -88,7 +88,7 @@ async function afterTheTrashIsRead(root: ParentNode): Promise<void> {
 }
 
 function dropFile(root: ParentNode, file: File): void {
-  const input = root.querySelector<HTMLInputElement>('#missing-upload-input')
+  const input = root.querySelector<HTMLInputElement>('[data-part="missing-upload-input"]')
   Object.defineProperty(input, 'files', { value: [file], configurable: true })
   input?.dispatchEvent(new Event('change'))
 }
@@ -110,7 +110,7 @@ describe('what the view offers for the kind of path', () => {
 
     view(root).offer('journal/a.md')
 
-    expect(root.querySelector<HTMLElement>('#missing-create')?.hidden).toBe(false)
+    expect(root.querySelector<HTMLElement>('[data-part="missing-create"]')?.hidden).toBe(false)
   })
 
   it('does not offer to create a missing image, because there is no empty image worth making', () => {
@@ -118,7 +118,7 @@ describe('what the view offers for the kind of path', () => {
 
     view(root).offer('journal/photo.png')
 
-    expect(root.querySelector<HTMLElement>('#missing-create')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="missing-create"]')?.hidden).toBe(true)
   })
 
   it('restricts the picker to document extensions for a document path', () => {
@@ -126,7 +126,7 @@ describe('what the view offers for the kind of path', () => {
 
     view(root).offer('journal/a.md')
 
-    expect(root.querySelector<HTMLInputElement>('#missing-upload-input')?.accept).toBe('.md,.txt')
+    expect(root.querySelector<HTMLInputElement>('[data-part="missing-upload-input"]')?.accept).toBe('.md,.txt')
   })
 
   it('restricts the picker to image extensions for an image path', () => {
@@ -134,7 +134,7 @@ describe('what the view offers for the kind of path', () => {
 
     view(root).offer('journal/photo.png')
 
-    expect(root.querySelector<HTMLInputElement>('#missing-upload-input')?.accept).toBe(
+    expect(root.querySelector<HTMLInputElement>('[data-part="missing-upload-input"]')?.accept).toBe(
       '.png,.jpg,.jpeg,.gif,.webp,.svg',
     )
   })
@@ -145,7 +145,7 @@ describe('creating the missing document', () => {
     const root = page()
     view(root).offer('journal/a.md')
 
-    root.querySelector<HTMLButtonElement>('#missing-create')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="missing-create"]')?.click()
     await afterReopen()
 
     expect(client.createDocument).toHaveBeenCalledWith('journal/a.md')
@@ -155,7 +155,7 @@ describe('creating the missing document', () => {
     const root = page()
     view(root).offer('journal/a.md')
 
-    root.querySelector<HTMLButtonElement>('#missing-create')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="missing-create"]')?.click()
     await afterReopen()
 
     expect(reopen).toHaveBeenCalledTimes(1)
@@ -166,7 +166,7 @@ describe('creating the missing document', () => {
     const root = page()
     view(root).offer('journal/a.md')
 
-    root.querySelector<HTMLButtonElement>('#missing-create')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="missing-create"]')?.click()
     await afterReport()
 
     expect(errors).toStrictEqual(['Create failed: already exists'])
@@ -216,12 +216,12 @@ describe('uploading the missing file', () => {
   })
   it('opens the file picker when the upload button is pressed', () => {
     const root = page()
-    const input = root.querySelector<HTMLInputElement>('#missing-upload-input')
+    const input = root.querySelector<HTMLInputElement>('[data-part="missing-upload-input"]')
     const clicked = vi.fn<() => void>()
     input?.addEventListener('click', clicked)
     view(root).offer('journal/photo.png')
 
-    root.querySelector<HTMLButtonElement>('#missing-upload')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="missing-upload"]')?.click()
 
     expect(clicked).toHaveBeenCalledTimes(1)
   })
@@ -230,7 +230,7 @@ describe('uploading the missing file', () => {
     const root = page()
     view(root).offer('journal/photo.png')
 
-    root.querySelector<HTMLInputElement>('#missing-upload-input')?.dispatchEvent(new Event('change'))
+    root.querySelector<HTMLInputElement>('[data-part="missing-upload-input"]')?.dispatchEvent(new Event('change'))
 
     expect(client.upload).not.toHaveBeenCalled()
   })
@@ -243,7 +243,7 @@ describe('restoring from the trash', () => {
     view(root).offer('journal/a.md')
     await afterTheTrashIsRead(root)
 
-    expect(root.querySelector<HTMLElement>('#missing-restore')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="missing-restore"]')?.hidden).toBe(true)
   })
 
   it('offers a direct match', async () => {
@@ -254,7 +254,7 @@ describe('restoring from the trash', () => {
 
     await afterTheTrashIsRead(root)
 
-    expect(root.querySelector<HTMLElement>('#missing-restore')?.hidden).toBe(false)
+    expect(root.querySelector<HTMLElement>('[data-part="missing-restore"]')?.hidden).toBe(false)
   })
 
   it('restores the entry the user picked', async () => {
@@ -263,7 +263,7 @@ describe('restoring from the trash', () => {
     view(root).offer('journal/a.md')
     await afterTheTrashIsRead(root)
 
-    root.querySelector<HTMLButtonElement>('#missing-restore-list button')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="missing-restore-list"] button')?.click()
     await afterReopen()
 
     expect(client.restore).toHaveBeenCalledWith('entry-1')
@@ -277,7 +277,7 @@ describe('restoring from the trash', () => {
 
     await afterTheTrashIsRead(root)
 
-    expect(root.querySelector('#missing-restore-list')?.textContent).toContain('the whole folder journal')
+    expect(root.querySelector('[data-part="missing-restore-list"]')?.textContent).toContain('the whole folder journal')
   })
 
   it('offers no button for a candidate the live tree blocks', async () => {
@@ -288,7 +288,7 @@ describe('restoring from the trash', () => {
     view(root).offer('journal/a.md')
     await afterTheTrashIsRead(root)
 
-    expect(root.querySelector('#missing-restore-list button')).toBeNull()
+    expect(root.querySelector('[data-part="missing-restore-list"] button')).toBeNull()
   })
 
   it('says why a blocked candidate cannot be restored', async () => {
@@ -300,7 +300,7 @@ describe('restoring from the trash', () => {
 
     await afterTheTrashIsRead(root)
 
-    expect(root.querySelector('#missing-restore-list')?.textContent).toContain('journal is back')
+    expect(root.querySelector('[data-part="missing-restore-list"]')?.textContent).toContain('journal is back')
   })
 
   it('treats the server as authoritative when a restore is refused anyway', async () => {
@@ -310,7 +310,7 @@ describe('restoring from the trash', () => {
     view(root).offer('journal/a.md')
     await afterTheTrashIsRead(root)
 
-    root.querySelector<HTMLButtonElement>('#missing-restore-list button')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="missing-restore-list"] button')?.click()
     await afterReport()
 
     expect(errors).toStrictEqual(['Restore failed: Already exists'])
@@ -324,7 +324,7 @@ describe('restoring from the trash', () => {
     missing.offer('journal/a.md')
     missing.offer('journal/b.md')
 
-    expect(root.querySelector<HTMLElement>('#missing-restore')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="missing-restore"]')?.hidden).toBe(true)
   })
 
   it('reports a trash listing it could not read, rather than pretending there is nothing', async () => {
@@ -345,7 +345,7 @@ describe('a path whose extension names no kind', () => {
 
     view(root).offer('archive.zip')
 
-    expect(root.querySelector<HTMLInputElement>('#missing-upload-input')?.accept).toBe('')
+    expect(root.querySelector<HTMLInputElement>('[data-part="missing-upload-input"]')?.accept).toBe('')
   })
 })
 
@@ -353,7 +353,7 @@ describe('a picker that yields nothing', () => {
   it('ignores a change event with no file list at all', () => {
     const root = page()
     view(root).offer('journal/photo.png')
-    const input = root.querySelector<HTMLInputElement>('#missing-upload-input')
+    const input = root.querySelector<HTMLInputElement>('[data-part="missing-upload-input"]')
     Object.defineProperty(input, 'files', { value: null, configurable: true })
 
     input?.dispatchEvent(new Event('change'))
@@ -365,8 +365,8 @@ describe('a picker that yields nothing', () => {
 describe('markup that does not match', () => {
   it('declines when only the restore list is missing, not just when every part is', () => {
     const partial = document.createElement('div')
-    partial.innerHTML = renderSection('#view-missing')
-    partial.querySelector('#missing-restore-list')?.remove()
+    partial.innerHTML = renderSection('[data-part="view-missing"]')
+    partial.querySelector('[data-part="missing-restore-list"]')?.remove()
     document.body.append(partial)
 
     expect(() => {

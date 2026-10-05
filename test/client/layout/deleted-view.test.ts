@@ -54,7 +54,7 @@ function fakeClient(): Fake {
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = renderSection('#view-deleted')
+  container.innerHTML = renderSection('[data-part="view-deleted"]')
   document.body.append(container)
 
   return container
@@ -71,6 +71,7 @@ function view(root: ParentNode): DeletedView {
 
   return createDeletedView({
     root,
+    host: root,
     client: cast<FilesClient>(client),
     dialogs: cast<Dialogs>({
       confirm: () => {
@@ -161,7 +162,7 @@ describe('an entry that is in the trash', () => {
 
     await afterLoad()
 
-    expect(textOf(root, '#deleted-what')).toContain('The file journal/a.md was deleted')
+    expect(textOf(root, '[data-part="deleted-what"]')).toContain('The file journal/a.md was deleted')
   })
 
   it('calls a trashed folder a folder, because restoring one brings back everything in it', async () => {
@@ -172,7 +173,7 @@ describe('an entry that is in the trash', () => {
 
     await afterLoad()
 
-    expect(textOf(root, '#deleted-what')).toContain('The folder journal')
+    expect(textOf(root, '[data-part="deleted-what"]')).toContain('The folder journal')
   })
 
   it('titles the workspace by the path it came from, not by the entry id', async () => {
@@ -193,7 +194,7 @@ describe('an entry that is in the trash', () => {
 
     await afterLoad()
 
-    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(false)
   })
 
   it('restores the entry the url named', async () => {
@@ -202,7 +203,7 @@ describe('an entry that is in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
 
     await afterRestore()
 
@@ -215,7 +216,7 @@ describe('an entry that is in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
 
     await afterRestore()
 
@@ -232,7 +233,7 @@ describe('an entry that is in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
 
     await afterRestore()
 
@@ -250,7 +251,7 @@ describe('an entry that is in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
 
     await afterReport()
 
@@ -264,7 +265,7 @@ describe('an entry that is in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
 
     await afterReport()
 
@@ -281,7 +282,7 @@ describe('an entry whose old path is in use again', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    expect(root.querySelector<HTMLButtonElement>('#deleted-restore')?.disabled).toBe(true)
+    expect(root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.disabled).toBe(true)
   })
 
   it('still offers to be rid of it, which nothing in the way can prevent', async () => {
@@ -292,7 +293,7 @@ describe('an entry whose old path is in use again', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(false)
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(false)
   })
 
   it('says which path is in the way', async () => {
@@ -304,7 +305,7 @@ describe('an entry whose old path is in use again', () => {
 
     await afterLoad()
 
-    expect(textOf(root, '#deleted-blocked')).toContain('journal/a.md is in use again')
+    expect(textOf(root, '[data-part="deleted-blocked"]')).toContain('journal/a.md is in use again')
   })
 })
 
@@ -316,7 +317,7 @@ describe('an entry that is no longer in the trash', () => {
 
     await afterLoad()
 
-    expect(textOf(root, '#deleted-what')).toContain('already have been restored or purged')
+    expect(textOf(root, '[data-part="deleted-what"]')).toContain('already have been restored or purged')
   })
 
   it('offers nothing to restore', async () => {
@@ -325,7 +326,7 @@ describe('an entry that is no longer in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(true)
   })
 
   it('does nothing when the restore button is pressed anyway', async () => {
@@ -333,7 +334,7 @@ describe('an entry that is no longer in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
 
     expect(client.restore).not.toHaveBeenCalled()
   })
@@ -343,7 +344,7 @@ describe('an entry that is no longer in the trash', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    root.querySelector<HTMLButtonElement>('#deleted-purge')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-purge"]')?.click()
 
     expect(client.purge).not.toHaveBeenCalled()
   })
@@ -361,7 +362,7 @@ describe('a second entry opened after the first', () => {
     client.trash.mockReturnValue(stillLoading.promise)
     deleted.offer('another-id')
 
-    expect(textOf(root, '#deleted-what')).toBe('')
+    expect(textOf(root, '[data-part="deleted-what"]')).toBe('')
   })
 })
 
@@ -390,7 +391,7 @@ describe('markup that does not match', () => {
 
   it('declines when it has the actions but nowhere to list what was deleted', () => {
     const root = page()
-    root.querySelector('#deleted-contents')?.remove()
+    root.querySelector('[data-part="deleted-contents"]')?.remove()
 
     view(root).offer(ENTRY_ID)
 
@@ -409,7 +410,7 @@ describe('deleting an entry for good', () => {
   }
 
   function pressPurge(root: ParentNode): void {
-    root.querySelector<HTMLButtonElement>('#deleted-purge')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-purge"]')?.click()
   }
 
   function watchForChange(root: ParentNode): Promise<void> {
@@ -448,7 +449,7 @@ describe('deleting an entry for good', () => {
     pressPurge(root)
     await changed
 
-    expect(textOf(root, '#deleted-what')).toBe('journal/gone.md was deleted for good.')
+    expect(textOf(root, '[data-part="deleted-what"]')).toBe('journal/gone.md was deleted for good.')
   })
 
   it('takes the actions away, since there is nothing left to restore', async () => {
@@ -458,7 +459,7 @@ describe('deleting an entry for good', () => {
     pressPurge(root)
     await changed
 
-    expect(root.querySelector<HTMLElement>('#deleted-actions')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(true)
   })
 
   it('reports a refused purge rather than looking as though nothing happened', async () => {
@@ -500,7 +501,7 @@ describe('keeping the file browser in step', () => {
     await afterLoad()
     const shown = watchReveals(root)
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
     await afterRestore()
 
     expect(shown).toStrictEqual(['journal/a.md'])
@@ -514,7 +515,7 @@ describe('keeping the file browser in step', () => {
     await afterLoad()
     const shown = watchReveals(root)
 
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
     await afterReport()
 
     expect(shown).toStrictEqual([])
@@ -574,16 +575,16 @@ describe('what the entry holds', () => {
     view(root).offer(ENTRY_ID)
     await afterLoad()
 
-    expect(root.querySelector<HTMLElement>('#deleted-contents')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-contents"]')?.hidden).toBe(true)
   })
 
   it('is cleared away once the entry has been purged', async () => {
     const root = await showing()
 
-    root.querySelector<HTMLButtonElement>('#deleted-purge')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-purge"]')?.click()
     await givenAsync(watchPurge(root))
 
-    expect(root.querySelector<HTMLElement>('#deleted-contents')?.hidden).toBe(true)
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-contents"]')?.hidden).toBe(true)
   })
 })
 
@@ -613,7 +614,7 @@ describe('restoring part of what was deleted', () => {
   }
 
   function clickRestore(root: ParentNode): void {
-    root.querySelector<HTMLButtonElement>('#deleted-restore')?.click()
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
   }
 
   it('asks for the whole entry while nothing has been unticked', async () => {
@@ -643,7 +644,7 @@ describe('restoring part of what was deleted', () => {
 
     untick(root, '')
 
-    expect(root.querySelector<HTMLButtonElement>('#deleted-restore')?.disabled).toBe(true)
+    expect(root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.disabled).toBe(true)
   })
 
   it('opens what came back when nothing is left in the entry', async () => {

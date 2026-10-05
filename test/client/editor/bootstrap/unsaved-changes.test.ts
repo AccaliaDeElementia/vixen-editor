@@ -165,7 +165,7 @@ describe('leaving a document with unsaved changes', () => {
 
     await driver.settled()
 
-    expect(root.querySelector('#save-label')?.textContent).toBe('')
+    expect(root.querySelector('[data-part="save-label"]')?.textContent).toBe('')
   })
 
   it('stays on the document when the user declines', async () => {

@@ -15,10 +15,13 @@ test('counts the words in the open document', async ({ page, request }) => {
   await page.goto(await storedDocument(request, 'status.md', '# one two three'))
 
   await givenAsync(
-    expect(page.locator('#tab-strip [role="tab"][aria-selected="true"]')).toHaveAttribute('data-path', 'status.md'),
+    expect(page.locator('[data-part="tabs"] [role="tab"][aria-selected="true"]')).toHaveAttribute(
+      'data-path',
+      'status.md',
+    ),
   )
 
-  await expect(page.locator('#word-count')).toHaveText('4 words')
+  await expect(page.locator('[data-part="word-count"]')).toHaveText('4 words')
 })
 
 test('the word count follows what is typed', async ({ page, request }) => {
@@ -27,7 +30,7 @@ test('the word count follows what is typed', async ({ page, request }) => {
   await page.keyboard.press('Control+a')
   await page.keyboard.type('alpha beta gamma')
 
-  await expect(page.locator('#word-count')).toHaveText('3 words')
+  await expect(page.locator('[data-part="word-count"]')).toHaveText('3 words')
 })
 
 test('an edit starts a countdown bar that shrinks', async ({ page, request }) => {
@@ -35,9 +38,9 @@ test('an edit starts a countdown bar that shrinks', async ({ page, request }) =>
   await page.locator('.cm-content').click()
   await page.keyboard.type(' edited')
 
-  await givenAsync(expect(page.locator('#save-label')).toHaveText('Save pending'))
+  await givenAsync(expect(page.locator('[data-part="save-label"]')).toHaveText('Save pending'))
 
-  const bar = page.locator('#save-countdown')
+  const bar = page.locator('[data-part="save-countdown"]')
   const width = async (): Promise<number> => (await bar.boundingBox())?.width ?? 0
 
   const started = await width()
@@ -51,7 +54,7 @@ test('a further edit restarts the countdown rather than letting it run down', as
   await page.locator('.cm-content').click()
   await page.keyboard.type(' first')
 
-  const bar = page.locator('#save-countdown')
+  const bar = page.locator('[data-part="save-countdown"]')
   const width = async (): Promise<number> => (await bar.boundingBox())?.width ?? 0
 
   const started = await width()
@@ -67,7 +70,7 @@ test('the save state floats over the document rather than taking a row of its ow
   await page.goto(await storedDocument(request, `footing-${String(Date.now())}.md`, '# one'))
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
 
-  await expect(page.locator('#editor-footing')).toBeVisible()
+  await expect(page.locator('[data-part="footing"]')).toBeVisible()
 })
 
 test('the save state is out of the way when no document is open', async ({ page, request }) => {
@@ -75,9 +78,9 @@ test('the save state is out of the way when no document is open', async ({ page,
   const trashId = await deletedEntry(request, name)
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#view-deleted')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="view-deleted"]')).toBeVisible())
 
-  await expect(page.locator('#editor-footing')).toBeHidden()
+  await expect(page.locator('[data-part="footing"]')).toBeHidden()
 
   await request.delete(`/api/trash/${trashId}`)
 })

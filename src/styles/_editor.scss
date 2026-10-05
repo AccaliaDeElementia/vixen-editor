@@ -5,7 +5,7 @@
 // and asserted by test/client/decorations.test.ts and test-browser/editor.spec.ts.
 // Restyle them freely; do not rename them.
 
-#editor {
+.pane__editor {
   flex: 1;
   min-height: 0;
   overflow: auto;

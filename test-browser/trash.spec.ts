@@ -15,7 +15,7 @@ test('a trashed document is offered back at the path it came from', async ({ pag
 
   await page.goto(`/doc/${name}`)
 
-  const restore = page.locator('#missing-restore-list button')
+  const restore = page.locator('[data-part="missing-restore-list"] button')
   await givenAsync(expect(restore).toBeVisible())
   await restore.click()
 
@@ -27,18 +27,18 @@ test('a trash entry url says what was deleted', async ({ page, request }) => {
   const trashId = await deletedEntry(request, name)
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#view-deleted')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="view-deleted"]')).toBeVisible())
 
-  await expect(page.locator('#deleted-what')).toContainText(`The file ${name} was deleted`)
+  await expect(page.locator('[data-part="deleted-what"]')).toContainText(`The file ${name} was deleted`)
 })
 
 test('a trash entry offers the document back', async ({ page, request }) => {
   const name = `restored-${String(Date.now())}.md`
   const trashId = await deletedEntry(request, name)
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#view-deleted')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="view-deleted"]')).toBeVisible())
 
-  await page.locator('#deleted-restore').click()
+  await page.locator('[data-part="deleted-restore"]').click()
 
   await expect(page.locator('.cm-content')).toContainText('# gone')
 })
@@ -46,10 +46,10 @@ test('a trash entry offers the document back', async ({ page, request }) => {
 test('a trash entry that is no longer there says so', async ({ page }) => {
   await page.goto('/trash/0d5caef1-147f-45bf-8546-270886fcaa8f')
 
-  await givenAsync(expect(page.locator('#view-deleted')).toBeVisible())
-  await givenAsync(expect(page.locator('#deleted-actions')).toBeHidden())
+  await givenAsync(expect(page.locator('[data-part="view-deleted"]')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="deleted-actions"]')).toBeHidden())
 
-  await expect(page.locator('#deleted-what')).toContainText('already have been restored or purged')
+  await expect(page.locator('[data-part="deleted-what"]')).toContainText('already have been restored or purged')
 })
 
 test('deleting the document being edited lands on its trash entry', async ({ page, request }) => {
@@ -93,10 +93,10 @@ test('restoring from a trash entry page brings the file back into the browser', 
   const trashId = await deletedEntry(request, name)
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#deleted-restore')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="deleted-restore"]')).toBeVisible())
   await givenAsync(expect(page.locator(`.tree__row[data-path="${name}"]`)).toHaveCount(0))
 
-  await page.locator('#deleted-restore').click()
+  await page.locator('[data-part="deleted-restore"]').click()
 
   await expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible()
 
@@ -108,12 +108,12 @@ test('a trash entry is deleted for good from its own page, not from the file bro
   const trashId = await deletedEntry(request, name)
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#deleted-purge')).toBeVisible())
-  await page.locator('#deleted-purge').click()
+  await givenAsync(expect(page.locator('[data-part="deleted-purge"]')).toBeVisible())
+  await page.locator('[data-part="deleted-purge"]').click()
   await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
   await page.locator('#file-dialog-confirm').click()
 
-  await expect(page.locator('#deleted-what')).toHaveText(`${name} was deleted for good.`)
+  await expect(page.locator('[data-part="deleted-what"]')).toHaveText(`${name} was deleted for good.`)
 })
 
 test('the file browser offers no buttons on a deleted entry of its own', async ({ page, request }) => {
@@ -166,8 +166,8 @@ test('a restored file is selected, so the toolbar aims at where it came back to'
   const trashId = await deletedEntry(request, name)
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#deleted-restore')).toBeVisible())
-  await page.locator('#deleted-restore').click()
+  await givenAsync(expect(page.locator('[data-part="deleted-restore"]')).toBeVisible())
+  await page.locator('[data-part="deleted-restore"]').click()
 
   await expect(page.locator(`.tree__row[data-path="${name}"]`)).toHaveAttribute('aria-selected', 'true')
 
@@ -182,8 +182,8 @@ test('a new document after a restore lands beside it, not at the store root', as
   const trashId = await deletedEntry(request, name)
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#deleted-restore')).toBeVisible())
-  await page.locator('#deleted-restore').click()
+  await givenAsync(expect(page.locator('[data-part="deleted-restore"]')).toBeVisible())
+  await page.locator('[data-part="deleted-restore"]').click()
   await givenAsync(expect(page.locator(`.tree__row[data-path="${name}"]`)).toHaveAttribute('aria-selected', 'true'))
 
   await page.locator('#new-document').click()
@@ -202,9 +202,9 @@ async function cherryPicked(page: Page, request: APIRequestContext, folder: stri
   const trashId = await stringFieldOf(await request.delete(`/api/files/entries/${folder}`), 'trashId')
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#deleted-contents [role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="deleted-contents"] [role="tree"]')).toBeVisible())
   await page.locator('.restore-tree__row[data-path="left.md"]').click()
-  await page.locator('#deleted-restore').click()
+  await page.locator('[data-part="deleted-restore"]').click()
 
   return trashId
 }
@@ -236,7 +236,7 @@ test('a row offers to put its own item back somewhere else', async ({ page, requ
   const trashId = await deletedEntry(request, name)
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#deleted-contents [role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="deleted-contents"] [role="tree"]')).toBeVisible())
   await page.locator('.restore-tree__row[data-path=""] .restore-tree__rename').click()
   await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
   await page.locator('#file-dialog-entry').fill(moved)

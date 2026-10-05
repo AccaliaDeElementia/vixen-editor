@@ -54,7 +54,7 @@ test('a heading renders taller than body text', async ({ page, request }) => {
 test('the editor has real geometry after being revealed from hidden', async ({ page, request }) => {
   await page.goto(await storedDocument(request, 'revealed.md'))
 
-  const editor = page.locator('#editor')
+  const editor = page.locator('[data-part="editor"]')
   await givenAsync(expect(editor).toBeVisible())
 
   const content = page.locator('.cm-content')

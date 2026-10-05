@@ -11,7 +11,7 @@ let broken: string[] = []
 
 function page(): HTMLElement {
   const container = document.createElement('div')
-  container.innerHTML = renderSection('#view-image')
+  container.innerHTML = renderSection('[data-part="view-image"]')
   document.body.append(container)
 
   return container
@@ -19,7 +19,7 @@ function page(): HTMLElement {
 
 function view(root: ParentNode): ImageView {
   return createImageView({
-    root,
+    host: root,
     reveal: (at: string) => {
       revealed.push(at)
     },
@@ -30,7 +30,7 @@ function view(root: ParentNode): ImageView {
 }
 
 function fileIn(root: ParentNode): HTMLImageElement | null {
-  return root.querySelector<HTMLImageElement>('#image-file')
+  return root.querySelector<HTMLImageElement>('[data-part="image-file"]')
 }
 
 beforeEach(() => {
@@ -53,7 +53,7 @@ describe('showing an image', () => {
 
     view(root).offer('journal/photo.png')
 
-    expect(root.querySelector('#image-path')?.textContent).toBe('journal/photo.png')
+    expect(root.querySelector('[data-part="image-path"]')?.textContent).toBe('journal/photo.png')
   })
 
   it('describes the image by its path rather than leaving the alt empty', () => {
@@ -88,7 +88,7 @@ describe('the download offer', () => {
 
     view(root).offer('journal/photo.png')
 
-    expect(root.querySelector<HTMLAnchorElement>('#image-download')?.getAttribute('href')).toBe(
+    expect(root.querySelector<HTMLAnchorElement>('[data-part="image-download"]')?.getAttribute('href')).toBe(
       '/api/files/raw/journal/photo.png',
     )
   })
@@ -98,7 +98,7 @@ describe('the download offer', () => {
 
     view(root).offer('journal/2026/photo.png')
 
-    expect(root.querySelector<HTMLAnchorElement>('#image-download')?.download).toBe('photo.png')
+    expect(root.querySelector<HTMLAnchorElement>('[data-part="image-download"]')?.download).toBe('photo.png')
   })
 
   it('names a file at the store root correctly too', () => {
@@ -106,7 +106,7 @@ describe('the download offer', () => {
 
     view(root).offer('photo.png')
 
-    expect(root.querySelector<HTMLAnchorElement>('#image-download')?.download).toBe('photo.png')
+    expect(root.querySelector<HTMLAnchorElement>('[data-part="image-download"]')?.download).toBe('photo.png')
   })
 })
 
@@ -171,7 +171,7 @@ describe('a path with characters that need encoding', () => {
 
     expect({
       src: fileIn(root)?.getAttribute('src'),
-      href: root.querySelector<HTMLAnchorElement>('#image-download')?.getAttribute('href'),
+      href: root.querySelector<HTMLAnchorElement>('[data-part="image-download"]')?.getAttribute('href'),
     }).toStrictEqual({
       src: '/api/files/raw/my%20journal/a%20b.png',
       href: '/api/files/raw/my%20journal/a%20b.png',

@@ -50,7 +50,7 @@ describe('bootstrap', () => {
   it('mounts an editor into the configured selector', async () => {
     await openEditor({ root, pathname: '/doc/', session: fakeSession() })
 
-    expect(root.querySelector('#editor .cm-editor')).not.toBeNull()
+    expect(root.querySelector('[data-part="editor"] .cm-editor')).not.toBeNull()
   })
 
   it('seeds the editor with the loaded document', async () => {
@@ -121,7 +121,8 @@ describe('bootstrap', () => {
   })
 
   it('falls back to the live document, location and api session when given no options', async () => {
-    document.body.innerHTML = '<span id="status"></span><div id="editor"></div>'
+    document.body.innerHTML =
+      '<span id="status"></span><section data-part="pane"><div data-part="editor"></div></section>'
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response('# from the api', { headers: { 'content-type': 'text/markdown' } })),
@@ -134,7 +135,8 @@ describe('bootstrap', () => {
   })
 
   it('falls back to the live location when given no options', async () => {
-    document.body.innerHTML = '<span id="status"></span><div id="editor"></div>'
+    document.body.innerHTML =
+      '<span id="status"></span><section data-part="pane"><div data-part="editor"></div></section>'
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response('# from the api', { headers: { 'content-type': 'text/markdown' } })),
@@ -656,7 +658,7 @@ describe('a folder index that is not index.md', () => {
 
     await openEditor({ root, pathname: '/doc/journal/', session })
 
-    expect(root.querySelector('#unreachable-reason')?.textContent).toContain('offline')
+    expect(root.querySelector('[data-part="unreachable-reason"]')?.textContent).toContain('offline')
   })
 })
 
@@ -816,7 +818,7 @@ describe('the two halves of a teardown', () => {
 
 describe('the tab strip', () => {
   function stripTabs(): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
   }
 
   it('shows the open document as a tab', async () => {
@@ -893,7 +895,7 @@ function walkingTabs(): { navigation: Navigation; go: (url: string) => Promise<v
 
 describe('several tabs', () => {
   function stripTabs(): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
   }
 
   function paths(): Array<string | undefined> {
@@ -1045,7 +1047,7 @@ describe('several tabs', () => {
 
 describe('keeping a tab the explorer asked for', () => {
   function stripTabs(): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('#tab-strip [role="tab"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
   }
 
   function looking(): Array<boolean | undefined> {

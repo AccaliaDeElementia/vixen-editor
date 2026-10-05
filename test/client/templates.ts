@@ -34,3 +34,7 @@ export function renderSection(selector: string): string {
 
   return section.outerHTML
 }
+
+export function renderPane(primary = false): string {
+  return pug.render('include _pane.pug\n+pane(primary)', { filename: `${TEMPLATES}/pane-only.pug`, primary })
+}

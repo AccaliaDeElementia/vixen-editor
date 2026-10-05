@@ -484,6 +484,9 @@ that**: some are only enforceable by review.
   repairing the links it broke, and it is narrow in four stated ways.
   → [DESIGN](DESIGN.md#design-eae374)
 - **SVG is never inlined into the DOM.** → [DESIGN](DESIGN.md#design-9477d0)
+- **Anything a client module looks up inside a pane is marked with `data-part`
+  and found through that pane's element**, never by an id and never through
+  `document`. → [DESIGN](DESIGN.md#design-7a41d2)
 - **No `console.*` in shipped code**, and nothing writes to `stdout` or
   `stderr` directly. Diagnostics go through `createLogger`.
   → [DESIGN](DESIGN.md#design-72c03f)

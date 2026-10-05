@@ -169,7 +169,7 @@ describe('a check that cannot be made', () => {
     wake()
     await afterTheCheck()
     given(() => {
-      expect(root.querySelector<HTMLElement>('#view-missing')?.hidden).toBe(false)
+      expect(root.querySelector<HTMLElement>('[data-part="view-missing"]')?.hidden).toBe(false)
     })
 
     expect(asked).toStrictEqual([])
@@ -211,13 +211,13 @@ describe('a check while a save is in flight', () => {
     )
     await saving.promise
     given(() => {
-      expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
+      expect(root.querySelector('[data-part="save-label"]')?.textContent).toBe('Saving…')
     })
 
     wake()
     await afterTheCheck()
     given(() => {
-      expect(root.querySelector('#save-label')?.textContent).toBe('Saving…')
+      expect(root.querySelector('[data-part="save-label"]')?.textContent).toBe('Saving…')
     })
 
     expect(asked).toStrictEqual([])

@@ -1,0 +1,42 @@
+mixin pane(primary)
+  section.pane(data-part='pane')
+    .tabs(data-part='tabs' aria-label='Open documents')
+    .pane__editor(data-part='editor' hidden tabindex='-1')&attributes(primary ? { id: 'editor' } : {})
+    .footing(data-part='footing' hidden)
+      span.footing__save(data-part='save-label' role='status')
+      span.footing__countdown(data-part='save-countdown' aria-hidden='true')
+      span.footing__words(data-part='word-count')
+    section.view.view--fill(data-part='view-image' tabindex='-1' aria-label='Image' hidden)
+      .image__chrome
+        p.image__path(data-part='image-path')
+        a.view__action(data-part='image-download' download data-default-action) Download
+      .image__frame
+        img.image__file(data-part='image-file' alt='')
+    section.view(data-part='view-pending' tabindex='-1' aria-label='Loading' hidden)
+      p.view__message Loading…
+    section.view(data-part='view-missing' tabindex='-1' aria-label='Not found' hidden)
+      h1.view__title Not found
+      p.view__message
+        | Nothing is stored at
+        |
+        code.view__path(data-part='missing-path')
+      p.view__actions
+        button.view__action(data-part='missing-create' type='button' data-default-action) Create it
+        button.view__action(data-part='missing-upload' type='button') Upload a file
+        input(data-part='missing-upload-input' type='file' hidden aria-hidden='true' tabindex='-1')
+      section.view__restore(data-part='missing-restore' hidden aria-label='Restore from trash')
+        h2.view__subtitle From the trash
+        ul.restore(data-part='missing-restore-list')
+    section.view(data-part='view-deleted' tabindex='-1' aria-label='Deleted' hidden)
+      h1.view__title In the trash
+      p.view__message(data-part='deleted-what')
+      .restore-tree__host(data-part='deleted-contents' hidden)
+      p.view__actions(data-part='deleted-actions')
+        button.view__action(data-part='deleted-restore' type='button' data-default-action) Restore
+        button.view__action.view__action--danger(data-part='deleted-purge' type='button') Delete for good
+      p.view__message(data-part='deleted-blocked' hidden)
+    section.view(data-part='view-unreachable' tabindex='-1' aria-label='Unreachable' hidden)
+      h1.view__title Cannot reach the server
+      p.view__message(data-part='unreachable-reason')
+      p.view__actions
+        button.view__action(data-part='unreachable-retry' type='button' data-default-action) Try again

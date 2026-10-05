@@ -12,12 +12,12 @@ import { requestReveal } from '../reveal-request.ts'
 import { announceStoreChanged } from '../store-changed.ts'
 import type { Toast } from '../toast.ts'
 
-const WHAT_SELECTOR = '#deleted-what'
-const ACTIONS_SELECTOR = '#deleted-actions'
-const RESTORE_SELECTOR = '#deleted-restore'
-const PURGE_SELECTOR = '#deleted-purge'
-const BLOCKED_SELECTOR = '#deleted-blocked'
-const CONTENTS_SELECTOR = '#deleted-contents'
+const WHAT_SELECTOR = '[data-part="deleted-what"]'
+const ACTIONS_SELECTOR = '[data-part="deleted-actions"]'
+const RESTORE_SELECTOR = '[data-part="deleted-restore"]'
+const PURGE_SELECTOR = '[data-part="deleted-purge"]'
+const BLOCKED_SELECTOR = '[data-part="deleted-blocked"]'
+const CONTENTS_SELECTOR = '[data-part="deleted-contents"]'
 
 type Refusal = string
 
@@ -30,6 +30,7 @@ export interface DeletedView {
 
 interface DeletedViewOptions {
   root: ParentNode
+  host: ParentNode
   client: FilesClient
   dialogs: Dialogs
   toast: Toast
@@ -72,7 +73,7 @@ const INERT: DeletedView = {
 }
 
 export function createDeletedView(options: DeletedViewOptions): DeletedView {
-  const parts = partsOf(options.root)
+  const parts = partsOf(options.host)
   if (parts === null) return INERT
 
   const { contents, what, actions, restore, purge, blocked } = parts

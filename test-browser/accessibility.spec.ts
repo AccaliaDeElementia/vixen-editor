@@ -36,13 +36,13 @@ test('a save is announced rather than only shown', async ({ page, request }) => 
   await page.goto(`/doc/${folder}/notes.md`)
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
 
-  await givenAsync(expect(page.locator('#save-label')).toHaveAttribute('role', 'status'))
+  await givenAsync(expect(page.locator('[data-part="save-label"]')).toHaveAttribute('role', 'status'))
 
   await page.locator('.cm-content').click()
   await page.keyboard.type('edited')
   await page.keyboard.press('ControlOrMeta+s')
 
-  await expect(page.locator('#save-label')).toHaveText('Saved')
+  await expect(page.locator('[data-part="save-label"]')).toHaveText('Saved')
 
   await request.delete(`/api/files/entries/${folder}`)
 })
@@ -80,7 +80,7 @@ test('the missing-document view has no accessibility violations', async ({ page,
   await workspaceWith(page, request, folder)
 
   await page.goto(`/doc/${folder}/absent.md`)
-  await givenAsync(expect(page.locator('#view-missing')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="view-missing"]')).toBeVisible())
 
   expect(await violationsOn(page)).toStrictEqual([])
 
@@ -111,8 +111,8 @@ test('the deleted view and its restore tree have no accessibility violations', a
   const trashId = await stringFieldOf(await request.delete(`/api/files/entries/${folder}`), 'trashId')
 
   await page.goto(`/trash/${trashId}`)
-  await givenAsync(expect(page.locator('#deleted-contents')).toBeVisible())
-  await givenAsync(expect(page.locator('#deleted-contents [role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="deleted-contents"]')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="deleted-contents"] [role="tree"]')).toBeVisible())
 
   expect(await violationsOn(page)).toStrictEqual([])
 

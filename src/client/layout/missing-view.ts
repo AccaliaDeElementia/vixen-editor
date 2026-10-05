@@ -9,11 +9,11 @@ import { restoreCandidatesFor, type RestoreCandidate } from '../files/restore-ca
 import { folderPathsIn, type TreeNode } from '../files/tree-model.ts'
 import type { Toast } from '../toast.ts'
 
-const CREATE_SELECTOR = '#missing-create'
-const UPLOAD_SELECTOR = '#missing-upload'
-const UPLOAD_INPUT_SELECTOR = '#missing-upload-input'
-const RESTORE_SELECTOR = '#missing-restore'
-const RESTORE_LIST_SELECTOR = '#missing-restore-list'
+const CREATE_SELECTOR = '[data-part="missing-create"]'
+const UPLOAD_SELECTOR = '[data-part="missing-upload"]'
+const UPLOAD_INPUT_SELECTOR = '[data-part="missing-upload-input"]'
+const RESTORE_SELECTOR = '[data-part="missing-restore"]'
+const RESTORE_LIST_SELECTOR = '[data-part="missing-restore-list"]'
 
 const ONLY_FILE = 0
 
@@ -27,7 +27,7 @@ export interface MissingView {
 }
 
 interface MissingViewOptions {
-  root: ParentNode
+  host: ParentNode
   client: FilesClient
   toast: Toast
   reopen: () => void
@@ -69,7 +69,7 @@ const INERT: MissingView = {
 }
 
 export function createMissingView(options: MissingViewOptions): MissingView {
-  const parts = partsOf(options.root)
+  const parts = partsOf(options.host)
   if (parts === null) return INERT
 
   const { create, upload, uploadInput, restore, restoreList } = parts

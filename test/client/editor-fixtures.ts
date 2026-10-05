@@ -30,7 +30,7 @@ export function page({ withMount = true, withStatus = true } = {}): HTMLElement 
   const container = document.createElement('div')
   container.innerHTML = renderPage()
 
-  if (!withMount) container.querySelector('#editor')?.remove()
+  if (!withMount) container.querySelector('[data-part="editor"]')?.remove()
   if (!withStatus) container.querySelector('#status')?.remove()
 
   document.body.append(container)

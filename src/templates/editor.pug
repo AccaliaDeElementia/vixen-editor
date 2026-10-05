@@ -1,46 +1,9 @@
 extends layout
 
+include _pane.pug
+
 block content
   main.workspace#workspace(aria-label='Editor')
     h1.visually-hidden#workspace-title Editor
-    .tabs#tab-strip(aria-label='Open documents')
-    #editor(hidden tabindex='-1')
-    .footing#editor-footing(hidden)
-      span.footing__save#save-label(role='status')
-      span.footing__countdown#save-countdown(aria-hidden='true')
-      span.footing__words#word-count
-    section.view.view--fill#view-image(tabindex='-1' aria-label='Image' hidden)
-      .image__chrome
-        p.image__path#image-path
-        a.view__action#image-download(download data-default-action) Download
-      .image__frame
-        img.image__file#image-file(alt='')
-    section.view#view-pending(tabindex='-1' aria-label='Loading' hidden)
-      p.view__message Loading…
-    section.view#view-missing(tabindex='-1' aria-label='Not found' hidden)
-      h1.view__title Not found
-      p.view__message
-        | Nothing is stored at
-        |
-        code.view__path#missing-path
-      p.view__actions
-        button.view__action#missing-create(type='button' data-default-action) Create it
-        button.view__action#missing-upload(type='button') Upload a file
-        input#missing-upload-input(type='file' hidden aria-hidden='true' tabindex='-1')
-      section.view__restore#missing-restore(hidden aria-label='Restore from trash')
-        h2.view__subtitle From the trash
-        ul.restore#missing-restore-list
-    section.view#view-deleted(tabindex='-1' aria-label='Deleted' hidden)
-      h1.view__title In the trash
-      p.view__message#deleted-what
-      .restore-tree__host#deleted-contents(hidden)
-      p.view__actions#deleted-actions
-        button.view__action#deleted-restore(type='button' data-default-action) Restore
-        button.view__action.view__action--danger#deleted-purge(type='button') Delete for good
-      p.view__message#deleted-blocked(hidden)
-    section.view#view-unreachable(tabindex='-1' aria-label='Unreachable' hidden)
-      h1.view__title Cannot reach the server
-      p.view__message#unreachable-reason
-      p.view__actions
-        button.view__action#unreachable-retry(type='button' data-default-action) Try again
+    +pane(true)
     .toasts#status(role='status' aria-live='polite' aria-atomic='false')

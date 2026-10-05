@@ -94,7 +94,7 @@ describe('what a screen reader is told when the workspace changes', () => {
 
     await openEditor({ root, pathname: '/doc/notes.md', session })
 
-    expect(root.querySelector('#unreachable-reason')?.textContent).toContain('could not be loaded')
+    expect(root.querySelector('[data-part="unreachable-reason"]')?.textContent).toContain('could not be loaded')
   })
 
   it('says nothing in the status region, which is for what the reader just did', async () => {

@@ -61,7 +61,7 @@ test('Mod-Enter in prose still inserts a blank line, which CodeMirror binds it t
 
   await page.keyboard.press('ControlOrMeta+Enter')
 
-  await givenAsync(expect(page.locator('#word-count')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="word-count"]')).toBeVisible())
   expect(await page.locator('.cm-line').count()).toBeGreaterThan(2)
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -76,7 +76,7 @@ test('Mod-Enter on an image opens the image view', async ({ page, request }) => 
 
   await page.keyboard.press('ControlOrMeta+Enter')
 
-  await givenAsync(expect(page.locator('#view-image')).toBeVisible())
+  await givenAsync(expect(page.locator('[data-part="view-image"]')).toBeVisible())
   expect(new URL(page.url()).pathname).toBe(`/doc/${folder}/pic.png`)
 
   await request.delete(`/api/files/entries/${folder}`)

@@ -2,9 +2,9 @@
 
 import type { SaveState } from '../editor/autosave.ts'
 
-const SAVE_LABEL_SELECTOR = '#save-label'
-const COUNTDOWN_SELECTOR = '#save-countdown'
-const WORD_COUNT_SELECTOR = '#word-count'
+const SAVE_LABEL_SELECTOR = '[data-part="save-label"]'
+const COUNTDOWN_SELECTOR = '[data-part="save-countdown"]'
+const WORD_COUNT_SELECTOR = '[data-part="word-count"]'
 
 const COUNTDOWN_ATTRIBUTE = 'data-running'
 const COUNTDOWN_PROPERTY = '--countdown'
@@ -45,10 +45,10 @@ function countWords(content: string): string {
   return `${String(words)} ${words === ONE_WORD ? 'word' : 'words'}`
 }
 
-export function createStatusBar(root: ParentNode): StatusBar {
-  const labelElement = root.querySelector(SAVE_LABEL_SELECTOR)
-  const countdownElement = root.querySelector<HTMLElement>(COUNTDOWN_SELECTOR)
-  const wordCountElement = root.querySelector(WORD_COUNT_SELECTOR)
+export function createStatusBar(host: ParentNode): StatusBar {
+  const labelElement = host.querySelector(SAVE_LABEL_SELECTOR)
+  const countdownElement = host.querySelector<HTMLElement>(COUNTDOWN_SELECTOR)
+  const wordCountElement = host.querySelector(WORD_COUNT_SELECTOR)
 
   let written = false
   let previous: SaveState | null = null

@@ -3,16 +3,16 @@
 import { rawUrlFor } from '../../shared/api.ts'
 import { basenameOf } from '../../shared/link-paths.ts'
 
-const PATH_SELECTOR = '#image-path'
-const DOWNLOAD_SELECTOR = '#image-download'
-const FILE_SELECTOR = '#image-file'
+const PATH_SELECTOR = '[data-part="image-path"]'
+const DOWNLOAD_SELECTOR = '[data-part="image-download"]'
+const FILE_SELECTOR = '[data-part="image-file"]'
 
 export interface ImageView {
   offer: (entryPath: string) => void
 }
 
 interface ImageViewOptions {
-  root: ParentNode
+  host: ParentNode
   reveal: (at: string) => void
   onBroken: (entryPath: string) => void
 }
@@ -38,7 +38,7 @@ const INERT: ImageView = {
 }
 
 export function createImageView(options: ImageViewOptions): ImageView {
-  const parts = partsOf(options.root)
+  const parts = partsOf(options.host)
   if (parts === null) return INERT
 
   const { path, download, file } = parts

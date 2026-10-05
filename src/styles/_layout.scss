@@ -155,6 +155,16 @@
   }
 }
 
+.pane {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .toasts {
   // Presentation follows content: an empty region takes no space and needs no
   // attribute kept in step by script.

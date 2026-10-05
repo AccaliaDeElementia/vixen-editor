@@ -5,17 +5,17 @@ import { titleFor } from '../doc-path.ts'
 export type WorkspaceView = 'pending' | 'document' | 'image' | 'missing' | 'deleted' | 'unreachable'
 
 const VIEW_ELEMENTS: ReadonlyArray<readonly [WorkspaceView, string]> = [
-  ['pending', '#view-pending'],
-  ['document', '#editor'],
-  ['image', '#view-image'],
-  ['missing', '#view-missing'],
-  ['deleted', '#view-deleted'],
-  ['unreachable', '#view-unreachable'],
+  ['pending', '[data-part="view-pending"]'],
+  ['document', '[data-part="editor"]'],
+  ['image', '[data-part="view-image"]'],
+  ['missing', '[data-part="view-missing"]'],
+  ['deleted', '[data-part="view-deleted"]'],
+  ['unreachable', '[data-part="view-unreachable"]'],
 ]
 
 const DEFAULT_ACTION_SELECTOR = '[data-default-action]'
-const MISSING_PATH_SELECTOR = '#missing-path'
-const FOOTING_SELECTOR = '#editor-footing'
+const MISSING_PATH_SELECTOR = '[data-part="missing-path"]'
+const FOOTING_SELECTOR = '[data-part="footing"]'
 
 export interface Workspace {
   show: (view: WorkspaceView, at: string) => void
@@ -37,9 +37,9 @@ interface WorkspaceOptions {
   focusDocument: () => void
 }
 
-export function createWorkspace(root: ParentNode, options: WorkspaceOptions): Workspace {
-  const elements = elementsOf(root)
-  const footing = root.querySelector<HTMLElement>(FOOTING_SELECTOR)
+export function createWorkspace(host: ParentNode, options: WorkspaceOptions): Workspace {
+  const elements = elementsOf(host)
+  const footing = host.querySelector<HTMLElement>(FOOTING_SELECTOR)
   let current: WorkspaceView | null = null
 
   function reveal(view: WorkspaceView): HTMLElement | undefined {
@@ -50,7 +50,7 @@ export function createWorkspace(root: ParentNode, options: WorkspaceOptions): Wo
   }
 
   function nameMissingPath(at: string): void {
-    const missingPath = root.querySelector(MISSING_PATH_SELECTOR)
+    const missingPath = host.querySelector(MISSING_PATH_SELECTOR)
     if (missingPath !== null) missingPath.textContent = at
   }
 

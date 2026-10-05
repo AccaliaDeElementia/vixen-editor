@@ -45,7 +45,7 @@ test('a moved document still links to the same file, and says so', async ({ page
     .locator(`[role="treeitem"][data-path="${folder}/source.md"]`)
     .dragTo(page.locator(`[role="treeitem"][data-path="${moved}"]`))
   await givenAsync(
-    expect(page.locator('#tab-strip [role="tab"][aria-selected="true"]')).toHaveAttribute(
+    expect(page.locator('[data-part="tabs"] [role="tab"][aria-selected="true"]')).toHaveAttribute(
       'data-path',
       `${moved}/source.md`,
     ),

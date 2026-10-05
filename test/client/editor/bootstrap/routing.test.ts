@@ -36,9 +36,9 @@ beforeEach(() => {
 
 describe('which view the workspace shows', () => {
   function shown(): string[] {
-    return [...root.querySelectorAll<HTMLElement>('#editor, [id^="view-"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="editor"], [data-part^="view-"]')]
       .filter((view) => view.hidden === false)
-      .map((view) => view.id)
+      .flatMap((view) => view.dataset.part ?? [])
   }
 
   it('shows the editor once the document has loaded', async () => {
@@ -60,7 +60,7 @@ describe('which view the workspace shows', () => {
 
     await openEditor({ root, pathname: '/doc/journal/gone.md', session })
 
-    expect(root.querySelector('#missing-path')?.textContent).toBe('journal/gone.md')
+    expect(root.querySelector('[data-part="missing-path"]')?.textContent).toBe('journal/gone.md')
   })
 
   it('opens a missing folder index as a new document, because browsing must not write', async () => {
@@ -92,7 +92,7 @@ describe('which view the workspace shows', () => {
 
     await openEditor({ root, pathname: '/doc/notes.md', session })
 
-    expect(root.querySelector('#unreachable-reason')?.textContent).toContain('network down')
+    expect(root.querySelector('[data-part="unreachable-reason"]')?.textContent).toContain('network down')
   })
 
   it('names the store rather than an empty path when the root cannot be loaded', async () => {
@@ -100,11 +100,11 @@ describe('which view the workspace shows', () => {
 
     await openEditor({ root, pathname: '/doc/', session })
 
-    expect(root.querySelector('#unreachable-reason')?.textContent).toContain('The store')
+    expect(root.querySelector('[data-part="unreachable-reason"]')?.textContent).toContain('The store')
   })
 
   it('survives markup with nowhere to write the reason', async () => {
-    root.querySelector('#unreachable-reason')?.remove()
+    root.querySelector('[data-part="unreachable-reason"]')?.remove()
     const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
 
     await expect(openEditor({ root, pathname: '/doc/notes.md', session })).resolves.toBeDefined()
@@ -135,9 +135,9 @@ describe('the page title', () => {
 
 describe('a trash entry url', () => {
   function shown(): string[] {
-    return [...root.querySelectorAll<HTMLElement>('#editor, [id^="view-"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="editor"], [data-part^="view-"]')]
       .filter((element) => element.hidden === false)
-      .map((element) => element.id)
+      .flatMap((element) => element.dataset.part ?? [])
   }
 
   it('shows the deleted view rather than trying to load a document', async () => {
@@ -179,9 +179,9 @@ describe('a trash entry url', () => {
 
 describe('an image path', () => {
   function shown(): string[] {
-    return [...root.querySelectorAll<HTMLElement>('#editor, [id^="view-"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="editor"], [data-part^="view-"]')]
       .filter((element) => element.hidden === false)
-      .map((element) => element.id)
+      .flatMap((element) => element.dataset.part ?? [])
   }
 
   it('is never asked of the documents api, which refuses it with a 400 rather than a 404', async () => {
@@ -207,7 +207,7 @@ describe('an image path', () => {
   it('shows the image once it has loaded', async () => {
     await openEditor({ root, pathname: '/doc/journal/photo.png', session: fakeSession() })
 
-    root.querySelector('#image-file')?.dispatchEvent(new Event('load'))
+    root.querySelector('[data-part="image-file"]')?.dispatchEvent(new Event('load'))
 
     expect(shown()).toStrictEqual(['view-image'])
   })
@@ -215,7 +215,7 @@ describe('an image path', () => {
   it('falls through to the missing view when the image will not load', async () => {
     await openEditor({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
 
-    root.querySelector('#image-file')?.dispatchEvent(new Event('error'))
+    root.querySelector('[data-part="image-file"]')?.dispatchEvent(new Event('error'))
 
     expect(shown()).toStrictEqual(['view-missing'])
   })
@@ -223,8 +223,8 @@ describe('an image path', () => {
   it('names the broken image as the missing path', async () => {
     await openEditor({ root, pathname: '/doc/journal/gone.png', session: fakeSession() })
 
-    root.querySelector('#image-file')?.dispatchEvent(new Event('error'))
+    root.querySelector('[data-part="image-file"]')?.dispatchEvent(new Event('error'))
 
-    expect(root.querySelector('#missing-path')?.textContent).toBe('journal/gone.png')
+    expect(root.querySelector('[data-part="missing-path"]')?.textContent).toBe('journal/gone.png')
   })
 })

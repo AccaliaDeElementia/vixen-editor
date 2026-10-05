@@ -488,6 +488,33 @@ substring-matches the result. `file-dialog-input` squashes to
 it. `test/conventions/field-naming.test.ts` scans the rendered page for credential
 words so this cannot come back; it is invisible to anyone reading the markup.
 
+<a id="design-7a41d2"></a>
+
+### A pane's markup is hooked by `data-part`, never by an id
+
+The workspace views — the editor mount, the tab strip, the footing, and the
+image, pending, missing, deleted and unreachable sections — live inside a pane,
+and `src/templates/_pane.pug` renders a pane through a mixin so there can be
+more than one. Everything a client module looks up inside a pane is marked with
+`data-part`, and the lookup is made against **that pane's element** rather than
+against the document.
+
+**An id cannot do this job**, which is the whole reason for the attribute: two
+panes would carry two elements with the same id, so `document.querySelector`
+would answer with whichever came first and the second pane would quietly drive
+the first one's markup. Nothing would throw, and the only symptom would be a
+view appearing in the wrong half of the screen.
+
+The one id that stays is `id="editor"` on the **primary** pane, because the skip
+link is a document-level anchor and `href="#editor"` needs one. The mixin takes
+that as a parameter rather than emitting it always, so a second pane does not
+repeat it. No client module reads it.
+
+`.pane` carries the flex column the workspace used to supply directly. Moving
+the views inside a wrapper without moving that layout left the editor with no
+height, so nothing scrolled and CodeMirror never parsed past its first chunk —
+caught by `test-browser/rendering.spec.ts`, not by any unit test.
+
 <a id="design-68c8d3"></a>
 
 ## Limits

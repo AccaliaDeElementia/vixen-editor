@@ -108,12 +108,12 @@ describe('navigating away from a document', () => {
     const view = await openEditor({ root, pathname: '/doc/notes.md', session, navigation: stub.navigation })
     view.dispatch({ changes: { from: 0, insert: 'unsaved ' } })
     given(() => {
-      expect(root.querySelector('#save-label')?.textContent).toBe('Save pending')
+      expect(root.querySelector('[data-part="save-label"]')?.textContent).toBe('Save pending')
     })
 
     await stub.go('/doc/gone.md')
 
-    expect(root.querySelector('#save-label')?.textContent).toBe('')
+    expect(root.querySelector('[data-part="save-label"]')?.textContent).toBe('')
   })
 
   it('loads the document it navigated to', async () => {

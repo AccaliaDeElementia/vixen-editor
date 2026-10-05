@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 
 import { storedDocument } from './fixtures.ts'
 
-const TAB_SELECTOR = '#tab-strip [role="tab"]'
+const TAB_SELECTOR = '[data-part="tabs"] [role="tab"]'
 
 test('a kept tab is still in the strip after a reload', async ({ page, request }) => {
   const stamp = String(Date.now())

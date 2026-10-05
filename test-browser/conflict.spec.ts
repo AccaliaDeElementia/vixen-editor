@@ -78,7 +78,7 @@ test('keeping mine overwrites the store with the buffer', async ({ page, request
   await noticeTheChange(page)
   await page.locator('#file-dialog-choices button[value="mine"]').click()
 
-  await givenAsync(expect(page.locator('#save-label')).toHaveText('Saved'))
+  await givenAsync(expect(page.locator('[data-part="save-label"]')).toHaveText('Saved'))
   const observed = await storedAt(request, name)
   given(() => {
     expect(observed).toContain('mine')
@@ -163,7 +163,7 @@ test('accepting a change keeps the buffer version, and the merged document saves
   await givenAsync(expect(page.locator('#status .toast').last()).toContainText('merged'))
 
   await page.keyboard.press('Control+s')
-  await givenAsync(expect(page.locator('#save-label')).toHaveText('Saved'))
+  await givenAsync(expect(page.locator('[data-part="save-label"]')).toHaveText('Saved'))
   expect(await storedAt(request, name)).toContain('mine')
 
   await request.delete(`/api/files/entries/${name}`)

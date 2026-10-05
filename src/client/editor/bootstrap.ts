@@ -47,9 +47,10 @@ import { onKeepRequested } from '../keep-request.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
-const MOUNT_SELECTOR = '#editor'
-const TAB_STRIP_SELECTOR = '#tab-strip'
-const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
+const PANE_SELECTOR = '[data-part="pane"]'
+const MOUNT_SELECTOR = '[data-part="editor"]'
+const TAB_STRIP_SELECTOR = '[data-part="tabs"]'
+const UNREACHABLE_REASON_SELECTOR = '[data-part="unreachable-reason"]'
 
 interface Editor {
   view: EditorView
@@ -73,9 +74,16 @@ interface BootstrapOptions {
   listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
 }
 
-function reportUnreachable(root: ParentNode, at: string, error: unknown): void {
+function paneIn(root: ParentNode): Element {
+  const pane = root.querySelector(PANE_SELECTOR)
+  if (pane === null) throw new MissingMountError(PANE_SELECTOR)
+
+  return pane
+}
+
+function reportUnreachable(host: ParentNode, at: string, error: unknown): void {
   const subject = at === '' ? 'The store' : at
-  const element = root.querySelector(UNREACHABLE_REASON_SELECTOR)
+  const element = host.querySelector(UNREACHABLE_REASON_SELECTOR)
 
   if (element !== null) element.textContent = `${subject} could not be loaded: ${errorMessage(error)}`
 }
@@ -129,9 +137,9 @@ interface Strip {
   followMove: (move: EntryMove) => void
 }
 
-function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
+function stripIn(pane: ParentNode, openUrl: (url: string) => void): Strip {
   const tabs = createOpenTabs()
-  const host = root.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
+  const host = pane.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
 
   for (const at of readKeptTabs()) tabs.keep(at)
   tabs.leave()
@@ -193,13 +201,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     toast.show(text)
   }
 
-  const mount = root.querySelector(MOUNT_SELECTOR)
+  const pane = paneIn(root)
+
+  const mount = pane.querySelector(MOUNT_SELECTOR)
   if (mount === null) throw new MissingMountError(MOUNT_SELECTOR)
 
   const documentId = (): string => openDocument.path()
-  const statusBar = createStatusBar(root)
-  const strip = stripIn(root, openUrl)
-  const workspace = createWorkspace(root, {
+  const statusBar = createStatusBar(pane)
+  const strip = stripIn(pane, openUrl)
+  const workspace = createWorkspace(pane, {
     focusDocument: () => {
       view.focus()
     },
@@ -227,6 +237,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const deletedView = createDeletedView({
     root,
+    host: pane,
     client: files,
     dialogs,
     toast,
@@ -236,7 +247,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  const missingView = createMissingView({ root, client: files, toast, reopen })
+  const missingView = createMissingView({ host: pane, client: files, toast, reopen })
 
   function showMissing(entryPath: string, shown: string): void {
     tab.empty()
@@ -247,7 +258,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   const imageView = createImageView({
-    root,
+    host: pane,
     reveal: (at) => {
       workspace.show('image', at)
     },
@@ -271,7 +282,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       tab.empty()
       strip.left()
       workspace.show('unreachable', shown)
-      reportUnreachable(root, shown, outcome.error)
+      reportUnreachable(pane, shown, outcome.error)
 
       return
     }
