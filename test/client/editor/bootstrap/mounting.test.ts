@@ -692,3 +692,123 @@ describe('tearing the editor down', () => {
     vi.useRealTimers()
   })
 })
+
+describe('the two halves of a teardown', () => {
+  type UnloadListener = (handler: (event: BeforeUnloadEvent) => void) => () => void
+
+  function listening(): { listenForUnload: UnloadListener; stillGuarding: () => boolean } {
+    let guarding = false
+
+    return {
+      listenForUnload: () => {
+        guarding = true
+
+        return () => {
+          guarding = false
+        }
+      },
+      stillGuarding: () => guarding,
+    }
+  }
+
+  function watchingNavigation(): { navigation: Navigation; stillIntercepting: () => boolean } {
+    const handlers = new Set<string>()
+
+    return {
+      stillIntercepting: () => handlers.has('navigate'),
+      navigation: cast<Navigation>({
+        addEventListener: (type: string) => handlers.add(type),
+        removeEventListener: (type: string) => handlers.delete(type),
+        canGoBack: false,
+        canGoForward: false,
+        back: () => undefined,
+        forward: () => undefined,
+      }),
+    }
+  }
+
+  async function started(extra: Parameters<typeof bootstrapOrReport>[0] = {}): Promise<{
+    view: EditorView
+    teardownDocument: () => void
+    teardownApplication: () => void
+    teardownEditor: () => void
+  }> {
+    const editor = trackEditor(
+      await bootstrapOrReport({ root, pathname: '/doc/a.md', session: fakeSession(), ...extra }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+
+    return editor
+  }
+
+  it('leaves the page still guarded when only the document goes', async () => {
+    const unload = listening()
+    const editor = await started({ listenForUnload: unload.listenForUnload })
+
+    editor.teardownDocument()
+
+    expect(unload.stillGuarding()).toBe(true)
+  })
+
+  it('leaves navigation still intercepted when only the document goes', async () => {
+    const watched = watchingNavigation()
+    const editor = await started({ navigation: watched.navigation })
+
+    editor.teardownDocument()
+
+    expect(watched.stillIntercepting()).toBe(true)
+  })
+
+  it('stops guarding the page when the application goes', async () => {
+    const unload = listening()
+    const editor = await started({ listenForUnload: unload.listenForUnload })
+
+    editor.teardownApplication()
+
+    expect(unload.stillGuarding()).toBe(false)
+  })
+
+  it('stops intercepting navigation when the application goes', async () => {
+    const watched = watchingNavigation()
+    const editor = await started({ navigation: watched.navigation })
+
+    editor.teardownApplication()
+
+    expect(watched.stillIntercepting()).toBe(false)
+  })
+
+  it('takes the document’s own work down with the document half', async () => {
+    vi.useFakeTimers()
+    const editor = await started()
+    editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: ' typed' } })
+
+    editor.teardownDocument()
+    await vi.advanceTimersByTimeAsync(LONG_AFTER_EVERY_DEADLINE)
+
+    expect(record.saved).toStrictEqual([])
+    vi.useRealTimers()
+  })
+
+  it('runs both halves when the whole editor is torn down', async () => {
+    const unload = listening()
+    const watched = watchingNavigation()
+    const editor = await started({ listenForUnload: unload.listenForUnload, navigation: watched.navigation })
+
+    editor.teardownEditor()
+
+    expect({ guarding: unload.stillGuarding(), intercepting: watched.stillIntercepting() }).toStrictEqual({
+      guarding: false,
+      intercepting: false,
+    })
+  })
+
+  it('closes a second document without disturbing the first’s application wiring', async () => {
+    const watched = watchingNavigation()
+    const editor = await started({ navigation: watched.navigation })
+    editor.teardownDocument()
+
+    editor.teardownDocument()
+
+    expect(watched.stillIntercepting()).toBe(true)
+  })
+})

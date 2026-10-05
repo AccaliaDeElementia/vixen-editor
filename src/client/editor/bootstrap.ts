@@ -13,7 +13,7 @@ import {
 } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
-import { interceptNavigation, openDocumentIn, type Navigator } from '../navigation.ts'
+import { interceptNavigation, openDocumentIn } from '../navigation.ts'
 import { errorMessage } from '../error-message.ts'
 
 import { isBlank } from '../../shared/content.ts'
@@ -50,6 +50,7 @@ import { bindEntryDrops, bindFileDrops, linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
 import { KEYS } from '../help.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
+import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const MOUNT_SELECTOR = '#editor'
 const UNREACHABLE_REASON_SELECTOR = '#unreachable-reason'
@@ -57,6 +58,8 @@ const TOP_OF_DOCUMENT = 0
 
 interface Editor {
   view: EditorView
+  teardownDocument: () => void
+  teardownApplication: () => void
   teardownEditor: () => void
 }
 
@@ -122,31 +125,6 @@ function wiringFor(options: BootstrapOptions): Wiring {
     reopen: options.reopen ?? reloadPage,
     openUrl: options.openUrl ?? openPage,
   }
-}
-
-const BACK_SELECTOR = '#nav-back'
-const FORWARD_SELECTOR = '#nav-forward'
-
-function setEnabled(root: ParentNode, selector: string, enabled: boolean): void {
-  const button = root.querySelector<HTMLButtonElement>(selector)
-  if (button === null) return
-
-  button.disabled = !enabled
-  button.setAttribute('aria-disabled', String(!enabled))
-}
-
-function refreshHistoryButtons(root: ParentNode, navigator: Navigator): void {
-  setEnabled(root, BACK_SELECTOR, navigator.canGoBack())
-  setEnabled(root, FORWARD_SELECTOR, navigator.canGoForward())
-}
-
-function bindHistoryButtons(root: ParentNode, navigator: Navigator): void {
-  root.querySelector(BACK_SELECTOR)?.addEventListener('click', () => {
-    navigator.back()
-  })
-  root.querySelector(FORWARD_SELECTOR)?.addEventListener('click', () => {
-    navigator.forward()
-  })
 }
 
 class MissingMountError extends Error {
@@ -512,18 +490,28 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   await openPath(pathname)
   refreshHistoryButtons(root, navigator)
 
+  function teardownDocument(): void {
+    autosave.stop()
+    unwatchFreshness()
+    offDocumentMoved()
+    stopFollowingDeletion()
+    offInsertRequested()
+    toast.dismissRaised()
+    view.destroy()
+  }
+
+  function teardownApplication(): void {
+    unguardUnload()
+    navigator.stopIntercepting()
+  }
+
   return {
     view,
+    teardownDocument,
+    teardownApplication,
     teardownEditor: () => {
-      autosave.stop()
-      unwatchFreshness()
-      unguardUnload()
-      offDocumentMoved()
-      stopFollowingDeletion()
-      offInsertRequested()
-      navigator.stopIntercepting()
-      toast.dismissRaised()
-      view.destroy()
+      teardownDocument()
+      teardownApplication()
     },
   }
 }
