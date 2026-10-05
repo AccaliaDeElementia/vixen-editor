@@ -157,3 +157,65 @@ describe('a tab that is only being looked at', () => {
     expect(kept).toStrictEqual([EDITING])
   })
 })
+
+describe('a tab that is still open when the strip is drawn again', () => {
+  function tabFor(at: { path: string; view: string }): Element | null {
+    return host.querySelector(`[data-tab="${at.view}:${at.path}"]`)
+  }
+
+  it('is the same element, so a gesture spanning two draws is not thrown away', () => {
+    const showing = strip()
+    showing.show([EDITING], EDITING)
+    const before = tabFor(EDITING)
+
+    showing.show([EDITING, OTHER], OTHER)
+
+    expect(tabFor(EDITING)).toBe(before)
+  })
+
+  it('still shows which one is active after the redraw', () => {
+    const showing = strip()
+    showing.show([EDITING], EDITING)
+
+    showing.show([EDITING, OTHER], OTHER)
+
+    expect(tabFor(EDITING)?.getAttribute('aria-selected')).toBe('false')
+  })
+
+  it('stops being marked as one the reader is only looking at', () => {
+    const showing = strip()
+    showing.show([{ ...EDITING, ephemeral: true }], EDITING)
+
+    showing.show([{ ...EDITING, ephemeral: false }], EDITING)
+
+    expect(tabFor(EDITING)?.classList.contains('tabs__tab--looking')).toBe(false)
+  })
+
+  it('takes the place the reader put it in when the order changes', () => {
+    const showing = strip()
+    showing.show([EDITING, OTHER], OTHER)
+
+    showing.show([OTHER, EDITING], OTHER)
+
+    expect(tabs().map((tab) => tab.dataset.path)).toStrictEqual(['notes.md', 'journal/a.md'])
+  })
+
+  it('is gone once it is no longer open', () => {
+    const showing = strip()
+    showing.show([EDITING, OTHER], OTHER)
+
+    showing.show([OTHER], OTHER)
+
+    expect(tabFor(EDITING)).toBeNull()
+  })
+
+  it('does not stack a second listener when it is drawn twice', () => {
+    const showing = strip()
+    showing.show([EDITING], EDITING)
+    showing.show([EDITING], EDITING)
+
+    tabFor(EDITING)?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+
+    expect(kept).toStrictEqual([EDITING])
+  })
+})

@@ -30,23 +30,19 @@ function labelFor(tab: ShownTab): string {
 export function createTabStrip(host: HTMLElement, options: TabStripOptions): TabStrip {
   host.setAttribute('role', 'tablist')
 
-  function tabFor(tab: ShownTab, active: boolean): HTMLElement {
+  const drawn = new Map<string, HTMLElement>()
+
+  function newTab(tab: ShownTab): HTMLElement {
     const element = document.createElement('button')
     element.type = 'button'
     element.className = TAB_CLASS
     element.setAttribute('role', 'tab')
-    element.setAttribute('aria-selected', String(active))
-    element.tabIndex = active ? REACHABLE : PASSED_OVER
 
     const { path, view } = tab
     element.dataset.tab = tabIdentity(tab)
     element.dataset.path = path
     element.dataset.view = view
     element.textContent = labelFor(tab)
-
-    const looking = tab.ephemeral === true
-    element.classList.toggle(EPHEMERAL_CLASS, looking)
-    if (looking) element.setAttribute('aria-description', EPHEMERAL_DESCRIPTION)
 
     element.addEventListener('click', () => {
       options.onActivate({ path, view })
@@ -59,11 +55,30 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     return element
   }
 
+  function tabFor(tab: ShownTab, active: boolean): HTMLElement {
+    const identity = tabIdentity(tab)
+    const element = drawn.get(identity) ?? newTab(tab)
+    drawn.set(identity, element)
+
+    element.setAttribute('aria-selected', String(active))
+    element.tabIndex = active ? REACHABLE : PASSED_OVER
+
+    const looking = tab.ephemeral === true
+    element.classList.toggle(EPHEMERAL_CLASS, looking)
+    if (looking) element.setAttribute('aria-description', EPHEMERAL_DESCRIPTION)
+    else element.removeAttribute('aria-description')
+
+    return element
+  }
+
   return {
     show(tabs: readonly ShownTab[], active: TabAt | null): void {
-      const wanted = active === null ? null : tabIdentity(active)
+      const selected = active === null ? null : tabIdentity(active)
+      const wanted = tabs.map((tab) => tabFor(tab, tabIdentity(tab) === selected))
+      const open = new Set(wanted.map((element) => element.dataset.tab))
 
-      host.replaceChildren(...tabs.map((tab) => tabFor(tab, tabIdentity(tab) === wanted)))
+      for (const identity of [...drawn.keys()]) if (!open.has(identity)) drawn.delete(identity)
+      host.replaceChildren(...wanted)
     },
   }
 }

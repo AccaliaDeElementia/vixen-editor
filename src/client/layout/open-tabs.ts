@@ -1,6 +1,10 @@
 'use sanity'
 
-type TabView = 'editor' | 'source' | 'markup'
+import { pathAfterMove, type EntryMove } from '../doc-path.ts'
+
+export const TAB_VIEWS = ['editor', 'source', 'markup'] as const
+
+type TabView = (typeof TAB_VIEWS)[number]
 
 export interface TabAt {
   path: string
@@ -16,12 +20,15 @@ interface OpenTabs {
   keep: (at: TabAt) => void
   promote: (at: TabAt) => void
   leave: () => void
+  followMove: (move: EntryMove) => void
   all: () => readonly HeldTab[]
+  kept: () => readonly TabAt[]
   active: () => TabAt | null
 }
 
 const NOT_HELD = -1
 const ONE_TAB = 1
+const FIRST_TAB = 0
 
 export function tabIdentity({ path, view }: TabAt): string {
   return `${view}:${path}`
@@ -77,7 +84,13 @@ export function createOpenTabs(): OpenTabs {
       current = null
     },
 
+    followMove(move: EntryMove): void {
+      order.splice(FIRST_TAB, order.length, ...order.map((held) => ({ ...held, path: pathAfterMove(move, held.path) })))
+      if (current !== null) current = { ...current, path: pathAfterMove(move, current.path) }
+    },
+
     all: () => order,
+    kept: () => order.filter((held) => !held.ephemeral).map(({ path, view }) => ({ path, view })),
     active: () => current,
   }
 }

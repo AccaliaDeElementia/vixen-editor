@@ -6,6 +6,7 @@ import {
   documentIdFromPath,
   folderIndexAlternateFromPath,
   pathAfterMove,
+  type EntryMove,
 } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
@@ -28,6 +29,7 @@ import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createOpenTabs } from '../layout/open-tabs.ts'
+import { readKeptTabs, writeKeptTabs } from '../layout/kept-tabs.ts'
 import { createTabStrip } from '../layout/tab-strip.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
@@ -122,14 +124,23 @@ interface Strip {
   opened: (at: string) => void
   keep: (at: string) => void
   left: () => void
+  followMove: (move: EntryMove) => void
 }
 
 function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
   const tabs = createOpenTabs()
   const host = root.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
 
+  for (const at of readKeptTabs()) tabs.keep(at)
+  tabs.leave()
+
   function draw(): void {
     strip?.show(tabs.all(), tabs.active())
+  }
+
+  function rememberAndDraw(): void {
+    writeKeptTabs(tabs.kept())
+    draw()
   }
 
   let awaited: string | null = null
@@ -137,7 +148,7 @@ function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
   function keep(at: string): void {
     awaited = at
     tabs.promote({ path: at, view: 'editor' })
-    draw()
+    rememberAndDraw()
   }
 
   const strip =
@@ -157,12 +168,16 @@ function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
       tabs.open({ path: at, view: 'editor' })
       if (awaited === at) tabs.promote({ path: at, view: 'editor' })
       awaited = null
-      draw()
+      rememberAndDraw()
     },
     keep,
     left: () => {
       tabs.leave()
       draw()
+    },
+    followMove: (move: EntryMove) => {
+      tabs.followMove(move)
+      rememberAndDraw()
     },
   }
 }
@@ -308,6 +323,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
+    strip.followMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId())
 
     if (moved !== documentId()) {

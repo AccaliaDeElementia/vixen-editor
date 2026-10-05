@@ -194,3 +194,77 @@ describe('a tab the reader means to keep', () => {
     expect(tabs.all()).toStrictEqual([{ ...EDITING, ephemeral: true }])
   })
 })
+
+describe('the tabs worth remembering across a reload', () => {
+  it('leaves out one the reader is only looking at, since they never chose to keep it', () => {
+    const tabs = createOpenTabs()
+
+    tabs.open(EDITING)
+
+    expect(tabs.kept()).toStrictEqual([])
+  })
+
+  it('holds one the reader kept, stripped of state that does not outlive the page', () => {
+    const tabs = createOpenTabs()
+
+    tabs.keep(EDITING)
+
+    expect(tabs.kept()).toStrictEqual([{ ...EDITING }])
+  })
+
+  it('holds them in strip order rather than in the order they were kept', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+    tabs.open(OTHER)
+
+    tabs.promote(OTHER)
+
+    expect(tabs.kept().map((tab) => tab.path)).toStrictEqual(['journal/a.md', 'notes.md'])
+  })
+})
+
+describe('a tab whose document moves', () => {
+  it('follows the move, so a rename does not orphan it', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.followMove({ from: 'journal/a.md', to: 'journal/b.md' })
+
+    expect(tabs.all()).toStrictEqual([{ path: 'journal/b.md', view: 'editor', ephemeral: false }])
+  })
+
+  it('follows a folder move, so renaming an ancestor does not orphan it', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.followMove({ from: 'journal', to: 'diary' })
+
+    expect(tabs.all().map((tab) => tab.path)).toStrictEqual(['diary/a.md'])
+  })
+
+  it('leaves a tab the move did not touch alone', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(OTHER)
+
+    tabs.followMove({ from: 'journal/a.md', to: 'journal/b.md' })
+
+    expect(tabs.all().map((tab) => tab.path)).toStrictEqual(['notes.md'])
+  })
+
+  it('follows the move in the active tab too, so the strip still marks one', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.followMove({ from: 'journal/a.md', to: 'journal/b.md' })
+
+    expect(tabs.active()).toStrictEqual({ path: 'journal/b.md', view: 'editor' })
+  })
+
+  it('has nothing to follow when no tab is active', () => {
+    const tabs = createOpenTabs()
+
+    tabs.followMove({ from: 'journal/a.md', to: 'journal/b.md' })
+
+    expect(tabs.active()).toBeNull()
+  })
+})
