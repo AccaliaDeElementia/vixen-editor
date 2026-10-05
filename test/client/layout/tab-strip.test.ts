@@ -10,11 +10,15 @@ const OTHER = { path: 'notes.md', view: 'editor' } as const
 
 let host: HTMLElement = document.createElement('div')
 let activated: unknown[] = []
+let kept: unknown[] = []
 
 function strip(): TabStrip {
   return createTabStrip(host, {
     onActivate: (key) => {
       activated.push(key)
+    },
+    onKeep: (key) => {
+      kept.push(key)
     },
   })
 }
@@ -28,6 +32,7 @@ beforeEach(() => {
   host = document.createElement('div')
   document.body.append(host)
   activated = []
+  kept = []
 })
 
 describe('showing what is open', () => {
@@ -114,5 +119,41 @@ describe('choosing a tab', () => {
     tabs().at(0)?.click()
 
     expect(activated).toStrictEqual([EDITING])
+  })
+})
+
+describe('a tab that is only being looked at', () => {
+  it('is marked so a reader can see it will not last', () => {
+    strip().show([{ ...EDITING, ephemeral: true }], EDITING)
+
+    expect(tabs().at(0)?.classList.contains('tabs__tab--looking')).toBe(true)
+  })
+
+  it('says so in words, since italics alone reach nobody using a screen reader', () => {
+    strip().show([{ ...EDITING, ephemeral: true }], EDITING)
+
+    expect(tabs().at(0)?.getAttribute('aria-description')).toBe('closes when you open something else')
+  })
+
+  it('is unmarked once it is permanent', () => {
+    strip().show([{ ...EDITING, ephemeral: false }], EDITING)
+
+    expect(tabs().at(0)?.classList.contains('tabs__tab--looking')).toBe(false)
+  })
+
+  it('says nothing extra once it is permanent', () => {
+    strip().show([{ ...EDITING, ephemeral: false }], EDITING)
+
+    expect(tabs().at(0)?.hasAttribute('aria-description')).toBe(false)
+  })
+
+  it('asks to be kept when it is double-clicked', () => {
+    strip().show([{ ...EDITING, ephemeral: true }], EDITING)
+
+    tabs()
+      .at(0)
+      ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+
+    expect(kept).toStrictEqual([EDITING])
   })
 })

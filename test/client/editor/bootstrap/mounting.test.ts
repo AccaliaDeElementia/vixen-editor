@@ -905,13 +905,52 @@ describe('several tabs', () => {
     }
   }
 
-  it('keeps a tab for every document opened, in the order they were opened', async () => {
+  it('replaces the tab it was only looking at, so browsing does not pile up tabs', async () => {
     const walk = walking()
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
 
     await walk.go('/doc/b.md')
 
+    expect(paths()).toStrictEqual(['b.md'])
+  })
+
+  it('keeps a tab that was edited, so the next thing opened does not take its place', async () => {
+    const walk = walking()
+    const view = await openEditor({
+      root,
+      pathname: '/doc/a.md',
+      session: fakeSession(),
+      navigation: walk.navigation,
+    })
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' typed' } })
+
+    await walk.go('/doc/b.md')
+
     expect(paths()).toStrictEqual(['a.md', 'b.md'])
+  })
+
+  it('marks a tab it is only looking at', async () => {
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
+
+    expect(stripTabs().at(0)?.classList.contains('tabs__tab--looking')).toBe(true)
+  })
+
+  it('stops marking it once it has been edited', async () => {
+    const view = await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
+
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' typed' } })
+
+    expect(stripTabs().at(0)?.classList.contains('tabs__tab--looking')).toBe(false)
+  })
+
+  it('stops marking it once its tab has been double-clicked', async () => {
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
+
+    stripTabs()
+      .at(0)
+      ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+
+    expect(stripTabs().at(0)?.classList.contains('tabs__tab--looking')).toBe(false)
   })
 
   it('marks the document being shown as the active tab', async () => {
@@ -925,7 +964,13 @@ describe('several tabs', () => {
 
   it('raises a document already open rather than holding it twice', async () => {
     const walk = walking()
-    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+    const view = await openEditor({
+      root,
+      pathname: '/doc/a.md',
+      session: fakeSession(),
+      navigation: walk.navigation,
+    })
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' typed' } })
     await walk.go('/doc/b.md')
 
     await walk.go('/doc/a.md')
@@ -935,7 +980,13 @@ describe('several tabs', () => {
 
   it('makes the one it raised the active tab', async () => {
     const walk = walking()
-    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
+    const view = await openEditor({
+      root,
+      pathname: '/doc/a.md',
+      session: fakeSession(),
+      navigation: walk.navigation,
+    })
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' typed' } })
     await walk.go('/doc/b.md')
 
     await walk.go('/doc/a.md')

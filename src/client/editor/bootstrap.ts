@@ -119,12 +119,23 @@ class MissingMountError extends Error {
 
 interface Strip {
   opened: (at: string) => void
+  keep: (at: string) => void
   left: () => void
 }
 
 function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
   const tabs = createOpenTabs()
   const host = root.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
+
+  function draw(): void {
+    strip?.show(tabs.all(), tabs.active())
+  }
+
+  function keep(at: string): void {
+    tabs.promote({ path: at, view: 'editor' })
+    draw()
+  }
+
   const strip =
     host === null
       ? null
@@ -132,17 +143,17 @@ function stripIn(root: ParentNode, openUrl: (url: string) => void): Strip {
           onActivate: ({ path }) => {
             openUrl(docUrlFor(path))
           },
+          onKeep: ({ path }) => {
+            keep(path)
+          },
         })
-
-  function draw(): void {
-    strip?.show(tabs.all(), tabs.active())
-  }
 
   return {
     opened: (at: string) => {
       tabs.open({ path: at, view: 'editor' })
       draw()
     },
+    keep,
     left: () => {
       tabs.leave()
       draw()
@@ -183,6 +194,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     documentId,
     openUrl,
     announce: setStatus,
+    onEdited: () => {
+      strip.keep(documentId())
+    },
     showingDocument: () => workspace.showing() === 'document',
     freshnessMs: options.freshnessMs,
     listenForFocus: options.listenForFocus,

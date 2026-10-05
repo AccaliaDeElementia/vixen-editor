@@ -41,6 +41,7 @@ interface DocumentTabOptions {
   openUrl: (url: string) => void
   showingDocument: () => boolean
   announce: (text: string) => void
+  onEdited: () => void
   freshnessMs?: number | undefined
   listenForFocus?: FocusListener | undefined
 }
@@ -146,6 +147,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
           if (!update.docChanged) return
 
           const content = update.state.doc.toString()
+          options.onEdited()
           autosave.changed(content)
           statusBar.showWordCount(content)
         }),

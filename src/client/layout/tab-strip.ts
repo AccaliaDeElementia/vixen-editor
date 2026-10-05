@@ -4,15 +4,19 @@ import { basenameOf } from '../../shared/link-paths.ts'
 import { tabIdentity, type TabAt } from './open-tabs.ts'
 
 const TAB_CLASS = 'tabs__tab'
+const EPHEMERAL_CLASS = 'tabs__tab--looking'
+const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
 const REACHABLE = 0
 const PASSED_OVER = -1
 
 interface ShownTab extends TabAt {
   name?: string
+  ephemeral?: boolean
 }
 
 interface TabStripOptions {
   onActivate: (at: TabAt) => void
+  onKeep: (at: TabAt) => void
 }
 
 export interface TabStrip {
@@ -40,8 +44,16 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     element.dataset.view = view
     element.textContent = labelFor(tab)
 
+    const looking = tab.ephemeral === true
+    element.classList.toggle(EPHEMERAL_CLASS, looking)
+    if (looking) element.setAttribute('aria-description', EPHEMERAL_DESCRIPTION)
+
     element.addEventListener('click', () => {
       options.onActivate({ path, view })
+    })
+
+    element.addEventListener('dblclick', () => {
+      options.onKeep({ path, view })
     })
 
     return element
