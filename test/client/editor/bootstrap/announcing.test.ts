@@ -89,12 +89,20 @@ describe('what a screen reader is told when the workspace changes', () => {
     expect(statusText(root)).toContain('Viewing photo.png')
   })
 
-  it('announces a document it could not load', async () => {
+  it('says in the view itself that a document could not be loaded, since that is a state and not an event', async () => {
     const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
 
     await openEditor({ root, pathname: '/doc/notes.md', session })
 
-    expect(statusText(root)).toContain('could not be loaded')
+    expect(root.querySelector('#unreachable-reason')?.textContent).toContain('could not be loaded')
+  })
+
+  it('says nothing in the status region, which is for what the reader just did', async () => {
+    const session = fakeSession({ load: () => Promise.reject(new Error('network down')) })
+
+    await openEditor({ root, pathname: '/doc/notes.md', session })
+
+    expect(statusText(root)).toBe('')
   })
 })
 

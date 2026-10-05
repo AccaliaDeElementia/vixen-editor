@@ -101,7 +101,7 @@ describe('bootstrap', () => {
     )
   })
 
-  it('reports a missing mount point in the status element', async () => {
+  it('says nothing to the reader of a page that is not the app at all', async () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
 
@@ -109,7 +109,7 @@ describe('bootstrap', () => {
       expect(openEditor({ root: bare, pathname: '/doc/', session: fakeSession() })).rejects.toThrow(MissingMountError),
     )
 
-    expect(statusText(bare)).toContain('Missing editor mount point')
+    expect(statusText(bare)).toBe('')
   })
 
   it('works when there is no status element to write to', async () => {
@@ -215,12 +215,13 @@ describe('bootstrapOrReport', () => {
     await expect(bootstrapOrReport({ root: bare, pathname: '/doc/', session: fakeSession() })).resolves.toBeNull()
   })
 
-  it('reports the failure in the status element', async () => {
+  it('leaves no message behind that nothing could ever take down', async () => {
     document.body.innerHTML = ''
     const bare = page({ withMount: false })
+
     await bootstrapOrReport({ root: bare, pathname: '/doc/', session: fakeSession() })
 
-    expect(statusText(bare)).toContain('Failed to start')
+    expect(statusText(bare)).toBe('')
   })
 
   it('survives a page with neither mount nor status element', async () => {
@@ -233,9 +234,7 @@ describe('bootstrapOrReport', () => {
   it('falls back to the live document when given no options', async () => {
     document.body.innerHTML = '<span id="status"></span>'
 
-    await givenAsync(expect(bootstrapOrReport()).resolves.toBeNull())
-
-    expect(statusText(document)).toContain('Failed to start')
+    await expect(bootstrapOrReport()).resolves.toBeNull()
   })
 })
 
@@ -656,7 +655,7 @@ describe('a folder index that is not index.md', () => {
 
     await openEditor({ root, pathname: '/doc/journal/', session })
 
-    expect(statusText(root)).toContain('offline')
+    expect(root.querySelector('#unreachable-reason')?.textContent).toContain('offline')
   })
 })
 

@@ -75,14 +75,11 @@ interface BootstrapOptions {
   listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
 }
 
-function reportUnreachable(root: ParentNode, at: string, error: unknown): string {
+function reportUnreachable(root: ParentNode, at: string, error: unknown): void {
   const subject = at === '' ? 'The store' : at
-  const reason = `${subject} could not be loaded: ${errorMessage(error)}`
   const element = root.querySelector(UNREACHABLE_REASON_SELECTOR)
 
-  if (element !== null) element.textContent = reason
-
-  return reason
+  if (element !== null) element.textContent = `${subject} could not be loaded: ${errorMessage(error)}`
 }
 
 function startsALine(state: EditorState, position: number | null): boolean {
@@ -170,10 +167,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   const mount = root.querySelector(MOUNT_SELECTOR)
-  if (mount === null) {
-    setStatus(`Failed to start: ${new MissingMountError(MOUNT_SELECTOR).message}`)
-    throw new MissingMountError(MOUNT_SELECTOR)
-  }
+  if (mount === null) throw new MissingMountError(MOUNT_SELECTOR)
 
   const documentId = (): string => openDocument.path()
   const statusBar = createStatusBar(root)
@@ -343,7 +337,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (!outcome.reached) {
       emptyTheBuffer()
       workspace.show('unreachable', shown)
-      setStatus(reportUnreachable(root, shown, outcome.error))
+      reportUnreachable(root, shown, outcome.error)
 
       return
     }
@@ -535,10 +529,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 }
 
 export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise<Editor | null> {
-  return await bootstrap(options).catch((error: unknown) => {
-    createToast(options.root ?? document).show(`Failed to start: ${errorMessage(error)}`)
-    return null
-  })
+  return await bootstrap(options).catch(() => null)
 }
 
 export const TestOnly = { MissingMountError, bootstrap, openPage, reloadPage, startsALine }
