@@ -2,10 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../src/client/render-markdown.ts'
+import { renderMarkdown } from '../../src/client/render-markdown.ts'
 import { SCRIPT_URL } from './hostile-urls.ts'
-
-const { renderMarkdown } = TestOnly
 
 function render(markdown: string): HTMLElement {
   const host = document.createElement('div')

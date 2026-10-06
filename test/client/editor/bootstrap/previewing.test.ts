@@ -132,3 +132,50 @@ describe('a page with nowhere to put a preview', () => {
     expect(root.querySelector('[data-part="panes"]')).toBeNull()
   })
 })
+
+describe('showing the document rendered', () => {
+  function markupBody(): HTMLElement | null {
+    return root.querySelectorAll<HTMLElement>('[data-part="markup-body"]')[1] ?? null
+  }
+
+  it('renders the document in the second pane', async () => {
+    await editing('# A heading')
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    expect(markupBody()?.querySelector('h1')?.textContent).toBe('A heading')
+  })
+
+  it('says what it is showing', async () => {
+    await editing()
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    expect(root.querySelector('#status')?.textContent).toContain('Showing a preview of notes.md')
+  })
+
+  it('opens on Alt and P', async () => {
+    await editing()
+
+    press({ key: 'p', altKey: true })
+
+    expect(panes()?.dataset.split).toBe('beside')
+  })
+
+  it('stays put without Alt', async () => {
+    await editing()
+
+    press({ key: 'p' })
+
+    expect(panes()?.dataset.split).toBeUndefined()
+  })
+
+  it('puts the source preview away, since one pane shows one thing', async () => {
+    await editing()
+    root.querySelector<HTMLElement>('#preview-source')?.click()
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    expect(root.querySelectorAll<HTMLElement>('[data-part="view-source"]')[1]?.hidden).toBe(true)
+  })
+})

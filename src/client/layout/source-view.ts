@@ -3,8 +3,9 @@
 import { markdownLanguage } from '@codemirror/lang-markdown'
 
 import { highlightCode } from '../highlight-code.ts'
+import { revealOnly } from './reveal-view.ts'
 
-const SECTION_SELECTOR = '[data-part="view-source"]'
+const SECTION_PART = 'view-source'
 const BODY_SELECTOR = '[data-part="source-body"]'
 
 interface SourceView {
@@ -14,14 +15,13 @@ interface SourceView {
 const INERT: SourceView = { show: () => undefined }
 
 export function createSourceView(host: ParentNode): SourceView {
-  const section = host.querySelector<HTMLElement>(SECTION_SELECTOR)
-  const body = section?.querySelector<HTMLElement>(BODY_SELECTOR) ?? null
-  if (section === null || body === null) return INERT
+  const body = host.querySelector<HTMLElement>(BODY_SELECTOR)
+  if (body === null) return INERT
 
   return {
     show: (content: string) => {
       body.replaceChildren(highlightCode(content, markdownLanguage))
-      section.hidden = false
+      revealOnly(host, SECTION_PART)
     },
   }
 }

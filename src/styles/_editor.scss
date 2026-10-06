@@ -125,3 +125,80 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.markup {
+  display: block;
+  height: 100%;
+  padding: $space-md;
+  overflow: auto;
+  font-size: $font-size-base;
+  color: $body-color;
+  background: $body-bg;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: $space-md 0 $space-sm;
+    line-height: 1.25;
+  }
+
+  p,
+  ul,
+  ol,
+  blockquote,
+  pre,
+  table {
+    margin: 0 0 $space-sm;
+  }
+
+  a {
+    color: $primary;
+  }
+
+  code {
+    padding: 0 $space-xs;
+    background: $surface;
+    border-radius: $radius;
+  }
+
+  pre {
+    padding: $space-sm;
+    overflow: auto;
+    background: $surface;
+    border-radius: $radius;
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  blockquote {
+    padding-left: $space-sm;
+    color: $muted;
+    border-left: 2px solid $border;
+  }
+
+  img {
+    max-width: 100%;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: $space-xs $space-sm;
+    text-align: left;
+    border: 1px solid $border;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid $border;
+  }
+}

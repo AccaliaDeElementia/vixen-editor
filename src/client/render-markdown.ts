@@ -350,7 +350,7 @@ function renderNode(node: SyntaxNode, walk: Walk): Node | null {
   return render === undefined ? null : render(node, walk)
 }
 
-function renderMarkdown(markdown: string): DocumentFragment {
+export function renderMarkdown(markdown: string): DocumentFragment {
   const { topNode: root } = markdownParser.parse(markdown)
   const walk: Walk = { source: markdown, references: referencesIn(root, markdown) }
   const fragment = document.createDocumentFragment()
@@ -359,5 +359,3 @@ function renderMarkdown(markdown: string): DocumentFragment {
 
   return fragment
 }
-
-export const TestOnly = { renderMarkdown }

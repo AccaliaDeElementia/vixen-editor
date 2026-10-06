@@ -31,6 +31,7 @@ import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import { createOpenTabs } from '../layout/open-tabs.ts'
+import { createMarkupView } from '../layout/markup-view.ts'
 import { createSourceView } from '../layout/source-view.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { readKeptTabs, writeKeptTabs } from '../layout/kept-tabs.ts'
@@ -53,6 +54,7 @@ import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 const PANE_SELECTOR = '[data-part="pane"]'
 const PANES_SELECTOR = '[data-part="panes"]'
 const PREVIEW_SOURCE_SELECTOR = '#preview-source'
+const PREVIEW_MARKUP_SELECTOR = '#preview-markup'
 const BESIDE = 'beside'
 const NOTHING_MEASURED = 0
 const MOUNT_SELECTOR = '[data-part="editor"]'
@@ -359,25 +361,41 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
-  function showSourcePreview(): void {
+  function previewInOppositePane(show: (host: ParentNode, content: string) => void, says: string): void {
     const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
     openSplit(root, BESIDE, panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width)
 
     const second = secondPaneIn(root)
     if (second === null) return
 
-    createSourceView(second).show(view.state.doc.toString())
-    setStatus(`Showing the source of ${documentId()}`)
+    show(second, view.state.doc.toString())
+    setStatus(`${says} ${documentId()}`)
+  }
+
+  function showSourcePreview(): void {
+    previewInOppositePane((host, content) => {
+      createSourceView(host).show(content)
+    }, 'Showing the source of')
+  }
+
+  function showMarkupPreview(): void {
+    previewInOppositePane((host, content) => {
+      createMarkupView(host).show(content)
+    }, 'Showing a preview of')
   }
 
   root.querySelector<HTMLElement>(PREVIEW_SOURCE_SELECTOR)?.addEventListener('click', showSourcePreview)
+  root.querySelector<HTMLElement>(PREVIEW_MARKUP_SELECTOR)?.addEventListener('click', showMarkupPreview)
 
   const onPreviewKey = (event: Event): void => {
-    if (!(event instanceof KeyboardEvent)) return
-    if (event.key !== KEYS.previewSource || !event.altKey || !event.shiftKey) return
+    if (!(event instanceof KeyboardEvent) || !event.altKey) return
+
+    const wanted = event.shiftKey ? KEYS.previewSource : KEYS.previewMarkup
+    if (event.key !== wanted) return
 
     event.preventDefault()
-    showSourcePreview()
+    if (event.shiftKey) showSourcePreview()
+    else showMarkupPreview()
   }
 
   root.addEventListener('keydown', onPreviewKey)

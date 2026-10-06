@@ -20,6 +20,7 @@ export const KEYS = {
   leaveRowAction: 'ArrowLeft',
   insert: 'i',
   previewSource: 'P',
+  previewMarkup: 'p',
   narrower: 'ArrowLeft',
   wider: 'ArrowRight',
   narrowest: 'Home',
@@ -38,6 +39,7 @@ const SHORTCUTS: readonly Entry[] = [
   { does: 'Open the row the focus is on', how: 'Enter', keys: [KEYS.openRow] },
   { does: 'Insert a link to the selected file', how: 'Ctrl/Cmd + I in the file browser', keys: [KEYS.insert] },
   { does: 'Show the document as highlighted source', how: 'Alt + Shift + P', keys: [KEYS.previewSource] },
+  { does: 'Show the document rendered', how: 'Alt + P', keys: [KEYS.previewMarkup] },
   {
     does: 'Choose what comes back from the trash',
     how: 'Space on a row, and the right arrow to put one back elsewhere',
