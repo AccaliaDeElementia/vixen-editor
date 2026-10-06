@@ -20,11 +20,11 @@ const NAME_CLASS = 'tabs__name'
 const NOTHING_DRAGGED = ''
 const CLOSE_GLYPH = 'close'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
+const VIEW_DESCRIPTIONS: Readonly<Record<string, string>> = { source: 'source', markup: 'preview' }
 const REACHABLE = 0
 const PASSED_OVER = -1
 
 interface ShownTab extends TabAt {
-  name?: string
   ephemeral?: boolean
 }
 
@@ -40,7 +40,13 @@ export interface TabStrip {
 }
 
 function labelFor(tab: ShownTab): string {
-  return tab.name ?? basenameOf(tab.path)
+  return basenameOf(tab.path)
+}
+
+function announcedAs(tab: ShownTab): string | null {
+  const { [tab.view]: shows } = VIEW_DESCRIPTIONS
+
+  return shows === undefined ? null : `${labelFor(tab)}, ${shows}`
 }
 
 const NOTHING_TO_SHOW: TabStrip = { show: () => undefined }
@@ -107,6 +113,9 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     name.className = NAME_CLASS
     name.textContent = labelFor(tab)
     element.append(name)
+
+    const announced = announcedAs(tab)
+    if (announced !== null) element.setAttribute('aria-label', announced)
 
     element.addEventListener('click', () => {
       options.onActivate({ path, view })

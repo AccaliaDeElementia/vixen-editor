@@ -9,6 +9,7 @@ import { renderPane } from '../templates.ts'
 
 const EDITING = { path: 'journal/a.md', view: 'editor' } as const
 const PREVIEWING = { path: 'journal/a.md', view: 'markup' } as const
+const SOURCING = { path: 'journal/a.md', view: 'source' } as const
 const OTHER = { path: 'notes.md', view: 'editor' } as const
 
 let host: HTMLElement = document.createElement('div')
@@ -72,10 +73,22 @@ describe('showing what is open', () => {
     expect(tabs().at(0)?.querySelector('.tabs__name')?.textContent).toBe('a.md')
   })
 
-  it('takes a name over the path when one is given', () => {
-    strip().show([{ ...EDITING, name: 'Preview of a.md' }], EDITING)
+  it('announces a source preview as source, so it is not heard as the editor', () => {
+    strip().show([{ ...SOURCING }], SOURCING)
 
-    expect(tabs().at(0)?.querySelector('.tabs__name')?.textContent).toBe('Preview of a.md')
+    expect(tabs().at(0)?.getAttribute('aria-label')).toBe('a.md, source')
+  })
+
+  it('announces a markup preview as a preview', () => {
+    strip().show([{ ...PREVIEWING }], PREVIEWING)
+
+    expect(tabs().at(0)?.getAttribute('aria-label')).toBe('a.md, preview')
+  })
+
+  it('leaves an editor tab to be announced by the name it already shows', () => {
+    strip().show([{ ...EDITING }], EDITING)
+
+    expect(tabs().at(0)?.getAttribute('aria-label')).toBeNull()
   })
 
   it('keeps the order it was given, which is the reader’s order', () => {
