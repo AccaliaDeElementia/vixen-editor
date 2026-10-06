@@ -7,7 +7,7 @@ import {
   folderIndexAlternateFromPath,
   pathAfterMove,
   viewFromSearch,
-  type PreviewView,
+  type TabView,
 } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
@@ -32,7 +32,8 @@ import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
-import { createPreviews, PREVIEW_ANNOUNCEMENTS } from './previews.ts'
+import { createPreviews } from './previews.ts'
+import { createPreviewing } from './previewing.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { carryTab, createPane, type Pane } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
@@ -55,8 +56,6 @@ import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
 const PANES_SELECTOR = '[data-part="panes"]'
-const PREVIEW_SOURCE_SELECTOR = '#preview-source'
-const PREVIEW_MARKUP_SELECTOR = '#preview-markup'
 const BESIDE = 'beside'
 const NOTHING_MEASURED = 0
 const MOUNT_SELECTOR = '[data-part="editor"]'
@@ -81,6 +80,7 @@ interface BootstrapOptions {
   reopen?: () => void
   openChanges?: (url: string) => EventSource
   openUrl?: (url: string) => void
+  replaceUrl?: (url: string) => void
   navigation?: Navigation
   dialogs?: Dialogs
   listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
@@ -112,6 +112,10 @@ function openPage(url: string): void {
   window.location.assign(url)
 }
 
+function replacePage(url: string): void {
+  window.location.replace(url)
+}
+
 interface Wiring {
   root: ParentNode
   pathname: string
@@ -121,6 +125,7 @@ interface Wiring {
   files: FilesClient
   reopen: () => void
   openUrl: (url: string) => void
+  replaceUrl: (url: string) => void
 }
 
 function wiringFor(options: BootstrapOptions): Wiring {
@@ -133,6 +138,7 @@ function wiringFor(options: BootstrapOptions): Wiring {
     files: options.files ?? createFilesClient(),
     reopen: options.reopen ?? reloadPage,
     openUrl: options.openUrl ?? openPage,
+    replaceUrl: options.replaceUrl ?? replacePage,
   }
 }
 
@@ -145,7 +151,7 @@ class MissingMountError extends Error {
 }
 
 async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
-  const { root, pathname, search, session, navigate, files, reopen, openUrl } = wiringFor(options)
+  const { root, pathname, search, session, navigate, files, reopen, openUrl, replaceUrl } = wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
 
   const toast = createToast(root)
@@ -279,7 +285,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     setStatus(`Editing ${opened} — press Ctrl/Cmd+S to save`)
   }
 
-  async function openPath(target: string): Promise<void> {
+  async function openPath(target: string, wanted: TabView): Promise<void> {
     const shown = displayPathFromPath(target)
     workspace.show('pending', shown)
     statusBar.forgetSaveState()
@@ -305,7 +311,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
 
     await showDocument(documentId(), shown, folderIndexAlternateFromPath(target))
-    showViewNamedByUrl()
+    previewing.showNamedByUrl(wanted)
   }
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
@@ -372,7 +378,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   function activate(host: HTMLElement, at: TabAt): void {
     if (at.view === 'editor' || at.path !== documentId()) {
-      openUrl(docUrlFor(at.path))
+      replaceUrl(docUrlFor(at.path, at.view))
 
       return
     }
@@ -387,39 +393,22 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     return secondaryPane()
   }
 
-  function showPreview(wanted: PreviewView): void {
-    const target = summonSecondary(BESIDE)
-    if (target === null) return
-
-    touched = target
-
-    const at: TabAt = { path: documentId(), view: wanted }
-    previews.render(target.element, at, view.state.doc.toString())
-    if (primary.holdsPermanently(editorTab(at.path))) target.keep(at)
-    else target.open(at)
-
-    const { [wanted]: says } = PREVIEW_ANNOUNCEMENTS
-    navigate(docUrlFor(documentId(), wanted))
-    setStatus(`${says} ${documentId()}`)
-  }
-
-  function showViewNamedByUrl(): void {
-    const wanted = viewFromSearch(search)
-    if (wanted === 'editor' || workspace.showing() !== 'document') return
-
-    showPreview(wanted)
-  }
-
-  function showSourcePreview(): void {
-    showPreview('source')
-  }
-
-  function showMarkupPreview(): void {
-    showPreview('markup')
-  }
-
-  root.querySelector<HTMLElement>(PREVIEW_SOURCE_SELECTOR)?.addEventListener('click', showSourcePreview)
-  root.querySelector<HTMLElement>(PREVIEW_MARKUP_SELECTOR)?.addEventListener('click', showMarkupPreview)
+  const previewing = createPreviewing({
+    root,
+    previews,
+    primary,
+    summon: () => summonSecondary(BESIDE),
+    focus: (pane: Pane) => {
+      touched = pane
+    },
+    documentId,
+    contentNow: () => view.state.doc.toString(),
+    showingDocument: () => workspace.showing() === 'document',
+    setStatus,
+    navigate: (url: string) => {
+      navigator.replaceQuietly(url)
+    },
+  })
 
   const paneMoves = createPaneMoves({
     root,
@@ -444,8 +433,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     jumpTo: navigation.jumpTo,
     toPane: paneMoves.toPane,
     close: closingTabs.closeTheTabInFront,
-    showSource: showSourcePreview,
-    showMarkup: showMarkupPreview,
+    showSource: previewing.showSource,
+    showMarkup: previewing.showMarkup,
   })
 
   const { offKeepRequested } = onKeepRequested(root, (entryPath) => {
@@ -478,7 +467,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const navigator = interceptNavigation({
     navigation: options.navigation ?? globalThis.navigation,
-    open: openPath,
+    open: async (at: string, atSearch: string) => {
+      await openPath(at, viewFromSearch(atSearch))
+    },
     mayLeave: () => tab.saveState() === 'clean',
     settle: tab.settleBeforeLeaving,
     onSettled: () => {
@@ -487,7 +478,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
   bindHistoryButtons(root, navigator)
 
-  await openPath(pathname)
+  await openPath(pathname, viewFromSearch(search))
   refreshHistoryButtons(root, navigator)
 
   function teardownDocument(): void {
@@ -533,4 +524,4 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
   return await bootstrap(options).catch(() => null)
 }
 
-export const TestOnly = { MissingMountError, bootstrap, openPage, reloadPage, startsALine }
+export const TestOnly = { MissingMountError, bootstrap, openPage, replacePage, reloadPage, startsALine }

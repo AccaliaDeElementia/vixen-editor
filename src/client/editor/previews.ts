@@ -17,7 +17,7 @@ interface Showing {
   at: TabAt
 }
 
-interface Previews {
+export interface Previews {
   render: (host: ParentNode, at: TabAt, content: string) => void
   refreshWith: (content: string) => void
   revealOffset: (offset: number) => void

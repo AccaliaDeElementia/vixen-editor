@@ -51,38 +51,38 @@ describe('the buffer when the workspace leaves a document', () => {
   })
 })
 
-describe('navigating away from a document', () => {
-  function stubbedNavigation(): { navigation: Navigation; go: (url: string) => Promise<void> } {
-    const handlers = new Map<string, (event?: unknown) => void>()
+function stubbedNavigation(): { navigation: Navigation; go: (url: string) => Promise<void> } {
+  const handlers = new Map<string, (event?: unknown) => void>()
 
-    return {
-      go: async (url: string) => {
-        let navigated: Promise<void> = Promise.resolve()
+  return {
+    go: async (url: string) => {
+      let navigated: Promise<void> = Promise.resolve()
 
-        handlers.get('navigate')?.({
-          canIntercept: true,
-          hashChange: false,
-          downloadRequest: null,
-          formData: null,
-          destination: { url: new URL(url, 'https://example.test').href },
-          intercept: (intercepted: { handler: () => Promise<void> }) => {
-            navigated = intercepted.handler()
-          },
-        })
+      handlers.get('navigate')?.({
+        canIntercept: true,
+        hashChange: false,
+        downloadRequest: null,
+        formData: null,
+        destination: { url: new URL(url, 'https://example.test').href },
+        intercept: (intercepted: { handler: () => Promise<void> }) => {
+          navigated = intercepted.handler()
+        },
+      })
 
-        await navigated
-      },
-      navigation: cast<Navigation>({
-        addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
-        removeEventListener: (type: string) => handlers.delete(type),
-        canGoBack: false,
-        canGoForward: false,
-        back: () => undefined,
-        forward: () => undefined,
-      }),
-    }
+      await navigated
+    },
+    navigation: cast<Navigation>({
+      addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+      removeEventListener: (type: string) => handlers.delete(type),
+      canGoBack: false,
+      canGoForward: false,
+      back: () => undefined,
+      forward: () => undefined,
+    }),
   }
+}
 
+describe('navigating away from a document', () => {
   it('empties the buffer, so the previous text is not left behind', async () => {
     const stub = stubbedNavigation()
     const session = fakeSession({
@@ -258,5 +258,21 @@ describe('the ribbon history buttons', () => {
     button('nav-forward').click()
 
     expect(went).toStrictEqual([])
+  })
+})
+
+describe('navigating to a URL that names a view', () => {
+  function sourceBody(): HTMLElement | null {
+    return root.querySelectorAll<HTMLElement>('[data-part="source-body"]')[1] ?? null
+  }
+
+  it('opens the view the destination names, not the one the page started on', async () => {
+    const stub = stubbedNavigation()
+    const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
+    await openEditor({ root, pathname: '/doc/a.md', session, navigation: stub.navigation })
+
+    await stub.go('/doc/b.md?view=source')
+
+    expect(sourceBody()?.textContent).toBe('# b.md')
   })
 })

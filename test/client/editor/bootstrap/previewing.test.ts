@@ -265,7 +265,7 @@ describe('a preview tab for a document the editor has left', () => {
       root,
       pathname: '/doc/notes.md',
       session: fakeSession('# stored'),
-      openUrl: (url: string) => {
+      replaceUrl: (url: string) => {
         opened.push(url)
       },
     })
@@ -273,7 +273,7 @@ describe('a preview tab for a document the editor has left', () => {
 
     root.querySelector<HTMLElement>('[data-tab="markup:elsewhere.md"]')?.click()
 
-    expect(opened).toStrictEqual(['/doc/elsewhere.md'])
+    expect(opened).toStrictEqual(['/doc/elsewhere.md?view=preview'])
   })
 })
 
@@ -525,7 +525,7 @@ describe('moving between tabs from the keyboard', () => {
       root,
       pathname: '/doc/notes.md',
       session: fakeSession('# stored'),
-      openUrl: (url: string) => {
+      replaceUrl: (url: string) => {
         opened.push(url)
       },
     })
@@ -542,7 +542,7 @@ describe('moving between tabs from the keyboard', () => {
       root,
       pathname: '/doc/notes.md',
       session: fakeSession('# stored'),
-      openUrl: (url: string) => {
+      replaceUrl: (url: string) => {
         opened.push(url)
       },
     })
@@ -681,19 +681,11 @@ describe('a preview of a document that changed on disk', () => {
 
 describe('the URL naming which view is in front', () => {
   it('names the view it switched to, so a preview can be reloaded into or shared', async () => {
-    const addresses: string[] = []
-    await openEditor({
-      root,
-      pathname: '/doc/notes.md',
-      session: fakeSession('# stored'),
-      navigate: (url: string) => {
-        addresses.push(url)
-      },
-    })
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# stored') })
 
     ribbonButton()?.click()
 
-    expect(addresses.at(-1)).toBe('/doc/notes.md?view=source')
+    expect(window.location.search).toBe('?view=source')
   })
 
   it('opens the preview the URL names, rather than silently showing the editor', async () => {

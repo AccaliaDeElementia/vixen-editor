@@ -589,6 +589,15 @@ describe('the default way to a different page', () => {
 
     expect(assign).toHaveBeenCalledWith('/doc/journal/a.md')
   })
+
+  it('replaces the location when a tab is chosen, so no history entry is pushed', () => {
+    const replace = vi.fn<(url: string) => void>()
+    vi.spyOn(window, 'location', 'get').mockReturnValue(cast<Location>({ replace }))
+
+    TestOnly.replacePage('/doc/journal/a.md')
+
+    expect(replace).toHaveBeenCalledWith('/doc/journal/a.md')
+  })
 })
 
 describe('long lines', () => {
@@ -848,19 +857,36 @@ describe('the tab strip', () => {
   })
 
   it('opens the document a tab names when it is chosen', async () => {
-    const opened: string[] = []
+    const replaced: string[] = []
     await openEditor({
       root,
       pathname: '/doc/journal/a.md',
       session: fakeSession(),
-      openUrl: (url: string) => {
-        opened.push(url)
+      replaceUrl: (url: string) => {
+        replaced.push(url)
       },
     })
 
     stripTabs().at(0)?.click()
 
-    expect(opened).toStrictEqual(['/doc/journal/a.md'])
+    expect(replaced).toStrictEqual(['/doc/journal/a.md'])
+  })
+
+  it('replaces the address rather than pushing, so Back is not an undo for tab switching', async () => {
+    const pushed: string[] = []
+    await openEditor({
+      root,
+      pathname: '/doc/journal/a.md',
+      session: fakeSession(),
+      openUrl: (url: string) => {
+        pushed.push(url)
+      },
+      replaceUrl: () => undefined,
+    })
+
+    stripTabs().at(0)?.click()
+
+    expect(pushed).toStrictEqual([])
   })
 })
 

@@ -103,6 +103,28 @@ describe('which navigations are taken over', () => {
     expect({ intercepted: attempt.intercepted, opened }).toStrictEqual({ intercepted: true, opened: [url] })
   })
 
+  it('leaves alone an address it updated itself, because nothing new is being opened', () => {
+    const navigation = fakeNavigation()
+    const navigator = listening(navigation)
+    navigator.replaceQuietly('/doc/journal/a.md')
+    const { event, attempt } = navigateEvent('/doc/journal/a.md', { navigationType: 'replace' })
+
+    navigation.fire(event)
+
+    expect({ intercepted: attempt.intercepted, opened }).toStrictEqual({ intercepted: false, opened: [] })
+  })
+
+  it('takes over the next navigation to the same address, which is a real request to open it', () => {
+    const navigation = fakeNavigation()
+    const navigator = listening(navigation)
+    navigator.replaceQuietly('/doc/journal/a.md')
+    navigation.fire(navigateEvent('/doc/journal/a.md', { navigationType: 'replace' }).event)
+
+    navigation.fire(navigateEvent('/doc/journal/a.md').event)
+
+    expect(opened).toStrictEqual(['/doc/journal/a.md'])
+  })
+
   it.each([
     ['a url outside the app, such as the archive', '/api/files/archive'],
     ['the site root before its redirect', '/'],

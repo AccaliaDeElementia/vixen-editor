@@ -113,6 +113,32 @@ resolves correctly.
 Whether a leaf is a folder is decided by `classifyFile`, not by looking for a
 dot: a folder named `v1.2` has an extension and is still a folder.
 
+<a id="design-3b0e71"></a>
+
+### The URL names the active tab, and switching tabs replaces it
+
+**`?view=` names which view of the document is in front**, taking `edit`,
+`source` or `preview`, and defaulting to `edit` when absent. A tab is keyed by
+_(path, view)_, so without it the URL could not name the active tab at all —
+open a source preview, reload, and you would land silently on the editor, and a
+preview could never be shared. It is **ignored entirely for a location that
+renders no editor**: a trash entry and an image have no view to choose, which
+falls out of `openPath` returning early for both before the view is read.
+
+The URL names the active tab and **nothing else** — not the tab set, not the
+split. A shared link opens that one document in a fresh single-tab workspace;
+the rest is this browser's state.
+
+**Activating a tab replaces the address rather than pushing one.** If every tab
+switch pushed an entry, Back would become an undo for tab switching, which no
+tabbed editor does and which fights the ribbon's own Back and Forward. The
+consequence is worth stating because it surprises: open A, click B, press Back,
+and you return to **A in the same tab set**, rather than B closing.
+
+The two spellings are deliberate — the URL says `preview` where the code says
+`markup` — and `src/client/doc-path.ts` holds the single table both directions
+read, so a reader-facing word cannot drift from the internal one.
+
 <a id="design-97a8a7"></a>
 
 ### The editor follows a document that moves

@@ -31,11 +31,18 @@ export function openDocumentIn(root: ParentNode, pathname: string = window.locat
   return created
 }
 
+function addressOf(url: string): string {
+  const { pathname, search } = new URL(url, window.location.href)
+
+  return `${pathname}${search}`
+}
+
 function isAppPath(pathname: string): boolean {
   return pathname.startsWith(DOC_PREFIX) || pathname.startsWith(TRASH_PREFIX)
 }
 
 export interface Navigator {
+  replaceQuietly: (url: string) => void
   back: () => void
   forward: () => void
   canGoBack: () => boolean
@@ -45,13 +52,16 @@ export interface Navigator {
 
 interface InterceptOptions {
   navigation?: Navigation | undefined
-  open: (pathname: string) => Promise<void>
+  open: (pathname: string, search: string) => Promise<void>
   mayLeave?: (() => boolean) | undefined
   settle?: (() => Promise<boolean>) | undefined
   onSettled?: (() => void) | undefined
 }
 
 const NOWHERE_TO_GO: Navigator = {
+  replaceQuietly: (url: string) => {
+    window.history.replaceState(null, '', url)
+  },
   back: () => undefined,
   forward: () => undefined,
   canGoBack: () => false,
@@ -93,7 +103,14 @@ export function interceptNavigation(options: InterceptOptions): Navigator {
   const { navigation } = options
   if (navigation === undefined) return NOWHERE_TO_GO
 
+  let ownUpdate: string | null = null
+
   const onNavigate = (event: NavigateEvent): void => {
+    if (ownUpdate === addressOf(event.destination.url)) {
+      ownUpdate = null
+
+      return
+    }
     if (!shouldHandle(event)) return
 
     if (blocks(options, event)) {
@@ -105,10 +122,10 @@ export function interceptNavigation(options: InterceptOptions): Navigator {
       return
     }
 
-    const { pathname } = new URL(event.destination.url)
+    const { pathname, search } = new URL(event.destination.url)
     event.intercept({
       handler: async () => {
-        await options.open(pathname)
+        await options.open(pathname, search)
       },
     })
   }
@@ -121,6 +138,10 @@ export function interceptNavigation(options: InterceptOptions): Navigator {
   navigation.addEventListener('navigatesuccess', onNavigateSuccess)
 
   return {
+    replaceQuietly: (url: string) => {
+      ownUpdate = addressOf(url)
+      window.history.replaceState(null, '', url)
+    },
     stopIntercepting: () => {
       navigation.removeEventListener('navigate', onNavigate)
       navigation.removeEventListener('navigatesuccess', onNavigateSuccess)
