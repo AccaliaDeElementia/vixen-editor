@@ -3,8 +3,14 @@
 import { createMarkupView, type MarkupView } from '../layout/markup-view.ts'
 import { createSourceView } from '../layout/source-view.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
+import type { PreviewView } from '../doc-path.ts'
 
 const PREVIEW_SETTLES_MS = 200
+
+export const PREVIEW_ANNOUNCEMENTS: Readonly<Record<PreviewView, string>> = {
+  source: 'Showing the source of',
+  markup: 'Showing a preview of',
+}
 
 interface Showing {
   host: ParentNode

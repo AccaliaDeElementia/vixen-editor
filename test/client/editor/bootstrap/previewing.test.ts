@@ -53,6 +53,7 @@ function press(init: KeyboardEventInit): void {
 
 beforeEach(() => {
   localStorage.clear()
+  window.history.replaceState(null, '', '/')
   record = recorded()
   document.body.innerHTML = ''
   root = page()
@@ -675,5 +676,29 @@ describe('a preview of a document that changed on disk', () => {
 
     expect(previewBody()?.textContent).toBe('# after')
     vi.useRealTimers()
+  })
+})
+
+describe('the URL naming which view is in front', () => {
+  it('names the view it switched to, so a preview can be reloaded into or shared', async () => {
+    const addresses: string[] = []
+    await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession('# stored'),
+      navigate: (url: string) => {
+        addresses.push(url)
+      },
+    })
+
+    ribbonButton()?.click()
+
+    expect(addresses.at(-1)).toBe('/doc/notes.md?view=source')
+  })
+
+  it('opens the preview the URL names, rather than silently showing the editor', async () => {
+    await openEditor({ root, pathname: '/doc/notes.md', search: '?view=source', session: fakeSession('# stored') })
+
+    expect(previewBody()?.textContent).toBe('# stored')
   })
 })

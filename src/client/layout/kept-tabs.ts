@@ -2,7 +2,8 @@
 
 import { isRecord } from '../../shared/guards.ts'
 import { readJson, writeJson } from '../local-storage.ts'
-import { TAB_VIEWS, type TabAt } from './open-tabs.ts'
+import { TAB_VIEWS } from '../doc-path.ts'
+import type { TabAt } from './open-tabs.ts'
 
 export type PaneId = 'primary' | 'secondary'
 

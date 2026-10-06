@@ -6,6 +6,8 @@ import {
   documentIdFromPath,
   folderIndexAlternateFromPath,
   pathAfterMove,
+  viewFromSearch,
+  type PreviewView,
 } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
@@ -30,7 +32,7 @@ import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
-import { createPreviews } from './previews.ts'
+import { createPreviews, PREVIEW_ANNOUNCEMENTS } from './previews.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { carryTab, createPane, type Pane } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
@@ -71,6 +73,7 @@ interface Editor {
 interface BootstrapOptions {
   root?: ParentNode
   pathname?: string
+  search?: string
   session?: Session
   navigate?: (url: string) => void
   listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => () => void
@@ -112,6 +115,7 @@ function openPage(url: string): void {
 interface Wiring {
   root: ParentNode
   pathname: string
+  search: string
   session: Session
   navigate: (url: string) => void
   files: FilesClient
@@ -123,6 +127,7 @@ function wiringFor(options: BootstrapOptions): Wiring {
   return {
     root: options.root ?? document,
     pathname: options.pathname ?? window.location.pathname,
+    search: options.search ?? window.location.search,
     session: options.session ?? createSession(createDocumentClient()),
     navigate: options.navigate ?? replaceAddress,
     files: options.files ?? createFilesClient(),
@@ -140,7 +145,7 @@ class MissingMountError extends Error {
 }
 
 async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
-  const { root, pathname, session, navigate, files, reopen, openUrl } = wiringFor(options)
+  const { root, pathname, search, session, navigate, files, reopen, openUrl } = wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
 
   const toast = createToast(root)
@@ -300,6 +305,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
 
     await showDocument(documentId(), shown, folderIndexAlternateFromPath(target))
+    showViewNamedByUrl()
   }
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
@@ -381,7 +387,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     return secondaryPane()
   }
 
-  function showPreview(wanted: 'source' | 'markup', says: string): void {
+  function showPreview(wanted: PreviewView): void {
     const target = summonSecondary(BESIDE)
     if (target === null) return
 
@@ -392,15 +398,24 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (primary.holdsPermanently(editorTab(at.path))) target.keep(at)
     else target.open(at)
 
+    const { [wanted]: says } = PREVIEW_ANNOUNCEMENTS
+    navigate(docUrlFor(documentId(), wanted))
     setStatus(`${says} ${documentId()}`)
   }
 
+  function showViewNamedByUrl(): void {
+    const wanted = viewFromSearch(search)
+    if (wanted === 'editor' || workspace.showing() !== 'document') return
+
+    showPreview(wanted)
+  }
+
   function showSourcePreview(): void {
-    showPreview('source', 'Showing the source of')
+    showPreview('source')
   }
 
   function showMarkupPreview(): void {
-    showPreview('markup', 'Showing a preview of')
+    showPreview('markup')
   }
 
   root.querySelector<HTMLElement>(PREVIEW_SOURCE_SELECTOR)?.addEventListener('click', showSourcePreview)

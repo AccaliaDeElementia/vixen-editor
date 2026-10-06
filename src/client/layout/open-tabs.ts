@@ -1,10 +1,6 @@
 'use sanity'
 
-import { pathAfterMove, type EntryMove } from '../doc-path.ts'
-
-export const TAB_VIEWS = ['editor', 'source', 'markup'] as const
-
-type TabView = (typeof TAB_VIEWS)[number]
+import { pathAfterMove, TAB_VIEWS, type EntryMove, type TabView } from '../doc-path.ts'
 
 export interface TabAt {
   path: string

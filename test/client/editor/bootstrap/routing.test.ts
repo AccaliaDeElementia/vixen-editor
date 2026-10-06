@@ -198,6 +198,12 @@ describe('an image path', () => {
     expect(loaded).toStrictEqual([])
   })
 
+  it('ignores a view the location cannot show, because an image has no view to choose', async () => {
+    await openEditor({ root, pathname: '/doc/journal/photo.png', search: '?view=preview', session: fakeSession() })
+
+    expect(root.querySelector<HTMLElement>('[data-part="panes"]')?.dataset.split).toBeUndefined()
+  })
+
   it('leaves the buffer empty, because an image is not a buffer', async () => {
     const view = await openEditor({ root, pathname: '/doc/photo.png', session: fakeSession() })
 
