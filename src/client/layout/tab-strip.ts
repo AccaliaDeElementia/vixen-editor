@@ -5,6 +5,9 @@ import { tabIdentity, type TabAt } from './open-tabs.ts'
 
 const TAB_CLASS = 'tabs__tab'
 const EPHEMERAL_CLASS = 'tabs__tab--looking'
+const CLOSE_CLASS = 'tabs__close'
+const NAME_CLASS = 'tabs__name'
+const CLOSE_GLYPH = 'close'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
 const REACHABLE = 0
 const PASSED_OVER = -1
@@ -17,6 +20,7 @@ interface ShownTab extends TabAt {
 interface TabStripOptions {
   onActivate: (at: TabAt) => void
   onKeep: (at: TabAt) => void
+  onClose: (at: TabAt) => void
 }
 
 export interface TabStrip {
@@ -32,6 +36,22 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
 
   const drawn = new Map<string, HTMLElement>()
 
+  function closerFor(tab: ShownTab, at: TabAt): HTMLElement {
+    const { path } = at
+    const closer = document.createElement('span')
+    closer.className = CLOSE_CLASS
+    closer.setAttribute('aria-hidden', 'true')
+    closer.dataset.closes = path
+    closer.textContent = CLOSE_GLYPH
+
+    closer.addEventListener('click', (event: MouseEvent) => {
+      event.stopPropagation()
+      options.onClose(at)
+    })
+
+    return closer
+  }
+
   function newTab(tab: ShownTab): HTMLElement {
     const element = document.createElement('button')
     element.type = 'button'
@@ -42,7 +62,10 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     element.dataset.tab = tabIdentity(tab)
     element.dataset.path = path
     element.dataset.view = view
-    element.textContent = labelFor(tab)
+    const name = document.createElement('span')
+    name.className = NAME_CLASS
+    name.textContent = labelFor(tab)
+    element.append(name)
 
     element.addEventListener('click', () => {
       options.onActivate({ path, view })
@@ -51,6 +74,8 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     element.addEventListener('dblclick', () => {
       options.onKeep({ path, view })
     })
+
+    element.append(closerFor(tab, { path, view }))
 
     return element
   }

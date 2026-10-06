@@ -13,6 +13,7 @@ const PREVIEWING = { path: 'notes.md', view: 'markup' } as const
 const OTHER = { path: 'other.md', view: 'editor' } as const
 
 let activated: TabAt[] = []
+let closeRequests: TabAt[] = []
 
 function paneElement(): HTMLElement {
   const container = document.createElement('div')
@@ -30,6 +31,9 @@ function pane(id: PaneId = 'primary', element = paneElement()): Pane {
     onActivate: (at) => {
       activated.push(at)
     },
+    onCloseRequested: (at) => {
+      closeRequests.push(at)
+    },
   })
 }
 
@@ -41,6 +45,7 @@ beforeEach(() => {
   localStorage.clear()
   document.body.innerHTML = ''
   activated = []
+  closeRequests = []
 })
 
 describe('a pane holding its own tabs', () => {
@@ -96,7 +101,7 @@ describe('a pane holding its own tabs', () => {
     const bare = document.createElement('div')
 
     expect(() => {
-      createPane(bare, 'primary', { onActivate: () => undefined }).open(EDITING)
+      createPane(bare, 'primary', { onActivate: () => undefined, onCloseRequested: () => undefined }).open(EDITING)
     }).not.toThrow()
   })
 })

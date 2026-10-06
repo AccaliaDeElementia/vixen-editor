@@ -32,6 +32,7 @@ import { createStatusBar } from '../layout/status-bar.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import { createMarkupView } from '../layout/markup-view.ts'
 import { createSourceView } from '../layout/source-view.ts'
+import { revealOnly } from '../layout/reveal-view.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { createPane, type Pane } from '../layout/pane.ts'
 import { createWorkspace } from '../layout/workspace.ts'
@@ -62,6 +63,7 @@ interface Editor {
   view: EditorView
   teardownDocument: () => void
   teardownApplication: () => void
+  settled: () => Promise<void>
   teardownEditor: () => void
 }
 
@@ -156,9 +158,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const primary = createPane(pane, 'primary', {
     onActivate: (at: TabAt) => {
+      touched = primary
       activate(pane, at)
     },
+    onCloseRequested: (at: TabAt) => {
+      requestClose(primary, at)
+    },
   })
+
+  let touched: Pane = primary
   const workspace = createWorkspace(pane, {
     focusDocument: () => {
       view.focus()
@@ -308,14 +316,60 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const element = secondPaneIn(root)
     if (element === null) return null
     if (secondary?.element !== element) {
-      secondary = createPane(element, 'secondary', {
+      const built: Pane = createPane(element, 'secondary', {
         onActivate: (at: TabAt) => {
+          touched = built
           activate(element, at)
         },
+        onCloseRequested: (at: TabAt) => {
+          requestClose(built, at)
+        },
       })
+
+      secondary = built
     }
 
     return secondary
+  }
+
+  function showNothingIn(target: Pane): void {
+    if (!target.isEmpty()) return
+    if (target === primary) workspace.show('empty', displayPathFromPath(documentId()))
+    else revealOnly(target.element, 'view-empty')
+  }
+
+  const closing: Array<Promise<void>> = []
+
+  function closeEditorTab(target: Pane, at: TabAt): void {
+    target.close(at)
+    tab.empty()
+    showNothingIn(target)
+  }
+
+  function requestClose(target: Pane, at: TabAt): void {
+    if (at.view !== 'editor') {
+      target.close(at)
+      showNothingIn(target)
+
+      return
+    }
+
+    if (tab.saveState() === 'clean') {
+      closeEditorTab(target, at)
+
+      return
+    }
+
+    closing.push(
+      tab.settleBeforeLeaving().then((mayLeave) => {
+        if (mayLeave) closeEditorTab(target, at)
+      }),
+    )
+  }
+
+  function closeTheTabInFront(): void {
+    const at = touched.showing()
+    if (at !== null) requestClose(touched, at)
   }
 
   function renderPreview(host: ParentNode, at: TabAt, content: string): void {
@@ -340,6 +394,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const target = secondaryPane()
     if (target === null) return
 
+    touched = target
+
     const at: TabAt = { path: documentId(), view: wanted }
     renderPreview(target.element, at, view.state.doc.toString())
     if (primary.holdsPermanently(editorTab(at.path))) target.keep(at)
@@ -361,6 +417,13 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const onPreviewKey = (event: Event): void => {
     if (!(event instanceof KeyboardEvent) || !event.altKey) return
+
+    if (event.key === KEYS.closeTab) {
+      event.preventDefault()
+      closeTheTabInFront()
+
+      return
+    }
 
     const wanted = event.shiftKey ? KEYS.previewSource : KEYS.previewMarkup
     if (event.key !== wanted) return
@@ -444,6 +507,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     view,
     teardownDocument,
     teardownApplication,
+    settled: async () => {
+      await Promise.all(closing.splice(NOTHING_MEASURED))
+    },
     teardownEditor: () => {
       teardownDocument()
       teardownApplication()

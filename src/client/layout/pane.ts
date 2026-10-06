@@ -6,19 +6,24 @@ import { createOpenTabs, tabIdentity, type TabAt } from './open-tabs.ts'
 import { createTabStrip } from './tab-strip.ts'
 
 const STRIP_SELECTOR = '[data-part="tabs"]'
+const NO_TABS = 0
 
 interface PaneOptions {
   onActivate: (at: TabAt) => void
+  onCloseRequested: (at: TabAt) => void
 }
 
 export interface Pane {
   element: HTMLElement
   open: (at: TabAt) => void
   keep: (at: TabAt) => void
+  close: (at: TabAt) => void
   keepWhenOpened: (at: TabAt) => void
   leave: () => void
   followMove: (move: EntryMove) => void
   holdsPermanently: (at: TabAt) => boolean
+  showing: () => TabAt | null
+  isEmpty: () => boolean
 }
 
 export function createPane(element: HTMLElement, id: PaneId, options: PaneOptions): Pane {
@@ -41,6 +46,11 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
     rememberAndDraw()
   }
 
+  function close(at: TabAt): void {
+    tabs.close(at)
+    rememberAndDraw()
+  }
+
   function keepWhenOpened(at: TabAt): void {
     awaited = tabIdentity(at)
     tabs.promote(at)
@@ -53,6 +63,7 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
       : createTabStrip(host, {
           onActivate: options.onActivate,
           onKeep: keep,
+          onClose: options.onCloseRequested,
         })
 
   for (const at of readKeptTabs(id)) tabs.keep(at)
@@ -71,6 +82,7 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
 
     keep,
     keepWhenOpened,
+    close,
 
     leave(): void {
       tabs.leave()
@@ -83,5 +95,9 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
     },
 
     holdsPermanently: (at: TabAt) => tabs.kept().some((held) => tabIdentity(held) === tabIdentity(at)),
+
+    showing: () => tabs.active(),
+
+    isEmpty: () => tabs.all().length === NO_TABS,
   }
 }

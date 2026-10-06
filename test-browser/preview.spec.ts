@@ -176,3 +176,46 @@ test('activating a preview tab shows that preview again', async ({ page, request
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('the cross on a tab closes it', async ({ page, request }) => {
+  const name = `closing-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# closing' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
+
+  await page.locator(`[data-tab="markup:${name}"] .tabs__close`).click()
+
+  await expect(page.locator(`[data-tab="markup:${name}"]`)).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('closing the last tab leaves an invitation rather than a document', async ({ page, request }) => {
+  const name = `lasttab-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# last' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+
+  await page.locator(`[data-tab="editor:${name}"] .tabs__close`).click()
+
+  await expect(page.locator('[data-part="view-empty"]').first()).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('Alt+W closes the tab in front of the reader', async ({ page, request }) => {
+  const name = `altw-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# altw' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
+
+  await page.keyboard.press('Alt+w')
+
+  await expect(page.locator(`[data-tab="markup:${name}"]`)).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${name}`)
+})

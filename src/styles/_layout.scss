@@ -177,6 +177,25 @@
   }
 }
 
+.tabs__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabs__close {
+  flex: 0 0 auto;
+  font-family: 'Material Symbols Outlined';
+  font-size: $font-size-sm;
+  line-height: 1;
+  color: $muted;
+  cursor: pointer;
+
+  &:hover {
+    color: $body-color;
+  }
+}
+
 .split-resizer {
   position: relative;
   flex: 0 0 var(--divider);

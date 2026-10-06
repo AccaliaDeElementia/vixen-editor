@@ -21,6 +21,7 @@ export const KEYS = {
   insert: 'i',
   previewSource: 'P',
   previewMarkup: 'p',
+  closeTab: 'w',
   narrower: 'ArrowLeft',
   wider: 'ArrowRight',
   narrowest: 'Home',
@@ -40,6 +41,7 @@ const SHORTCUTS: readonly Entry[] = [
   { does: 'Insert a link to the selected file', how: 'Ctrl/Cmd + I in the file browser', keys: [KEYS.insert] },
   { does: 'Show the document as highlighted source', how: 'Alt + Shift + P', keys: [KEYS.previewSource] },
   { does: 'Show the document rendered', how: 'Alt + P', keys: [KEYS.previewMarkup] },
+  { does: 'Close the tab in front of you', how: 'Alt + W', keys: [KEYS.closeTab] },
   {
     does: 'Choose what comes back from the trash',
     how: 'Space on a row, and the right arrow to put one back elsewhere',

@@ -9,7 +9,17 @@ import { requestKeep } from '../../../../src/client/keep-request.ts'
 
 const WIDE_ENOUGH = 1200
 
-import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'
+import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import {
+  dialogsDismissing,
+  filesAnsweringEmpty,
+  openEditor,
+  page,
+  recorded,
+  sessionRecording,
+  trackEditor,
+  type Recorded,
+} from '../../editor-fixtures.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -272,5 +282,143 @@ describe('a second pane that was dismissed and summoned again', () => {
     root.querySelector<HTMLElement>('#preview-markup')?.click()
 
     expect(root.querySelector('[data-tab="markup:notes.md"]')).not.toBeNull()
+  })
+})
+
+describe('closing a tab', () => {
+  function closerFor(tab: string): HTMLElement | null {
+    return root.querySelector<HTMLElement>(`[data-tab="${tab}"] .tabs__close`)
+  }
+
+  function visibleParts(): Array<string | undefined> {
+    return [...root.querySelectorAll<HTMLElement>('.view, [data-part="editor"]')]
+      .filter((element) => element.hidden === false)
+      .flatMap((element) => element.dataset.part ?? [])
+  }
+
+  it('takes a preview tab away', async () => {
+    await editing()
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    closerFor('markup:notes.md')?.click()
+
+    expect(root.querySelector('[data-tab="markup:notes.md"]')).toBeNull()
+  })
+
+  it('leaves the second pane saying there is nothing in it', async () => {
+    await editing()
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    closerFor('markup:notes.md')?.click()
+
+    expect(root.querySelectorAll<HTMLElement>('[data-part="view-empty"]')[1]?.hidden).toBe(false)
+  })
+
+  it('takes the editor tab away and leaves the invitation to open something', async () => {
+    await editing()
+
+    closerFor('editor:notes.md')?.click()
+
+    expect(visibleParts()).toStrictEqual(['view-empty'])
+  })
+
+  it('empties the buffer, so the document it held is not still on screen', async () => {
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# stored') })
+
+    closerFor('editor:notes.md')?.click()
+
+    expect(view.state.doc.toString()).toBe('')
+  })
+
+  it('leaves a tab the reader did not ask to close alone', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    closerFor('markup:notes.md')?.click()
+
+    expect(root.querySelector('[data-tab="editor:notes.md"]')).not.toBeNull()
+  })
+
+  it('is reached by Alt and W', async () => {
+    await editing()
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    press({ key: 'w', altKey: true })
+
+    expect(root.querySelector('[data-tab="markup:notes.md"]')).toBeNull()
+  })
+
+  it('closes nothing on Alt and W when the pane in front holds no tab', async () => {
+    await editing()
+    closerFor('editor:notes.md')?.click()
+
+    press({ key: 'w', altKey: true })
+
+    expect(root.querySelector('[data-tab="editor:notes.md"]')).toBeNull()
+  })
+})
+
+describe('closing a tab whose work has not been saved', () => {
+  it('leaves it open when the save failed and the reader chose to stay', async () => {
+    const asked: PromiseWithResolvers<void> = Promise.withResolvers()
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: sessionRecording(record, {
+        load: () => Promise.resolve({ content: '# stored', stored: true }),
+        save: () => Promise.reject(new Error('the store refused')),
+      }),
+      dialogs: {
+        prompt: () => Promise.resolve(false),
+        choose: () => Promise.resolve(null),
+        inform: () => Promise.resolve(),
+        confirm: () => {
+          asked.resolve()
+
+          return Promise.resolve(false)
+        },
+      },
+    })
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' typed' } })
+
+    root.querySelector<HTMLElement>('[data-tab="editor:notes.md"] .tabs__close')?.click()
+    await asked.promise
+
+    expect(root.querySelector('[data-tab="editor:notes.md"]')).not.toBeNull()
+  })
+})
+
+describe('closing one of several tabs in a pane', () => {
+  it('leaves the pane showing what is left rather than the invitation', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('#preview-source')?.click()
+
+    root.querySelector<HTMLElement>('[data-tab="source:notes.md"] .tabs__close')?.click()
+
+    expect(root.querySelectorAll<HTMLElement>('[data-part="view-empty"]')[1]?.hidden).toBe(true)
+  })
+})
+
+describe('closing a tab whose unsaved work does save', () => {
+  it('lets it go once the save has landed', async () => {
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession('# stored'),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: ' typed' } })
+
+    root.querySelector<HTMLElement>('[data-tab="editor:notes.md"] .tabs__close')?.click()
+    await editor.settled()
+
+    expect(root.querySelector('[data-tab="editor:notes.md"]')).toBeNull()
   })
 })

@@ -38,6 +38,7 @@ beforeEach(() => {
 describe('which view is on screen', () => {
   it.each<[WorkspaceView, string]>([
     ['pending', 'view-pending'],
+    ['empty', 'view-empty'],
     ['document', 'editor'],
     ['source', 'view-source'],
     ['markup', 'view-markup'],
@@ -194,6 +195,7 @@ describe('markup that does not match', () => {
   it('names one element per view, so a renamed id fails here rather than silently', () => {
     expect(VIEW_ELEMENTS.map(([view]) => view)).toStrictEqual([
       'pending',
+      'empty',
       'document',
       'source',
       'markup',

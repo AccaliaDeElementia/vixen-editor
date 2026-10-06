@@ -830,7 +830,7 @@ describe('the tab strip', () => {
   it('names the tab by the file, not the path it sits under', async () => {
     await openEditor({ root, pathname: '/doc/journal/a.md', session: fakeSession() })
 
-    expect(stripTabs().at(0)?.textContent).toBe('a.md')
+    expect(stripTabs().at(0)?.querySelector('.tabs__name')?.textContent).toBe('a.md')
   })
 
   it('follows the document that is open, rather than stacking what has been seen', async () => {

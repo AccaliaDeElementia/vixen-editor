@@ -19,6 +19,7 @@ interface OpenTabs {
   open: (at: TabAt) => void
   keep: (at: TabAt) => void
   promote: (at: TabAt) => void
+  close: (at: TabAt) => void
   leave: () => void
   followMove: (move: EntryMove) => void
   all: () => readonly HeldTab[]
@@ -78,6 +79,14 @@ export function createOpenTabs(): OpenTabs {
 
     promote(at: TabAt): void {
       keepAt(heldAt(at))
+    },
+
+    close(at: TabAt): void {
+      const held = heldAt(at)
+      if (held === NOT_HELD) return
+
+      order.splice(held, ONE_TAB)
+      if (current !== null && tabIdentity(current) === tabIdentity(at)) current = null
     },
 
     leave(): void {

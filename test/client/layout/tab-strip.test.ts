@@ -11,11 +11,15 @@ const OTHER = { path: 'notes.md', view: 'editor' } as const
 let host: HTMLElement = document.createElement('div')
 let activated: unknown[] = []
 let kept: unknown[] = []
+let closed: unknown[] = []
 
 function strip(): TabStrip {
   return createTabStrip(host, {
     onActivate: (key) => {
       activated.push(key)
+    },
+    onClose: (key) => {
+      closed.push(key)
     },
     onKeep: (key) => {
       kept.push(key)
@@ -33,6 +37,7 @@ beforeEach(() => {
   document.body.append(host)
   activated = []
   kept = []
+  closed = []
 })
 
 describe('showing what is open', () => {
@@ -51,13 +56,13 @@ describe('showing what is open', () => {
   it('names a tab by the file rather than the whole path', () => {
     strip().show([{ ...EDITING }], EDITING)
 
-    expect(tabs().at(0)?.textContent).toBe('a.md')
+    expect(tabs().at(0)?.querySelector('.tabs__name')?.textContent).toBe('a.md')
   })
 
   it('takes a name over the path when one is given', () => {
     strip().show([{ ...EDITING, name: 'Preview of a.md' }], EDITING)
 
-    expect(tabs().at(0)?.textContent).toBe('Preview of a.md')
+    expect(tabs().at(0)?.querySelector('.tabs__name')?.textContent).toBe('Preview of a.md')
   })
 
   it('keeps the order it was given, which is the reader’s order', () => {
@@ -217,5 +222,45 @@ describe('a tab that is still open when the strip is drawn again', () => {
     tabFor(EDITING)?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
 
     expect(kept).toStrictEqual([EDITING])
+  })
+})
+
+describe('the control that closes a tab', () => {
+  function closer(): HTMLElement | null {
+    return host.querySelector<HTMLElement>('.tabs__close')
+  }
+
+  it('is offered on every tab', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(closer()).not.toBeNull()
+  })
+
+  it('says which tab it belongs to, so a reader of the markup can tell', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(closer()?.dataset.closes).toBe('journal/a.md')
+  })
+
+  it('asks for the tab to be closed', () => {
+    strip().show([EDITING], EDITING)
+
+    closer()?.click()
+
+    expect(closed).toStrictEqual([EDITING])
+  })
+
+  it('does not also activate the tab it is closing', () => {
+    strip().show([EDITING], EDITING)
+
+    closer()?.click()
+
+    expect(activated).toStrictEqual([])
+  })
+
+  it('is hidden from assistive technology, because a control inside a tab is a nested control', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(closer()?.getAttribute('aria-hidden')).toBe('true')
   })
 })

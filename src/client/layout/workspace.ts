@@ -3,10 +3,11 @@
 import { titleFor } from '../doc-path.ts'
 
 export type WorkspaceView =
-  'pending' | 'document' | 'source' | 'markup' | 'image' | 'missing' | 'deleted' | 'unreachable'
+  'pending' | 'empty' | 'document' | 'source' | 'markup' | 'image' | 'missing' | 'deleted' | 'unreachable'
 
 const VIEW_ELEMENTS: ReadonlyArray<readonly [WorkspaceView, string]> = [
   ['pending', '[data-part="view-pending"]'],
+  ['empty', '[data-part="view-empty"]'],
   ['document', '[data-part="editor"]'],
   ['source', '[data-part="view-source"]'],
   ['markup', '[data-part="view-markup"]'],

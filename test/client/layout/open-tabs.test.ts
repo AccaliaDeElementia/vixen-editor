@@ -268,3 +268,61 @@ describe('a tab whose document moves', () => {
     expect(tabs.active()).toBeNull()
   })
 })
+
+describe('closing a tab', () => {
+  it('lets it go', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.close(EDITING)
+
+    expect(tabs.all()).toStrictEqual([])
+  })
+
+  it('leaves the others where the reader put them', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+    tabs.keep(OTHER)
+
+    tabs.close(EDITING)
+
+    expect(tabs.all().map((tab) => tab.path)).toStrictEqual(['notes.md'])
+  })
+
+  it('leaves nothing active when the active one goes', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.close(EDITING)
+
+    expect(tabs.active()).toBeNull()
+  })
+
+  it('leaves the active one alone when another goes', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(OTHER)
+    tabs.keep(EDITING)
+
+    tabs.close(OTHER)
+
+    expect(tabs.active()).toStrictEqual({ ...EDITING })
+  })
+
+  it('ignores a tab it does not hold', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.close(OTHER)
+
+    expect(tabs.all().map((tab) => tab.path)).toStrictEqual(['journal/a.md'])
+  })
+
+  it('forgets it, so a reload does not bring it back', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.close(EDITING)
+
+    expect(tabs.kept()).toStrictEqual([])
+  })
+})
