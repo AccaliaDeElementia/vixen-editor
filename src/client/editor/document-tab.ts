@@ -43,6 +43,7 @@ interface DocumentTabOptions {
   showingDocument: () => boolean
   announce: (text: string) => void
   onEdited: (content: string) => void
+  onReloaded: (content: string) => void
   onCaretMoved: (offset: number) => void
   listenForFocus?: FocusListener | undefined
 }
@@ -204,6 +205,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     view.setState(stateFor(content, caret))
     autosave.reset(content)
     statusBar.showWordCount(content)
+    options.onReloaded(content)
   }
 
   function open(entryPath: string, content: string): void {

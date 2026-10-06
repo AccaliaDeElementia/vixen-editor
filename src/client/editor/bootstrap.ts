@@ -193,6 +193,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       primary.keepWhenOpened(editorTab(documentId()))
       previews.refreshWith(content)
     },
+    onReloaded: (content: string) => {
+      previews.refreshWith(content)
+    },
     onCaretMoved: (offset: number) => {
       previews.revealOffset(offset)
     },

@@ -647,3 +647,33 @@ describe('a preview of the document being typed into', () => {
     vi.useRealTimers()
   })
 })
+
+describe('a preview of a document that changed on disk', () => {
+  it('shows what the server now holds, not what was first loaded', async () => {
+    vi.useFakeTimers()
+    let wake: () => void = () => undefined
+    let afterTheCheck: () => Promise<void> = () => Promise.resolve()
+    await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: sessionRecording(record, {
+        load: () => Promise.resolve({ content: '# before', stored: true }),
+        reread: () => Promise.resolve({ content: '# after', stored: true }),
+      }),
+      listenForFocus: (registered, settled) => {
+        wake = registered
+        afterTheCheck = settled
+
+        return () => undefined
+      },
+    })
+    ribbonButton()?.click()
+
+    wake()
+    await afterTheCheck()
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(previewBody()?.textContent).toBe('# after')
+    vi.useRealTimers()
+  })
+})

@@ -442,3 +442,21 @@ describe('a save the store refuses as stale', () => {
     expect(chooser.offered).toBe(0)
   })
 })
+
+describe('a reload of a tab the reader is only looking at', () => {
+  function editorTabHandle(): HTMLElement | null {
+    return root.querySelector<HTMLElement>('[data-tab="editor:notes.md"]')
+  }
+
+  it('leaves it ephemeral, because the reader did not edit it', async () => {
+    await editing(() => Promise.resolve({ content: '# changed elsewhere', stored: true }))
+    given(() => {
+      expect(editorTabHandle()?.classList.contains('tabs__tab--looking')).toBe(true)
+    })
+
+    wake()
+    await afterTheCheck()
+
+    expect(editorTabHandle()?.classList.contains('tabs__tab--looking')).toBe(true)
+  })
+})
