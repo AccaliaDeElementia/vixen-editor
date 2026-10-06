@@ -169,8 +169,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onShowing: (entryPath: string) => {
       openDocument.commit(entryPath)
     },
-    releaseElsewhere: (at: TabAt) => {
-      releaseFrom(secondary, at)
+    releaseElsewhere: async (at: TabAt) => {
+      await releaseFrom(secondary, at)
     },
   })
 
@@ -252,8 +252,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         onShowing: (entryPath: string) => {
           openDocument.commit(entryPath)
         },
-        releaseElsewhere: (at: TabAt) => {
-          releaseFrom(primaryWorkspace, at)
+        releaseElsewhere: async (at: TabAt) => {
+          await releaseFrom(primaryWorkspace, at)
         },
       })
 
@@ -302,7 +302,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       touched = surface
     },
     releaseElsewhere: (at: TabAt) => {
-      releaseFrom(primaryWorkspace, at)
+      pending.push(releaseFrom(primaryWorkspace, at))
     },
     documentId,
     contentNow: () => view.state.doc.toString(),
@@ -315,12 +315,17 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const pending: Array<Promise<void>> = []
 
-  function releaseFrom(surface: PaneWorkspace | null, at: TabAt): void {
+  async function releaseFrom(surface: PaneWorkspace | null, at: TabAt): Promise<void> {
     if (surface === null) return
     if (!surface.pane.held().some((candidate) => tabIdentity(candidate) === tabIdentity(at))) return
 
     surface.pane.close(at)
-    if (at.view === 'editor') surface.leave()
+    if (at.view === 'editor') await surface.leave()
+  }
+
+  async function carried(at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace): Promise<void> {
+    await leaving.leave()
+    await arriving.showDocument(at.path)
   }
 
   const paneMoves = createPaneMoves({
@@ -328,8 +333,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onCarried: (at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace) => {
       if (at.view !== 'editor') return
 
-      leaving.leave()
-      pending.push(arriving.showDocument(at.path))
+      pending.push(carried(at, arriving, leaving))
     },
     primary: primaryWorkspace,
     summon: secondaryWorkspaceTowards,

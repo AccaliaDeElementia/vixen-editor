@@ -643,10 +643,20 @@ describe('moving between the panes from the keyboard', () => {
   })
 
   it('empties the editor it left, because a document has only one editor', async () => {
-    await editing('# carried')
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession('# carried'),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
     requestKeep(root, 'notes.md')
 
     press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
+    await editor.settled()
 
     expect(root.querySelectorAll<HTMLElement>('.cm-content')[0]?.textContent).toBe('')
   })

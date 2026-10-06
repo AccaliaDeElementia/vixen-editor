@@ -9,7 +9,18 @@ import type { EditorView } from '@codemirror/view'
 import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
 import { DocumentRequestError } from '../../../../src/client/editor/document-client.ts'
 
-import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'
+import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { requestKeep } from '../../../../src/client/keep-request.ts'
+import {
+  dialogsDismissing,
+  filesAnsweringEmpty,
+  openEditor,
+  page,
+  recorded,
+  sessionRecording,
+  trackEditor,
+  type Recorded,
+} from '../../editor-fixtures.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -177,5 +188,81 @@ describe('leaving a document with unsaved changes', () => {
     await driver.settled()
 
     expect(driver.view.state.doc.toString()).toBe('edited # notes.md')
+  })
+})
+
+describe('a document with unsaved changes leaving a pane', () => {
+  let stored = '# stored'
+
+  async function editing(): Promise<{ view: EditorView; settled: () => Promise<void> }> {
+    stored = '# stored'
+    const started = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession({
+          load: () => Promise.resolve({ content: stored, stored: true }),
+          save: (_id: string, content: string) => {
+            stored = content
+
+            return Promise.resolve()
+          },
+        }),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (started === null) throw new Error('the editor did not start')
+    requestKeep(root, 'notes.md')
+    started.view.dispatch({ changes: { from: started.view.state.doc.length, insert: ' and typed' } })
+
+    return started
+  }
+
+  function carryToTheOtherPane(): void {
+    root.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true, bubbles: true }),
+    )
+  }
+
+  it('is written before the pane it left is emptied', async () => {
+    const started = await editing()
+
+    carryToTheOtherPane()
+    await started.settled()
+
+    expect(stored).toBe('# stored and typed')
+  })
+
+  it('arrives in the other pane as the reader last had it, not as the store last had it', async () => {
+    const started = await editing()
+
+    carryToTheOtherPane()
+    await started.settled()
+
+    expect(root.querySelectorAll<HTMLElement>('.cm-content')[1]?.textContent).toContain('# stored and typed')
+  })
+
+  it('keeps the buffer when the save fails and the reader will not let it go', async () => {
+    const started = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession({
+          load: () => Promise.resolve({ content: '# stored', stored: true }),
+          save: () => Promise.reject(new Error('the store said no')),
+        }),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (started === null) throw new Error('the editor did not start')
+    requestKeep(root, 'notes.md')
+    started.view.dispatch({ changes: { from: started.view.state.doc.length, insert: ' and typed' } })
+
+    carryToTheOtherPane()
+    await started.settled()
+
+    expect(root.querySelectorAll<HTMLElement>('.cm-content')[0]?.textContent).toContain('# stored and typed')
   })
 })

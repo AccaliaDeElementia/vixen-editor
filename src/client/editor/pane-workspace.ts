@@ -54,7 +54,7 @@ interface PaneWorkspaceOptions {
   onCloseRequested: (at: TabAt) => void
   onTabArrived: (identity: string, toIndex: number) => void
   onShowing: (entryPath: string) => void
-  releaseElsewhere: (at: TabAt) => void
+  releaseElsewhere: (at: TabAt) => Promise<void>
   listenForFocus?: FocusListener | undefined
 }
 
@@ -69,7 +69,7 @@ export interface PaneWorkspace {
   openPath: (target: string) => Promise<void>
   flush: () => Promise<boolean>
   showDocument: (entryPath: string) => Promise<void>
-  leave: () => void
+  leave: () => Promise<void>
 }
 
 function reportUnreachable(host: ParentNode, at: string, error: unknown): void {
@@ -188,7 +188,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     const initial = stored ? template : await withCheatsheetIfNew(template, reached)
 
     const at: TabAt = { path: reached, view: 'editor' }
-    options.releaseElsewhere(at)
+    await options.releaseElsewhere(at)
     editor().open(reached, initial)
     pane.open(at)
     workspace.show('document', shown)
@@ -220,7 +220,9 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       await showDocumentAt(entryPath, entryPath, null)
     },
 
-    leave: () => {
+    leave: async () => {
+      if (built !== null && !(await built.settleBeforeLeaving())) return
+
       built?.empty()
       pane.leave()
     },

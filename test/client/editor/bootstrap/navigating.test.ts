@@ -300,10 +300,21 @@ describe('opening a document the other pane already holds', () => {
   it('takes it out of that pane, because only one editor may hold a document', async () => {
     const stub = stubbedNavigation()
     const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
-    await openEditor({ root, pathname: '/doc/a.md', session, navigation: stub.navigation })
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/a.md',
+        session,
+        navigation: stub.navigation,
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
     root.querySelector<HTMLElement>('#preview-markup')?.click()
     press({ key: 'ArrowLeft', altKey: true, ctrlKey: true })
     press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
+    await editor.settled()
     given(() => {
       expect(stripOf(1)?.querySelector('[data-tab="editor:a.md"]')).not.toBeNull()
     })
