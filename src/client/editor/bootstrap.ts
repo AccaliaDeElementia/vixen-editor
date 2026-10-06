@@ -31,10 +31,10 @@ import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import { createPreviews } from './previews.ts'
-import { revealOnly } from '../layout/reveal-view.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { carryTab, createPane, type Pane } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
+import { createClosingTabs } from './closing-tabs.ts'
 import { createPaneMoves } from './pane-moves.ts'
 import { createTabNavigation } from './tab-navigation.ts'
 import { createWorkspace } from '../layout/workspace.ts'
@@ -163,7 +163,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       activate(pane, at)
     },
     onCloseRequested: (at: TabAt) => {
-      requestClose(primary, at)
+      closingTabs.requestClose(primary, at)
     },
     onTabArrived: (identity: string, toIndex: number) => {
       carryTab(identity, primary, secondary, toIndex)
@@ -189,8 +189,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     documentId,
     openUrl,
     announce: setStatus,
-    onEdited: () => {
+    onEdited: (content: string) => {
       primary.keepWhenOpened(editorTab(documentId()))
+      previews.refreshWith(content)
     },
     onCaretMoved: (offset: number) => {
       previews.revealOffset(offset)
@@ -329,7 +330,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
           activate(element, at)
         },
         onCloseRequested: (at: TabAt) => {
-          requestClose(built, at)
+          closingTabs.requestClose(built, at)
         },
         onTabArrived: (identity: string, toIndex: number) => {
           carryTab(identity, built, primary, toIndex)
@@ -342,45 +343,18 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     return secondary
   }
 
-  function showNothingIn(target: Pane): void {
-    if (!target.isEmpty()) return
-    if (target === primary) workspace.show('empty', displayPathFromPath(documentId()))
-    else revealOnly(target.element, 'view-empty')
-  }
-
-  const closing: Array<Promise<void>> = []
-
-  function closeEditorTab(target: Pane, at: TabAt): void {
-    target.close(at)
-    tab.empty()
-    showNothingIn(target)
-  }
-
-  function requestClose(target: Pane, at: TabAt): void {
-    if (at.view !== 'editor') {
-      target.close(at)
-      showNothingIn(target)
-
-      return
-    }
-
-    if (tab.saveState() === 'clean') {
-      closeEditorTab(target, at)
-
-      return
-    }
-
-    closing.push(
-      tab.settleBeforeLeaving().then((mayLeave) => {
-        if (mayLeave) closeEditorTab(target, at)
-      }),
-    )
-  }
-
-  function closeTheTabInFront(): void {
-    const at = touched.showing()
-    if (at !== null) requestClose(touched, at)
-  }
+  const closingTabs = createClosingTabs({
+    primary,
+    inFront: () => touched,
+    emptyTheEditor: () => {
+      tab.empty()
+    },
+    saveState: tab.saveState,
+    settleBeforeLeaving: tab.settleBeforeLeaving,
+    showEmpty: () => {
+      workspace.show('empty', displayPathFromPath(documentId()))
+    },
+  })
 
   const previews = createPreviews((offset: number) => {
     tab.putCaretAt(offset)
@@ -450,7 +424,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     move: navigation.move,
     jumpTo: navigation.jumpTo,
     toPane: paneMoves.toPane,
-    close: closeTheTabInFront,
+    close: closingTabs.closeTheTabInFront,
     showSource: showSourcePreview,
     showMarkup: showMarkupPreview,
   })
@@ -502,6 +476,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     stopFollowingDeletion()
     offInsertRequested()
     offKeepRequested()
+    previews.stop()
     toast.dismissRaised()
     tab.teardownDocument()
   }
@@ -527,9 +502,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     view,
     teardownDocument,
     teardownApplication,
-    settled: async () => {
-      await Promise.all(closing.splice(NOTHING_MEASURED))
-    },
+    settled: closingTabs.settled,
     teardownEditor: () => {
       teardownDocument()
       teardownApplication()

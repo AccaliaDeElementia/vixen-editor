@@ -1,14 +1,16 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Session } from '../../../../src/client/editor/session.ts'
 import { cast } from '../../../cast.ts'
+import { TestOnly as previewTiming } from '../../../../src/client/editor/previews.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
 import { requestKeep } from '../../../../src/client/keep-request.ts'
 
 const WIDE_ENOUGH = 1200
+const { PREVIEW_SETTLES_MS } = previewTiming
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import {
@@ -629,5 +631,19 @@ describe('moving between the panes from the keyboard', () => {
     expect(
       root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[0]?.querySelector('[data-tab="editor:notes.md"]'),
     ).toBeNull()
+  })
+})
+
+describe('a preview of the document being typed into', () => {
+  it('renders again once the typing settles', async () => {
+    vi.useFakeTimers()
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# before') })
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' and after' } })
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(root.querySelectorAll<HTMLElement>('[data-part="markup-body"]')[1]?.textContent).toBe('before and after')
+    vi.useRealTimers()
   })
 })

@@ -374,3 +374,20 @@ test('adding Shift carries the tab in front to the other pane', async ({ page, r
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('the preview follows the document as it is typed into', async ({ page, request }) => {
+  const name = `live-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# before' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('before'))
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('before'))
+
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Control+End')
+  await page.keyboard.type(' and after')
+
+  await expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('before and after')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
