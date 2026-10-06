@@ -146,3 +146,56 @@ test('a keyboard user can skip the chrome and land in the editor', async ({ page
 
   await request.delete(`/api/files/entries/${folder}`)
 })
+
+test('a split workspace with both previews has no accessibility violations', async ({ page, request }) => {
+  const folder = `a11y-split-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('#preview-source').click()
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h1')).toBeVisible())
+
+  expect(await violationsOn(page)).toStrictEqual([])
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('a preview tab is announced as a preview, not as the document it previews', async ({ page, request }) => {
+  const folder = `a11y-tabs-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('#preview-markup').click()
+
+  await expect(page.locator(`[data-tab="markup:${folder}/notes.md"]`)).toHaveAccessibleName('notes.md, preview')
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('an editor tab is announced by the file it holds', async ({ page, request }) => {
+  const folder = `a11y-editortab-${String(Date.now())}`
+  await workspaceWith(page, request, folder)
+
+  await page.goto(`/doc/${folder}/notes.md`)
+
+  await expect(page.locator(`[data-tab="editor:${folder}/notes.md"]`)).toHaveAccessibleName('notes.md')
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('the caret is thick enough to find, not a hairline that blinks away', async ({ page, request }) => {
+  const name = `caret-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# A heading\n\nProse.\n' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('.cm-content').click()
+
+  const width = await page.locator('.cm-cursor-primary').evaluate((caret) => getComputedStyle(caret).borderLeftWidth)
+
+  expect(width).toBe('2px')
+
+  await request.delete(`/api/files/entries/${name}`)
+})

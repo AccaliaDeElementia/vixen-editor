@@ -13,6 +13,8 @@ interface SplitState {
 const SPLIT_KEY = 'vixen-editor:split'
 const ORIENTATIONS = ['beside', 'below'] as const
 const EVEN_SPLIT = 0.5
+const NONE_OF_THE_AXIS = 0
+const ALL_OF_THE_AXIS = 100
 const MIN_PANE_WIDTH_PX = 280
 const MIN_PANE_HEIGHT_PX = 160
 const BOTH_PANES = 2
@@ -87,11 +89,13 @@ export function applySplit(root: ParentNode, axisPx: number): void {
     addSecondPane(panes)
   }
 
-  panes.style.setProperty(
-    '--split',
-    String(orientation === null ? EVEN_SPLIT : clampFraction(fraction, axisPx, orientation)),
-  )
+  const shown = orientation === null ? EVEN_SPLIT : clampFraction(fraction, axisPx, orientation)
+
+  panes.style.setProperty('--split', String(shown))
   resizer.setAttribute('aria-orientation', orientation === 'below' ? 'horizontal' : 'vertical')
+  resizer.setAttribute('aria-valuemin', String(NONE_OF_THE_AXIS))
+  resizer.setAttribute('aria-valuemax', String(ALL_OF_THE_AXIS))
+  resizer.setAttribute('aria-valuenow', String(Math.round(shown * ALL_OF_THE_AXIS)))
 }
 
 function write(state: SplitState): void {

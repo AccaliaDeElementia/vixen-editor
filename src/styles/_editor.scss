@@ -28,6 +28,7 @@
 
   .cm-cursor {
     border-left-color: $body-color;
+    border-left-width: 2px;
   }
 
   .cm-gutters {
@@ -155,7 +156,7 @@
   }
 
   a {
-    color: $primary;
+    color: $info;
   }
 
   code {
