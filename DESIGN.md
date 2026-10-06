@@ -879,6 +879,15 @@ decision anyone made on purpose.
   (`ͼ5`) are unstable. `src/client/editor/highlight.ts` supplies a
   `HighlightStyle` on the Darkly ramp instead. Theme changes touching token
   colours belong there, not in SCSS.
+- **Code blocks are highlighted from grammars already in the bundle**, with the
+  fence's info string respected rather than the language guessed. The named set
+  is `c`, `cpp`, `css`, `diff`, `dockerfile`, `go`, `html`, `java`,
+  `javascript`, `json`, `jsx`, `lisp`, `markdown`, `python`, `ruby`, `rust`,
+  `shell`, `sql`, `toml`, `tsx`, `typescript`, `yaml` — one bundle rather than
+  lazy loading, because the server serves a single file and code splitting would
+  change that. An unknown info string renders as plain text, never as an error.
+  `src/client/highlight-code.ts` owns the set, and `test/conventions/` fails the
+  gate when it and this list disagree.
 - **The server is bundled, not just the client.** esbuild inlines every
   dependency so the runtime Docker stage ships `dist/`, `public/` and
   `templates/` with no `node_modules`. Adding a native dependency breaks this
