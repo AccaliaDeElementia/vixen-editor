@@ -119,8 +119,17 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     return true
   }
 
+  let draggingFromTheTree = false
+  let heldBackADraw = false
+
   function draw(next: ReadonlySet<string>, focusPath?: string): void {
     open = next
+    if (draggingFromTheTree) {
+      heldBackADraw = true
+
+      return
+    }
+
     visible = renderTree(tree, { nodes, trash, open, selected })
     bindEmptyTrash()
     reflectSelection()
@@ -404,6 +413,21 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
       toast.error(`Could not load the file browser: ${errorMessage(error)}`)
     }
   }
+
+  tree.addEventListener('dragstart', () => {
+    draggingFromTheTree = true
+  })
+
+  function theDragIsOver(): void {
+    draggingFromTheTree = false
+    if (!heldBackADraw) return
+
+    heldBackADraw = false
+    draw(open)
+  }
+
+  tree.addEventListener('dragend', theDragIsOver)
+  tree.addEventListener('drop', theDragIsOver)
 
   const { offStoreChanged } = onStoreChanged(root, () => {
     runs.track(reload())

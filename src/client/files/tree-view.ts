@@ -118,6 +118,27 @@ interface Rendered {
   visible: VisibleRow[]
 }
 
+function itemFor(shown: HTMLElement): HTMLElement {
+  const { parentElement: held } = shown
+
+  return held !== null && held.tagName === 'LI' ? held : treeItem(shown)
+}
+
+function groupIn(item: HTMLElement): HTMLElement {
+  return item.querySelector<HTMLElement>(':scope > ul') ?? group()
+}
+
+function syncChildren(parent: Element, wanted: readonly Element[]): void {
+  const { children } = parent
+  const keeping = new Set<Element>(wanted)
+  for (const child of [...children]) if (!keeping.has(child)) child.remove()
+
+  for (const [at, node] of wanted.entries()) {
+    const { [at]: inPlace } = children
+    if (inPlace !== node) parent.insertBefore(node, inPlace ?? null)
+  }
+}
+
 function renderNodes(
   nodes: readonly TreeNode[],
   model: TreeViewModel,
@@ -133,24 +154,32 @@ function renderNodes(
     if (node.kind !== 'folder') {
       const href = docUrlFor(node.path)
       const options = { path: node.path, kind: node.kind, name: node.name, depth, expanded: null, selected, href }
-      items.push(treeItem(row({ ...options, draggable: true }, drawn)))
+      const shown = row({ ...options, draggable: true }, drawn)
+      const item = itemFor(shown)
+      syncChildren(item, [shown])
+      items.push(item)
       visible.push({ path: node.path, expandable: false, kind: node.kind, opens: href })
       continue
     }
 
     const expanded = model.open.has(node.path)
-    const element = treeItem(
-      row({ path: node.path, kind: 'folder', name: node.name, depth, expanded, selected, draggable: true }, drawn),
+    const shown = row(
+      { path: node.path, kind: 'folder', name: node.name, depth, expanded, selected, draggable: true },
+      drawn,
     )
+    const element = itemFor(shown)
     items.push(element)
     visible.push({ path: node.path, expandable: true, kind: 'folder', opens: null })
 
-    if (!expanded) continue
+    if (!expanded) {
+      syncChildren(element, [shown])
+      continue
+    }
 
     const nested = renderNodes(node.children, model, depth + ONE_LEVEL_DEEPER, drawn)
-    const children = group()
-    children.append(...nested.items)
-    element.append(children)
+    const children = groupIn(element)
+    syncChildren(children, nested.items)
+    syncChildren(element, [shown, children])
     visible.push(...nested.visible)
   }
 
@@ -188,12 +217,17 @@ function renderTrash(model: TreeViewModel, drawn: Map<string, HTMLElement>): Ren
   )
   if (model.trash.length > NOTHING_DELETED) trashRow.append(emptyTrashAction(model.trash.length))
 
-  const element = treeItem(trashRow)
+  const element = itemFor(trashRow)
   const visible: VisibleRow[] = [{ path: TRASH_PATH, expandable: true, kind: 'trash-root', opens: null }]
 
-  if (!expanded) return { items: [element], visible }
+  if (!expanded) {
+    syncChildren(element, [trashRow])
 
-  const children = group()
+    return { items: [element], visible }
+  }
+
+  const children = groupIn(element)
+  const held: HTMLElement[] = []
   for (const entry of model.trash) {
     const { id, originalPath, kind, deletedAt } = entry
     const href = trashUrlFor(id)
@@ -212,10 +246,14 @@ function renderTrash(model: TreeViewModel, drawn: Map<string, HTMLElement>): Ren
     )
     deleted.dataset.trashId = id
     deleted.title = `Deleted ${deletedAt}`
-    children.append(treeItem(deleted))
+    const item = itemFor(deleted)
+    syncChildren(item, [deleted])
+    held.push(item)
     visible.push({ path: entryKey, expandable: false, kind: 'trash-entry', opens: href })
   }
-  element.append(children)
+
+  syncChildren(children, held)
+  syncChildren(element, [trashRow, children])
 
   return { items: [element], visible }
 }
@@ -233,7 +271,7 @@ export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {
   const main = renderNodes(model.nodes, model, ROOT_DEPTH, drawn)
   const bin = renderTrash(model, drawn)
 
-  tree.replaceChildren(...main.items, ...bin.items)
+  syncChildren(tree, [...main.items, ...bin.items])
   applyRovingTabindex(tree)
   if (focused instanceof HTMLElement && tree.contains(focused)) focused.focus()
 
