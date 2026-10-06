@@ -6,6 +6,7 @@ import { config as loadDotenv } from 'dotenv'
 import type { Hono } from 'hono'
 
 import { buildApp } from './app.ts'
+import { buildIdFor } from './build-id.ts'
 import { withClacks } from './clacks.ts'
 import { loadConfig, type Config } from './config.ts'
 import { applyDebugFilter, createLogger } from './logging.ts'
@@ -24,15 +25,17 @@ const CLIENT_BUNDLE_ROUTE = '/assets/*'
 const EDITOR_TEMPLATE = 'editor'
 const APP_TITLE = 'Vixen Editor'
 
-function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR): Hono {
+function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR, buildId: string | null = null): Hono {
   const store = createFsDocumentStore(config.docsRoot, createWriteLock(config.writeLockTimeoutMs))
-  const app = buildApp({ store, limits: config.limits })
+  const app = buildApp({ store, limits: config.limits, buildId })
   const templates = createTemplateRenderer(config.templatesDir, config.nodeEnv === 'production')
 
   app.use(CLIENT_BUNDLE_ROUTE, serveStatic({ root: publicDir }))
   app.route(
     '/',
-    pageRoutes(() => templates.render(EDITOR_TEMPLATE, { title: APP_TITLE, archiveUrl: archiveUrlFor(STORE_ROOT) })),
+    pageRoutes(() =>
+      templates.render(EDITOR_TEMPLATE, { title: APP_TITLE, archiveUrl: archiveUrlFor(STORE_ROOT), buildId }),
+    ),
   )
 
   return app
@@ -68,7 +71,7 @@ export async function startServer(runtime: Runtime = defaultRuntime): Promise<Re
 
   const config = loadConfig(runtime.env)
   await sweepBeforeServing(config.docsRoot)
-  const app = createApp(config, runtime.publicDir)
+  const app = createApp(config, runtime.publicDir, await buildIdFor(runtime.publicDir))
 
   return runtime.serve({ fetch: withClacks(app.fetch), port: config.port, hostname: config.host }, (info) => {
     logStartup('listening on http://%s:%d (docs: %s)', config.host, info.port, config.docsRoot)

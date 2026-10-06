@@ -102,3 +102,22 @@ describe('GET /api/events', () => {
     await expect.poll(() => released).toStrictEqual(['released'])
   })
 })
+
+describe('the build the server is serving', () => {
+  it('is announced first, so a page can tell at once whether it is stale', async () => {
+    const serving = buildApp({ store: cast<DocumentStore>({}), changes, buildId: 'built-today' })
+    const response = await serving.request('/api/events', { signal: abort.signal })
+    const { body } = response
+    if (body === null) throw new Error('the stream has no body')
+
+    expect(await nextText(body.getReader())).toContain('built-today')
+  })
+
+  it('is left unsaid when the server has no build to name, because unknown is not a mismatch', async () => {
+    const reader = await listening()
+
+    changes.announce({ path: 'notes.md', kind: 'written' })
+
+    expect(await nextText(reader)).not.toContain('event: build')
+  })
+})

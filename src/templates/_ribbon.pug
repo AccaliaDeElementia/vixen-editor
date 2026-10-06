@@ -3,6 +3,12 @@ nav.ribbon(aria-label='Primary')
     span.icon(aria-hidden='true') arrow_back
   button.ribbon__button#nav-forward(type='button' aria-label='Forward' disabled aria-disabled='true')
     span.icon(aria-hidden='true') arrow_forward
+  button.ribbon__button.ribbon__button--stale#stale-build(
+    type='button'
+    aria-label='This page is out of date — the server is serving a newer version'
+    hidden
+  )
+    span.icon(aria-hidden='true') warning
   button.ribbon__button#toggle-explorer(
     type='button'
     aria-label='Toggle file browser'

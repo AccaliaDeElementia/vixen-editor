@@ -67,6 +67,7 @@ export interface PaneWorkspace {
   teardownDocument: () => void
   workspace: Workspace
   openPath: (target: string) => Promise<void>
+  flush: () => Promise<boolean>
   showDocument: (entryPath: string) => Promise<void>
   leave: () => void
 }
@@ -201,6 +202,14 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     held,
     editor,
     workspace,
+
+    flush: async () => {
+      if (built === null) return true
+
+      await built.flush()
+
+      return built.saveState() === 'clean'
+    },
 
     teardownDocument: () => {
       built?.teardownDocument()

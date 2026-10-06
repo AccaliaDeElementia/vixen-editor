@@ -8,6 +8,8 @@ import type { EditorView } from '@codemirror/view'
 import { cast } from '../../../cast.ts'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { TestOnly as staleBuild } from '../../../../src/client/editor/stale-build.ts'
+import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,
@@ -144,5 +146,94 @@ describe('letting the application go', () => {
     editor.teardownDocument()
 
     expect(closes).toBe(0)
+  })
+})
+
+describe('a server serving a newer build than this page', () => {
+  function warning(): HTMLElement | null {
+    return root.querySelector<HTMLElement>('#stale-build')
+  }
+
+  async function editing(dialogs: ReturnType<typeof dialogsDismissing>): Promise<void> {
+    trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        servedBuild: 'built-yesterday',
+        session: fakeSession(),
+        files: filesAnsweringEmpty(),
+        dialogs,
+        openChanges: fakeChannel,
+      }),
+    )
+  }
+
+  it('offers the reader the choice, and marks the ribbon when they carry on', async () => {
+    await editing(dialogsDismissing())
+
+    deliver('build', 'built-today')
+    await Promise.resolve()
+
+    expect(warning()?.hidden).toBe(false)
+  })
+
+  it('says nothing when the server is serving the build this page came from', async () => {
+    await editing(dialogsDismissing())
+
+    deliver('build', 'built-yesterday')
+    await Promise.resolve()
+
+    expect(warning()?.hidden).toBe(true)
+  })
+
+  it('saves every pane before reloading, including one that holds no document yet', async () => {
+    let reloads = 0
+    const choosing: Dialogs = { ...dialogsDismissing(), choose: () => Promise.resolve(staleBuild.SAVE_AND_RELOAD) }
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        servedBuild: 'built-yesterday',
+        session: fakeSession(),
+        files: filesAnsweringEmpty(),
+        dialogs: choosing,
+        openChanges: fakeChannel,
+        reopen: () => {
+          reloads += 1
+        },
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    deliver('build', 'built-today')
+    await editor.settled()
+
+    expect(reloads).toBe(1)
+  })
+
+  it('saves the one pane there is when the workspace was never split', async () => {
+    let reloads = 0
+    const choosing: Dialogs = { ...dialogsDismissing(), choose: () => Promise.resolve(staleBuild.SAVE_AND_RELOAD) }
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        servedBuild: 'built-yesterday',
+        session: fakeSession(),
+        files: filesAnsweringEmpty(),
+        dialogs: choosing,
+        openChanges: fakeChannel,
+        reopen: () => {
+          reloads += 1
+        },
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+
+    deliver('build', 'built-today')
+    await editor.settled()
+
+    expect(reloads).toBe(1)
   })
 })

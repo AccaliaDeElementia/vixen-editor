@@ -48,6 +48,7 @@ function fakeChannel(): FakeChannel {
 
 let channel: FakeChannel = fakeChannel()
 let heard: StoreChange[] = []
+let builds: string[] = []
 let connections = 0
 
 function connect(): { disconnect: () => void } {
@@ -58,6 +59,9 @@ function connect(): { disconnect: () => void } {
     onConnected: () => {
       connections += 1
     },
+    onBuild: (serving: string) => {
+      builds.push(serving)
+    },
     open: (url: string) => {
       channel.openedAt.push(url)
 
@@ -67,6 +71,7 @@ function connect(): { disconnect: () => void } {
 }
 
 beforeEach(() => {
+  builds = []
   channel = fakeChannel()
   heard = []
   connections = 0
@@ -140,5 +145,24 @@ describe('letting the channel go', () => {
     channel.deliver('change', JSON.stringify(WRITTEN))
 
     expect(heard).toStrictEqual([])
+  })
+})
+
+describe('the build the server is serving', () => {
+  it('arrives on the channel, so the page can tell it has gone stale', () => {
+    connect()
+
+    channel.deliver('build', 'build-one')
+
+    expect(builds).toStrictEqual(['build-one'])
+  })
+
+  it('stops arriving once the channel is let go', () => {
+    const { disconnect } = connect()
+    disconnect()
+
+    channel.deliver('build', 'build-one')
+
+    expect(builds).toStrictEqual([])
   })
 })

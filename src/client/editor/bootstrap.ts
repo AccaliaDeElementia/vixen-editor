@@ -25,6 +25,8 @@ import type { EditorView } from '@codemirror/view'
 
 import { startsALine } from './document-tab.ts'
 import { createPaneWorkspace, MissingMountError, type PaneWorkspace } from './pane-workspace.ts'
+import { createStaleBuild } from './stale-build.ts'
+import { buildThePageWasServed, watchBuild } from '../build-watch.ts'
 import { createSession, type Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 import { linkTo } from './drops.ts'
@@ -52,6 +54,7 @@ interface BootstrapOptions {
   root?: ParentNode
   pathname?: string
   search?: string
+  servedBuild?: string | null
   session?: Session
   navigate?: (url: string) => void
   listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => () => void
@@ -92,6 +95,7 @@ interface Wiring {
   root: ParentNode
   pathname: string
   search: string
+  servedBuild: string | null
   session: Session
   navigate: (url: string) => void
   files: FilesClient
@@ -100,11 +104,18 @@ interface Wiring {
   replaceUrl: (url: string) => void
 }
 
-function wiringFor(options: BootstrapOptions): Wiring {
+function pageAsServed(options: BootstrapOptions): Pick<Wiring, 'pathname' | 'search' | 'servedBuild'> {
   return {
-    root: options.root ?? document,
     pathname: options.pathname ?? window.location.pathname,
     search: options.search ?? window.location.search,
+    servedBuild: options.servedBuild ?? buildThePageWasServed(),
+  }
+}
+
+function wiringFor(options: BootstrapOptions): Wiring {
+  return {
+    ...pageAsServed(options),
+    root: options.root ?? document,
     session: options.session ?? createSession(createDocumentClient()),
     navigate: options.navigate ?? replaceAddress,
     files: options.files ?? createFilesClient(),
@@ -115,7 +126,8 @@ function wiringFor(options: BootstrapOptions): Wiring {
 }
 
 async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
-  const { root, pathname, search, session, navigate, files, reopen, openUrl, replaceUrl } = wiringFor(options)
+  const { root, pathname, search, servedBuild, session, navigate, files, reopen, openUrl, replaceUrl } =
+    wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
 
   const toast = createToast(root)
@@ -184,7 +196,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (aside === null) return
 
     touched = aside
-    carrying.push(aside.showDocument(entryPath))
+    pending.push(aside.showDocument(entryPath))
   })
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
@@ -301,7 +313,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  const carrying: Array<Promise<void>> = []
+  const pending: Array<Promise<void>> = []
 
   function releaseFrom(surface: PaneWorkspace | null, at: TabAt): void {
     if (surface === null) return
@@ -317,7 +329,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       if (at.view !== 'editor') return
 
       leaving.leave()
-      carrying.push(arriving.showDocument(at.path))
+      pending.push(arriving.showDocument(at.path))
     },
     primary: primaryWorkspace,
     summon: secondaryWorkspaceTowards,
@@ -404,8 +416,25 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     teardownSecondaryDocument()
   }
 
+  const staleBuild = createStaleBuild({
+    root,
+    dialogs,
+    reload: reopen,
+    announce: setStatus,
+    saveEverything: async () => {
+      const everywhere = [primaryWorkspace.flush(), secondary === null ? Promise.resolve(true) : secondary.flush()]
+
+      return (await Promise.all(everywhere)).every((saved) => saved)
+    },
+  })
+
+  const noticeBuild = watchBuild(servedBuild, () => {
+    pending.push(staleBuild.noticed())
+  })
+
   const changes = connectToChanges({
     open: options.openChanges,
+    onBuild: noticeBuild,
     onChange: (change) => {
       if (changeTouches(change, documentId())) void tab.recheck()
     },
@@ -426,7 +455,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     teardownDocument,
     teardownApplication,
     settled: async () => {
-      await Promise.all(carrying.splice(EVERYTHING_PENDING))
+      await Promise.all(pending.splice(EVERYTHING_PENDING))
       await closingTabs.settled()
     },
     teardownEditor: () => {
