@@ -23,6 +23,7 @@ import { describeRefusal } from './leaving.ts'
 import { bindLinkClicks } from './link-clicks.ts'
 import { linkTargetAt } from './link-targets.ts'
 import { createEditorState } from './markdown-setup.ts'
+import { createMaterialised } from './materialised.ts'
 import { createMergeControl } from './merging.ts'
 import type { Session } from './session.ts'
 
@@ -75,6 +76,8 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   const { session, files, dialogs, toast, statusBar, documentId, openUrl, announce } = options
 
   let caretPosition = TOP_OF_DOCUMENT
+  let openedAt: string | null = null
+  const materialised = createMaterialised()
   let lastRefusal: unknown = null
 
   const holder = createHolderControl()
@@ -204,9 +207,14 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   }
 
   function open(entryPath: string, content: string): void {
-    const caret = recallCaret(entryPath, content.length)
+    if (openedAt !== null) materialised.remember(openedAt, view.state)
+    openedAt = entryPath
+
+    const loaded = materialised.recall(entryPath, content)
+    const caret = loaded === null ? recallCaret(entryPath, content.length) : caretIn(loaded)
+
     caretPosition = caret
-    view.setState(stateFor(content, caret))
+    view.setState(loaded ?? stateFor(content, caret))
     holder.follow(view, entryPath)
     autosave.reset(content)
     statusBar.showWordCount(content)
