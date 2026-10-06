@@ -414,3 +414,46 @@ describe('a trash entry row', () => {
     expect(rowFor(joinPath(TRASH_PATH, entry.id)).querySelector('button')).toBeNull()
   })
 })
+
+describe('a redraw while the reader is part way through something', () => {
+  it('keeps the row element, so a gesture that began on it is not destroyed', () => {
+    render()
+    const before = rowFor('notes.md')
+
+    render()
+
+    expect(rowFor('notes.md')).toBe(before)
+  })
+
+  it('keeps focus where the reader put it', () => {
+    document.body.append(tree)
+    render()
+    rowFor('notes.md').focus()
+    given(() => {
+      expect(document.activeElement).toBe(rowFor('notes.md'))
+    })
+
+    render()
+
+    expect(document.activeElement).toBe(rowFor('notes.md'))
+  })
+
+  it('still redraws what changed, rather than keeping a stale row', () => {
+    render()
+    given(() => {
+      expect(rowFor('notes.md').getAttribute('aria-selected')).toBe('false')
+    })
+
+    render({ selected: 'notes.md' })
+
+    expect(rowFor('notes.md').getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('lets go of a row the tree no longer holds', () => {
+    render()
+
+    render({ nodes: parseTree({ tree: [{ name: 'notes.md', path: 'notes.md', kind: 'document' }] }) })
+
+    expect(pathsShown()).toStrictEqual(['notes.md', TRASH_PATH])
+  })
+})

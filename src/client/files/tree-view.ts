@@ -70,17 +70,41 @@ interface RowOptions {
   href?: string
 }
 
-function row(options: RowOptions): HTMLElement {
+const DRAWN = new WeakMap<Element, Map<string, HTMLElement>>()
+
+function drawnIn(tree: Element): Map<string, HTMLElement> {
+  const existing = DRAWN.get(tree)
+  if (existing !== undefined) return existing
+
+  const started = new Map<string, HTMLElement>()
+  DRAWN.set(tree, started)
+
+  return started
+}
+
+function rowIdentity(path: string, kind: EntryKind | 'trash-root'): string {
+  return `${kind}:${path}`
+}
+
+function row(options: RowOptions, drawn: Map<string, HTMLElement>): HTMLElement {
   const { path, kind, draggable, name, depth, expanded, selected, href } = options
-  const element = treeRow({ path, kind, depth }, href)
+  const identity = rowIdentity(path, kind)
+  const element = drawn.get(identity) ?? treeRow({ path, kind, depth }, href)
+  drawn.set(identity, element)
 
   element.className = 'tree__row'
+  element.style.setProperty('--depth', String(depth))
   element.setAttribute('aria-selected', String(selected))
   if (draggable === true) element.draggable = true
 
-  if (expanded !== null) element.setAttribute('aria-expanded', String(expanded))
+  if (expanded === null) element.removeAttribute('aria-expanded')
+  else element.setAttribute('aria-expanded', String(expanded))
 
-  element.append(twisty(expanded), icon(ENTRY_GLYPHS[kind === 'trash-root' ? 'folder' : kind], kind), label(name))
+  element.replaceChildren(
+    twisty(expanded),
+    icon(ENTRY_GLYPHS[kind === 'trash-root' ? 'folder' : kind], kind),
+    label(name),
+  )
 
   return element
 }
@@ -94,7 +118,12 @@ interface Rendered {
   visible: VisibleRow[]
 }
 
-function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: number): Rendered {
+function renderNodes(
+  nodes: readonly TreeNode[],
+  model: TreeViewModel,
+  depth: number,
+  drawn: Map<string, HTMLElement>,
+): Rendered {
   const items: HTMLElement[] = []
   const visible: VisibleRow[] = []
 
@@ -104,21 +133,21 @@ function renderNodes(nodes: readonly TreeNode[], model: TreeViewModel, depth: nu
     if (node.kind !== 'folder') {
       const href = docUrlFor(node.path)
       const options = { path: node.path, kind: node.kind, name: node.name, depth, expanded: null, selected, href }
-      items.push(treeItem(row({ ...options, draggable: true })))
+      items.push(treeItem(row({ ...options, draggable: true }, drawn)))
       visible.push({ path: node.path, expandable: false, kind: node.kind, opens: href })
       continue
     }
 
     const expanded = model.open.has(node.path)
     const element = treeItem(
-      row({ path: node.path, kind: 'folder', name: node.name, depth, expanded, selected, draggable: true }),
+      row({ path: node.path, kind: 'folder', name: node.name, depth, expanded, selected, draggable: true }, drawn),
     )
     items.push(element)
     visible.push({ path: node.path, expandable: true, kind: 'folder', opens: null })
 
     if (!expanded) continue
 
-    const nested = renderNodes(node.children, model, depth + ONE_LEVEL_DEEPER)
+    const nested = renderNodes(node.children, model, depth + ONE_LEVEL_DEEPER, drawn)
     const children = group()
     children.append(...nested.items)
     element.append(children)
@@ -143,17 +172,20 @@ function emptyTrashAction(held: number): HTMLElement {
   return element
 }
 
-function renderTrash(model: TreeViewModel): Rendered {
+function renderTrash(model: TreeViewModel, drawn: Map<string, HTMLElement>): Rendered {
   const expanded = model.open.has(TRASH_PATH)
   const name = `Trash (${String(model.trash.length)})`
-  const trashRow = row({
-    path: TRASH_PATH,
-    kind: 'trash-root',
-    name,
-    depth: ROOT_DEPTH,
-    selected: model.selected === TRASH_PATH,
-    expanded,
-  })
+  const trashRow = row(
+    {
+      path: TRASH_PATH,
+      kind: 'trash-root',
+      name,
+      depth: ROOT_DEPTH,
+      selected: model.selected === TRASH_PATH,
+      expanded,
+    },
+    drawn,
+  )
   if (model.trash.length > NOTHING_DELETED) trashRow.append(emptyTrashAction(model.trash.length))
 
   const element = treeItem(trashRow)
@@ -166,15 +198,18 @@ function renderTrash(model: TreeViewModel): Rendered {
     const { id, originalPath, kind, deletedAt } = entry
     const href = trashUrlFor(id)
     const entryKey = joinPath(TRASH_PATH, id)
-    const deleted = row({
-      path: entryKey,
-      kind,
-      name: originalPath,
-      depth: TRASH_ENTRY_DEPTH,
-      expanded: null,
-      selected: model.selected === entryKey,
-      href,
-    })
+    const deleted = row(
+      {
+        path: entryKey,
+        kind,
+        name: originalPath,
+        depth: TRASH_ENTRY_DEPTH,
+        expanded: null,
+        selected: model.selected === entryKey,
+        href,
+      },
+      drawn,
+    )
     deleted.dataset.trashId = id
     deleted.title = `Deleted ${deletedAt}`
     children.append(treeItem(deleted))
@@ -193,11 +228,14 @@ function applyRovingTabindex(tree: Element): void {
 }
 
 export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {
-  const main = renderNodes(model.nodes, model, ROOT_DEPTH)
-  const bin = renderTrash(model)
+  const drawn = drawnIn(tree)
+  const { activeElement: focused } = document
+  const main = renderNodes(model.nodes, model, ROOT_DEPTH, drawn)
+  const bin = renderTrash(model, drawn)
 
   tree.replaceChildren(...main.items, ...bin.items)
   applyRovingTabindex(tree)
+  if (focused instanceof HTMLElement && tree.contains(focused)) focused.focus()
 
   return [...main.visible, ...bin.visible]
 }

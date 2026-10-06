@@ -127,20 +127,35 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
   }
 
+  let armedAgainst: string | null = null
+
+  function whatIsInTheTrash(): string {
+    return trash.map((entry) => entry.id).join(',')
+  }
+
   function bindEmptyTrash(): void {
     const button = tree.querySelector<HTMLElement>(EMPTY_TRASH_SELECTOR)
+    if (button === null) return
 
-    button?.addEventListener('click', (event) => {
+    function askOnce(): void {
+      armedAgainst = whatIsInTheTrash()
+      button?.replaceChildren(`Delete ${entriesIn(trash.length)} for good`)
+    }
+
+    if (armedAgainst !== null && armedAgainst !== whatIsInTheTrash()) armedAgainst = null
+    if (armedAgainst !== null) askOnce()
+
+    button.addEventListener('click', (event) => {
       event.preventDefault()
       event.stopPropagation()
 
-      if (button.dataset.armed === undefined) {
-        button.dataset.armed = 'yes'
-        button.replaceChildren(`Delete ${entriesIn(trash.length)} for good`)
+      if (armedAgainst === null) {
+        askOnce()
 
         return
       }
 
+      armedAgainst = null
       runs.track(
         emptyTrash().catch((error: unknown) => {
           toast.error(errorMessage(error))

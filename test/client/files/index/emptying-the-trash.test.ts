@@ -112,16 +112,43 @@ describe('asking to empty the trash', () => {
     expect(statusText()).toContain('Busy')
   })
 
-  it('disarms when the browser redraws, so a stale confirmation cannot fire', async () => {
+  it('disarms when the trash itself changes, so a stale confirmation cannot fire', async () => {
     await start()
     control().click()
     given(() => {
       expect(control().textContent).toBe('Delete 2 entries for good')
     })
 
+    client.trash.mockResolvedValue([TRASHED])
     announceStoreChanged(host)
     await settled()
 
     expect(control().textContent).toBe('delete_sweep')
+  })
+})
+
+describe('a confirmation that outlives a redraw', () => {
+  it('still deletes on the second click, rather than asking all over again', async () => {
+    await start()
+    control().click()
+    given(() => {
+      expect(client.emptyTrash).not.toHaveBeenCalled()
+    })
+
+    announceStoreChanged(host)
+    await settled()
+    control().click()
+
+    expect(client.emptyTrash).toHaveBeenCalledTimes(1)
+  })
+
+  it('still reads as armed after the tree is drawn again', async () => {
+    await start()
+    control().click()
+
+    announceStoreChanged(host)
+    await settled()
+
+    expect(control().textContent).toContain('for good')
   })
 })
