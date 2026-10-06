@@ -20,13 +20,16 @@
     "test:coverage": "vitest run --coverage",
     "test:browser": "npm run build && playwright test -c test-browser/playwright.config.ts",
     "test:all": "npm test && npm run test:browser",
-    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.test-browser.json",
-    "lint": "eslint .",
+    "typecheck": "run-p typecheck:server typecheck:client typecheck:browser",
+    "lint": "eslint . --cache",
     "assertions": "node tools/assertions.ts",
     "mutate": "node tools/mutate.ts",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write --log-level=warn .",
-    "format:check": "prettier --check ."
+    "format": "prettier --write --log-level=warn --cache .",
+    "format:check": "prettier --check .",
+    "typecheck:server": "tsc --noEmit -p tsconfig.server.json",
+    "typecheck:client": "tsc --noEmit -p tsconfig.client.json",
+    "typecheck:browser": "tsc --noEmit -p tsconfig.test-browser.json"
   },
   "dependencies": {
     "@codemirror/legacy-modes": "^6.5.4",
@@ -60,6 +63,7 @@
     "eslint": "^10.11.0",
     "eslint-config-love": "^157.0.0",
     "happy-dom": "^20.14.5",
+    "npm-run-all2": "^9.0.3",
     "prettier": "^3.9.8",
     "sass": "^1.104.1",
     "typescript": "^6.0.3",
