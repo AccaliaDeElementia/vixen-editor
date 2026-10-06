@@ -1,6 +1,6 @@
 'use sanity'
 
-import { execFile } from 'node:child_process'
+import { spawn as spawnProcess } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 
 import { serially } from '../src/shared/serially.ts'
@@ -48,15 +48,98 @@ interface Ran {
   timedOut: boolean
 }
 
-async function run(command: string, args: string[], timeoutMs?: number): Promise<Ran> {
-  const settled: PromiseWithResolvers<Ran> = Promise.withResolvers()
+type Finished = (error: Error | null, stdout: string) => void
 
-  execFile(command, args, { timeout: timeoutMs }, (error, stdout) => {
-    const timedOut = error !== null && 'killed' in error && error.killed
-    settled.resolve({ stdout, failed: error !== null, timedOut })
+interface Child {
+  pid?: number | undefined
+}
+
+interface Sandbox {
+  spawn: (command: string, args: string[], done: Finished) => Child
+  kill: (pid: number, signal: NodeJS.Signals) => void
+}
+
+const OWN_PROCESS_GROUP = true
+const HARD_KILL = 'SIGKILL'
+const NO_OUTPUT = ''
+const INTERRUPTS = ['SIGINT', 'SIGTERM'] as const
+
+const liveGroups = new Set<number>()
+
+const defaultSandbox: Sandbox = {
+  spawn: (command, args, done) => {
+    // Node's execFile signals only the direct child on timeout, and takes no
+    // detached option -- so vitest and its forked workers outlive it.
+    const child = spawnProcess(command, args, { detached: OWN_PROCESS_GROUP })
+    let output = NO_OUTPUT
+
+    child.stdout.on('data', (chunk: Buffer) => {
+      output += chunk.toString()
+    })
+    child.on('error', (error: Error) => {
+      done(error, output)
+    })
+    child.on('close', (code: number | null) => {
+      done(code === SUCCESS ? null : new Error(`${command} exited with ${String(code)}`), output)
+    })
+
+    return child
+  },
+  kill: (pid, signal) => {
+    try {
+      process.kill(pid, signal)
+    } catch {
+      process.stdout.write(`  could not signal process group ${String(pid)}\n`)
+    }
+  },
+}
+
+function groupOf(pid: number): number {
+  return -pid
+}
+
+function endGroup(sandbox: Sandbox, pid: number | undefined): void {
+  if (pid === undefined) return
+
+  liveGroups.delete(pid)
+  sandbox.kill(groupOf(pid), HARD_KILL)
+}
+
+function endEveryLiveGroup(): void {
+  for (const pid of liveGroups) endGroup(defaultSandbox, pid)
+}
+
+async function run(
+  command: string,
+  args: string[],
+  timeoutMs?: number,
+  sandbox: Sandbox = defaultSandbox,
+): Promise<Ran> {
+  const settled: PromiseWithResolvers<Ran> = Promise.withResolvers()
+  const running: Child = {}
+
+  const expiry =
+    timeoutMs === undefined
+      ? null
+      : setTimeout(() => {
+          endGroup(sandbox, running.pid)
+          settled.resolve({ stdout: NO_OUTPUT, failed: true, timedOut: true })
+        }, timeoutMs)
+
+  const child = sandbox.spawn(command, args, (error, stdout) => {
+    if (expiry !== null) clearTimeout(expiry)
+    settled.resolve({ stdout, failed: error !== null, timedOut: false })
   })
 
-  return await settled.promise
+  const { pid } = child
+  running.pid = pid
+  if (pid !== undefined) liveGroups.add(pid)
+
+  try {
+    return await settled.promise
+  } finally {
+    if (pid !== undefined) liveGroups.delete(pid)
+  }
 }
 
 function skippable(line: string): boolean {
@@ -226,7 +309,16 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
+export const TestOnly = { run }
+
 if (import.meta.main) {
+  for (const interrupt of INTERRUPTS) {
+    process.once(interrupt, () => {
+      endEveryLiveGroup()
+      process.kill(process.pid, interrupt)
+    })
+  }
+
   const [first, ...rest] = process.argv.slice(ARGUMENTS_START)
   const unmet =
     first === '--cases' ? await check(await casesFrom(rest[FIRST_INDEX] ?? '')) : await mutate([first ?? '', ...rest])

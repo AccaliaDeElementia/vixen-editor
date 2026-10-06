@@ -360,6 +360,35 @@ earned its spec by failing that way first: `EventTarget.prototype` is not what
 `window.addEventListener` resolves to under this runner, and the instrument
 was blind until a deliberately leaked listener was used to prove otherwise.
 
+<a id="testing-1f93ac"></a>
+
+### What bounds a hang, and what does not
+
+`testTimeout` bounds a test that **waits**. It does not bound one that
+**spins**: a synchronous loop holds the event loop that would run the timer, so
+the timeout never fires and the per-project bounds buy nothing. Measured at
+`testTimeout: 1000` against a test that ran for ninety seconds.
+
+**Nothing can enforce this**, because any guard would need the thread the spin
+is holding. So it is written down instead, which is the one case this document
+prefers prose to a check.
+
+It surfaced through `npm run mutate`, the one thing here that _creates_
+spinning code on purpose — mutating a loop bound (`' < '` to `' <= '`) produces
+a loop that never ends. **The damage was not the hang but what outlived it.**
+`execFile`'s timeout signals only the process it started, so the signal reached
+`npx` and neither vitest nor its forked workers; both reparented to PID 1 and
+spun at 100% CPU until they were found days later. The runner now spawns
+detached and kills the whole process group, and
+`test/conventions/mutate.test.ts` fails if that is simplified back to a plain
+`execFile` timeout.
+
+**For `npm test` the same blindness is much milder**, and worth recognising
+rather than fixing: the parent stays attached, so Ctrl-C works and nothing is
+orphaned. A gate that appears wedged with no timeout firing is this, and the
+cause is a synchronous loop in the code under test rather than anything in the
+suite.
+
 <a id="testing-924694"></a>
 
 ### The conventions suite enforces the rules
