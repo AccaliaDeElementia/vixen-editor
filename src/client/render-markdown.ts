@@ -7,6 +7,7 @@ import { VIXEN_MARKDOWN_EXTENSIONS } from '../shared/markdown-tree.ts'
 import { decodeDestination } from '../shared/link-syntax.ts'
 import { highlightCode, resolveLanguage } from './highlight-code.ts'
 import { sanitiseHtml, type SanitiseHtml } from './sanitise-html.ts'
+import { closesATag, holdsNothing, openedBy } from './inline-html.ts'
 import { decodeEntity } from './html-entities.ts'
 import { safeDestination } from './safe-destination.ts'
 
@@ -16,6 +17,7 @@ const PAST_MARKER = 1
 const HTML_INFO = 'html'
 const LABEL_CLOSES = ']'
 const RAW_HTML_CLASS = 'markup__html'
+const INLINE_TAG = 'HTMLTag'
 
 const HEADINGS: ReadonlyMap<string, string> = new Map([
   ['ATXHeading1', 'h1'],
@@ -140,20 +142,53 @@ function textOfChildren(node: SyntaxNode, walk: Walk): string {
   return holder.textContent
 }
 
+function appendInlineTag(open: ParentNode, nesting: ParentNode[], source: string, walk: Walk): ParentNode {
+  if (closesATag(source)) {
+    const previous = nesting.pop()
+    if (previous !== undefined) return previous
+
+    open.append(codeElement(source, HTML_INFO))
+
+    return open
+  }
+
+  const opened = openedBy(source, walk.sanitise)
+  if (opened === null) {
+    open.append(codeElement(source, HTML_INFO))
+
+    return open
+  }
+
+  open.append(opened)
+  if (holdsNothing(opened)) return open
+
+  nesting.push(open)
+
+  return opened
+}
+
 function appendChildren(into: ParentNode, node: SyntaxNode, walk: Walk): void {
   const { name, from: start, to: end } = node
   const gapsAreContent = !BLOCK_CONTAINERS.has(name)
+  const nesting: ParentNode[] = []
+  let open: ParentNode = into
   let at = start
 
   for (const child of childrenOf(node)) {
     const { from, to } = child
-    if (gapsAreContent && from > at) into.append(textFrom(walk.source, at, from))
-    const rendered = renderNode(child, walk)
-    if (rendered !== null) into.append(rendered)
+    if (gapsAreContent && from > at) open.append(textFrom(walk.source, at, from))
     at = to
+
+    if (child.name === INLINE_TAG) {
+      open = appendInlineTag(open, nesting, walk.source.slice(from, to), walk)
+      continue
+    }
+
+    const rendered = renderNode(child, walk)
+    if (rendered !== null) open.append(rendered)
   }
 
-  if (gapsAreContent && end > at) into.append(textFrom(walk.source, at, end))
+  if (gapsAreContent && end > at) open.append(textFrom(walk.source, at, end))
 }
 
 function elementFor(tag: string, node: SyntaxNode, walk: Walk): HTMLElement {
@@ -341,7 +376,6 @@ const RENDERERS: ReadonlyMap<string, Render> = new Map<string, Render>([
   ['Escape', renderEscape],
   ['FencedCode', renderCode],
   ['HTMLBlock', renderRawBlock],
-  ['HTMLTag', renderRawInline],
   ['HardBreak', renderBreak],
   ['HorizontalRule', renderRule],
   ['Image', renderImage],

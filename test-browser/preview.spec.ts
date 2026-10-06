@@ -432,3 +432,30 @@ test('taking that way scrolls the hidden tabs into view', async ({ page }) => {
 
   await expect.poll(async () => await scroller.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
 })
+
+test('an inline tag the allowlist keeps becomes that element in the preview', async ({ page, request }) => {
+  const name = `inline-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: 'a <span>kept **bold**</span> c' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('kept'))
+
+  await page.locator('#preview-markup').click()
+
+  await expect(page.locator('[data-part="markup-body"] p span strong').last()).toHaveText('bold')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('an inline tag the allowlist refuses stays as source in the preview', async ({ page, request }) => {
+  const name = `inlinebad-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: 'a <script>window.pwned = 1</script> c' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('pwned'))
+
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] p').last()).toContainText('script'))
+
+  expect(await page.evaluate(() => 'pwned' in window)).toBe(false)
+
+  await request.delete(`/api/files/entries/${name}`)
+})

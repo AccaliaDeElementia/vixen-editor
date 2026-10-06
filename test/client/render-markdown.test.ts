@@ -347,13 +347,47 @@ describe('raw HTML in a block, which the sanitiser decides about', () => {
   })
 })
 
-describe('raw HTML written inline, which stays as source', () => {
-  it('shows an inline tag as the reader wrote it', () => {
-    expect(textOf('a <span>b</span> c', 'p')).toBe('a <span>b</span> c')
+function sanitiserAllowingSpans(source: string): DocumentFragment {
+  const fragment = document.createDocumentFragment()
+  if (source.includes('span')) fragment.append(document.createElement('span'))
+  if (source.includes('br')) fragment.append(document.createElement('br'))
+
+  return fragment
+}
+
+describe('raw HTML written inline', () => {
+  it('becomes the element the sanitiser allowed', () => {
+    expect(render('a <span>b</span> c', sanitiserAllowingSpans).querySelector('p span')?.textContent).toBe('b')
   })
 
-  it('puts an inline tag inside a code element rather than letting it be markup', () => {
-    expect(render('a <span>b</span> c').querySelector('code')?.textContent).toBe('<span>')
+  it('keeps the text around it outside', () => {
+    const paragraph = render('a <span>b</span> c', sanitiserAllowingSpans).querySelector('p')
+
+    expect(asOneLine(paragraph?.textContent ?? '')).toBe('a b c')
+  })
+
+  it('goes on rendering the markdown written inside it', () => {
+    expect(render('a <span>**b**</span> c', sanitiserAllowingSpans).querySelector('span strong')?.textContent).toBe('b')
+  })
+
+  it('closes where the reader closed it, so what follows is outside', () => {
+    expect(render('a <span>b</span> c', sanitiserAllowingSpans).querySelector('span')?.textContent).toBe('b')
+  })
+
+  it('holds nothing when the tag is one that cannot, so what follows stays outside', () => {
+    expect(render('a <br> c', sanitiserAllowingSpans).querySelector('br')?.textContent).toBe('')
+  })
+
+  it('shows a tag the sanitiser refuses as source instead', () => {
+    expect(render('a <script>b</script> c').querySelector('code')?.textContent).toBe('<script>')
+  })
+
+  it('shows the closing tag of a refused one as source too, rather than swallowing it', () => {
+    expect(asOneLine(textOf('a <script>b</script> c', 'p'))).toBe('a <script>b</script> c')
+  })
+
+  it('shows a closing tag that closes nothing as source', () => {
+    expect(asOneLine(textOf('a </span> c', 'p'))).toBe('a </span> c')
   })
 
   it('shows an inline comment as source', () => {
