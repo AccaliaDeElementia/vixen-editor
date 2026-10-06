@@ -15,6 +15,7 @@ interface PreviewingOptions {
   primary: Pane
   summon: () => PaneWorkspace | null
   focus: (surface: PaneWorkspace) => void
+  releaseElsewhere: (at: TabAt) => void
   documentId: () => string
   contentNow: () => string
   showingDocument: () => boolean
@@ -36,6 +37,7 @@ export function createPreviewing(options: PreviewingOptions): Previewing {
     options.focus(target)
 
     const at: TabAt = { path: options.documentId(), view: wanted }
+    options.releaseElsewhere(at)
     options.previews.render(target.element, at, options.contentNow())
     if (options.primary.holdsPermanently({ path: at.path, view: 'editor' })) target.pane.keep(at)
     else target.pane.open(at)

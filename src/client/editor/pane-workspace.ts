@@ -54,6 +54,7 @@ interface PaneWorkspaceOptions {
   onCloseRequested: (at: TabAt) => void
   onTabArrived: (identity: string, toIndex: number) => void
   onShowing: (entryPath: string) => void
+  releaseElsewhere: (at: TabAt) => void
   listenForFocus?: FocusListener | undefined
 }
 
@@ -185,8 +186,10 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
     const initial = stored ? template : await withCheatsheetIfNew(template, reached)
 
+    const at: TabAt = { path: reached, view: 'editor' }
+    options.releaseElsewhere(at)
     editor().open(reached, initial)
-    pane.open({ path: reached, view: 'editor' })
+    pane.open(at)
     workspace.show('document', shown)
     announce(`Editing ${reached} — press Ctrl/Cmd+S to save`)
   }

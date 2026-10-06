@@ -11,7 +11,7 @@ import { createDocumentClient } from './document-client.ts'
 import { followDeletion } from './follow-deletion.ts'
 import { createToast } from '../toast.ts'
 import { createFilesClient, type FilesClient } from '../files/files-client.ts'
-import type { TabAt } from '../layout/open-tabs.ts'
+import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import { createPreviews } from './previews.ts'
 import { createPreviewing } from './previewing.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
@@ -156,6 +156,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onShowing: (entryPath: string) => {
       openDocument.commit(entryPath)
     },
+    releaseElsewhere: (at: TabAt) => {
+      releaseFrom(secondary, at)
+    },
   })
 
   const { pane: primary, workspace, statusBar } = primaryWorkspace
@@ -228,6 +231,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         onShowing: (entryPath: string) => {
           openDocument.commit(entryPath)
         },
+        releaseElsewhere: (at: TabAt) => {
+          releaseFrom(primaryWorkspace, at)
+        },
       })
 
       secondary = built
@@ -274,6 +280,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     focus: (surface: PaneWorkspace) => {
       touched = surface
     },
+    releaseElsewhere: (at: TabAt) => {
+      releaseFrom(primaryWorkspace, at)
+    },
     documentId,
     contentNow: () => view.state.doc.toString(),
     showingDocument: () => workspace.showing() === 'document',
@@ -284,6 +293,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
 
   const carrying: Array<Promise<void>> = []
+
+  function releaseFrom(surface: PaneWorkspace | null, at: TabAt): void {
+    if (surface === null) return
+    if (!surface.pane.held().some((candidate) => tabIdentity(candidate) === tabIdentity(at))) return
+
+    surface.pane.close(at)
+    if (at.view === 'editor') surface.leave()
+  }
 
   const paneMoves = createPaneMoves({
     root,

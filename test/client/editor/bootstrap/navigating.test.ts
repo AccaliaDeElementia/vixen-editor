@@ -276,3 +276,29 @@ describe('navigating to a URL that names a view', () => {
     expect(sourceBody()?.textContent).toBe('# b.md')
   })
 })
+
+describe('opening a document the other pane already holds', () => {
+  function press(init: KeyboardEventInit): void {
+    root.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+  }
+
+  function stripOf(which: number): HTMLElement | undefined {
+    return root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[which]
+  }
+
+  it('takes it out of that pane, because only one editor may hold a document', async () => {
+    const stub = stubbedNavigation()
+    const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
+    await openEditor({ root, pathname: '/doc/a.md', session, navigation: stub.navigation })
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    press({ key: 'ArrowLeft', altKey: true, ctrlKey: true })
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
+    given(() => {
+      expect(stripOf(1)?.querySelector('[data-tab="editor:a.md"]')).not.toBeNull()
+    })
+
+    await stub.go('/doc/a.md')
+
+    expect(root.querySelectorAll('[data-tab="editor:a.md"]')).toHaveLength(1)
+  })
+})

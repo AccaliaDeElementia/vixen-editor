@@ -676,6 +676,28 @@ describe('moving between the panes from the keyboard', () => {
     expect(root.querySelector('[data-tab="editor:elsewhere.md"]')).toBeNull()
   })
 
+  it('lets an editor and both preview types hold one document at the same time', async () => {
+    await editing('# stored')
+    requestKeep(root, 'notes.md')
+
+    root.querySelector<HTMLElement>('#preview-source')?.click()
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    expect(
+      ['editor', 'source', 'markup'].map((view) => root.querySelectorAll(`[data-tab="${view}:notes.md"]`).length),
+    ).toStrictEqual([1, 1, 1])
+  })
+
+  it('raises the preview that already exists rather than opening a second', async () => {
+    await editing('# stored')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    expect(root.querySelectorAll('[data-tab="markup:notes.md"]')).toHaveLength(1)
+  })
+
   it('takes it out of the pane it came from', async () => {
     await editing()
     requestKeep(root, 'notes.md')
