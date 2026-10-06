@@ -6,6 +6,7 @@ import type { SyntaxNode } from '@lezer/common'
 import { VIXEN_MARKDOWN_EXTENSIONS } from '../shared/markdown-tree.ts'
 import { decodeDestination } from '../shared/link-syntax.ts'
 import { highlightCode, resolveLanguage } from './highlight-code.ts'
+import { sanitiseHtml, type SanitiseHtml } from './sanitise-html.ts'
 import { decodeEntity } from './html-entities.ts'
 import { safeDestination } from './safe-destination.ts'
 
@@ -14,6 +15,7 @@ const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 const PAST_MARKER = 1
 const HTML_INFO = 'html'
 const LABEL_CLOSES = ']'
+const RAW_HTML_CLASS = 'markup__html'
 
 const HEADINGS: ReadonlyMap<string, string> = new Map([
   ['ATXHeading1', 'h1'],
@@ -84,6 +86,7 @@ function textFrom(source: string, from: number, to: number): Text {
 interface Walk {
   source: string
   references: ReadonlyMap<string, string>
+  sanitise: SanitiseHtml
 }
 
 type Render = (node: SyntaxNode, walk: Walk) => Node | null
@@ -290,7 +293,13 @@ function renderCell(node: SyntaxNode, walk: Walk): HTMLElement {
 }
 
 function renderRawBlock(node: SyntaxNode, walk: Walk): Node {
-  return preformatted(walk.source.slice(node.from, node.to), HTML_INFO, node)
+  const holder = document.createElement('div')
+  holder.className = RAW_HTML_CLASS
+  holder.dataset.from = String(node.from)
+  holder.dataset.to = String(node.to)
+  holder.append(walk.sanitise(walk.source.slice(node.from, node.to)))
+
+  return holder
 }
 
 function renderRawInline(node: SyntaxNode, walk: Walk): Node {
@@ -350,9 +359,9 @@ function renderNode(node: SyntaxNode, walk: Walk): Node | null {
   return render === undefined ? null : render(node, walk)
 }
 
-export function renderMarkdown(markdown: string): DocumentFragment {
+export function renderMarkdown(markdown: string, sanitise: SanitiseHtml = sanitiseHtml): DocumentFragment {
   const { topNode: root } = markdownParser.parse(markdown)
-  const walk: Walk = { source: markdown, references: referencesIn(root, markdown) }
+  const walk: Walk = { source: markdown, references: referencesIn(root, markdown), sanitise }
   const fragment = document.createDocumentFragment()
 
   appendChildren(fragment, root, walk)

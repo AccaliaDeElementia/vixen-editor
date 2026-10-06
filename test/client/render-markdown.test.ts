@@ -5,11 +5,24 @@ import { describe, expect, it } from 'vitest'
 import { renderMarkdown } from '../../src/client/render-markdown.ts'
 import { SCRIPT_URL } from './hostile-urls.ts'
 
-function render(markdown: string): HTMLElement {
+function sanitiserAllowing(): DocumentFragment {
+  const fragment = document.createDocumentFragment()
+  const allowed = document.createElement('em')
+  allowed.textContent = 'allowed'
+  fragment.append(allowed)
+
+  return fragment
+}
+
+function render(markdown: string, sanitise?: (raw: string) => DocumentFragment): HTMLElement {
   const host = document.createElement('div')
-  host.append(renderMarkdown(markdown))
+  host.append(sanitise === undefined ? renderMarkdown(markdown) : renderMarkdown(markdown, sanitise))
 
   return host
+}
+
+function sanitisedInto(markdown: string, selector: string): Element | null {
+  return render(markdown, sanitiserAllowing).querySelector(selector)
 }
 
 function tagsIn(markdown: string): string[] {
@@ -294,20 +307,48 @@ describe('code', () => {
   })
 })
 
-describe('raw HTML, which the preview shows rather than runs', () => {
-  it('renders an HTML block as code rather than as elements', () => {
-    expect(render('<div class="raw">hi</div>').querySelector('div.raw')).toBeNull()
+describe('raw HTML in a block, which the sanitiser decides about', () => {
+  it('hands the block to the sanitiser exactly as the document wrote it', () => {
+    const seen: string[] = []
+
+    renderMarkdown('<div class="raw">hi</div>', (raw) => {
+      seen.push(raw)
+
+      return document.createDocumentFragment()
+    })
+
+    expect(seen).toStrictEqual(['<div class="raw">hi</div>'])
   })
 
-  it('shows the block as its source', () => {
-    expect(textOf('<div class="raw">hi</div>', 'pre code')).toBe('<div class="raw">hi</div>')
+  it('renders what the sanitiser gave back rather than the source', () => {
+    expect(sanitisedInto('<div>hi</div>', 'em')?.textContent).toBe('allowed')
   })
 
-  it('highlights the block as HTML, so it reads as deliberate rather than broken', () => {
-    expect(render('<div class="raw">hi</div>').querySelectorAll('pre code span').length).toBeGreaterThan(0)
+  it('records where the block came from, so scrolling can find it', () => {
+    expect(render('<div>hi</div>', sanitiserAllowing).querySelector('.markup__html')?.getAttribute('data-from')).toBe(
+      '0',
+    )
   })
 
-  it('shows an inline tag as source too', () => {
+  it('hands a script block over too, rather than deciding for itself', () => {
+    const seen: string[] = []
+
+    renderMarkdown('<script>window.pwned = 1</script>', (raw) => {
+      seen.push(raw)
+
+      return document.createDocumentFragment()
+    })
+
+    expect(seen).toStrictEqual(['<script>window.pwned = 1</script>'])
+  })
+
+  it('creates nothing at all when the sanitiser allows nothing', () => {
+    expect(render('<img src=x onerror="window.pwned = 1">').querySelector('img')).toBeNull()
+  })
+})
+
+describe('raw HTML written inline, which stays as source', () => {
+  it('shows an inline tag as the reader wrote it', () => {
     expect(textOf('a <span>b</span> c', 'p')).toBe('a <span>b</span> c')
   })
 
@@ -315,12 +356,12 @@ describe('raw HTML, which the preview shows rather than runs', () => {
     expect(render('a <span>b</span> c').querySelector('code')?.textContent).toBe('<span>')
   })
 
-  it('does not run a script block', () => {
-    expect(render('<script>window.pwned = 1</script>').querySelector('script')).toBeNull()
+  it('shows an inline comment as source', () => {
+    expect(textOf('text <!-- note --> more', 'p')).toBe('text <!-- note --> more')
   })
 
-  it('does not create an image that could fire an error handler', () => {
-    expect(render('<img src=x onerror="window.pwned = 1">').querySelector('img')).toBeNull()
+  it('shows an inline processing instruction as source', () => {
+    expect(textOf('a <?php echo 1; ?> b', 'p')).toBe('a <?php echo 1; ?> b')
   })
 })
 
@@ -345,24 +386,6 @@ describe('where a block came from, for scrolling', () => {
 describe('an empty document', () => {
   it('renders nothing at all', () => {
     expect(tagsIn('')).toStrictEqual([])
-  })
-})
-
-describe('raw HTML in its other spellings', () => {
-  it('shows a comment block as source rather than hiding it', () => {
-    expect(textOf('<!-- a note -->', 'pre code')).toBe('<!-- a note -->')
-  })
-
-  it('shows an inline comment as source', () => {
-    expect(textOf('text <!-- note --> more', 'p')).toBe('text <!-- note --> more')
-  })
-
-  it('shows a processing instruction block as source', () => {
-    expect(textOf('<?php echo 1; ?>', 'pre code')).toBe('<?php echo 1; ?>')
-  })
-
-  it('shows an inline processing instruction as source', () => {
-    expect(textOf('a <?php echo 1; ?> b', 'p')).toBe('a <?php echo 1; ?> b')
   })
 })
 

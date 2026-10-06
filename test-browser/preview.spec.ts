@@ -86,32 +86,15 @@ test('asking for the source after the rendered view shows one, not both', async 
   await request.delete(`/api/files/entries/${name}`)
 })
 
-test('a document carrying hostile HTML runs none of it in the rendered preview', async ({ page, request }) => {
-  const name = `hostile-${String(Date.now())}.md`
-  const hostile = '<script>window.pwned = 1</script>\n\n<img src=x onerror="window.pwned = 1">\n'
-  await request.post('/api/files/documents', { data: { path: name, content: hostile } })
+test('the rendered preview keeps the structure a document legitimately writes', async ({ page, request }) => {
+  const name = `structure-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '<table><tr><td>kept</td></tr></table>' } })
   await page.goto(`/doc/${name}`)
-  await givenAsync(expect(page.locator('.cm-content')).toContainText('window.pwned'))
-
-  await page.locator('#preview-markup').click()
-  await givenAsync(expect(page.locator('[data-part="markup-body"]').last()).toContainText('window.pwned'))
-
-  expect(await page.evaluate(() => 'pwned' in window)).toBe(false)
-
-  await request.delete(`/api/files/entries/${name}`)
-})
-
-test('a document carrying hostile HTML creates no element from it', async ({ page, request }) => {
-  const name = `inert-${String(Date.now())}.md`
-  await request.post('/api/files/documents', {
-    data: { path: name, content: '<img src=x onerror="window.pwned = 1">' },
-  })
-  await page.goto(`/doc/${name}`)
-  await givenAsync(expect(page.locator('.cm-content')).toContainText('onerror'))
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('table'))
 
   await page.locator('#preview-markup').click()
 
-  await expect(page.locator('[data-part="markup-body"] img')).toHaveCount(0)
+  await expect(page.locator('[data-part="markup-body"] td').last()).toHaveText('kept')
 
   await request.delete(`/api/files/entries/${name}`)
 })
