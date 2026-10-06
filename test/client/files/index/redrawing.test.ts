@@ -47,6 +47,25 @@ beforeEach(() => {
 })
 
 describe('a change arriving while a row is being dragged', () => {
+  it('leaves the tree alone from the moment a row is pressed, before any drag begins', async () => {
+    await start()
+    drag('pointerdown')
+
+    await changedElsewhere()
+
+    expect(pathsShown()).not.toContain('arrived.md')
+  })
+
+  it('redraws once the press is released without a drag', async () => {
+    await start()
+    drag('pointerdown')
+    await changedElsewhere()
+
+    drag('pointerup')
+
+    expect(pathsShown()).toContain('arrived.md')
+  })
+
   it('leaves the tree where the reader grabbed it', async () => {
     await start()
     drag('dragstart')

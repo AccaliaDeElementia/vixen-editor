@@ -414,6 +414,10 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     }
   }
 
+  tree.addEventListener('pointerdown', () => {
+    draggingFromTheTree = true
+  })
+
   tree.addEventListener('dragstart', () => {
     draggingFromTheTree = true
   })
@@ -426,6 +430,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     draw(open)
   }
 
+  tree.addEventListener('pointerup', theDragIsOver)
   tree.addEventListener('dragend', theDragIsOver)
   tree.addEventListener('drop', theDragIsOver)
 
