@@ -1,6 +1,11 @@
 mixin pane(primary)
   section.pane(data-part='pane')
-    .tabs(data-part='tabs' aria-label='Open documents')
+    .tabs(data-part='tabs')
+      button.tabs__scroll.tabs__scroll--before(data-part='tabs-before' type='button' aria-label='Show the tabs to the left')
+        span.icon(aria-hidden='true') chevron_left
+      .tabs__scroller(data-part='tabs-scroller' aria-label='Open documents')
+      button.tabs__scroll.tabs__scroll--after(data-part='tabs-after' type='button' aria-label='Show the tabs to the right')
+        span.icon(aria-hidden='true') chevron_right
     .pane__editor(data-part='editor' hidden tabindex='-1')&attributes(primary ? { id: 'editor' } : {})
     .footing(data-part='footing' hidden)
       span.footing__save(data-part='save-label' role='status')

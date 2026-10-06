@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { cast } from '../../cast.ts'
 import { createTabStrip, type TabStrip } from '../../../src/client/layout/tab-strip.ts'
 
+import { renderPane } from '../templates.ts'
+
 const EDITING = { path: 'journal/a.md', view: 'editor' } as const
 const PREVIEWING = { path: 'journal/a.md', view: 'markup' } as const
 const OTHER = { path: 'notes.md', view: 'editor' } as const
@@ -38,8 +40,13 @@ function tabs(): HTMLElement[] {
 
 beforeEach(() => {
   document.body.innerHTML = ''
-  host = document.createElement('div')
-  document.body.append(host)
+  const container = document.createElement('div')
+  container.innerHTML = renderPane()
+  document.body.append(container)
+
+  const strip = container.querySelector<HTMLElement>('[data-part="tabs"]')
+  if (strip === null) throw new Error('the pane rendered no tab strip')
+  host = strip
   activated = []
   kept = []
   closed = []
@@ -50,7 +57,7 @@ describe('showing what is open', () => {
   it('reads as a list of tabs to anything that cannot see it', () => {
     strip().show([{ ...EDITING }], EDITING)
 
-    expect(host.getAttribute('role')).toBe('tablist')
+    expect(host.querySelector('[data-part="tabs-scroller"]')?.getAttribute('role')).toBe('tablist')
   })
 
   it('shows one tab for each open document', () => {
@@ -395,5 +402,125 @@ describe('what the strip will accept a drop of', () => {
     strip().show([EDITING], EDITING)
 
     expect(dragOver(data)).toBe(false)
+  })
+})
+
+describe('reaching tabs that have scrolled out of sight', () => {
+  function scroller(): HTMLElement {
+    const element = host.querySelector<HTMLElement>('[data-part="tabs-scroller"]')
+    if (element === null) throw new Error('no scroller')
+
+    return element
+  }
+
+  function overflowing(scrollLeft: number): void {
+    Object.defineProperty(scroller(), 'clientWidth', { configurable: true, value: 100 })
+    Object.defineProperty(scroller(), 'scrollWidth', { configurable: true, value: 300 })
+    Object.defineProperty(scroller(), 'scrollLeft', { configurable: true, value: scrollLeft, writable: true })
+  }
+
+  function chevron(which: string): HTMLElement | null {
+    return host.querySelector<HTMLElement>(`[data-part="tabs-${which}"]`)
+  }
+
+  function reach(which: 'reachBefore' | 'reachAfter'): string | undefined {
+    return host.dataset[which]
+  }
+
+  it('offers nothing while every tab is in sight', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(reach('reachAfter')).toBe('false')
+  })
+
+  it('offers a way right once the tabs run past the edge', () => {
+    const showing = strip()
+    overflowing(0)
+
+    showing.show([EDITING, OTHER], EDITING)
+
+    expect(reach('reachAfter')).toBe('true')
+  })
+
+  it('offers no way left while the strip is at its start', () => {
+    const showing = strip()
+    overflowing(0)
+
+    showing.show([EDITING, OTHER], EDITING)
+
+    expect(reach('reachBefore')).toBe('false')
+  })
+
+  it('offers a way left once the strip has been scrolled', () => {
+    const showing = strip()
+    overflowing(50)
+
+    showing.show([EDITING, OTHER], EDITING)
+
+    expect(reach('reachBefore')).toBe('true')
+  })
+
+  it('offers no way right once the end has been reached', () => {
+    const showing = strip()
+    overflowing(200)
+
+    showing.show([EDITING, OTHER], EDITING)
+
+    expect(reach('reachAfter')).toBe('false')
+  })
+
+  it('scrolls the strip along when the way right is taken', () => {
+    const showing = strip()
+    overflowing(0)
+    showing.show([EDITING, OTHER], EDITING)
+    const asked: number[] = []
+    scroller().scrollBy = (options) => {
+      asked.push(typeof options === 'object' ? (options.left ?? 0) : 0)
+    }
+
+    chevron('after')?.click()
+
+    expect(asked).toStrictEqual([80])
+  })
+
+  it('scrolls the other way when the way left is taken', () => {
+    const showing = strip()
+    overflowing(50)
+    showing.show([EDITING, OTHER], EDITING)
+    const asked: number[] = []
+    scroller().scrollBy = (options) => {
+      asked.push(typeof options === 'object' ? (options.left ?? 0) : 0)
+    }
+
+    chevron('before')?.click()
+
+    expect(asked).toStrictEqual([-80])
+  })
+
+  it('looks again when the strip is scrolled by any other means', () => {
+    const showing = strip()
+    overflowing(0)
+    showing.show([EDITING, OTHER], EDITING)
+    overflowing(50)
+
+    scroller().dispatchEvent(new Event('scroll'))
+
+    expect(reach('reachBefore')).toBe('true')
+  })
+})
+
+describe('a strip whose markup carries no scroller', () => {
+  it('declines rather than rendering into the wrong place', () => {
+    const bare = document.createElement('div')
+    document.body.append(bare)
+
+    createTabStrip(bare, {
+      onActivate: () => undefined,
+      onKeep: () => undefined,
+      onClose: () => undefined,
+      onDropped: () => undefined,
+    }).show([EDITING], EDITING)
+
+    expect(bare.childElementCount).toBe(0)
   })
 })

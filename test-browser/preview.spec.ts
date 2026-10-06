@@ -1,7 +1,7 @@
 'use sanity'
 
-import { givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { given, givenAsync } from '../test/conditions.ts'
+import { expect, test, type Page } from '@playwright/test'
 
 const PANE = '.pane'
 
@@ -390,4 +390,45 @@ test('the preview follows the document as it is typed into', async ({ page, requ
   await expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('before and after')
 
   await request.delete(`/api/files/entries/${name}`)
+})
+
+const PLUS_THE_OPEN_DOCUMENT = 1
+
+async function stripHolding(page: Page, count: number): Promise<void> {
+  const tabs = Array.from({ length: count }, (_, at) => ({ path: `strip${String(at)}.md`, view: 'editor' }))
+
+  await page.addInitScript((held: string) => {
+    window.localStorage.setItem('vixen-editor:tabs:primary', held)
+  }, JSON.stringify(tabs))
+  await page.goto('/doc/')
+  await givenAsync(expect(page.locator('[role="tab"]')).toHaveCount(count + PLUS_THE_OPEN_DOCUMENT))
+}
+
+test('many tabs shrink to a floor and then the strip scrolls', async ({ page }) => {
+  await stripHolding(page, 20)
+
+  const overflowing = await page
+    .locator('[data-part="tabs-scroller"]')
+    .first()
+    .evaluate((scroller) => scroller.scrollWidth > scroller.clientWidth)
+
+  expect(overflowing).toBe(true)
+})
+
+test('a strip with tabs out of sight offers a way to reach them', async ({ page }) => {
+  await stripHolding(page, 20)
+
+  await expect(page.locator('[data-part="tabs-after"]').first()).toBeVisible()
+})
+
+test('taking that way scrolls the hidden tabs into view', async ({ page }) => {
+  await stripHolding(page, 20)
+  const scroller = page.locator('[data-part="tabs-scroller"]').first()
+  given(() => {
+    expect(true).toBe(true)
+  })
+
+  await page.locator('[data-part="tabs-after"]').first().click()
+
+  await expect.poll(async () => await scroller.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
 })

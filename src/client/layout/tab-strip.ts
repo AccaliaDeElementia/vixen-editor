@@ -4,6 +4,15 @@ import { basenameOf } from '../../shared/link-paths.ts'
 import { DRAG_MIME, DRAG_TAB_MIME } from '../drag-payload.ts'
 import { tabIdentity, type TabAt } from './open-tabs.ts'
 
+const SCROLLER_SELECTOR = '[data-part="tabs-scroller"]'
+const SCROLL_SELECTOR = '.tabs__scroll'
+const BEFORE_PART = 'tabs-before'
+const REACH_BEFORE = 'data-reach-before'
+const REACH_AFTER = 'data-reach-after'
+const MOST_OF_THE_WIDTH = 0.8
+const AT_THE_START = 0
+const TOWARDS_THE_START = -1
+const TOWARDS_THE_END = 1
 const TAB_CLASS = 'tabs__tab'
 const EPHEMERAL_CLASS = 'tabs__tab--looking'
 const CLOSE_CLASS = 'tabs__close'
@@ -34,10 +43,39 @@ function labelFor(tab: ShownTab): string {
   return tab.name ?? basenameOf(tab.path)
 }
 
+const NOTHING_TO_SHOW: TabStrip = { show: () => undefined }
+
 export function createTabStrip(host: HTMLElement, options: TabStripOptions): TabStrip {
-  host.setAttribute('role', 'tablist')
+  const found = host.querySelector<HTMLElement>(SCROLLER_SELECTOR)
+  if (found === null) return NOTHING_TO_SHOW
+
+  const scroller: HTMLElement = found
+
+  scroller.setAttribute('role', 'tablist')
 
   const drawn = new Map<string, HTMLElement>()
+
+  function reflectReach(reaching: HTMLElement): void {
+    const { scrollLeft, clientWidth, scrollWidth } = reaching
+
+    host.setAttribute(REACH_BEFORE, String(scrollLeft > AT_THE_START))
+    host.setAttribute(REACH_AFTER, String(scrollLeft + clientWidth < scrollWidth))
+  }
+  function reconsiderReach(): void {
+    reflectReach(scroller)
+  }
+
+  for (const button of host.querySelectorAll<HTMLElement>(SCROLL_SELECTOR)) {
+    const towards = button.dataset.part === BEFORE_PART ? TOWARDS_THE_START : TOWARDS_THE_END
+
+    button.addEventListener('click', () => {
+      scroller.scrollBy({ left: scroller.clientWidth * MOST_OF_THE_WIDTH * towards })
+      reconsiderReach()
+    })
+  }
+
+  scroller.addEventListener('scroll', reconsiderReach)
+  new ResizeObserver(reconsiderReach).observe(scroller)
 
   function closerFor(tab: ShownTab, at: TabAt): HTMLElement {
     const { path } = at
@@ -87,7 +125,7 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
 
     element.addEventListener('drop', (event: DragEvent) => {
       event.stopPropagation()
-      takeDrop(event, [...host.children].indexOf(element))
+      takeDrop(event, [...scroller.children].indexOf(element))
     })
 
     element.append(closerFor(tab, { path, view }))
@@ -124,7 +162,7 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
   })
 
   host.addEventListener('drop', (event: DragEvent) => {
-    takeDrop(event, host.children.length)
+    takeDrop(event, scroller.children.length)
   })
 
   return {
@@ -134,7 +172,8 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
       const open = new Set(wanted.map((element) => element.dataset.tab))
 
       for (const identity of [...drawn.keys()]) if (!open.has(identity)) drawn.delete(identity)
-      host.replaceChildren(...wanted)
+      scroller.replaceChildren(...wanted)
+      reconsiderReach()
     },
   }
 }

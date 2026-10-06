@@ -883,10 +883,42 @@
 .tabs {
   display: flex;
   align-items: stretch;
-  gap: 1px;
-  overflow-x: auto;
   background: $gray-900;
   border-bottom: 1px solid $border;
+}
+
+.tabs__scroller {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  gap: 1px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// Presentation follows state: a strip with nothing out of sight offers no way to
+// reach it, and needs no attribute kept in step by script beyond the two it sets.
+.tabs:not([data-reach-before='true']) .tabs__scroll--before,
+.tabs:not([data-reach-after='true']) .tabs__scroll--after {
+  display: none;
+}
+
+.tabs__scroll {
+  flex: 0 0 auto;
+  padding: 0 $space-xs;
+  border: 0;
+  background: $gray-900;
+  color: $muted;
+  cursor: pointer;
+
+  &:hover {
+    color: $body-color;
+  }
 }
 
 .tabs__tab {
