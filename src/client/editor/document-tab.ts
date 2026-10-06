@@ -29,7 +29,7 @@ import type { Session } from './session.ts'
 
 const TOP_OF_DOCUMENT = 0
 
-type FocusListener = (wake: () => void, settled: () => Promise<void>) => () => void
+export type FocusListener = (wake: () => void, settled: () => Promise<void>) => () => void
 
 interface DocumentTabOptions {
   mount: Element
@@ -48,7 +48,7 @@ interface DocumentTabOptions {
   listenForFocus?: FocusListener | undefined
 }
 
-interface DocumentTab {
+export interface DocumentTab {
   view: EditorView
   recheck: () => Promise<void>
   caret: () => number

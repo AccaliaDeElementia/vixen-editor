@@ -44,7 +44,8 @@ import { createWorkspace } from '../layout/workspace.ts'
 
 import type { EditorView } from '@codemirror/view'
 
-import { createDocumentTab, startsALine } from './document-tab.ts'
+import { startsALine } from './document-tab.ts'
+import { createPaneEditor } from './pane-editor.ts'
 import { createSession, type Session } from './session.ts'
 import { resolveIndex } from './folder-index.ts'
 import { guardUnload } from './unload.ts'
@@ -190,26 +191,22 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const dialogs = options.dialogs ?? createDialogs(root)
 
-  const tab = createDocumentTab({
+  const previews = createPreviews((offset: number) => {
+    tab.putCaretAt(offset)
+  })
+
+  const tab = createPaneEditor({
+    pane: primary,
     mount,
     session,
     files,
     dialogs,
     toast,
     statusBar,
+    previews,
     documentId,
     openUrl,
     announce: setStatus,
-    onEdited: (content: string) => {
-      primary.keepWhenOpened(editorTab(documentId()))
-      previews.refreshWith(content)
-    },
-    onReloaded: (content: string) => {
-      previews.refreshWith(content)
-    },
-    onCaretMoved: (offset: number) => {
-      previews.revealOffset(offset)
-    },
     showingDocument: () => workspace.showing() === 'document',
     listenForFocus: options.listenForFocus,
   })
@@ -370,10 +367,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     showEmpty: () => {
       workspace.show('empty', displayPathFromPath(documentId()))
     },
-  })
-
-  const previews = createPreviews((offset: number) => {
-    tab.putCaretAt(offset)
   })
 
   function activate(host: HTMLElement, at: TabAt): void {
