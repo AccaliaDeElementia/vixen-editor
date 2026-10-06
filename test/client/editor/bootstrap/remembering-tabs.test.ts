@@ -118,4 +118,14 @@ describe('what a reload is told to bring back', () => {
 
     expect(readKeptTabs('primary')).toStrictEqual([{ path: 'archive/kept.md', view: 'editor' }])
   })
+
+  it('moves a kept tab in the second pane, which a move reaches just as surely', async () => {
+    await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
+    requestKeep(root, 'a.md')
+    root.querySelector<HTMLElement>('#preview-source')?.click()
+
+    announceDocumentMoved(root, { from: 'a.md', to: 'archive/a.md', rewritten: [] })
+
+    expect(readKeptTabs('secondary')).toStrictEqual([{ path: 'archive/a.md', view: 'source' }])
+  })
 })

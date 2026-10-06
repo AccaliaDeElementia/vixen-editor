@@ -305,6 +305,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
     primary.followMove({ from, to })
+    secondary?.followMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId())
 
     if (moved !== documentId()) {
