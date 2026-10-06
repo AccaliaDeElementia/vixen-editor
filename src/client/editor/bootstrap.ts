@@ -34,6 +34,9 @@ import { createPreviews } from './previews.ts'
 import { revealOnly } from '../layout/reveal-view.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { carryTab, createPane, type Pane } from '../layout/pane.ts'
+import { bindTabKeys } from './tab-keys.ts'
+import { createPaneMoves } from './pane-moves.ts'
+import { createTabNavigation } from './tab-navigation.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -44,7 +47,6 @@ import { resolveIndex } from './folder-index.ts'
 import { guardUnload } from './unload.ts'
 import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
-import { KEYS } from '../help.ts'
 import { onKeepRequested } from '../keep-request.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
@@ -394,11 +396,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     previews.render(host, at, view.state.doc.toString())
   }
 
-  function showPreview(wanted: 'source' | 'markup', says: string): void {
+  function summonSecondary(towards: 'beside' | 'below'): Pane | null {
     const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
-    openSplit(root, BESIDE, panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width)
+    openSplit(root, towards, panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width)
 
-    const target = secondaryPane()
+    return secondaryPane()
+  }
+
+  function showPreview(wanted: 'source' | 'markup', says: string): void {
+    const target = summonSecondary(BESIDE)
     if (target === null) return
 
     touched = target
@@ -422,25 +428,32 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   root.querySelector<HTMLElement>(PREVIEW_SOURCE_SELECTOR)?.addEventListener('click', showSourcePreview)
   root.querySelector<HTMLElement>(PREVIEW_MARKUP_SELECTOR)?.addEventListener('click', showMarkupPreview)
 
-  const onPreviewKey = (event: Event): void => {
-    if (!(event instanceof KeyboardEvent) || !event.altKey) return
+  const paneMoves = createPaneMoves({
+    root,
+    primary,
+    summon: summonSecondary,
+    inFront: () => touched,
+    goTo: (pane: Pane) => {
+      touched = pane
+    },
+  })
 
-    if (event.key === KEYS.closeTab) {
-      event.preventDefault()
-      closeTheTabInFront()
+  const navigation = createTabNavigation(
+    () => touched,
+    (host, at) => {
+      activate(host, at)
+    },
+  )
 
-      return
-    }
-
-    const wanted = event.shiftKey ? KEYS.previewSource : KEYS.previewMarkup
-    if (event.key !== wanted) return
-
-    event.preventDefault()
-    if (event.shiftKey) showSourcePreview()
-    else showMarkupPreview()
-  }
-
-  root.addEventListener('keydown', onPreviewKey)
+  const unbindTabKeys = bindTabKeys(root, {
+    cycle: navigation.cycle,
+    move: navigation.move,
+    jumpTo: navigation.jumpTo,
+    toPane: paneMoves.toPane,
+    close: closeTheTabInFront,
+    showSource: showSourcePreview,
+    showMarkup: showMarkupPreview,
+  })
 
   const { offKeepRequested } = onKeepRequested(root, (entryPath) => {
     primary.keepWhenOpened(editorTab(entryPath))
@@ -504,7 +517,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
 
   function teardownApplication(): void {
-    root.removeEventListener('keydown', onPreviewKey)
+    unbindTabKeys()
     unguardUnload()
     navigator.stopIntercepting()
     changes.disconnect()

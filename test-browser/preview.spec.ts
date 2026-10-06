@@ -287,3 +287,90 @@ test('a tab dragged into a document inserts a link to it', async ({ page, reques
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('Alt and the brackets move between the tabs of a pane', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const first = `kb1-${stamp}.md`
+  const second = `kb2-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: first, content: '# first' } })
+  await request.post('/api/files/documents', { data: { path: second, content: '# second' } })
+  await page.goto(`/doc/${first}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${first}"]`)).toBeVisible())
+  await page.locator(`[data-tab="editor:${first}"]`).dblclick()
+  await page.locator(`[role="treeitem"][data-path="${second}"]`).dblclick()
+  await givenAsync(expect(page.locator(`[data-tab="editor:${second}"]`)).toBeVisible())
+
+  await page.keyboard.press('Alt+[')
+
+  await expect(page).toHaveURL(`/doc/${first}`)
+
+  await request.delete(`/api/files/entries/${first}`)
+  await request.delete(`/api/files/entries/${second}`)
+})
+
+test('Alt and a digit jumps to that tab', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const first = `kbd1-${stamp}.md`
+  const second = `kbd2-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: first, content: '# first' } })
+  await request.post('/api/files/documents', { data: { path: second, content: '# second' } })
+  await page.goto(`/doc/${first}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${first}"]`)).toBeVisible())
+  await page.locator(`[data-tab="editor:${first}"]`).dblclick()
+  await page.locator(`[role="treeitem"][data-path="${second}"]`).dblclick()
+  await givenAsync(expect(page.locator(`[data-tab="editor:${second}"]`)).toBeVisible())
+
+  await page.keyboard.press('Alt+1')
+
+  await expect(page).toHaveURL(`/doc/${first}`)
+
+  await request.delete(`/api/files/entries/${first}`)
+  await request.delete(`/api/files/entries/${second}`)
+})
+
+test('Alt, Shift and a bracket move a tab along the strip', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const first = `kbm1-${stamp}.md`
+  const second = `kbm2-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: first, content: '# first' } })
+  await request.post('/api/files/documents', { data: { path: second, content: '# second' } })
+  await page.goto(`/doc/${first}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${first}"]`)).toBeVisible())
+  await page.locator(`[data-tab="editor:${first}"]`).dblclick()
+  await page.locator(`[role="treeitem"][data-path="${second}"]`).dblclick()
+  await givenAsync(expect(page.locator(`[data-tab="editor:${second}"]`)).toBeVisible())
+
+  await page.keyboard.press('Alt+Shift+[')
+
+  await expect(page.locator('[role="tab"]').first()).toHaveAttribute('data-path', second)
+
+  await request.delete(`/api/files/entries/${first}`)
+  await request.delete(`/api/files/entries/${second}`)
+})
+
+test('Ctrl, Alt and an arrow summon the other pane and go to it', async ({ page, request }) => {
+  const name = `panekey-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# pane' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+
+  await page.keyboard.press('Control+Alt+ArrowRight')
+
+  await expect(page.locator('.pane').last()).toHaveAttribute('data-infront', 'true')
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('adding Shift carries the tab in front to the other pane', async ({ page, request }) => {
+  const name = `panecarry-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# carried' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+  await page.locator(`[data-tab="editor:${name}"]`).dblclick()
+
+  await page.keyboard.press('Control+Alt+Shift+ArrowRight')
+
+  await expect(page.locator('.pane').last().locator(`[data-tab="editor:${name}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})

@@ -24,6 +24,8 @@ export interface Pane {
   leave: () => void
   followMove: (move: EntryMove) => void
   holdsPermanently: (at: TabAt) => boolean
+  held: () => readonly TabAt[]
+  reorder: (at: TabAt, toIndex: number) => void
   showing: () => TabAt | null
   isEmpty: () => boolean
 }
@@ -115,7 +117,14 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
       rememberAndDraw()
     },
 
-    holdsPermanently: (at: TabAt) => tabs.kept().some((held) => tabIdentity(held) === tabIdentity(at)),
+    holdsPermanently: (at: TabAt) => tabs.kept().some((candidate) => tabIdentity(candidate) === tabIdentity(at)),
+
+    held: () => tabs.all(),
+
+    reorder(at: TabAt, toIndex: number): void {
+      tabs.reorder(at, toIndex)
+      rememberAndDraw()
+    },
 
     showing: () => tabs.active(),
 

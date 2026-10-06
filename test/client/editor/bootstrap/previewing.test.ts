@@ -513,3 +513,121 @@ describe('dragging a tab to the other pane', () => {
     expect(stripIn(0)?.querySelectorAll('[role="tab"]')).toHaveLength(1)
   })
 })
+
+describe('moving between tabs from the keyboard', () => {
+  it('opens the next tab along', async () => {
+    writeKeptTabs('primary', [{ path: 'later.md', view: 'editor' }])
+    const opened: string[] = []
+    await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession('# stored'),
+      openUrl: (url: string) => {
+        opened.push(url)
+      },
+    })
+
+    press({ key: ']', altKey: true })
+
+    expect(opened).toStrictEqual(['/doc/later.md'])
+  })
+
+  it('opens the tab a digit names', async () => {
+    writeKeptTabs('primary', [{ path: 'later.md', view: 'editor' }])
+    const opened: string[] = []
+    await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession('# stored'),
+      openUrl: (url: string) => {
+        opened.push(url)
+      },
+    })
+
+    press({ key: '1', altKey: true })
+
+    expect(opened).toStrictEqual(['/doc/later.md'])
+  })
+
+  it('moves the tab in front along its strip', async () => {
+    writeKeptTabs('primary', [{ path: 'first.md', view: 'editor' }])
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# stored') })
+
+    press({ key: '{', altKey: true, shiftKey: true })
+
+    expect([...root.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.dataset.path)).toStrictEqual([
+      'notes.md',
+      'first.md',
+    ])
+  })
+})
+
+describe('moving between the panes from the keyboard', () => {
+  function inFront(): Array<string | undefined> {
+    return [...root.querySelectorAll<HTMLElement>('[data-part="pane"]')].map((pane) => pane.dataset.infront)
+  }
+
+  it('summons the second pane and goes to it', async () => {
+    await editing()
+
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
+
+    expect(panes()?.dataset.split).toBe('beside')
+  })
+
+  it('puts the pane it moved to in front', async () => {
+    await editing()
+
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
+
+    expect(inFront()).toStrictEqual(['false', 'true'])
+  })
+
+  it('summons it below when asked downwards', async () => {
+    await editing()
+
+    press({ key: 'ArrowDown', altKey: true, ctrlKey: true })
+
+    expect(panes()?.dataset.split).toBe('below')
+  })
+
+  it('comes back to the first pane', async () => {
+    await editing()
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
+
+    press({ key: 'ArrowLeft', altKey: true, ctrlKey: true })
+
+    expect(inFront()).toStrictEqual(['true', 'false'])
+  })
+
+  it('does nothing on a page with nowhere to put a second pane', async () => {
+    await editing()
+    root.querySelector('[data-part="panes"]')?.remove()
+
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
+
+    expect(root.querySelector('[data-part="panes"]')).toBeNull()
+  })
+
+  it('carries the tab in front across when Shift is held', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
+
+    expect(
+      root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[1]?.querySelector('[data-tab="editor:notes.md"]'),
+    ).not.toBeNull()
+  })
+
+  it('takes it out of the pane it came from', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
+
+    expect(
+      root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[0]?.querySelector('[data-tab="editor:notes.md"]'),
+    ).toBeNull()
+  })
+})
