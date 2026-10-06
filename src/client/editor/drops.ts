@@ -1,5 +1,7 @@
 'use sanity'
 
+import { DRAG_KIND_MIME, DRAG_MIME } from '../drag-payload.ts'
+
 import { encodeDestination } from '../../shared/link-syntax.ts'
 import { basenameOf, directoryOf, relativeDestination } from '../../shared/link-paths.ts'
 import { SEQUENCE_START } from '../../shared/sequences.ts'
@@ -11,8 +13,6 @@ import { FilesRequestError, type FilesClient } from '../files/files-client.ts'
 import type { Dialogs } from '../files/dialogs.ts'
 import type { Toast } from '../toast.ts'
 
-const DRAG_MIME = 'application/x-vixen-path'
-const DRAG_KIND_MIME = 'application/x-vixen-kind'
 const NOT_BRACKETED = false
 const ONE_FILE = 1
 const ALREADY_EXISTS = 'ALREADY_EXISTS'
@@ -66,7 +66,7 @@ export function bindEntryDrops(
   content.addEventListener(
     'dragover',
     (event) => {
-      if (draggedEntry(event.dataTransfer) === null) return
+      if (event.dataTransfer?.types.includes(DRAG_MIME) !== true) return
 
       event.preventDefault()
     },

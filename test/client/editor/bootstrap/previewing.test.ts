@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import type { Session } from '../../../../src/client/editor/session.ts'
+import { cast } from '../../../cast.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
 import { requestKeep } from '../../../../src/client/keep-request.ts'
@@ -453,5 +454,62 @@ describe('clicking a block in the rendered preview', () => {
       ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
     expect(view.state.selection.main.head).toBe(1)
+  })
+})
+
+describe('dragging a tab to the other pane', () => {
+  function dropOnto(strip: HTMLElement, identity: string): void {
+    const held = new Map<string, string>([['application/x-vixen-tab', identity]])
+    const data = cast<DataTransfer>({ getData: (type: string) => held.get(type) ?? '', types: [...held.keys()] })
+
+    strip.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: data })))
+  }
+
+  function stripIn(pane: number): HTMLElement | null {
+    return root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[pane] ?? null
+  }
+
+  it('moves it out of the pane it came from', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    const first = stripIn(0)
+    if (first !== null) dropOnto(first, 'markup:notes.md')
+
+    expect(root.querySelectorAll('[data-part="tabs"]')[1]?.querySelector('[data-tab="markup:notes.md"]')).toBeNull()
+  })
+
+  it('puts it into the pane it was dropped on', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    const first = stripIn(0)
+    if (first !== null) dropOnto(first, 'markup:notes.md')
+
+    expect(stripIn(0)?.querySelector('[data-tab="markup:notes.md"]')).not.toBeNull()
+  })
+
+  it('carries an editor tab the other way, into the pane that was dropped on', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    const second = stripIn(1)
+    if (second !== null) dropOnto(second, 'editor:notes.md')
+
+    expect(stripIn(1)?.querySelector('[data-tab="editor:notes.md"]')).not.toBeNull()
+  })
+
+  it('ignores a drop naming a tab this build cannot read', async () => {
+    await editing()
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    const first = stripIn(0)
+    if (first !== null) dropOnto(first, 'hologram:notes.md')
+
+    expect(stripIn(0)?.querySelectorAll('[role="tab"]')).toHaveLength(1)
   })
 })

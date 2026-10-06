@@ -177,6 +177,10 @@
   }
 }
 
+.tabs__tab[draggable='true'] {
+  cursor: grab;
+}
+
 .tabs__name {
   overflow: hidden;
   text-overflow: ellipsis;

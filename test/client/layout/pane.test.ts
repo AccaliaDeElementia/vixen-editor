@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { cast } from '../../cast.ts'
 import { createPane, type Pane } from '../../../src/client/layout/pane.ts'
 import { readKeptTabs, writeKeptTabs, type PaneId } from '../../../src/client/layout/kept-tabs.ts'
 import type { TabAt } from '../../../src/client/layout/open-tabs.ts'
@@ -14,6 +15,7 @@ const OTHER = { path: 'other.md', view: 'editor' } as const
 
 let activated: TabAt[] = []
 let closeRequests: TabAt[] = []
+let arrivals: Array<{ identity: string; toIndex: number }> = []
 
 function paneElement(): HTMLElement {
   const container = document.createElement('div')
@@ -34,6 +36,9 @@ function pane(id: PaneId = 'primary', element = paneElement()): Pane {
     onCloseRequested: (at) => {
       closeRequests.push(at)
     },
+    onTabArrived: (identity, toIndex) => {
+      arrivals.push({ identity, toIndex })
+    },
   })
 }
 
@@ -46,6 +51,7 @@ beforeEach(() => {
   document.body.innerHTML = ''
   activated = []
   closeRequests = []
+  arrivals = []
 })
 
 describe('a pane holding its own tabs', () => {
@@ -101,7 +107,11 @@ describe('a pane holding its own tabs', () => {
     const bare = document.createElement('div')
 
     expect(() => {
-      createPane(bare, 'primary', { onActivate: () => undefined, onCloseRequested: () => undefined }).open(EDITING)
+      createPane(bare, 'primary', {
+        onActivate: () => undefined,
+        onCloseRequested: () => undefined,
+        onTabArrived: () => undefined,
+      }).open(EDITING)
     }).not.toThrow()
   })
 })
@@ -162,5 +172,77 @@ describe('whether a pane holds a tab permanently', () => {
 
   it('says not for one it does not hold at all', () => {
     expect(pane('primary').holdsPermanently(OTHER)).toBe(false)
+  })
+})
+
+describe('a tab dropped on a strip', () => {
+  function dropOn(element: HTMLElement, identity: string, onto: string | null): void {
+    const held = new Map<string, string>([['application/x-vixen-tab', identity]])
+    const data = cast<DataTransfer>({ getData: (type: string) => held.get(type) ?? '', types: [...held.keys()] })
+    const target =
+      onto === null ? element.querySelector('[data-part="tabs"]') : element.querySelector(`[data-tab="${onto}"]`)
+
+    target?.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: data })))
+  }
+
+  it('is put where it was dropped when the strip already holds it', () => {
+    const element = paneElement()
+    const held = pane('primary', element)
+    held.keep(EDITING)
+    held.keep(OTHER)
+
+    dropOn(element, 'editor:other.md', 'editor:notes.md')
+
+    expect(tabsIn(element)).toStrictEqual(['editor:other.md', 'editor:notes.md'])
+  })
+
+  it('is remembered in its new place, so a reload agrees', () => {
+    const element = paneElement()
+    const held = pane('primary', element)
+    held.keep(EDITING)
+    held.keep(OTHER)
+
+    dropOn(element, 'editor:other.md', 'editor:notes.md')
+
+    expect(readKeptTabs('primary').map((tab) => tab.path)).toStrictEqual(['other.md', 'notes.md'])
+  })
+
+  it('is announced as arriving when the strip does not hold it', () => {
+    const element = paneElement()
+    pane('secondary', element).keep(EDITING)
+
+    dropOn(element, 'markup:elsewhere.md', 'editor:notes.md')
+
+    expect(arrivals).toStrictEqual([{ identity: 'markup:elsewhere.md', toIndex: 0 }])
+  })
+})
+
+describe('a pane receiving a tab from the other one', () => {
+  it('holds it', () => {
+    const element = paneElement()
+    const held = pane('secondary', element)
+
+    held.receive(PREVIEWING, 0)
+
+    expect(tabsIn(element)).toStrictEqual(['markup:notes.md'])
+  })
+
+  it('puts it where it was dropped rather than at the end', () => {
+    const element = paneElement()
+    const held = pane('secondary', element)
+    held.keep(EDITING)
+
+    held.receive(PREVIEWING, 0)
+
+    expect(tabsIn(element)).toStrictEqual(['markup:notes.md', 'editor:notes.md'])
+  })
+
+  it('keeps it, because a tab carried across was not an idle glance', () => {
+    const element = paneElement()
+    const held = pane('secondary', element)
+
+    held.receive(PREVIEWING, 0)
+
+    expect(readKeptTabs('secondary')).toStrictEqual([{ ...PREVIEWING }])
   })
 })

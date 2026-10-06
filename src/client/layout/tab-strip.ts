@@ -1,12 +1,14 @@
 'use sanity'
 
 import { basenameOf } from '../../shared/link-paths.ts'
+import { DRAG_MIME, DRAG_TAB_MIME } from '../drag-payload.ts'
 import { tabIdentity, type TabAt } from './open-tabs.ts'
 
 const TAB_CLASS = 'tabs__tab'
 const EPHEMERAL_CLASS = 'tabs__tab--looking'
 const CLOSE_CLASS = 'tabs__close'
 const NAME_CLASS = 'tabs__name'
+const NOTHING_DRAGGED = ''
 const CLOSE_GLYPH = 'close'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
 const REACHABLE = 0
@@ -21,6 +23,7 @@ interface TabStripOptions {
   onActivate: (at: TabAt) => void
   onKeep: (at: TabAt) => void
   onClose: (at: TabAt) => void
+  onDropped: (identity: string, toIndex: number) => void
 }
 
 export interface TabStrip {
@@ -75,6 +78,18 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
       options.onKeep({ path, view })
     })
 
+    element.draggable = true
+
+    element.addEventListener('dragstart', (event: DragEvent) => {
+      event.dataTransfer?.setData(DRAG_MIME, path)
+      event.dataTransfer?.setData(DRAG_TAB_MIME, tabIdentity(tab))
+    })
+
+    element.addEventListener('drop', (event: DragEvent) => {
+      event.stopPropagation()
+      takeDrop(event, [...host.children].indexOf(element))
+    })
+
     element.append(closerFor(tab, { path, view }))
 
     return element
@@ -95,6 +110,22 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
 
     return element
   }
+
+  function takeDrop(event: DragEvent, toIndex: number): void {
+    const identity = event.dataTransfer?.getData(DRAG_TAB_MIME) ?? NOTHING_DRAGGED
+    if (identity === NOTHING_DRAGGED) return
+
+    event.preventDefault()
+    options.onDropped(identity, toIndex)
+  }
+
+  host.addEventListener('dragover', (event: DragEvent) => {
+    if (event.dataTransfer?.types.includes(DRAG_TAB_MIME) === true) event.preventDefault()
+  })
+
+  host.addEventListener('drop', (event: DragEvent) => {
+    takeDrop(event, host.children.length)
+  })
 
   return {
     show(tabs: readonly ShownTab[], active: TabAt | null): void {

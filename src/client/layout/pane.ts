@@ -2,7 +2,7 @@
 
 import type { EntryMove } from '../doc-path.ts'
 import { readKeptTabs, writeKeptTabs, type PaneId } from './kept-tabs.ts'
-import { createOpenTabs, tabIdentity, type TabAt } from './open-tabs.ts'
+import { createOpenTabs, tabFromIdentity, tabIdentity, type TabAt } from './open-tabs.ts'
 import { createTabStrip } from './tab-strip.ts'
 
 const STRIP_SELECTOR = '[data-part="tabs"]'
@@ -11,6 +11,7 @@ const NO_TABS = 0
 interface PaneOptions {
   onActivate: (at: TabAt) => void
   onCloseRequested: (at: TabAt) => void
+  onTabArrived: (identity: string, toIndex: number) => void
 }
 
 export interface Pane {
@@ -18,6 +19,7 @@ export interface Pane {
   open: (at: TabAt) => void
   keep: (at: TabAt) => void
   close: (at: TabAt) => void
+  receive: (at: TabAt, toIndex: number) => void
   keepWhenOpened: (at: TabAt) => void
   leave: () => void
   followMove: (move: EntryMove) => void
@@ -51,6 +53,18 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
     rememberAndDraw()
   }
 
+  function dropped(identity: string, toIndex: number): void {
+    const held = tabs.all().find((candidate) => tabIdentity(candidate) === identity)
+    if (held === undefined) {
+      options.onTabArrived(identity, toIndex)
+
+      return
+    }
+
+    tabs.reorder(held, toIndex)
+    rememberAndDraw()
+  }
+
   function keepWhenOpened(at: TabAt): void {
     awaited = tabIdentity(at)
     tabs.promote(at)
@@ -64,6 +78,7 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
           onActivate: options.onActivate,
           onKeep: keep,
           onClose: options.onCloseRequested,
+          onDropped: dropped,
         })
 
   for (const at of readKeptTabs(id)) tabs.keep(at)
@@ -84,6 +99,12 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
     keepWhenOpened,
     close,
 
+    receive(at: TabAt, toIndex: number): void {
+      tabs.keep(at)
+      tabs.reorder(at, toIndex)
+      rememberAndDraw()
+    },
+
     leave(): void {
       tabs.leave()
       draw()
@@ -100,4 +121,12 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
 
     isEmpty: () => tabs.all().length === NO_TABS,
   }
+}
+
+export function carryTab(identity: string, to: Pane, from: Pane | null, toIndex: number): void {
+  const at = tabFromIdentity(identity)
+  if (at === null || from === null) return
+
+  from.close(at)
+  to.receive(at, toIndex)
 }

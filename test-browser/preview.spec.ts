@@ -258,3 +258,32 @@ test('clicking a block in the preview takes the editor to that part of the docum
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('a tab dragged onto the other strip moves to that pane', async ({ page, request }) => {
+  const name = `carry-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# carried' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+  await page.locator(`[data-tab="editor:${name}"]`).dblclick()
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
+
+  await page.locator(`[data-tab="markup:${name}"]`).dragTo(page.locator('.pane').first().locator('[data-part="tabs"]'))
+
+  await expect(page.locator('.pane').first().locator(`[data-tab="markup:${name}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a tab dragged into a document inserts a link to it', async ({ page, request }) => {
+  const name = `tabdrop-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: 'before after' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+
+  await page.locator(`[data-tab="editor:${name}"]`).dragTo(page.locator('.cm-content'))
+
+  await expect(page.locator('.cm-content')).toContainText(`[${name}](${name})`)
+
+  await request.delete(`/api/files/entries/${name}`)
+})

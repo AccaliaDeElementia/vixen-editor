@@ -20,6 +20,7 @@ interface OpenTabs {
   keep: (at: TabAt) => void
   promote: (at: TabAt) => void
   close: (at: TabAt) => void
+  reorder: (at: TabAt, toIndex: number) => void
   leave: () => void
   followMove: (move: EntryMove) => void
   all: () => readonly HeldTab[]
@@ -30,9 +31,20 @@ interface OpenTabs {
 const NOT_HELD = -1
 const ONE_TAB = 1
 const FIRST_TAB = 0
+const PAST_SEPARATOR = 1
+const IDENTITY_SEPARATOR = ':'
+const NO_PATH = ''
 
 export function tabIdentity({ path, view }: TabAt): string {
-  return `${view}:${path}`
+  return `${view}${IDENTITY_SEPARATOR}${path}`
+}
+
+export function tabFromIdentity(identity: string): TabAt | null {
+  const separator = identity.indexOf(IDENTITY_SEPARATOR)
+  const view = TAB_VIEWS.find((candidate) => candidate === identity.slice(FIRST_TAB, separator))
+  const path = identity.slice(separator + PAST_SEPARATOR)
+
+  return view === undefined || path === NO_PATH ? null : { path, view }
 }
 
 export function createOpenTabs(): OpenTabs {
@@ -79,6 +91,14 @@ export function createOpenTabs(): OpenTabs {
 
     promote(at: TabAt): void {
       keepAt(heldAt(at))
+    },
+
+    reorder(at: TabAt, toIndex: number): void {
+      const wanted = tabIdentity(at)
+      const moving = order.filter((candidate) => tabIdentity(candidate) === wanted)
+      const rest = order.filter((candidate) => tabIdentity(candidate) !== wanted)
+
+      order.splice(FIRST_TAB, order.length, ...rest.slice(FIRST_TAB, toIndex), ...moving, ...rest.slice(toIndex))
     },
 
     close(at: TabAt): void {

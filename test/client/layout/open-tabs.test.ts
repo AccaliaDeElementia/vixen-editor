@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { createOpenTabs, tabIdentity } from '../../../src/client/layout/open-tabs.ts'
+import { createOpenTabs, tabFromIdentity, tabIdentity } from '../../../src/client/layout/open-tabs.ts'
 
 const EDITING = { path: 'journal/a.md', view: 'editor' } as const
 const PREVIEWING = { path: 'journal/a.md', view: 'markup' } as const
@@ -324,5 +324,79 @@ describe('closing a tab', () => {
     tabs.close(EDITING)
 
     expect(tabs.kept()).toStrictEqual([])
+  })
+})
+
+describe('putting a tab somewhere else in the strip', () => {
+  function threeTabs(): ReturnType<typeof createOpenTabs> {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+    tabs.keep(OTHER)
+    tabs.keep(PREVIEWING)
+
+    return tabs
+  }
+
+  it('moves it to the place asked for', () => {
+    const tabs = threeTabs()
+
+    tabs.reorder(PREVIEWING, 0)
+
+    expect(tabs.all().map(tabIdentity)).toStrictEqual(['markup:journal/a.md', 'editor:journal/a.md', 'editor:notes.md'])
+  })
+
+  it('moves it to the end when asked for a place past the last', () => {
+    const tabs = threeTabs()
+
+    tabs.reorder(EDITING, 2)
+
+    expect(tabs.all().map(tabIdentity).at(-1)).toBe('editor:journal/a.md')
+  })
+
+  it('leaves the order alone when the tab is already there', () => {
+    const tabs = threeTabs()
+
+    tabs.reorder(EDITING, 0)
+
+    expect(tabs.all().map(tabIdentity).at(0)).toBe('editor:journal/a.md')
+  })
+
+  it('ignores a tab it does not hold', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    tabs.reorder(OTHER, 0)
+
+    expect(tabs.all().map(tabIdentity)).toStrictEqual(['editor:journal/a.md'])
+  })
+
+  it('keeps what it remembers in the new order, so a reload agrees', () => {
+    const tabs = threeTabs()
+
+    tabs.reorder(PREVIEWING, 0)
+
+    expect(tabs.kept().map(tabIdentity).at(0)).toBe('markup:journal/a.md')
+  })
+})
+
+describe('reading a tab back from how it is named', () => {
+  it('reads one the strip wrote', () => {
+    expect(tabFromIdentity(tabIdentity(PREVIEWING))).toStrictEqual({ ...PREVIEWING })
+  })
+
+  it('reads a path that has a colon in it, since the first one is the separator', () => {
+    expect(tabFromIdentity('editor:odd:name.md')).toStrictEqual({ path: 'odd:name.md', view: 'editor' })
+  })
+
+  it('refuses a view type this build does not have', () => {
+    expect(tabFromIdentity('hologram:a.md')).toBeNull()
+  })
+
+  it('refuses one naming no path', () => {
+    expect(tabFromIdentity('editor:')).toBeNull()
+  })
+
+  it('refuses something with no separator at all', () => {
+    expect(tabFromIdentity('editor')).toBeNull()
   })
 })

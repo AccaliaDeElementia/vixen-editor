@@ -30,11 +30,10 @@ import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
-import { createMarkupView, type MarkupView } from '../layout/markup-view.ts'
-import { createSourceView } from '../layout/source-view.ts'
+import { createPreviews } from './previews.ts'
 import { revealOnly } from '../layout/reveal-view.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
-import { createPane, type Pane } from '../layout/pane.ts'
+import { carryTab, createPane, type Pane } from '../layout/pane.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -164,6 +163,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onCloseRequested: (at: TabAt) => {
       requestClose(primary, at)
     },
+    onTabArrived: (identity: string, toIndex: number) => {
+      carryTab(identity, primary, secondary, toIndex)
+    },
   })
 
   let touched: Pane = primary
@@ -189,7 +191,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       primary.keepWhenOpened(editorTab(documentId()))
     },
     onCaretMoved: (offset: number) => {
-      previewing?.revealOffset(offset)
+      previews.revealOffset(offset)
     },
     showingDocument: () => workspace.showing() === 'document',
     listenForFocus: options.listenForFocus,
@@ -327,6 +329,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         onCloseRequested: (at: TabAt) => {
           requestClose(built, at)
         },
+        onTabArrived: (identity: string, toIndex: number) => {
+          carryTab(identity, built, primary, toIndex)
+        },
       })
 
       secondary = built
@@ -375,22 +380,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (at !== null) requestClose(touched, at)
   }
 
-  let previewing: MarkupView | null = null
-
-  function renderPreview(host: ParentNode, at: TabAt, content: string): void {
-    if (at.view === 'source') {
-      previewing = null
-      createSourceView(host).show(content)
-
-      return
-    }
-
-    const markup = createMarkupView(host, (offset: number) => {
-      tab.putCaretAt(offset)
-    })
-    markup.show(content)
-    previewing = markup
-  }
+  const previews = createPreviews((offset: number) => {
+    tab.putCaretAt(offset)
+  })
 
   function activate(host: HTMLElement, at: TabAt): void {
     if (at.view === 'editor' || at.path !== documentId()) {
@@ -399,7 +391,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       return
     }
 
-    renderPreview(host, at, view.state.doc.toString())
+    previews.render(host, at, view.state.doc.toString())
   }
 
   function showPreview(wanted: 'source' | 'markup', says: string): void {
@@ -412,7 +404,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     touched = target
 
     const at: TabAt = { path: documentId(), view: wanted }
-    renderPreview(target.element, at, view.state.doc.toString())
+    previews.render(target.element, at, view.state.doc.toString())
     if (primary.holdsPermanently(editorTab(at.path))) target.keep(at)
     else target.open(at)
 

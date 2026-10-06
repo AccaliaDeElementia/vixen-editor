@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { cast } from '../../cast.ts'
 import { createTabStrip, type TabStrip } from '../../../src/client/layout/tab-strip.ts'
 
 const EDITING = { path: 'journal/a.md', view: 'editor' } as const
@@ -12,11 +13,15 @@ let host: HTMLElement = document.createElement('div')
 let activated: unknown[] = []
 let kept: unknown[] = []
 let closed: unknown[] = []
+let dropped: unknown[] = []
 
 function strip(): TabStrip {
   return createTabStrip(host, {
     onActivate: (key) => {
       activated.push(key)
+    },
+    onDropped: (identity, toIndex) => {
+      dropped.push({ identity, toIndex })
     },
     onClose: (key) => {
       closed.push(key)
@@ -38,6 +43,7 @@ beforeEach(() => {
   activated = []
   kept = []
   closed = []
+  dropped = []
 })
 
 describe('showing what is open', () => {
@@ -262,5 +268,132 @@ describe('the control that closes a tab', () => {
     strip().show([EDITING], EDITING)
 
     expect(closer()?.getAttribute('aria-hidden')).toBe('true')
+  })
+})
+
+describe('dragging a tab', () => {
+  function transfer(): DataTransfer {
+    const held = new Map<string, string>()
+
+    return cast<DataTransfer>({
+      setData: (type: string, value: string) => held.set(type, value),
+      getData: (type: string) => held.get(type) ?? '',
+      get types(): string[] {
+        return [...held.keys()]
+      },
+    })
+  }
+
+  function startDragging(at: { path: string; view: string }, data: DataTransfer): void {
+    host
+      .querySelector<HTMLElement>(`[data-tab="${at.view}:${at.path}"]`)
+      ?.dispatchEvent(cast<DragEvent>(Object.assign(new Event('dragstart', { bubbles: true }), { dataTransfer: data })))
+  }
+
+  function dropOnto(at: { path: string; view: string } | null, data: DataTransfer): void {
+    const target = at === null ? host : host.querySelector<HTMLElement>(`[data-tab="${at.view}:${at.path}"]`)
+    target?.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: data })))
+  }
+
+  it('offers the tab as draggable', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(tabs().at(0)?.draggable).toBe(true)
+  })
+
+  it('carries the same payload a file row carries, so dropping it in a document inserts a link', () => {
+    const data = transfer()
+    strip().show([EDITING], EDITING)
+
+    startDragging(EDITING, data)
+
+    expect(data.getData('application/x-vixen-path')).toBe('journal/a.md')
+  })
+
+  it('carries which tab it is, so the strip can tell it from a file row', () => {
+    const data = transfer()
+    strip().show([EDITING], EDITING)
+
+    startDragging(EDITING, data)
+
+    expect(data.getData('application/x-vixen-tab')).toBe('editor:journal/a.md')
+  })
+
+  it('reports where a dropped tab should go', () => {
+    const data = transfer()
+    const showing = strip()
+    showing.show([EDITING, OTHER], EDITING)
+    startDragging(OTHER, data)
+
+    dropOnto(EDITING, data)
+
+    expect(dropped).toStrictEqual([{ identity: 'editor:notes.md', toIndex: 0 }])
+  })
+
+  it('reports a drop past the last tab as the end of the strip', () => {
+    const data = transfer()
+    const showing = strip()
+    showing.show([EDITING, OTHER], EDITING)
+    startDragging(EDITING, data)
+
+    dropOnto(null, data)
+
+    expect(dropped).toStrictEqual([{ identity: 'editor:journal/a.md', toIndex: 2 }])
+  })
+
+  it('ignores a drop that carries no tab, such as a file row', () => {
+    const data = transfer()
+    strip().show([EDITING], EDITING)
+
+    dropOnto(EDITING, data)
+
+    expect(dropped).toStrictEqual([])
+  })
+})
+
+describe('what the strip will accept a drop of', () => {
+  function transfer(): DataTransfer {
+    const held = new Map<string, string>()
+
+    return cast<DataTransfer>({
+      setData: (type: string, value: string) => held.set(type, value),
+      getData: (type: string) => held.get(type) ?? '',
+      get types(): string[] {
+        return [...held.keys()]
+      },
+    })
+  }
+
+  function dragOver(data: DataTransfer): boolean {
+    const event = cast<DragEvent>(
+      Object.assign(new Event('dragover', { bubbles: true, cancelable: true }), { dataTransfer: data }),
+    )
+    host.dispatchEvent(event)
+
+    return event.defaultPrevented
+  }
+
+  it('takes a tab, which is what it knows how to place', () => {
+    const data = transfer()
+    data.setData('application/x-vixen-tab', 'editor:journal/a.md')
+    strip().show([EDITING], EDITING)
+
+    expect(dragOver(data)).toBe(true)
+  })
+
+  it('ignores a drop that carries nothing at all', () => {
+    strip().show([EDITING], EDITING)
+
+    host.dispatchEvent(new Event('drop', { bubbles: true }))
+
+    expect(dropped).toStrictEqual([])
+  })
+
+  it('refuses a file row, which belongs in a document rather than a strip', () => {
+    const data = transfer()
+    data.setData('application/x-vixen-path', 'journal/a.md')
+    strip().show([EDITING], EDITING)
+
+    expect(dragOver(data)).toBe(false)
   })
 })

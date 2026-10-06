@@ -1,5 +1,7 @@
 'use sanity'
 
+import { DRAG_KIND_MIME, DRAG_MIME } from '../drag-payload.ts'
+
 import type { DocumentMoved } from '../document-moved.ts'
 import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
 import { EMPTY } from '../../shared/sequences.ts'
@@ -16,8 +18,6 @@ type DropDirectory = string
 
 type DestinationPath = string
 
-const DRAG_MIME = 'application/x-vixen-path'
-const DRAG_KIND_MIME = 'application/x-vixen-kind'
 const DROP_TARGET_CLASS = 'tree__row--drop'
 
 interface DragContext {
