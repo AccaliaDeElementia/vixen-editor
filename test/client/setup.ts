@@ -19,6 +19,7 @@ function channelHappyDomDoesNotProvide(): EventSource {
 
 beforeEach(() => {
   vi.stubGlobal('EventSource', channelHappyDomDoesNotProvide)
+  window.history.replaceState(null, '', '/')
 })
 
 watchIntervals()

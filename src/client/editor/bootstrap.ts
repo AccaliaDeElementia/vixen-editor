@@ -30,6 +30,7 @@ import { guardUnload } from './unload.ts'
 import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
 import { onKeepRequested } from '../keep-request.ts'
+import { onOpenAsideRequested } from '../open-aside.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
@@ -165,7 +166,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const tab = primaryWorkspace.editor()
 
   async function openPath(target: string, wanted: TabView): Promise<void> {
-    await primaryWorkspace.openPath(target)
+    await touched.openPath(target)
     previewing.showNamedByUrl(wanted)
   }
   const { view } = tab
@@ -177,6 +178,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     openDocument.commit(entryPath)
     primaryWorkspace.held.commit(entryPath)
   }
+
+  const { offOpenAsideRequested } = onOpenAsideRequested(root, (entryPath: string) => {
+    const aside = touched === primaryWorkspace ? secondaryWorkspaceTowards(BESIDE) : primaryWorkspace
+    if (aside === null) return
+
+    touched = aside
+    carrying.push(aside.showDocument(entryPath))
+  })
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
@@ -285,7 +294,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
     documentId,
     contentNow: () => view.state.doc.toString(),
-    showingDocument: () => workspace.showing() === 'document',
+    showingDocument: () => touched.workspace.showing() === 'document',
     setStatus,
     navigate: (url: string) => {
       navigator.replaceQuietly(url)
@@ -388,6 +397,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     stopFollowingDeletion()
     offInsertRequested()
     offKeepRequested()
+    offOpenAsideRequested()
     previews.stop()
     toast.dismissRaised()
     tab.teardownDocument()

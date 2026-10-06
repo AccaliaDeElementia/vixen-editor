@@ -8,7 +8,18 @@ import type { Session } from '../../../../src/client/editor/session.ts'
 
 import { cast } from '../../../cast.ts'
 
-import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'
+import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import {
+  dialogsDismissing,
+  filesAnsweringEmpty,
+  openEditor,
+  page,
+  recorded,
+  sessionRecording,
+  trackEditor,
+  type Recorded,
+} from '../../editor-fixtures.ts'
+import { requestOpenAside } from '../../../../src/client/open-aside.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -296,9 +307,114 @@ describe('opening a document the other pane already holds', () => {
     given(() => {
       expect(stripOf(1)?.querySelector('[data-tab="editor:a.md"]')).not.toBeNull()
     })
+    press({ key: 'ArrowLeft', altKey: true, ctrlKey: true })
 
     await stub.go('/doc/a.md')
 
     expect(root.querySelectorAll('[data-tab="editor:a.md"]')).toHaveLength(1)
+  })
+})
+
+describe('which pane a plain open targets', () => {
+  it('opens into the pane the reader last used, not always the first', async () => {
+    const stub = stubbedNavigation()
+    const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
+    await openEditor({ root, pathname: '/doc/a.md', session, navigation: stub.navigation })
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    given(() => {
+      expect(root.querySelectorAll<HTMLElement>('[data-part="pane"]')[1]?.dataset.infront).not.toBe('false')
+    })
+
+    await stub.go('/doc/b.md')
+
+    expect(
+      root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[1]?.querySelector('[data-tab="editor:b.md"]'),
+    ).not.toBeNull()
+  })
+})
+
+describe('opening a document beside what is already open', () => {
+  it('puts it in the other pane, so what the reader was reading stays put', async () => {
+    const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/a.md',
+        session,
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+
+    requestOpenAside(root, 'b.md')
+    await editor.settled()
+
+    expect(
+      root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[1]?.querySelector('[data-tab="editor:b.md"]'),
+    ).not.toBeNull()
+  })
+
+  it('leaves the first pane showing what it had', async () => {
+    const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/a.md',
+        session,
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+
+    requestOpenAside(root, 'b.md')
+    await editor.settled()
+
+    expect(
+      root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[0]?.querySelector('[data-tab="editor:a.md"]'),
+    ).not.toBeNull()
+  })
+
+  it('opens into the first pane when the reader was already in the second', async () => {
+    const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/a.md',
+        session,
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    requestOpenAside(root, 'b.md')
+    await editor.settled()
+
+    expect(
+      root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[0]?.querySelector('[data-tab="editor:b.md"]'),
+    ).not.toBeNull()
+  })
+
+  it('is left alone on a page with nowhere to put a second pane', async () => {
+    const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/a.md',
+        session,
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    root.querySelector('[data-part="panes"]')?.remove()
+
+    requestOpenAside(root, 'b.md')
+    await editor.settled()
+
+    expect(root.querySelector('[data-part="panes"]')).toBeNull()
   })
 })

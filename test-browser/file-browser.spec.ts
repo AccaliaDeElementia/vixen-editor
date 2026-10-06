@@ -49,19 +49,28 @@ test('a document row stays a real link, so the browser can open it its own way',
   await request.delete(`/api/files/entries/${name}`)
 })
 
-test('a modified click opens a tab rather than being swallowed', async ({ page, request }) => {
-  const name = `newtab-${String(Date.now())}.md`
-  await request.post('/api/files/documents', { data: { path: name, content: '# in a new tab' } })
+test('a Ctrl or Cmd click opens the document in the other pane', async ({ page, request }) => {
+  const name = `aside-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# beside' } })
   await page.goto('/doc/')
 
-  const opened = page.context().waitForEvent('page')
   await page.locator(`.tree__row[data-path="${name}"]`).click({ modifiers: ['ControlOrMeta'] })
-  const tab = await opened
 
-  await givenAsync(expect(tab).toHaveURL(`/doc/${name}`))
+  await expect(page.locator('.pane').nth(1).locator(`[data-tab="editor:${name}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a Ctrl or Cmd click leaves the first pane where it was', async ({ page, request }) => {
+  const name = `asidekeep-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# beside' } })
+  await page.goto('/doc/')
+
+  await page.locator(`.tree__row[data-path="${name}"]`).click({ modifiers: ['ControlOrMeta'] })
+  await givenAsync(expect(page.locator('.pane').nth(1).locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+
   expect(new URL(page.url()).pathname).toBe('/doc/')
 
-  await tab.close()
   await request.delete(`/api/files/entries/${name}`)
 })
 

@@ -54,7 +54,6 @@ function press(init: KeyboardEventInit): void {
 
 beforeEach(() => {
   localStorage.clear()
-  window.history.replaceState(null, '', '/')
   record = recorded()
   document.body.innerHTML = ''
   root = page()

@@ -15,6 +15,7 @@ const PER_DOCUMENT = [
   'offDocumentMoved',
   'offInsertRequested',
   'offKeepRequested',
+  'offOpenAsideRequested',
   'previews.stop',
   'stopFollowingDeletion',
   'tab.teardownDocument',

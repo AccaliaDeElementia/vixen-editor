@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { onInsertRequested } from '../../../../src/client/insert-entry.ts'
 import { onKeepRequested } from '../../../../src/client/keep-request.ts'
+import { onOpenAsideRequested } from '../../../../src/client/open-aside.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
 import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
@@ -149,8 +150,6 @@ describe('a double click', () => {
 
 describe('a click the browser should handle', () => {
   it.each([
-    ['ctrl, which opens a tab', { ctrlKey: true }],
-    ['cmd, which opens a tab on a mac', { metaKey: true }],
     ['shift, which opens a window', { shiftKey: true }],
     ['alt, which downloads', { altKey: true }],
   ])('leaves a click with %s alone', async (_case, init) => {
@@ -158,13 +157,42 @@ describe('a click the browser should handle', () => {
 
     expect(click('notes.md', init).defaultPrevented).toBe(false)
   })
+})
 
-  it('does not navigate in this tab either, because the browser is doing it', async () => {
+describe('a Ctrl or Cmd click, which the editor claims for the other pane', () => {
+  function asideRequests(): string[] {
+    const asked: string[] = []
+    onOpenAsideRequested(host, (entryPath: string) => {
+      asked.push(entryPath)
+    })
+
+    return asked
+  }
+
+  it.each([
+    ['ctrl', { ctrlKey: true }],
+    ['cmd, which is how a mac spells it', { metaKey: true }],
+  ])('asks for the document beside what is open, on %s', async (_case, init) => {
+    await start()
+    const asked = asideRequests()
+
+    click('notes.md', init)
+
+    expect(asked).toStrictEqual(['notes.md'])
+  })
+
+  it('does not navigate in this tab, because the document is going beside it', async () => {
     await start()
 
     click('notes.md', { ctrlKey: true })
 
     expect(opened).toStrictEqual([])
+  })
+
+  it('takes the gesture from the browser, which would otherwise open a window', async () => {
+    await start()
+
+    expect(click('notes.md', { ctrlKey: true }).defaultPrevented).toBe(true)
   })
 })
 

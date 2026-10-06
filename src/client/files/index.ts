@@ -1,6 +1,7 @@
 'use sanity'
 
 import { openDocumentIn, type OpenDocument } from '../navigation.ts'
+import { requestOpenAside } from '../open-aside.ts'
 import { errorMessage } from '../error-message.ts'
 import { announceDocumentMoved } from '../document-moved.ts'
 import { createToast } from '../toast.ts'
@@ -45,8 +46,12 @@ const ONE_ENTRY = 1
 const PREVIOUS_ROW = -1
 const LAST_ANCESTOR = -1
 
+function opensAside(event: MouseEvent): boolean {
+  return event.ctrlKey || event.metaKey
+}
+
 function opensElsewhere(event: MouseEvent): boolean {
-  return event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+  return event.shiftKey || event.altKey
 }
 
 function assignLocation(url: string): void {
@@ -259,7 +264,9 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
 
       event.preventDefault()
       markSelected(current.path)
-      openRow(current)
+      if (opensAside(event)) requestOpenAside(root, current.path)
+      else openRow(current)
+
       return
     }
 
