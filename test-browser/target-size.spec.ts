@@ -1,7 +1,8 @@
 'use sanity'
 
 import { given, givenAsync } from '../test/conditions.ts'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from './store-server.ts'
+import type { Page } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
 

@@ -1,7 +1,7 @@
 'use sanity'
 
 import { given, givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('ctrl-clicking a link in the document opens it', async ({ page, request }) => {
   const stamp = String(Date.now())

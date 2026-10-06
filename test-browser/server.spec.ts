@@ -1,7 +1,7 @@
 'use sanity'
 
 import { given } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 import { stringFieldOf } from './json.ts'
 

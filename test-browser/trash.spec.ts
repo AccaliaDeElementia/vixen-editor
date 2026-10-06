@@ -1,7 +1,8 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test } from './store-server.ts'
+import type { APIRequestContext, Page } from '@playwright/test'
 
 import { deletedEntry } from './fixtures.ts'
 import { stringFieldOf } from './json.ts'

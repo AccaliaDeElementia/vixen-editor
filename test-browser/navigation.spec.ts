@@ -1,7 +1,7 @@
 'use sanity'
 
 import { given, givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('a double click navigates without a full page load', async ({ page, request }) => {
   const first = `spa-a-${String(Date.now())}.md`

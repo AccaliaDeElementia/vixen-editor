@@ -1,7 +1,8 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import { expect, test } from './store-server.ts'
+import type { APIRequestContext } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
 import { DECODABLE_64PX_PNG_BYTES } from './png.ts'

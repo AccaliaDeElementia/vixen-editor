@@ -1,6 +1,6 @@
 'use sanity'
 
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('the page says which build it was served, so it can tell when it falls behind', async ({ page }) => {
   await page.goto('/doc/')

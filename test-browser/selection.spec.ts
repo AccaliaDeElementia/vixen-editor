@@ -1,7 +1,7 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('the selected document is visibly marked, not merely marked up', async ({ page, request }) => {
   const name = `sel-${String(Date.now())}.md`

@@ -1,7 +1,7 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('a path that names nothing reports itself as missing', async ({ page }) => {
   await page.goto('/doc/definitely/not/here.md')

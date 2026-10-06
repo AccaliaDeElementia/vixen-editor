@@ -1,7 +1,8 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { devices, expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
+import { devices } from '@playwright/test'
 
 import { documentWithLink } from './fixtures.ts'
 

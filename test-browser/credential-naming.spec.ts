@@ -1,7 +1,7 @@
 'use sanity'
 
 import { given, givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('the name field does not look like a login to a password manager', async ({ page }) => {
   await page.goto('/doc/')

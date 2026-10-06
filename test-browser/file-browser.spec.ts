@@ -1,7 +1,7 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('the file browser lists what the store holds', async ({ page, request }) => {
   const folder = `tree-${String(Date.now())}`

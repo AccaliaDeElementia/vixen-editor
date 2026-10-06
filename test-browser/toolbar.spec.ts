@@ -1,7 +1,7 @@
 'use sanity'
 
 import { givenAsync } from '../test/conditions.ts'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './store-server.ts'
 
 test('the toolbar creates a folder through a real modal dialog', async ({ page, request }) => {
   const name = `made-${String(Date.now())}`

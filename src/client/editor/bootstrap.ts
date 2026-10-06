@@ -33,6 +33,7 @@ import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
 import { onKeepRequested } from '../keep-request.ts'
 import { onOpenAsideRequested } from '../open-aside.ts'
+import { announceStoreChanged } from '../store-changed.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
@@ -441,6 +442,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onBuild: noticeBuild,
     onChange: (change) => {
       if (changeTouches(change, documentId())) void tab.recheck()
+      announceStoreChanged(root)
     },
     onConnected: () => {
       void tab.recheck()
