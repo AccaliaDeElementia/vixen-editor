@@ -42,7 +42,7 @@ beforeEach(() => {
 
 describe('the tabs a reload brings back', () => {
   it('shows one for every document kept before the page went away', async () => {
-    writeKeptTabs([{ path: 'kept.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'kept.md', view: 'editor' }])
 
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
 
@@ -50,7 +50,7 @@ describe('the tabs a reload brings back', () => {
   })
 
   it('does not mark a restored tab as one the reader is only looking at', async () => {
-    writeKeptTabs([{ path: 'kept.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'kept.md', view: 'editor' }])
 
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
 
@@ -58,7 +58,7 @@ describe('the tabs a reload brings back', () => {
   })
 
   it('restores the strip without reading the documents, so a reload costs one request', async () => {
-    writeKeptTabs([{ path: 'kept.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'kept.md', view: 'editor' }])
 
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
 
@@ -66,7 +66,7 @@ describe('the tabs a reload brings back', () => {
   })
 
   it('still marks the document being shown as the active one', async () => {
-    writeKeptTabs([{ path: 'kept.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'kept.md', view: 'editor' }])
 
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
 
@@ -78,7 +78,7 @@ describe('the tabs a reload brings back', () => {
   })
 
   it('raises a restored tab rather than showing the same document twice', async () => {
-    writeKeptTabs([{ path: 'a.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'a.md', view: 'editor' }])
 
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
 
@@ -92,13 +92,13 @@ describe('what a reload is told to bring back', () => {
 
     requestKeep(root, 'a.md')
 
-    expect(readKeptTabs()).toStrictEqual([{ path: 'a.md', view: 'editor' }])
+    expect(readKeptTabs('primary')).toStrictEqual([{ path: 'a.md', view: 'editor' }])
   })
 
   it('records nothing for a tab the reader is only looking at', async () => {
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
 
-    expect(readKeptTabs()).toStrictEqual([])
+    expect(readKeptTabs('primary')).toStrictEqual([])
   })
 
   it('records where a kept tab moved to, so a rename does not orphan it', async () => {
@@ -107,15 +107,15 @@ describe('what a reload is told to bring back', () => {
 
     announceDocumentMoved(root, { from: 'a.md', to: 'archive/a.md', rewritten: [] })
 
-    expect(readKeptTabs()).toStrictEqual([{ path: 'archive/a.md', view: 'editor' }])
+    expect(readKeptTabs('primary')).toStrictEqual([{ path: 'archive/a.md', view: 'editor' }])
   })
 
   it('moves a kept tab that is not the one being shown', async () => {
-    writeKeptTabs([{ path: 'kept.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'kept.md', view: 'editor' }])
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession() })
 
     announceDocumentMoved(root, { from: 'kept.md', to: 'archive/kept.md', rewritten: [] })
 
-    expect(readKeptTabs()).toStrictEqual([{ path: 'archive/kept.md', view: 'editor' }])
+    expect(readKeptTabs('primary')).toStrictEqual([{ path: 'archive/kept.md', view: 'editor' }])
   })
 })

@@ -6,7 +6,6 @@ import {
   documentIdFromPath,
   folderIndexAlternateFromPath,
   pathAfterMove,
-  type EntryMove,
 } from '../doc-path.ts'
 import { classifyFile } from '../../shared/documents.ts'
 import { onDocumentMoved } from '../document-moved.ts'
@@ -30,12 +29,11 @@ import { createDeletedView } from '../layout/deleted-view.ts'
 import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
-import { createOpenTabs } from '../layout/open-tabs.ts'
+import type { TabAt } from '../layout/open-tabs.ts'
 import { createMarkupView } from '../layout/markup-view.ts'
 import { createSourceView } from '../layout/source-view.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
-import { readKeptTabs, writeKeptTabs } from '../layout/kept-tabs.ts'
-import { createTabStrip } from '../layout/tab-strip.ts'
+import { createPane, type Pane } from '../layout/pane.ts'
 import { createWorkspace } from '../layout/workspace.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -58,7 +56,6 @@ const PREVIEW_MARKUP_SELECTOR = '#preview-markup'
 const BESIDE = 'beside'
 const NOTHING_MEASURED = 0
 const MOUNT_SELECTOR = '[data-part="editor"]'
-const TAB_STRIP_SELECTOR = '[data-part="tabs"]'
 const UNREACHABLE_REASON_SELECTOR = '[data-part="unreachable-reason"]'
 
 interface Editor {
@@ -83,8 +80,8 @@ interface BootstrapOptions {
   listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
 }
 
-function paneIn(root: ParentNode): Element {
-  const pane = root.querySelector(PANE_SELECTOR)
+function paneIn(root: ParentNode): HTMLElement {
+  const pane = root.querySelector<HTMLElement>(PANE_SELECTOR)
   if (pane === null) throw new MissingMountError(PANE_SELECTOR)
 
   return pane
@@ -139,68 +136,6 @@ class MissingMountError extends Error {
   }
 }
 
-interface Strip {
-  opened: (at: string) => void
-  keep: (at: string) => void
-  left: () => void
-  followMove: (move: EntryMove) => void
-}
-
-function stripIn(pane: ParentNode, openUrl: (url: string) => void): Strip {
-  const tabs = createOpenTabs()
-  const host = pane.querySelector<HTMLElement>(TAB_STRIP_SELECTOR)
-
-  for (const at of readKeptTabs()) tabs.keep(at)
-  tabs.leave()
-
-  function draw(): void {
-    strip?.show(tabs.all(), tabs.active())
-  }
-
-  function rememberAndDraw(): void {
-    writeKeptTabs(tabs.kept())
-    draw()
-  }
-
-  let awaited: string | null = null
-
-  function keep(at: string): void {
-    awaited = at
-    tabs.promote({ path: at, view: 'editor' })
-    rememberAndDraw()
-  }
-
-  const strip =
-    host === null
-      ? null
-      : createTabStrip(host, {
-          onActivate: ({ path }) => {
-            openUrl(docUrlFor(path))
-          },
-          onKeep: ({ path }) => {
-            keep(path)
-          },
-        })
-
-  return {
-    opened: (at: string) => {
-      tabs.open({ path: at, view: 'editor' })
-      if (awaited === at) tabs.promote({ path: at, view: 'editor' })
-      awaited = null
-      rememberAndDraw()
-    },
-    keep,
-    left: () => {
-      tabs.leave()
-      draw()
-    },
-    followMove: (move: EntryMove) => {
-      tabs.followMove(move)
-      rememberAndDraw()
-    },
-  }
-}
-
 async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { root, pathname, session, navigate, files, reopen, openUrl } = wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
@@ -217,7 +152,13 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const documentId = (): string => openDocument.path()
   const statusBar = createStatusBar(pane)
-  const strip = stripIn(pane, openUrl)
+  const editorTab = (at: string): TabAt => ({ path: at, view: 'editor' })
+
+  const primary = createPane(pane, 'primary', {
+    onActivate: (at: TabAt) => {
+      activate(pane, at)
+    },
+  })
   const workspace = createWorkspace(pane, {
     focusDocument: () => {
       view.focus()
@@ -237,7 +178,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     openUrl,
     announce: setStatus,
     onEdited: () => {
-      strip.keep(documentId())
+      primary.keepWhenOpened(editorTab(documentId()))
     },
     showingDocument: () => workspace.showing() === 'document',
     listenForFocus: options.listenForFocus,
@@ -260,7 +201,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   function showMissing(entryPath: string, shown: string): void {
     tab.empty()
-    strip.left()
+    primary.leave()
     workspace.show('missing', shown)
     missingView.offer(entryPath)
     setStatus(`${shown} is not in the store`)
@@ -289,7 +230,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const outcome = await resolveIndex(session, entryPath, alternate)
     if (!outcome.reached) {
       tab.empty()
-      strip.left()
+      primary.leave()
       workspace.show('unreachable', shown)
       reportUnreachable(pane, shown, outcome.error)
 
@@ -309,7 +250,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const initial = stored ? template : await withCheatsheetIfNew(template, opened)
 
     tab.open(opened, initial)
-    strip.opened(opened)
+    primary.open(editorTab(opened))
     workspace.show('document', shown)
     setStatus(`Editing ${opened} — press Ctrl/Cmd+S to save`)
   }
@@ -322,7 +263,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const trashEntryId = trashEntryIdFromPath(target)
     if (trashEntryId !== null) {
       tab.empty()
-      strip.left()
+      primary.leave()
       deletedView.offer(trashEntryId)
       setStatus('This entry is in the trash')
 
@@ -332,7 +273,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     openDocument.commit(documentIdFromPath(target))
     if (classifyFile(documentId()) === 'image') {
       tab.empty()
-      strip.left()
+      primary.leave()
       imageView.offer(documentId())
       setStatus(`Viewing ${documentId()}`)
 
@@ -344,7 +285,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
-    strip.followMove({ from, to })
+    primary.followMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId())
 
     if (moved !== documentId()) {
@@ -361,27 +302,58 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
-  function previewInOppositePane(show: (host: ParentNode, content: string) => void, says: string): void {
+  let secondary: Pane | null = null
+
+  function secondaryPane(): Pane | null {
+    const element = secondPaneIn(root)
+    if (element === null) return null
+    if (secondary?.element !== element) {
+      secondary = createPane(element, 'secondary', {
+        onActivate: (at: TabAt) => {
+          activate(element, at)
+        },
+      })
+    }
+
+    return secondary
+  }
+
+  function renderPreview(host: ParentNode, at: TabAt, content: string): void {
+    if (at.view === 'source') createSourceView(host).show(content)
+    else createMarkupView(host).show(content)
+  }
+
+  function activate(host: HTMLElement, at: TabAt): void {
+    if (at.view === 'editor' || at.path !== documentId()) {
+      openUrl(docUrlFor(at.path))
+
+      return
+    }
+
+    renderPreview(host, at, view.state.doc.toString())
+  }
+
+  function showPreview(wanted: 'source' | 'markup', says: string): void {
     const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
     openSplit(root, BESIDE, panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width)
 
-    const second = secondPaneIn(root)
-    if (second === null) return
+    const target = secondaryPane()
+    if (target === null) return
 
-    show(second, view.state.doc.toString())
+    const at: TabAt = { path: documentId(), view: wanted }
+    renderPreview(target.element, at, view.state.doc.toString())
+    if (primary.holdsPermanently(editorTab(at.path))) target.keep(at)
+    else target.open(at)
+
     setStatus(`${says} ${documentId()}`)
   }
 
   function showSourcePreview(): void {
-    previewInOppositePane((host, content) => {
-      createSourceView(host).show(content)
-    }, 'Showing the source of')
+    showPreview('source', 'Showing the source of')
   }
 
   function showMarkupPreview(): void {
-    previewInOppositePane((host, content) => {
-      createMarkupView(host).show(content)
-    }, 'Showing a preview of')
+    showPreview('markup', 'Showing a preview of')
   }
 
   root.querySelector<HTMLElement>(PREVIEW_SOURCE_SELECTOR)?.addEventListener('click', showSourcePreview)
@@ -401,7 +373,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   root.addEventListener('keydown', onPreviewKey)
 
   const { offKeepRequested } = onKeepRequested(root, (entryPath) => {
-    strip.keep(entryPath)
+    primary.keepWhenOpened(editorTab(entryPath))
   })
 
   const { stopFollowingDeletion } = followDeletion({

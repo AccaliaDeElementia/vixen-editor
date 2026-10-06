@@ -115,3 +115,64 @@ test('a document carrying hostile HTML creates no element from it', async ({ pag
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('the preview arrives as a tab in the second pane', async ({ page, request }) => {
+  const name = `tabbed-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# tabbed' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('tabbed'))
+
+  await page.locator('#preview-markup').click()
+
+  await expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('both previews sit as separate tabs once the document is kept', async ({ page, request }) => {
+  const name = `twotabs-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# two' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+  await page.locator(`[data-tab="editor:${name}"]`).dblclick()
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
+
+  await page.locator('#preview-source').click()
+
+  await expect(page.locator('.pane').last().locator('[role="tab"]')).toHaveCount(2)
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a preview of a document only being looked at replaces the other preview', async ({ page, request }) => {
+  const name = `onetab-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# one' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('one'))
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
+
+  await page.locator('#preview-source').click()
+
+  await expect(page.locator(`[data-tab="markup:${name}"]`)).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('activating a preview tab shows that preview again', async ({ page, request }) => {
+  const name = `reactivate-${String(Date.now())}.md`
+  await request.post('/api/files/documents', { data: { path: name, content: '# back again' } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
+  await page.locator(`[data-tab="editor:${name}"]`).dblclick()
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
+  await page.locator('#preview-source').click()
+
+  await page.locator(`[data-tab="markup:${name}"]`).click()
+
+  await expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('back again')
+
+  await request.delete(`/api/files/entries/${name}`)
+})

@@ -4,7 +4,13 @@ import { isRecord } from '../../shared/guards.ts'
 import { readJson, writeJson } from '../local-storage.ts'
 import { TAB_VIEWS, type TabAt } from './open-tabs.ts'
 
-const KEPT_TABS_KEY = 'vixen-editor:tabs'
+export type PaneId = 'primary' | 'secondary'
+
+const KEPT_TABS_PREFIX = 'vixen-editor:tabs'
+
+function keyFor(pane: PaneId): string {
+  return `${KEPT_TABS_PREFIX}:${pane}`
+}
 const NO_PATH = ''
 
 function isTabAt(value: unknown): value is TabAt {
@@ -15,14 +21,14 @@ function isTabAt(value: unknown): value is TabAt {
   return typeof path === 'string' && path !== NO_PATH && TAB_VIEWS.some((candidate) => candidate === view)
 }
 
-export function readKeptTabs(storage?: Storage | null): TabAt[] {
-  const stored = readJson(KEPT_TABS_KEY, storage)
+export function readKeptTabs(pane: PaneId, storage?: Storage | null): TabAt[] {
+  const stored = readJson(keyFor(pane), storage)
 
   return Array.isArray(stored) ? stored.filter(isTabAt).map(({ path, view }) => ({ path, view })) : []
 }
 
-export function writeKeptTabs(tabs: readonly TabAt[], storage?: Storage | null): void {
-  writeJson(KEPT_TABS_KEY, tabs, storage)
+export function writeKeptTabs(pane: PaneId, tabs: readonly TabAt[], storage?: Storage | null): void {
+  writeJson(keyFor(pane), tabs, storage)
 }
 
-export const TestOnly = { KEPT_TABS_KEY }
+export const TestOnly = { keyFor }
