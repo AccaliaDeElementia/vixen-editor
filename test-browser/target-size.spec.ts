@@ -73,7 +73,9 @@ test('every pointer target in an expanded trash is at least 24 by 24', async ({ 
   await givenAsync(expect(trash).toBeVisible())
   await trash.click()
   await givenAsync(
-    expect(page.locator('[role="treeitem"][data-path^=".trash/"]').first()).toBeVisible({ timeout: 10_000 }),
+    expect(
+      page.locator('[role="treeitem"][data-path^=".trash/"]').filter({ hasText: `${folder}/gone.md` }),
+    ).toBeVisible({ timeout: 10_000 }),
   )
 
   expect(await undersizedTargetsOn(page)).toStrictEqual([])

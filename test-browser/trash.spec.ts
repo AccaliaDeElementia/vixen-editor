@@ -122,9 +122,10 @@ test('the file browser offers no buttons on a deleted entry of its own', async (
 
   await page.goto('/doc/')
   await page.locator('.tree__row[data-kind="trash-root"]').click()
-  await givenAsync(expect(page.locator('[role="treeitem"][data-path^=".trash/"]').first()).toBeVisible())
+  const mine = page.locator('[role="treeitem"][data-path^=".trash/"]').filter({ hasText: name })
+  await givenAsync(expect(mine).toBeVisible())
 
-  await expect(page.locator('[role="treeitem"][data-path^=".trash/"] button')).toHaveCount(0)
+  await expect(mine.locator('button')).toHaveCount(0)
 })
 
 test('deleting the open image shows it in the trash, expanded and selected', async ({ page, request }) => {
@@ -250,7 +251,10 @@ test('a row offers to put its own item back somewhere else', async ({ page, requ
 // This suite is fullyParallel against one store, and emptying the trash is the
 // one action that would reach every other spec's fixtures. The second click is
 // answered rather than carried out, so the path from the button to the request
-// is still exercised.
+// is still exercised. What the stub takes out is covered by
+// test/client/files/files-client.test.ts for the request this sends and the
+// count it reads back, and by test/server/routes/trash.test.ts for the server
+// actually emptying the trash.
 test('a second click asks the server to empty the trash, and says what went', async ({ page, request }) => {
   const name = `sweep-${String(Date.now())}.md`
   const trashId = await deletedEntry(request, name)
