@@ -267,13 +267,11 @@ function applyRovingTabindex(tree: Element): void {
 
 export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {
   const drawn = drawnIn(tree)
-  const { activeElement: focused } = document
   const main = renderNodes(model.nodes, model, ROOT_DEPTH, drawn)
   const bin = renderTrash(model, drawn)
 
   syncChildren(tree, [...main.items, ...bin.items])
   applyRovingTabindex(tree)
-  if (focused instanceof HTMLElement && tree.contains(focused)) focused.focus()
 
   return [...main.visible, ...bin.visible]
 }
