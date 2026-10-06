@@ -30,7 +30,7 @@ import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createStatusBar } from '../layout/status-bar.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
-import { createMarkupView } from '../layout/markup-view.ts'
+import { createMarkupView, type MarkupView } from '../layout/markup-view.ts'
 import { createSourceView } from '../layout/source-view.ts'
 import { revealOnly } from '../layout/reveal-view.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
@@ -187,6 +187,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     announce: setStatus,
     onEdited: () => {
       primary.keepWhenOpened(editorTab(documentId()))
+    },
+    onCaretMoved: (offset: number) => {
+      previewing?.revealOffset(offset)
     },
     showingDocument: () => workspace.showing() === 'document',
     listenForFocus: options.listenForFocus,
@@ -372,9 +375,21 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (at !== null) requestClose(touched, at)
   }
 
+  let previewing: MarkupView | null = null
+
   function renderPreview(host: ParentNode, at: TabAt, content: string): void {
-    if (at.view === 'source') createSourceView(host).show(content)
-    else createMarkupView(host).show(content)
+    if (at.view === 'source') {
+      previewing = null
+      createSourceView(host).show(content)
+
+      return
+    }
+
+    const markup = createMarkupView(host, (offset: number) => {
+      tab.putCaretAt(offset)
+    })
+    markup.show(content)
+    previewing = markup
   }
 
   function activate(host: HTMLElement, at: TabAt): void {

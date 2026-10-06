@@ -42,6 +42,7 @@ interface DocumentTabOptions {
   showingDocument: () => boolean
   announce: (text: string) => void
   onEdited: () => void
+  onCaretMoved: (offset: number) => void
   listenForFocus?: FocusListener | undefined
 }
 
@@ -52,6 +53,7 @@ interface DocumentTab {
   saveState: () => SaveState
   flush: () => Promise<void>
   insertAt: (text: string, at: number | null) => void
+  putCaretAt: (offset: number) => void
   open: (entryPath: string, content: string) => void
   load: (content: string) => void
   empty: () => void
@@ -143,6 +145,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
         EditorView.updateListener.of((update) => {
           caretPosition = caretIn(update.state)
           merging.endWhenResolved(update.view)
+          options.onCaretMoved(caretPosition)
           if (!update.docChanged) return
 
           const content = update.state.doc.toString()
@@ -161,6 +164,12 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   const insertAt = (text: string, at: number | null): void => {
     const from = at ?? view.state.selection.main.head
     view.dispatch({ changes: { from, insert: text }, selection: { anchor: from + text.length } })
+    view.focus()
+  }
+
+  const putCaretAt = (offset: number): void => {
+    const at = Math.min(offset, view.state.doc.length)
+    view.dispatch({ selection: { anchor: at }, effects: EditorView.scrollIntoView(at) })
     view.focus()
   }
 
@@ -270,6 +279,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     saveState: autosave.state,
     flush: autosave.flush,
     insertAt,
+    putCaretAt,
     open,
     load,
     empty,

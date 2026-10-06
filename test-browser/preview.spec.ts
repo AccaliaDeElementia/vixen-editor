@@ -202,3 +202,59 @@ test('Alt+W closes the tab in front of the reader', async ({ page, request }) =>
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('the preview follows the caret to the part of the document being worked on', async ({ page, request }) => {
+  const name = `sync-${String(Date.now())}.md`
+  const blocks = Array.from(
+    { length: 40 },
+    (_, at) => `## Heading ${String(at)}\n\nSome prose under heading ${String(at)}.`,
+  )
+  await request.post('/api/files/documents', { data: { path: name, content: blocks.join('\n\n') } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('Heading 0'))
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h2').first()).toBeVisible())
+
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Control+End')
+
+  await expect(page.locator('[data-part="markup-body"] h2').last()).toBeInViewport()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('the preview stays where it was while the caret stays in the same block', async ({ page, request }) => {
+  const name = `still-${String(Date.now())}.md`
+  const blocks = Array.from(
+    { length: 40 },
+    (_, at) => `## Heading ${String(at)}\n\nSome prose under heading ${String(at)}.`,
+  )
+  await request.post('/api/files/documents', { data: { path: name, content: blocks.join('\n\n') } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('Heading 0'))
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h2').first()).toBeVisible())
+
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Control+Home')
+
+  await expect(page.locator('[data-part="markup-body"] h2').first()).toBeInViewport()
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('clicking a block in the preview takes the editor to that part of the document', async ({ page, request }) => {
+  const name = `click-${String(Date.now())}.md`
+  const blocks = Array.from({ length: 40 }, (_, at) => `## Heading ${String(at)}\n\nProse under ${String(at)}.`)
+  await request.post('/api/files/documents', { data: { path: name, content: blocks.join('\n\n') } })
+  await page.goto(`/doc/${name}`)
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('Heading 0'))
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h2').first()).toBeVisible())
+
+  await page.locator('[data-part="markup-body"] h2').last().click()
+
+  await expect(page.locator('.cm-content').getByText('Heading 39')).toBeInViewport()
+
+  await request.delete(`/api/files/entries/${name}`)
+})

@@ -422,3 +422,36 @@ describe('closing a tab whose unsaved work does save', () => {
     expect(root.querySelector('[data-tab="editor:notes.md"]')).toBeNull()
   })
 })
+
+describe('clicking a block in the rendered preview', () => {
+  it('puts the caret where that block came from in the source', async () => {
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession('# one\n\n# two'),
+    })
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    root
+      .querySelectorAll<HTMLElement>('[data-part="markup-body"] h1')[1]
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(view.state.selection.main.head).toBe(7)
+  })
+
+  it('does not run past the end of a document that has since shrunk', async () => {
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession('# one\n\n# two'),
+    })
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '#' } })
+
+    root
+      .querySelectorAll<HTMLElement>('[data-part="markup-body"] h1')[1]
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(view.state.selection.main.head).toBe(1)
+  })
+})
