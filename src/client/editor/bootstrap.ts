@@ -1,53 +1,31 @@
 'use sanity'
 
-import {
-  displayPathFromPath,
-  docUrlFor,
-  documentIdFromPath,
-  folderIndexAlternateFromPath,
-  pathAfterMove,
-  viewFromSearch,
-  type TabView,
-} from '../doc-path.ts'
-import { classifyFile } from '../../shared/documents.ts'
+import { displayPathFromPath, docUrlFor, pathAfterMove, viewFromSearch, type TabView } from '../doc-path.ts'
 import { onDocumentMoved } from '../document-moved.ts'
 import { connectToChanges } from '../store-events.ts'
 import { changeTouches } from '../../shared/store-change.ts'
 import { interceptNavigation, openDocumentIn } from '../navigation.ts'
-import { errorMessage } from '../error-message.ts'
-
-import { directoryOf } from '../../shared/link-paths.ts'
-import { EMPTY } from '../../shared/sequences.ts'
-import { STORE_ROOT } from '../../shared/store-path.ts'
-import { cheatsheet } from '../help.ts'
 
 import { caretsFollowMove } from './carets.ts'
 import { createDocumentClient } from './document-client.ts'
 import { followDeletion } from './follow-deletion.ts'
-import { trashEntryIdFromPath } from '../../shared/page-urls.ts'
 import { createToast } from '../toast.ts'
 import { createFilesClient, type FilesClient } from '../files/files-client.ts'
-import { createDeletedView } from '../layout/deleted-view.ts'
-import { createImageView } from '../layout/image-view.ts'
-import { createMissingView } from '../layout/missing-view.ts'
-import { createStatusBar } from '../layout/status-bar.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import { createPreviews } from './previews.ts'
 import { createPreviewing } from './previewing.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
-import { carryTab, createPane, type Pane } from '../layout/pane.ts'
+import { carryTab } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
 import { createClosingTabs } from './closing-tabs.ts'
 import { createPaneMoves } from './pane-moves.ts'
 import { createTabNavigation } from './tab-navigation.ts'
-import { createWorkspace } from '../layout/workspace.ts'
 
 import type { EditorView } from '@codemirror/view'
 
 import { startsALine } from './document-tab.ts'
-import { createPaneEditor } from './pane-editor.ts'
+import { createPaneWorkspace, MissingMountError, type PaneWorkspace } from './pane-workspace.ts'
 import { createSession, type Session } from './session.ts'
-import { resolveIndex } from './folder-index.ts'
 import { guardUnload } from './unload.ts'
 import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
@@ -59,8 +37,7 @@ const PANE_SELECTOR = '[data-part="pane"]'
 const PANES_SELECTOR = '[data-part="panes"]'
 const BESIDE = 'beside'
 const NOTHING_MEASURED = 0
-const MOUNT_SELECTOR = '[data-part="editor"]'
-const UNREACHABLE_REASON_SELECTOR = '[data-part="unreachable-reason"]'
+const EVERYTHING_PENDING = 0
 
 interface Editor {
   view: EditorView
@@ -92,13 +69,6 @@ function paneIn(root: ParentNode): HTMLElement {
   if (pane === null) throw new MissingMountError(PANE_SELECTOR)
 
   return pane
-}
-
-function reportUnreachable(host: ParentNode, at: string, error: unknown): void {
-  const subject = at === '' ? 'The store' : at
-  const element = host.querySelector(UNREACHABLE_REASON_SELECTOR)
-
-  if (element !== null) element.textContent = `${subject} could not be loaded: ${errorMessage(error)}`
 }
 
 function replaceAddress(url: string): void {
@@ -143,14 +113,6 @@ function wiringFor(options: BootstrapOptions): Wiring {
   }
 }
 
-class MissingMountError extends Error {
-  override readonly name = 'MissingMountError'
-
-  constructor(selector: string) {
-    super(`Missing editor mount point: ${selector}`)
-  }
-}
-
 async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { root, pathname, search, session, navigate, files, reopen, openUrl, replaceUrl } = wiringFor(options)
   const openDocument = openDocumentIn(root, pathname)
@@ -161,165 +123,67 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   const pane = paneIn(root)
-
-  const mount = pane.querySelector(MOUNT_SELECTOR)
-  if (mount === null) throw new MissingMountError(MOUNT_SELECTOR)
-
-  const documentId = (): string => openDocument.path()
-  const statusBar = createStatusBar(pane)
-  const editorTab = (at: string): TabAt => ({ path: at, view: 'editor' })
-
-  const primary = createPane(pane, 'primary', {
-    onActivate: (at: TabAt) => {
-      touched = primary
-      activate(pane, at)
-    },
-    onCloseRequested: (at: TabAt) => {
-      closingTabs.requestClose(primary, at)
-    },
-    onTabArrived: (identity: string, toIndex: number) => {
-      carryTab(identity, primary, secondary, toIndex)
-    },
-  })
-
-  let touched: Pane = primary
-  const workspace = createWorkspace(pane, {
-    focusDocument: () => {
-      view.focus()
-    },
-  })
-
   const dialogs = options.dialogs ?? createDialogs(root)
 
   const previews = createPreviews((offset: number) => {
     tab.putCaretAt(offset)
   })
 
-  const tab = createPaneEditor({
-    pane: primary,
-    mount,
+  const primaryWorkspace = createPaneWorkspace({
+    root,
+    element: pane,
+    id: 'primary',
+    pathname,
     session,
     files,
     dialogs,
     toast,
-    statusBar,
     previews,
-    documentId,
     openUrl,
+    reopen,
     announce: setStatus,
-    showingDocument: () => workspace.showing() === 'document',
     listenForFocus: options.listenForFocus,
-  })
-  const { view } = tab
-
-  const deletedView = createDeletedView({
-    root,
-    host: pane,
-    client: files,
-    dialogs,
-    toast,
-    openUrl,
-    reveal: (at) => {
-      workspace.show('deleted', at)
+    onActivate: (at: TabAt) => {
+      touched = primaryWorkspace
+      activate(pane, at)
+    },
+    onCloseRequested: (at: TabAt) => {
+      closingTabs.requestClose(primary, at)
+    },
+    onTabArrived: (identity: string, toIndex: number) => {
+      carryTab(identity, primary, secondary?.pane ?? null, toIndex)
+    },
+    onShowing: (entryPath: string) => {
+      openDocument.commit(entryPath)
     },
   })
 
-  const missingView = createMissingView({ host: pane, client: files, toast, reopen })
-
-  function showMissing(entryPath: string, shown: string): void {
-    tab.empty()
-    primary.leave()
-    workspace.show('missing', shown)
-    missingView.offer(entryPath)
-    setStatus(`${shown} is not in the store`)
-  }
-
-  const imageView = createImageView({
-    host: pane,
-    reveal: (at) => {
-      workspace.show('image', at)
-    },
-    onBroken: (entryPath) => {
-      showMissing(entryPath, entryPath)
-    },
-  })
-
-  async function withCheatsheetIfNew(template: string, entryPath: string): Promise<string> {
-    if (directoryOf(entryPath) !== STORE_ROOT) return template
-
-    const tree = await files.tree().catch(() => null)
-    if (tree === null || tree.length > EMPTY) return template
-
-    return `${template}\n${cheatsheet()}`
-  }
-
-  async function showDocument(entryPath: string, shown: string, alternate: string | null): Promise<void> {
-    const outcome = await resolveIndex(session, entryPath, alternate)
-    if (!outcome.reached) {
-      tab.empty()
-      primary.leave()
-      workspace.show('unreachable', shown)
-      reportUnreachable(pane, shown, outcome.error)
-
-      return
-    }
-
-    const { entryPath: opened, loaded } = outcome
-    const { content: template, stored } = loaded
-    if (!stored && alternate === null) {
-      showMissing(opened, shown)
-
-      return
-    }
-
-    openDocument.commit(opened)
-
-    const initial = stored ? template : await withCheatsheetIfNew(template, opened)
-
-    tab.open(opened, initial)
-    primary.open(editorTab(opened))
-    workspace.show('document', shown)
-    setStatus(`Editing ${opened} — press Ctrl/Cmd+S to save`)
-  }
+  const { pane: primary, workspace, statusBar } = primaryWorkspace
+  const tab = primaryWorkspace.editor()
 
   async function openPath(target: string, wanted: TabView): Promise<void> {
-    const shown = displayPathFromPath(target)
-    workspace.show('pending', shown)
-    statusBar.forgetSaveState()
-
-    const trashEntryId = trashEntryIdFromPath(target)
-    if (trashEntryId !== null) {
-      tab.empty()
-      primary.leave()
-      deletedView.offer(trashEntryId)
-      setStatus('This entry is in the trash')
-
-      return
-    }
-
-    openDocument.commit(documentIdFromPath(target))
-    if (classifyFile(documentId()) === 'image') {
-      tab.empty()
-      primary.leave()
-      imageView.offer(documentId())
-      setStatus(`Viewing ${documentId()}`)
-
-      return
-    }
-
-    await showDocument(documentId(), shown, folderIndexAlternateFromPath(target))
+    await primaryWorkspace.openPath(target)
     previewing.showNamedByUrl(wanted)
+  }
+  const { view } = tab
+  let touched: PaneWorkspace = primaryWorkspace
+  const documentId = (): string => openDocument.path()
+  const editorTab = (at: string): TabAt => ({ path: at, view: 'editor' })
+
+  function nowShowing(entryPath: string): void {
+    openDocument.commit(entryPath)
+    primaryWorkspace.held.commit(entryPath)
   }
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
     primary.followMove({ from, to })
-    secondary?.followMove({ from, to })
+    secondary?.pane.followMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId())
 
     if (moved !== documentId()) {
       session.rename(documentId(), moved)
-      openDocument.commit(moved)
+      nowShowing(moved)
       tab.followMove(moved)
       navigate(docUrlFor(moved))
       statusBar.forgetSaveState()
@@ -331,22 +195,38 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
-  let secondary: Pane | null = null
+  let secondary: PaneWorkspace | null = null
 
-  function secondaryPane(): Pane | null {
+  function secondaryWorkspace(): PaneWorkspace | null {
     const element = secondPaneIn(root)
     if (element === null) return null
     if (secondary?.element !== element) {
-      const built: Pane = createPane(element, 'secondary', {
+      teardownSecondaryDocument()
+      const built: PaneWorkspace = createPaneWorkspace({
+        root,
+        element,
+        id: 'secondary',
+        pathname,
+        session,
+        files,
+        dialogs,
+        toast,
+        previews,
+        openUrl,
+        reopen,
+        announce: setStatus,
         onActivate: (at: TabAt) => {
           touched = built
           activate(element, at)
         },
         onCloseRequested: (at: TabAt) => {
-          closingTabs.requestClose(built, at)
+          closingTabs.requestClose(built.pane, at)
         },
         onTabArrived: (identity: string, toIndex: number) => {
-          carryTab(identity, built, primary, toIndex)
+          carryTab(identity, built.pane, primary, toIndex)
+        },
+        onShowing: (entryPath: string) => {
+          openDocument.commit(entryPath)
         },
       })
 
@@ -358,7 +238,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const closingTabs = createClosingTabs({
     primary,
-    inFront: () => touched,
+    inFront: () => touched.pane,
     emptyTheEditor: () => {
       tab.empty()
     },
@@ -379,20 +259,20 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     previews.render(host, at, view.state.doc.toString())
   }
 
-  function summonSecondary(towards: 'beside' | 'below'): Pane | null {
+  function secondaryWorkspaceTowards(towards: 'beside' | 'below'): PaneWorkspace | null {
     const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
     openSplit(root, towards, panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width)
 
-    return secondaryPane()
+    return secondaryWorkspace()
   }
 
   const previewing = createPreviewing({
     root,
     previews,
     primary,
-    summon: () => summonSecondary(BESIDE),
-    focus: (pane: Pane) => {
-      touched = pane
+    summon: () => secondaryWorkspaceTowards(BESIDE),
+    focus: (surface: PaneWorkspace) => {
+      touched = surface
     },
     documentId,
     contentNow: () => view.state.doc.toString(),
@@ -403,18 +283,26 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
+  const carrying: Array<Promise<void>> = []
+
   const paneMoves = createPaneMoves({
     root,
-    primary,
-    summon: summonSecondary,
+    onCarried: (at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace) => {
+      if (at.view !== 'editor') return
+
+      leaving.leave()
+      carrying.push(arriving.showDocument(at.path))
+    },
+    primary: primaryWorkspace,
+    summon: secondaryWorkspaceTowards,
     inFront: () => touched,
-    goTo: (pane: Pane) => {
-      touched = pane
+    goTo: (surface: PaneWorkspace) => {
+      touched = surface
     },
   })
 
   const navigation = createTabNavigation(
-    () => touched,
+    () => touched.pane,
     (host, at) => {
       activate(host, at)
     },
@@ -474,6 +362,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   await openPath(pathname, viewFromSearch(search))
   refreshHistoryButtons(root, navigator)
 
+  function teardownSecondaryDocument(): void {
+    secondary?.teardownDocument()
+  }
+
   function teardownDocument(): void {
     offDocumentMoved()
     stopFollowingDeletion()
@@ -482,6 +374,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     previews.stop()
     toast.dismissRaised()
     tab.teardownDocument()
+    teardownSecondaryDocument()
   }
 
   const changes = connectToChanges({
@@ -505,7 +398,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     view,
     teardownDocument,
     teardownApplication,
-    settled: closingTabs.settled,
+    settled: async () => {
+      await Promise.all(carrying.splice(EVERYTHING_PENDING))
+      await closingTabs.settled()
+    },
     teardownEditor: () => {
       teardownDocument()
       teardownApplication()

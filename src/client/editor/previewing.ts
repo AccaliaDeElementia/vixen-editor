@@ -3,6 +3,7 @@
 import { docUrlFor, type PreviewView, type TabView } from '../doc-path.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { Pane } from '../layout/pane.ts'
+import type { PaneWorkspace } from './pane-workspace.ts'
 import { PREVIEW_ANNOUNCEMENTS, type Previews } from './previews.ts'
 
 const PREVIEW_SOURCE_SELECTOR = '#preview-source'
@@ -12,8 +13,8 @@ interface PreviewingOptions {
   root: ParentNode
   previews: Previews
   primary: Pane
-  summon: () => Pane | null
-  focus: (pane: Pane) => void
+  summon: () => PaneWorkspace | null
+  focus: (surface: PaneWorkspace) => void
   documentId: () => string
   contentNow: () => string
   showingDocument: () => boolean
@@ -36,8 +37,8 @@ export function createPreviewing(options: PreviewingOptions): Previewing {
 
     const at: TabAt = { path: options.documentId(), view: wanted }
     options.previews.render(target.element, at, options.contentNow())
-    if (options.primary.holdsPermanently({ path: at.path, view: 'editor' })) target.keep(at)
-    else target.open(at)
+    if (options.primary.holdsPermanently({ path: at.path, view: 'editor' })) target.pane.keep(at)
+    else target.pane.open(at)
 
     const { [wanted]: says } = PREVIEW_ANNOUNCEMENTS
     options.navigate(docUrlFor(at.path, wanted))

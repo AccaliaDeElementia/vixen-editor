@@ -1,7 +1,8 @@
 'use sanity'
 
-import { carryTab, type Pane } from '../layout/pane.ts'
-import { tabIdentity } from '../layout/open-tabs.ts'
+import { carryTab } from '../layout/pane.ts'
+import type { PaneWorkspace } from './pane-workspace.ts'
+import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import type { SplitOrientation } from '../layout/split.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
@@ -9,10 +10,11 @@ const FIRST_TAB = 0
 
 interface PaneMovesOptions {
   root: ParentNode
-  primary: Pane
-  summon: (towards: SplitOrientation) => Pane | null
-  inFront: () => Pane
-  goTo: (pane: Pane) => void
+  primary: PaneWorkspace
+  summon: (towards: SplitOrientation) => PaneWorkspace | null
+  inFront: () => PaneWorkspace
+  goTo: (surface: PaneWorkspace) => void
+  onCarried: (at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace) => void
 }
 
 interface PaneMoves {
@@ -32,8 +34,11 @@ export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
       if (arriving === null) return
 
       const leaving = options.inFront()
-      const showing = leaving.showing()
-      if (carrying && showing !== null) carryTab(tabIdentity(showing), arriving, leaving, FIRST_TAB)
+      const showing = leaving.pane.showing()
+      if (carrying && showing !== null) {
+        carryTab(tabIdentity(showing), arriving.pane, leaving.pane, FIRST_TAB)
+        options.onCarried(showing, arriving, leaving)
+      }
 
       options.goTo(arriving)
       markPaneInFront()

@@ -8,6 +8,7 @@ import { TestOnly as previewTiming } from '../../../../src/client/editor/preview
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
 import { requestKeep } from '../../../../src/client/keep-request.ts'
+import { DRAG_TAB_MIME } from '../../../../src/client/drag-payload.ts'
 
 const WIDE_ENOUGH = 1200
 const { PREVIEW_SETTLES_MS } = previewTiming
@@ -621,6 +622,58 @@ describe('moving between the panes from the keyboard', () => {
     expect(
       root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[1]?.querySelector('[data-tab="editor:notes.md"]'),
     ).not.toBeNull()
+  })
+
+  it('opens the document in the arriving pane, not only its tab handle', async () => {
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession('# carried'),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    requestKeep(root, 'notes.md')
+
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
+    await editor.settled()
+
+    expect(root.querySelectorAll<HTMLElement>('.cm-content')[1]?.textContent).toContain('# carried')
+  })
+
+  it('empties the editor it left, because a document has only one editor', async () => {
+    await editing('# carried')
+    requestKeep(root, 'notes.md')
+
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
+
+    expect(root.querySelectorAll<HTMLElement>('.cm-content')[0]?.textContent).toBe('')
+  })
+
+  it('leaves a carried preview tab to its own pane, because only an editor holds a document', async () => {
+    await editing('# carried')
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
+
+    expect(root.querySelectorAll<HTMLElement>('.cm-content')[0]?.textContent).toContain('# carried')
+  })
+
+  it('ignores a tab dropped from nowhere, because there is no pane for it to have left', async () => {
+    await editing('# carried')
+    const carried = cast<DataTransfer>({
+      getData: (mime: string) => (mime === DRAG_TAB_MIME ? 'editor:elsewhere.md' : ''),
+      types: [DRAG_TAB_MIME],
+    })
+
+    root
+      .querySelector<HTMLElement>('[data-part="tabs"]')
+      ?.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: carried })))
+
+    expect(root.querySelector('[data-tab="editor:elsewhere.md"]')).toBeNull()
   })
 
   it('takes it out of the pane it came from', async () => {

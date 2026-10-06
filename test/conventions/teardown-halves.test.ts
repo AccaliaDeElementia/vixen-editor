@@ -18,6 +18,7 @@ const PER_DOCUMENT = [
   'previews.stop',
   'stopFollowingDeletion',
   'tab.teardownDocument',
+  'teardownSecondaryDocument',
   'toast.dismissRaised',
 ]
 
