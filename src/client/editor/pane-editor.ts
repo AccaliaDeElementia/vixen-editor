@@ -21,6 +21,7 @@ interface PaneEditorOptions {
   documentId: () => string | null
   openUrl: (url: string) => void
   announce: (text: string) => void
+  onStored: () => void
   showingDocument: () => boolean
   listenForFocus?: FocusListener | undefined
 }
@@ -38,6 +39,7 @@ export function createPaneEditor(options: PaneEditorOptions): DocumentTab {
     documentId,
     openUrl: options.openUrl,
     announce: options.announce,
+    onStored: options.onStored,
     showingDocument: options.showingDocument,
     listenForFocus: options.listenForFocus,
 

@@ -42,6 +42,7 @@ interface DocumentTabOptions {
   openUrl: (url: string) => void
   showingDocument: () => boolean
   announce: (text: string) => void
+  onStored: () => void
   onEdited: (content: string) => void
   onReloaded: (content: string) => void
   onCaretMoved: (offset: number) => void
@@ -189,6 +190,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     dialogs,
     toast,
     insert: insertAt,
+    announce: options.onStored,
   })
 
   bindLinkClicks(view.contentDOM, {

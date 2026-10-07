@@ -19,6 +19,7 @@ interface Prompted {
 
 let inserted: Array<{ text: string; at: number | null }> = []
 let errors: string[] = []
+let announced = 0
 let prompted: Prompted[] = []
 let upload = vi.fn()
 let insertion: PromiseWithResolvers<void> = Promise.withResolvers()
@@ -36,10 +37,14 @@ function declinePrompt(): Promise<boolean> {
 }
 
 const AT_CARET = 3
+const ONCE = 1
 
 function dropOptions(options: DropOptions = {}): Parameters<typeof receive>[3] {
   return {
     holder: options.holder ?? (() => 'journal/notes.md'),
+    announce: () => {
+      announced += 1
+    },
     client: cast<FilesClient>({ upload }),
     dialogs: cast<Dialogs>({
       prompt: async (request: { title: string; value?: string; submit: (name: string) => Promise<string | null> }) => {
@@ -106,6 +111,7 @@ beforeEach(() => {
   document.body.innerHTML = ''
   inserted = []
   errors = []
+  announced = 0
   prompted = []
   insertion = Promise.withResolvers()
   prompting = Promise.withResolvers()
@@ -373,5 +379,23 @@ describe('dropping a file onto an editor that holds no document', () => {
     await Promise.resolve()
 
     expect(upload).not.toHaveBeenCalled()
+  })
+})
+
+describe('the file browser after a drop that uploaded', () => {
+  it('is told at once, rather than waiting for the store to tell it back', async () => {
+    upload = vi.fn().mockResolvedValue('journal/photo.png')
+
+    await receive([png('photo.png')], AT_CARET, () => false, dropOptions())
+
+    expect(announced).toBe(ONCE)
+  })
+
+  it('is not told when nothing was stored, because nothing changed', async () => {
+    upload = vi.fn().mockRejectedValue(new Error('the store refused'))
+
+    await receive([png('photo.png')], AT_CARET, () => false, dropOptions())
+
+    expect(announced).toBe(0)
   })
 })

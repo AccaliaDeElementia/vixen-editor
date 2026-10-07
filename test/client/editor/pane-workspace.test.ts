@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createPaneWorkspace } from '../../../src/client/editor/pane-workspace.ts'
 import { createPreviews } from '../../../src/client/editor/previews.ts'
-import { createToast } from '../../../src/client/toast.ts'
+import { createToast, type Toast } from '../../../src/client/toast.ts'
 import type { Session } from '../../../src/client/editor/session.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import {
@@ -15,6 +15,8 @@ import {
   type Recorded,
 } from '../editor-fixtures.ts'
 import { renderPane } from '../templates.ts'
+import { cast } from '../../cast.ts'
+import { DRAG_MIME } from '../../../src/client/drag-payload.ts'
 
 const SOMETHING_STORED = '# stored'
 const WHENEVER = '2026-01-01T00:00:00.000Z'
@@ -42,6 +44,7 @@ function paneHolding(
   holds: string | null,
   answering: Partial<FilesClient> = {},
   session: Partial<Session> = {},
+  complaining: Partial<Toast> = {},
 ): ReturnType<typeof createPaneWorkspace> {
   const built = createPaneWorkspace({
     root,
@@ -51,7 +54,7 @@ function paneHolding(
     session: fakeSession(session),
     files: { ...filesAnsweringEmpty(), ...answering },
     dialogs: dialogsDismissing(),
-    toast: createToast(root),
+    toast: { ...createToast(root), ...complaining },
     previews: createPreviews(() => undefined),
     openUrl: () => undefined,
     reopen: () => undefined,
@@ -225,5 +228,93 @@ describe('a pane released without being asked to settle first', () => {
     pane.release()
 
     expect(pane.held.path()).toBeNull()
+  })
+})
+
+describe('dropping onto a pane that is showing a preview', () => {
+  function dropOnTheMarkupView(dataTransfer: DataTransfer): void {
+    element
+      .querySelector<HTMLElement>('[data-part="view-markup"]')
+      ?.dispatchEvent(
+        cast<Event>(Object.assign(new Event('drop', { bubbles: true, cancelable: true }), { dataTransfer })),
+      )
+  }
+
+  it('opens what was dragged from the file browser, rather than swallowing the gesture', async () => {
+    const opened: PromiseWithResolvers<string> = Promise.withResolvers()
+    const pane = paneHolding(
+      'notes.md',
+      {},
+      {
+        load: (id: string) => {
+          if (id === 'journal/a.md') opened.resolve(id)
+
+          return Promise.resolve({ content: SOMETHING_STORED, stored: true })
+        },
+      },
+    )
+    await pane.showDocument('notes.md')
+
+    dropOnTheMarkupView(
+      cast<DataTransfer>({
+        getData: (mime: string) => (mime === DRAG_MIME ? 'journal/a.md' : 'document'),
+        types: [DRAG_MIME],
+      }),
+    )
+
+    await expect(opened.promise).resolves.toBe('journal/a.md')
+  })
+
+  it('uploads a dropped file beside the document the pane is showing', async () => {
+    const landed: PromiseWithResolvers<string> = Promise.withResolvers()
+    const pane = paneHolding('journal/notes.md', {
+      upload: (directory: string, file: File) => {
+        landed.resolve(`${directory}:${file.name}`)
+
+        return Promise.resolve(`${directory}/${file.name}`)
+      },
+    })
+    await pane.showDocument('journal/notes.md')
+
+    dropOnTheMarkupView(cast<DataTransfer>({ getData: () => '', types: ['Files'], files: [new File(['x'], 'p.png')] }))
+
+    await expect(landed.promise).resolves.toBe('journal:p.png')
+  })
+
+  it('uploads nothing when the pane is on no tab, because there is no file to be a sibling of', async () => {
+    const asked: string[] = []
+    const pane = paneHolding('journal/notes.md', {
+      upload: (directory: string) => {
+        asked.push(directory)
+
+        return Promise.resolve(`${directory}/p.png`)
+      },
+    })
+    await pane.leave()
+
+    dropOnTheMarkupView(cast<DataTransfer>({ getData: () => '', types: ['Files'], files: [new File(['x'], 'p.png')] }))
+
+    expect(asked).toStrictEqual([])
+  })
+
+  it('says why when the store refuses the upload, and opens nothing in its place', async () => {
+    const complained: PromiseWithResolvers<string> = Promise.withResolvers()
+    const pane = paneHolding(
+      'journal/notes.md',
+      { upload: () => Promise.reject(new Error('the store refused')) },
+      {},
+      {
+        error: (message: string) => {
+          complained.resolve(message)
+
+          return cast<ReturnType<Toast['error']>>({ dismiss: () => undefined })
+        },
+      },
+    )
+    await pane.showDocument('journal/notes.md')
+
+    dropOnTheMarkupView(cast<DataTransfer>({ getData: () => '', types: ['Files'], files: [new File(['x'], 'p.png')] }))
+
+    await expect(complained.promise).resolves.toBe('p.png: the store refused')
   })
 })

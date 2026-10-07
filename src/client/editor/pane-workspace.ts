@@ -5,7 +5,13 @@ import { classifyFile } from '../../shared/documents.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { trashEntryIdFromPath } from '../../shared/page-urls.ts'
-import { displayPathFromPath, documentIdFromPath, folderIndexAlternateFromPath, isPreviewView } from '../doc-path.ts'
+import {
+  displayPathFromPath,
+  docUrlFor,
+  documentIdFromPath,
+  folderIndexAlternateFromPath,
+  isPreviewView,
+} from '../doc-path.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { PaneId } from '../layout/kept-tabs.ts'
 import { cheatsheet } from '../help.ts'
@@ -21,6 +27,9 @@ import type { Toast } from '../toast.ts'
 import type { DocumentTab, FocusListener } from './document-tab.ts'
 import { resolveIndex } from './folder-index.ts'
 import { createPaneEditor } from './pane-editor.ts'
+import { bindViewDrops } from './view-drops.ts'
+import { uploadInto } from './drops.ts'
+import { announceStoreChanged } from '../store-changed.ts'
 import type { Previews } from './previews.ts'
 import type { Session } from './session.ts'
 import { errorMessage } from '../error-message.ts'
@@ -128,6 +137,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       documentId: held.path,
       openUrl: options.openUrl,
       announce,
+      onStored: tellTheBrowser,
       showingDocument: () => workspace.showing() === 'document',
       listenForFocus: options.listenForFocus,
     })
@@ -135,9 +145,39 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     return built
   }
 
+  async function openEntry(entryPath: string): Promise<void> {
+    await openPath(docUrlFor(entryPath))
+  }
+
+  async function storeAndOpen(dropped: readonly File[], directory: string): Promise<void> {
+    const [landed] = await uploadInto(dropped, directory, {
+      client: files,
+      dialogs,
+      toast,
+      announce: tellTheBrowser,
+    })
+    if (landed === undefined) return
+
+    await openEntry(landed)
+  }
+
+  bindViewDrops(element, {
+    holder: () => pane.showing()?.path ?? null,
+    open: (entryPath: string) => {
+      void openEntry(entryPath)
+    },
+    upload: (dropped: readonly File[], directory: string) => {
+      void storeAndOpen(dropped, directory)
+    },
+  })
+
   function release(): void {
     built?.empty()
     holding = null
+  }
+
+  function tellTheBrowser(): void {
+    announceStoreChanged(options.root)
   }
 
   function showInstead(at: TabAt): void {
@@ -270,26 +310,28 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       pane.leave()
     },
 
-    openPath: async (target: string) => {
-      const shown = displayPathFromPath(target)
-      workspace.show('pending', shown)
-      statusBar.forgetSaveState()
+    openPath,
+  }
 
-      const trashEntryId = trashEntryIdFromPath(target)
-      if (trashEntryId !== null) {
-        built?.empty()
-        pane.leave()
-        await deletedView.offer(trashEntryId)
-        announce('This entry is in the trash')
+  async function openPath(target: string): Promise<void> {
+    const shown = displayPathFromPath(target)
+    workspace.show('pending', shown)
+    statusBar.forgetSaveState()
 
-        return
-      }
+    const trashEntryId = trashEntryIdFromPath(target)
+    if (trashEntryId !== null) {
+      built?.empty()
+      pane.leave()
+      await deletedView.offer(trashEntryId)
+      announce('This entry is in the trash')
 
-      const named = documentIdFromPath(target)
-      options.onShowing(named)
-      held.commit(named)
+      return
+    }
 
-      await showDocumentAt(named, shown, folderIndexAlternateFromPath(target))
-    },
+    const named = documentIdFromPath(target)
+    options.onShowing(named)
+    held.commit(named)
+
+    await showDocumentAt(named, shown, folderIndexAlternateFromPath(target))
   }
 }

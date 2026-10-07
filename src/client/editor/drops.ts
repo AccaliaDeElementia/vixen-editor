@@ -113,15 +113,19 @@ function collided(error: unknown): boolean {
   return error instanceof FilesRequestError && error.code === ALREADY_EXISTS
 }
 
-interface FileDropOptions {
-  holder: () => string | null
+interface Uploading {
   client: FilesClient
   dialogs: Dialogs
   toast: Toast
+  announce: () => void
+}
+
+interface FileDropOptions extends Uploading {
+  holder: () => string | null
   insert: (text: string, at: number | null) => void
 }
 
-async function storeOne(file: File, directory: string, options: FileDropOptions): Promise<string | null> {
+async function storeOne(file: File, directory: string, options: Uploading): Promise<string | null> {
   try {
     return await options.client.upload(directory, file)
   } catch (error) {
@@ -135,7 +139,7 @@ async function storeOne(file: File, directory: string, options: FileDropOptions)
   return await resolveCollision(file, directory, options)
 }
 
-async function resolveCollision(file: File, directory: string, options: FileDropOptions): Promise<string | null> {
+async function resolveCollision(file: File, directory: string, options: Uploading): Promise<string | null> {
   let stored: string | null = joinPath(directory, file.name)
 
   const renamed = await options.dialogs.prompt({
@@ -173,15 +177,23 @@ async function receive(
   const holder = options.holder()
   if (holder === null) return
 
-  const directory = directoryOf(holder)
-  const links: string[] = []
-
-  await serially(files, async (file) => {
-    const stored = await storeOne(file, directory, options)
-    if (stored !== null) links.push(linkFor(entryFor(stored), holder))
-  })
+  const stored = await uploadInto(files, directoryOf(holder), options)
+  const links = stored.map((entryPath) => linkFor(entryFor(entryPath), holder))
 
   if (links.length > NO_LINKS) options.insert(insertionFor(links, atLineStart(at)), at)
+}
+
+export async function uploadInto(files: readonly File[], directory: string, options: Uploading): Promise<string[]> {
+  const stored: string[] = []
+
+  await serially(files, async (file) => {
+    const landed = await storeOne(file, directory, options)
+    if (landed !== null) stored.push(landed)
+  })
+
+  if (stored.length > NO_LINKS) options.announce()
+
+  return stored
 }
 
 export function bindFileDrops(
