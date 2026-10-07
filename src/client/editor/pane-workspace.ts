@@ -27,6 +27,7 @@ import { errorMessage } from '../error-message.ts'
 
 const MOUNT_SELECTOR = '[data-part="editor"]'
 const UNREACHABLE_REASON_SELECTOR = '[data-part="unreachable-reason"]'
+const NO_TRASHED_PATH = ''
 
 export class MissingMountError extends Error {
   override readonly name = 'MissingMountError'
@@ -132,6 +133,11 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     return built
   }
 
+  function showInstead(at: TabAt): void {
+    built?.empty()
+    pane.open(at)
+  }
+
   const deletedView = createDeletedView({
     root: options.root,
     host: element,
@@ -141,17 +147,23 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     openUrl: options.openUrl,
     reveal: (at) => {
       workspace.show('deleted', at)
+      if (at !== NO_TRASHED_PATH) showInstead({ path: at, view: 'deleted' })
     },
   })
 
   const missingView = createMissingView({ host: element, client: files, toast, reopen: options.reopen })
 
   function showMissing(entryPath: string, shown: string): void {
-    built?.empty()
-    pane.leave()
+    showInstead({ path: entryPath, view: 'missing' })
     workspace.show('missing', shown)
     missingView.offer(entryPath)
     announce(`${shown} is not in the store`)
+  }
+
+  function showImage(entryPath: string): void {
+    showInstead({ path: entryPath, view: 'image' })
+    imageView.offer(entryPath)
+    announce(`Viewing ${entryPath}`)
   }
 
   const imageView = createImageView({
@@ -174,10 +186,15 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
   }
 
   async function showDocumentAt(entryPath: string, shown: string, alternate: string | null): Promise<void> {
+    if (classifyFile(entryPath) === 'image') {
+      showImage(entryPath)
+
+      return
+    }
+
     const outcome = await resolveIndex(session, entryPath, alternate)
     if (!outcome.reached) {
-      built?.empty()
-      pane.leave()
+      showInstead({ path: shown, view: 'unreachable' })
       workspace.show('unreachable', shown)
       reportUnreachable(element, shown, outcome.error)
 
@@ -247,7 +264,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       if (trashEntryId !== null) {
         built?.empty()
         pane.leave()
-        deletedView.offer(trashEntryId)
+        await deletedView.offer(trashEntryId)
         announce('This entry is in the trash')
 
         return
@@ -256,15 +273,6 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       const named = documentIdFromPath(target)
       options.onShowing(named)
       held.commit(named)
-
-      if (classifyFile(named) === 'image') {
-        built?.empty()
-        pane.leave()
-        imageView.offer(named)
-        announce(`Viewing ${named}`)
-
-        return
-      }
 
       await showDocumentAt(named, shown, folderIndexAlternateFromPath(target))
     },

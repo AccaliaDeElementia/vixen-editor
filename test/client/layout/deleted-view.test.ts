@@ -158,9 +158,7 @@ describe('an entry that is in the trash', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
 
-    view(root).offer(ENTRY_ID)
-
-    await afterLoad()
+    await view(root).offer(ENTRY_ID)
 
     expect(textOf(root, '[data-part="deleted-what"]')).toContain('The file journal/a.md was deleted')
   })
@@ -169,9 +167,7 @@ describe('an entry that is in the trash', () => {
     client.trash.mockResolvedValue([trashed('journal', 'folder')])
     const root = page()
 
-    view(root).offer(ENTRY_ID)
-
-    await afterLoad()
+    await view(root).offer(ENTRY_ID)
 
     expect(textOf(root, '[data-part="deleted-what"]')).toContain('The folder journal')
   })
@@ -179,9 +175,7 @@ describe('an entry that is in the trash', () => {
   it('titles the workspace by the path it came from, not by the entry id', async () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
 
-    view(page()).offer(ENTRY_ID)
-
-    await afterLoad()
+    await view(page()).offer(ENTRY_ID)
 
     expect(revealed).toStrictEqual(['journal/a.md'])
   })
@@ -190,9 +184,7 @@ describe('an entry that is in the trash', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
 
-    view(root).offer(ENTRY_ID)
-
-    await afterLoad()
+    await view(root).offer(ENTRY_ID)
 
     expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(false)
   })
@@ -200,7 +192,7 @@ describe('an entry that is in the trash', () => {
   it('restores the entry the url named', async () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
@@ -213,7 +205,7 @@ describe('an entry that is in the trash', () => {
   it('opens the document at the path it came back to', async () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
@@ -230,7 +222,7 @@ describe('an entry that is in the trash', () => {
     onStoreChanged(root, () => {
       heard.push('changed')
     })
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
@@ -248,7 +240,7 @@ describe('an entry that is in the trash', () => {
     onStoreChanged(root, () => {
       heard.push('changed')
     })
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
@@ -262,7 +254,7 @@ describe('an entry that is in the trash', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     client.restore.mockRejectedValue(new Error('Already exists'))
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
@@ -279,7 +271,7 @@ describe('an entry whose old path is in use again', () => {
     client.tree.mockResolvedValue([fileNode('journal/a.md')])
     const root = page()
 
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     expect(root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.disabled).toBe(true)
@@ -290,7 +282,7 @@ describe('an entry whose old path is in use again', () => {
     client.tree.mockResolvedValue([fileNode('journal/a.md')])
     const root = page()
 
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(false)
@@ -301,9 +293,7 @@ describe('an entry whose old path is in use again', () => {
     client.tree.mockResolvedValue([fileNode('journal/a.md')])
     const root = page()
 
-    view(root).offer(ENTRY_ID)
-
-    await afterLoad()
+    await view(root).offer(ENTRY_ID)
 
     expect(textOf(root, '[data-part="deleted-blocked"]')).toContain('journal/a.md is in use again')
   })
@@ -313,9 +303,7 @@ describe('an entry that is no longer in the trash', () => {
   it('says so rather than showing an empty view', async () => {
     const root = page()
 
-    view(root).offer(ENTRY_ID)
-
-    await afterLoad()
+    await view(root).offer(ENTRY_ID)
 
     expect(textOf(root, '[data-part="deleted-what"]')).toContain('already have been restored or purged')
   })
@@ -323,7 +311,7 @@ describe('an entry that is no longer in the trash', () => {
   it('offers nothing to restore', async () => {
     const root = page()
 
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(true)
@@ -331,7 +319,7 @@ describe('an entry that is no longer in the trash', () => {
 
   it('does nothing when the restore button is pressed anyway', async () => {
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     root.querySelector<HTMLButtonElement>('[data-part="deleted-restore"]')?.click()
@@ -341,7 +329,7 @@ describe('an entry that is no longer in the trash', () => {
 
   it('does nothing when the delete button is pressed anyway', async () => {
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     root.querySelector<HTMLButtonElement>('[data-part="deleted-purge"]')?.click()
@@ -355,12 +343,12 @@ describe('a second entry opened after the first', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
     const deleted = view(root)
-    deleted.offer(ENTRY_ID)
+    await deleted.offer(ENTRY_ID)
     await afterLoad()
 
     const stillLoading: PromiseWithResolvers<TrashNode[]> = Promise.withResolvers()
     client.trash.mockReturnValue(stillLoading.promise)
-    deleted.offer('another-id')
+    void deleted.offer('another-id')
 
     expect(textOf(root, '[data-part="deleted-what"]')).toBe('')
   })
@@ -371,7 +359,7 @@ describe('a trash listing that cannot be read', () => {
     client.trash.mockRejectedValue(new Error('network down'))
     const root = page()
 
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
 
     await afterReport()
 
@@ -380,20 +368,18 @@ describe('a trash listing that cannot be read', () => {
 })
 
 describe('markup that does not match', () => {
-  it('declines rather than throwing, the way the dialog does', () => {
+  it('declines rather than throwing, the way the dialog does', async () => {
     const bare = document.createElement('div')
     document.body.append(bare)
 
-    expect(() => {
-      view(bare).offer(ENTRY_ID)
-    }).not.toThrow()
+    await expect(view(bare).offer(ENTRY_ID)).resolves.toBeUndefined()
   })
 
-  it('declines when it has the actions but nowhere to list what was deleted', () => {
+  it('declines when it has the actions but nowhere to list what was deleted', async () => {
     const root = page()
     root.querySelector('[data-part="deleted-contents"]')?.remove()
 
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
 
     expect(client.trash).not.toHaveBeenCalled()
   })
@@ -403,7 +389,7 @@ describe('deleting an entry for good', () => {
   async function offering(): Promise<HTMLElement> {
     client.trash.mockResolvedValue([trashed('journal/gone.md', 'document')])
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     return root
@@ -488,7 +474,7 @@ describe('keeping the file browser in step', () => {
     const root = page()
     const shown = watchReveals(root)
 
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     expect(shown).toStrictEqual([`.trash/${ENTRY_ID}`])
@@ -497,7 +483,7 @@ describe('keeping the file browser in step', () => {
   it('asks it to show the restored path, so the toolbar aims at it', async () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
     const shown = watchReveals(root)
 
@@ -511,7 +497,7 @@ describe('keeping the file browser in step', () => {
     client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
     client.restore.mockRejectedValue(new Error('Already exists'))
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
     const shown = watchReveals(root)
 
@@ -547,7 +533,7 @@ describe('what the entry holds', () => {
     client.trash.mockResolvedValue([trashed('journal', 'folder')])
     client.trashEntry.mockResolvedValue(parseTrashEntry(HELD))
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     return root
@@ -572,7 +558,7 @@ describe('what the entry holds', () => {
     client.trashEntry.mockResolvedValue(null)
     const root = page()
 
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     expect(root.querySelector<HTMLElement>('[data-part="deleted-contents"]')?.hidden).toBe(true)
@@ -603,7 +589,7 @@ describe('restoring part of what was deleted', () => {
     client.trash.mockResolvedValue([trashed('journal', 'folder')])
     client.trashEntry.mockResolvedValue(parseTrashEntry(folder(children)))
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     return root
@@ -729,7 +715,7 @@ describe('putting one part back somewhere else', () => {
     client.trash.mockResolvedValue([trashed('journal', 'folder')])
     client.trashEntry.mockResolvedValue(parseTrashEntry(folder(children)))
     const root = page()
-    view(root).offer(ENTRY_ID)
+    await view(root).offer(ENTRY_ID)
     await afterLoad()
 
     return root

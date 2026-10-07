@@ -1,6 +1,6 @@
 'use sanity'
 
-import { docUrlFor, type PreviewView, type TabView } from '../doc-path.ts'
+import { docUrlFor, isPreviewView, type PreviewView, type TabView } from '../doc-path.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { Pane } from '../layout/pane.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
@@ -62,7 +62,7 @@ export function createPreviewing(options: PreviewingOptions): Previewing {
     showMarkup,
 
     showNamedByUrl: (wanted: TabView): void => {
-      if (wanted === 'editor' || !options.showingDocument()) return
+      if (!isPreviewView(wanted) || !options.showingDocument()) return
 
       show(wanted)
     },

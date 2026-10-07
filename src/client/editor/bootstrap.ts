@@ -4,6 +4,7 @@ import {
   displayPathFromPath,
   docUrlFor,
   documentIdFromPath,
+  isPreviewView,
   pathAfterMove,
   viewFromSearch,
   type TabView,
@@ -285,7 +286,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
 
   function activate(host: HTMLElement, at: TabAt): void {
-    if (at.view === 'editor' || at.path !== documentId()) {
+    if (!isPreviewView(at.view) || at.path !== documentId()) {
       replaceUrl(docUrlFor(at.path, at.view))
 
       return

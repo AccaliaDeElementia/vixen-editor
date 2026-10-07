@@ -4,14 +4,14 @@ import { SEQUENCE_START } from '../shared/sequences.ts'
 import { FOLDER_INDEX_ALTERNATE, FOLDER_INDEX_NAME } from '../shared/documents.ts'
 import { DOC_PREFIX } from '../shared/page-urls.ts'
 
-export const TAB_VIEWS = ['editor', 'source', 'markup'] as const
+export const TAB_VIEWS = ['editor', 'source', 'markup', 'image', 'missing', 'deleted', 'unreachable'] as const
 
 export type TabView = (typeof TAB_VIEWS)[number]
-export type PreviewView = Exclude<TabView, 'editor'>
+export type PreviewView = 'source' | 'markup'
 
 const DEFAULT_VIEW: TabView = 'editor'
 const VIEW_PARAMETER = 'view'
-const VIEW_IN_URL: Readonly<Record<TabView, string>> = { editor: 'edit', source: 'source', markup: 'preview' }
+const VIEW_IN_URL: Readonly<Partial<Record<TabView, string>>> = { editor: 'edit', source: 'source', markup: 'preview' }
 const TITLE_SEGMENTS = 2
 const LAST_SEGMENT = -1
 
@@ -59,9 +59,14 @@ export function titleFor(displayPath: string): string {
 
 export function docUrlFor(entryPath: string, view: TabView = DEFAULT_VIEW): string {
   const at = `${DOC_PREFIX}${entryPath.split('/').map(encodeURIComponent).join('/')}`
-  if (view === DEFAULT_VIEW) return at
+  const { [view]: spelling } = VIEW_IN_URL
+  if (spelling === undefined || view === DEFAULT_VIEW) return at
 
-  return `${at}?${VIEW_PARAMETER}=${VIEW_IN_URL[view]}`
+  return `${at}?${VIEW_PARAMETER}=${spelling}`
+}
+
+export function isPreviewView(view: TabView): view is PreviewView {
+  return view === 'source' || view === 'markup'
 }
 
 export function viewFromSearch(search: string): TabView {

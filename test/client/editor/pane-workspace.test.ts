@@ -6,6 +6,7 @@ import { createPaneWorkspace } from '../../../src/client/editor/pane-workspace.t
 import { createPreviews } from '../../../src/client/editor/previews.ts'
 import { createToast } from '../../../src/client/toast.ts'
 import type { Session } from '../../../src/client/editor/session.ts'
+import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,
@@ -16,6 +17,7 @@ import {
 import { renderPane } from '../templates.ts'
 
 const SOMETHING_STORED = '# stored'
+const WHENEVER = '2026-01-01T00:00:00.000Z'
 
 let root: HTMLElement = document.createElement('div')
 let element: HTMLElement = document.createElement('div')
@@ -24,7 +26,7 @@ let standing: Array<() => void> = []
 
 let rereads = 0
 
-function fakeSession(): Session {
+function fakeSession(overrides: Partial<Session> = {}): Session {
   return sessionRecording(record, {
     load: () => Promise.resolve({ content: SOMETHING_STORED, stored: true }),
     reread: () => {
@@ -32,17 +34,22 @@ function fakeSession(): Session {
 
       return Promise.resolve(null)
     },
+    ...overrides,
   })
 }
 
-function paneHolding(holds: string | null): ReturnType<typeof createPaneWorkspace> {
+function paneHolding(
+  holds: string | null,
+  answering: Partial<FilesClient> = {},
+  session: Partial<Session> = {},
+): ReturnType<typeof createPaneWorkspace> {
   const built = createPaneWorkspace({
     root,
     element,
     id: 'secondary',
     holds,
-    session: fakeSession(),
-    files: filesAnsweringEmpty(),
+    session: fakeSession(session),
+    files: { ...filesAnsweringEmpty(), ...answering },
     dialogs: dialogsDismissing(),
     toast: createToast(root),
     previews: createPreviews(() => undefined),
@@ -140,5 +147,72 @@ describe('a pane whose document has left it', () => {
     await pane.flush()
 
     expect(record.saved).toStrictEqual([])
+  })
+})
+
+describe('what a pane shows when it is not showing an editor', () => {
+  function tabsShown(): Array<string | undefined> {
+    return [...element.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.dataset.tab)
+  }
+
+  it('gives an image a tab, so the reader has a handle on what they are looking at', async () => {
+    const pane = paneHolding(null)
+
+    await pane.openPath('/doc/photo.png')
+
+    expect(tabsShown()).toStrictEqual(['image:photo.png'])
+  })
+
+  it('gives a missing document a tab', async () => {
+    const pane = paneHolding(null, {}, { load: () => Promise.resolve({ content: '', stored: false }) })
+
+    await pane.openPath('/doc/gone.md')
+
+    expect(tabsShown()).toStrictEqual(['missing:gone.md'])
+  })
+
+  it('gives a trash entry a tab naming the document it was', async () => {
+    const trashed = { id: 'entry-1', originalPath: 'journal/a.md', kind: 'document' as const, deletedAt: WHENEVER }
+    const pane = paneHolding(null, { trash: () => Promise.resolve([trashed]) })
+
+    await pane.openPath('/trash/entry-1')
+
+    expect(tabsShown()).toStrictEqual(['deleted:journal/a.md'])
+  })
+
+  it('leaves the strip empty when the pane has been given nothing to show', () => {
+    paneHolding(null)
+
+    expect(tabsShown()).toStrictEqual([])
+  })
+})
+
+describe('a pane told to show an image without a url to classify it', () => {
+  it('shows the image, because an image is not a document whichever way the pane was told to show it', async () => {
+    const pane = paneHolding(null)
+    await pane.showDocument('photo.png')
+
+    element.querySelector('[data-part="image-file"]')?.dispatchEvent(new Event('load'))
+
+    expect(element.querySelector<HTMLElement>('[data-part="view-image"]')?.hidden).toBe(false)
+  })
+
+  it('never asks the documents api for it, which refuses an image with a 400 rather than a 404', async () => {
+    const asked: string[] = []
+    const pane = paneHolding(
+      null,
+      {},
+      {
+        load: (id: string) => {
+          asked.push(id)
+
+          return Promise.resolve({ content: SOMETHING_STORED, stored: true })
+        },
+      },
+    )
+
+    await pane.showDocument('photo.png')
+
+    expect(asked).toStrictEqual([])
   })
 })

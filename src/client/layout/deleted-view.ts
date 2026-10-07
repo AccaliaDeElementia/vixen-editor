@@ -25,7 +25,7 @@ const NOTHING_CHOSEN = 0
 const NOTHING_MORE = 0
 
 export interface DeletedView {
-  offer: (entryId: string) => void
+  offer: (entryId: string) => Promise<void>
 }
 
 interface DeletedViewOptions {
@@ -68,8 +68,12 @@ function describe(entry: TrashNode): string {
   return `${subject} ${entry.originalPath} was deleted ${when}.`
 }
 
+const NOTHING_TO_OFFER = Promise.resolve()
+
 const INERT: DeletedView = {
-  offer: () => undefined,
+  offer: async () => {
+    await NOTHING_TO_OFFER
+  },
 }
 
 export function createDeletedView(options: DeletedViewOptions): DeletedView {
@@ -243,13 +247,13 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
   })
 
   return {
-    offer(entryId: string): void {
+    async offer(entryId: string): Promise<void> {
       forgetEntry()
       what.textContent = ''
       actions.hidden = true
       blocked.hidden = true
 
-      void load(entryId).catch((error: unknown) => {
+      await load(entryId).catch((error: unknown) => {
         options.toast.error(`Could not read the trash: ${errorMessage(error)}`)
       })
     },
