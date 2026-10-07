@@ -38,8 +38,15 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
     strip?.show(tabs.all(), tabs.active())
   }
 
+  function keptActive(): TabAt | null {
+    const showing = tabs.active()
+    if (showing === null) return null
+
+    return tabs.kept().some((candidate) => tabIdentity(candidate) === tabIdentity(showing)) ? showing : null
+  }
+
   function rememberAndDraw(): void {
-    writeKeptTabs(id, tabs.kept())
+    writeKeptTabs(id, tabs.kept(), keptActive())
     draw()
   }
 
@@ -83,8 +90,10 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
           onDropped: dropped,
         })
 
-  for (const at of readKeptTabs(id)) tabs.keep(at)
-  tabs.leave()
+  const restored = readKeptTabs(id)
+  for (const at of restored.tabs) tabs.keep(at)
+  if (restored.active === null) tabs.leave()
+  else tabs.keep(restored.active)
   draw()
 
   return {

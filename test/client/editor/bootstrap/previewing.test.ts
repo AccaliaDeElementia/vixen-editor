@@ -260,7 +260,7 @@ describe('a preview that is already a tab', () => {
 
 describe('a preview tab for a document the editor has left', () => {
   it('opens that document rather than showing something stale', async () => {
-    writeKeptTabs('secondary', [{ path: 'elsewhere.md', view: 'markup' }])
+    writeKeptTabs('secondary', [{ path: 'elsewhere.md', view: 'markup' }], null)
     const opened: string[] = []
     await openEditor({
       root,
@@ -520,7 +520,7 @@ describe('dragging a tab to the other pane', () => {
 
 describe('moving between tabs from the keyboard', () => {
   it('opens the next tab along', async () => {
-    writeKeptTabs('primary', [{ path: 'later.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'later.md', view: 'editor' }], null)
     const opened: string[] = []
     await openEditor({
       root,
@@ -537,7 +537,7 @@ describe('moving between tabs from the keyboard', () => {
   })
 
   it('opens the tab a digit names', async () => {
-    writeKeptTabs('primary', [{ path: 'later.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'later.md', view: 'editor' }], null)
     const opened: string[] = []
     await openEditor({
       root,
@@ -554,7 +554,7 @@ describe('moving between tabs from the keyboard', () => {
   })
 
   it('moves the tab in front along its strip', async () => {
-    writeKeptTabs('primary', [{ path: 'first.md', view: 'editor' }])
+    writeKeptTabs('primary', [{ path: 'first.md', view: 'editor' }], null)
     await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# stored') })
 
     press({ key: '{', altKey: true, shiftKey: true })

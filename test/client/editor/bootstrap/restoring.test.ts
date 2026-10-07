@@ -21,6 +21,7 @@ import {
 
 const WIDE_ENOUGH = 1200
 const ONE_PANE = 1
+const ONE_TAB = 1
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -59,7 +60,7 @@ beforeEach(() => {
 
 describe('a workspace that was split when the page was last open', () => {
   it('draws the second pane tab strip, so the tabs it held come back with it', async () => {
-    writeKeptTabs('secondary', [{ path: 'other.md', view: 'editor' }])
+    writeKeptTabs('secondary', [{ path: 'other.md', view: 'editor' }], null)
     toggleSplit(root, 'beside', WIDE_ENOUGH)
 
     const editor = await reopened()
@@ -70,17 +71,21 @@ describe('a workspace that was split when the page was last open', () => {
 })
 
 describe('a second pane that kept the very document the url opens', () => {
-  it('lets it go, because one document has one editor however the tab got there', async () => {
-    writeKeptTabs('secondary', [
-      { path: 'notes.md', view: 'editor' },
-      { path: 'other.md', view: 'editor' },
-    ])
+  it('ends up with one editor for it, because one document has one editor however the tab got there', async () => {
+    writeKeptTabs(
+      'secondary',
+      [
+        { path: 'notes.md', view: 'editor' },
+        { path: 'other.md', view: 'editor' },
+      ],
+      null,
+    )
     toggleSplit(root, 'beside', WIDE_ENOUGH)
 
     const editor = await reopened()
     await givenAsync(editor.settled())
 
-    expect(tabsIn(1)).toStrictEqual(['editor:other.md'])
+    expect(root.querySelectorAll('[data-tab="editor:notes.md"]')).toHaveLength(ONE_TAB)
   })
 })
 

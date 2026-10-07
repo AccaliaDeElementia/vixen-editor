@@ -90,7 +90,7 @@ describe('a pane holding its own tabs', () => {
       .querySelector<HTMLElement>('[data-tab="editor:notes.md"]')
       ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
 
-    expect(readKeptTabs('primary')).toStrictEqual([{ ...EDITING }])
+    expect(readKeptTabs('primary').tabs).toStrictEqual([{ ...EDITING }])
   })
 
   it('follows a move, so a rename does not orphan its tabs', () => {
@@ -142,11 +142,11 @@ describe('two panes side by side', () => {
 
     pane('secondary', paneElement()).keep(OTHER)
 
-    expect(readKeptTabs('primary')).toStrictEqual([{ ...EDITING }])
+    expect(readKeptTabs('primary').tabs).toStrictEqual([{ ...EDITING }])
   })
 
   it('restores a pane only what that pane kept', () => {
-    writeKeptTabs('secondary', [OTHER])
+    writeKeptTabs('secondary', [OTHER], null)
     const element = paneElement()
 
     pane('secondary', element)
@@ -204,7 +204,7 @@ describe('a tab dropped on a strip', () => {
 
     dropOn(element, 'editor:other.md', 'editor:notes.md')
 
-    expect(readKeptTabs('primary').map((tab) => tab.path)).toStrictEqual(['other.md', 'notes.md'])
+    expect(readKeptTabs('primary').tabs.map((tab) => tab.path)).toStrictEqual(['other.md', 'notes.md'])
   })
 
   it('is announced as arriving when the strip does not hold it', () => {
@@ -243,6 +243,6 @@ describe('a pane receiving a tab from the other one', () => {
 
     held.receive(PREVIEWING, 0)
 
-    expect(readKeptTabs('secondary')).toStrictEqual([{ ...PREVIEWING }])
+    expect(readKeptTabs('secondary').tabs).toStrictEqual([{ ...PREVIEWING }])
   })
 })

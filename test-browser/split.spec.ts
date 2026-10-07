@@ -127,3 +127,23 @@ test('a pane opened by the split control is wired up, not just drawn', async ({ 
 
   await expect(page.locator(PANE).nth(1).locator('[role="tablist"]')).toBeAttached()
 })
+
+test('the second pane strip comes back as tall as the first after a reload', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  await storedDocument(request, `tallaside-${stamp}.md`)
+  await page.goto(await storedDocument(request, `tallhome-${stamp}.md`))
+  await givenAsync(expect(page.locator(`.tree__row[data-path="tallaside-${stamp}.md"]`)).toBeVisible())
+  await page.locator(`.tree__row[data-path="tallaside-${stamp}.md"]`).click({ modifiers: ['ControlOrMeta'] })
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  await page.locator(PANE).nth(1).locator(`[data-tab="editor:tallaside-${stamp}.md"]`).dblclick()
+  await page.locator(PANE).nth(0).locator(`[data-tab="editor:tallhome-${stamp}.md"]`).dblclick()
+
+  await page.reload()
+
+  await givenAsync(expect(page.locator(PANE).nth(1).locator('[role="tablist"]')).toBeVisible())
+  const strips = await page
+    .locator(PANE)
+    .locator('[data-part="tabs"]')
+    .evaluateAll((found) => found.map((strip) => strip.getBoundingClientRect().height))
+  expect(strips[0]).toBe(strips[1])
+})

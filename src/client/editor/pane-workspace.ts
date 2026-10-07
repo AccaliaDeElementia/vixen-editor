@@ -194,6 +194,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
   async function showDocumentAt(entryPath: string, shown: string, alternate: string | null): Promise<void> {
     if (classifyFile(entryPath) === 'image') {
+      await options.releaseElsewhere({ path: entryPath, view: 'image' })
       showImage(entryPath)
 
       return

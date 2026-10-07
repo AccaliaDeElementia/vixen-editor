@@ -251,10 +251,22 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     })
   }
 
-  function everySurface(): readonly ClosingSurface[] {
+  function openPanes(): readonly PaneWorkspace[] {
     const elsewhere = aside.current()
 
-    return elsewhere === null ? [closingPrimary] : [closingPrimary, closingAside(elsewhere)]
+    return elsewhere === null ? [primaryWorkspace] : [primaryWorkspace, elsewhere]
+  }
+
+  function everySurface(): readonly ClosingSurface[] {
+    return openPanes().map(surfaceFor)
+  }
+
+  function showsTheDocument(surface: PaneWorkspace, entryPath: string): boolean {
+    return surface.pane.held().some((at) => at.path === entryPath && !isPreviewView(at.view))
+  }
+
+  function paneHolding(entryPath: string): PaneWorkspace {
+    return openPanes().find((surface) => showsTheDocument(surface, entryPath)) ?? primaryWorkspace
   }
 
   const closingTabs = createClosingTabs({
@@ -399,6 +411,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const restored = aside.reconcile()
   if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
+
+  touched = paneHolding(documentIdFromPath(pathname))
+  for (const surface of openPanes()) if (surface !== touched) settlePane(surface)
 
   await openPath(pathname, viewFromSearch(search))
   refreshHistoryButtons(root, navigator)
