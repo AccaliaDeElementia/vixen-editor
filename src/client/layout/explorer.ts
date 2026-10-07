@@ -77,9 +77,12 @@ function describeWidth(root: ParentNode, widthPx: number, viewportPx: number): v
   const resizer = root.querySelector(RESIZER_SELECTOR)
   if (resizer === null) return
 
-  resizer.setAttribute('aria-valuenow', String(Math.round(widthPx)))
+  const across = Math.round(widthPx)
+
+  resizer.setAttribute('aria-valuenow', String(across))
   resizer.setAttribute('aria-valuemin', String(MIN_EXPLORER_PX))
   resizer.setAttribute('aria-valuemax', String(viewportPx * MAX_EXPLORER_FRACTION))
+  resizer.setAttribute('aria-valuetext', `${String(across)} pixels`)
 }
 
 export function applyExplorerWidth(root: ParentNode, px: number, viewportPx: number): void {

@@ -339,3 +339,21 @@ describe('a split the reader has dismissed', () => {
     expect(readSplit().fraction).toBe(EVEN_SPLIT)
   })
 })
+
+describe('the divider between the panes', () => {
+  it('says what its number counts, so it is not heard beside the explorer as a bare 50', () => {
+    const root = page()
+    toggleSplit(root, 'beside', WIDE)
+
+    expect(root.querySelector('[data-part="split-resizer"]')?.getAttribute('aria-valuetext')).toBe('50 percent')
+  })
+
+  it('says it again when the reader moves it, rather than going stale', () => {
+    const root = page()
+    toggleSplit(root, 'beside', WIDE)
+
+    setSplitFraction(root, 0.3, WIDE)
+
+    expect(root.querySelector('[data-part="split-resizer"]')?.getAttribute('aria-valuetext')).toBe('30 percent')
+  })
+})

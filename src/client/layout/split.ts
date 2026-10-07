@@ -115,9 +115,12 @@ function paint(painted: Painted, orientation: SplitOrientation | null, fraction:
 
   panes.style.setProperty('--split', String(shown))
   resizer.setAttribute('aria-orientation', orientation === 'below' ? 'horizontal' : 'vertical')
+  const across = Math.round(shown * ALL_OF_THE_AXIS)
+
   resizer.setAttribute('aria-valuemin', String(NONE_OF_THE_AXIS))
   resizer.setAttribute('aria-valuemax', String(ALL_OF_THE_AXIS))
-  resizer.setAttribute('aria-valuenow', String(Math.round(shown * ALL_OF_THE_AXIS)))
+  resizer.setAttribute('aria-valuenow', String(across))
+  resizer.setAttribute('aria-valuetext', `${String(across)} percent`)
 }
 
 export function applySplit(root: ParentNode, axisPx: number): void {

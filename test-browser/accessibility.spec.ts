@@ -6,6 +6,7 @@ import type { Page } from '@playwright/test'
 
 import { violationsOn } from './axe.ts'
 import { stringFieldOf } from './json.ts'
+import { storedDocument } from './fixtures.ts'
 
 async function workspaceWith(page: Page, request: Page['request'], folder: string): Promise<void> {
   await request.post('/api/files/folders', { data: { path: folder } })
@@ -199,4 +200,18 @@ test('the caret is thick enough to find, not a hairline that blinks away', async
   expect(width).toBe('2px')
 
   await request.delete(`/api/files/entries/${name}`)
+})
+
+test('the explorer divider says what its number means', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `aria-${String(Date.now())}.md`))
+
+  await expect(page.locator('#explorer-resizer')).toHaveAttribute('aria-valuetext', /pixels$/v)
+})
+
+test('the split divider says what its number means', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `arias-${String(Date.now())}.md`))
+  await page.locator('#split-beside').click()
+  await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
+
+  await expect(page.locator('[data-part="split-resizer"]')).toHaveAttribute('aria-valuetext', /percent$/v)
 })

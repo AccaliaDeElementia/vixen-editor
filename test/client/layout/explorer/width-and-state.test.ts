@@ -232,6 +232,7 @@ describe('applyExplorerState', () => {
     ['aria-valuenow', '420'],
     ['aria-valuemin', String(MIN_EXPLORER_PX)],
     ['aria-valuemax', String(VIEWPORT * MAX_EXPLORER_FRACTION)],
+    ['aria-valuetext', '420 pixels'],
   ])('publishes %s on the separator', (attribute, expected) => {
     setExplorerWidth(420, VIEWPORT)
     applyExplorerState(root, VIEWPORT)
