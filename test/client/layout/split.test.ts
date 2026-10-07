@@ -150,16 +150,6 @@ describe('the share of the space', () => {
     expect(readSplit().fraction).toBeCloseTo(0.6)
   })
 
-  it('survives a change of orientation, so a reader does not set it twice', () => {
-    const root = page()
-    toggleSplit(root, 'beside', WIDE)
-    setSplitFraction(root, 0.6, WIDE)
-
-    toggleSplit(root, 'below', TALL)
-
-    expect(readSplit().fraction).toBeCloseTo(0.6)
-  })
-
   it('goes back to even when the workspace returns to a single pane', () => {
     const root = page()
     toggleSplit(root, 'beside', WIDE)
@@ -219,7 +209,22 @@ describe('how narrow a pane may get', () => {
 
 describe('a stored split that makes no sense', () => {
   it('is ignored when the share is not a number', () => {
-    localStorage.setItem(TestOnly.SPLIT_KEY, JSON.stringify({ orientation: 'beside', fraction: 'half' }))
+    localStorage.setItem(TestOnly.SPLIT_KEY, JSON.stringify({ orientation: 'beside', shares: { beside: 'half' } }))
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
+  })
+
+  it('is ignored when the share is a number no divider could sit at', () => {
+    localStorage.setItem(
+      TestOnly.SPLIT_KEY,
+      JSON.stringify({ orientation: 'beside', shares: { beside: Number.POSITIVE_INFINITY } }),
+    )
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
+  })
+
+  it('is ignored when the shares are not a record of them', () => {
+    localStorage.setItem(TestOnly.SPLIT_KEY, JSON.stringify({ orientation: 'beside', shares: 'half' }))
 
     expect(readSplit().fraction).toBe(EVEN_SPLIT)
   })
@@ -267,5 +272,70 @@ describe('a page with no panes to arrange', () => {
     applySplit(bare, WIDE)
 
     expect(bare.childElementCount).toBe(0)
+  })
+})
+
+describe('a divider set in one orientation', () => {
+  const NARROWER = 0.3
+  const WIDER = 0.7
+
+  it('is kept when the reader switches to the other orientation', () => {
+    const root = page()
+    toggleSplit(root, 'beside', WIDE)
+    setSplitFraction(root, NARROWER, WIDE)
+
+    toggleSplit(root, 'below', TALL)
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
+  })
+
+  it('comes back when the reader switches to that orientation again', () => {
+    const root = page()
+    toggleSplit(root, 'beside', WIDE)
+    setSplitFraction(root, NARROWER, WIDE)
+    toggleSplit(root, 'below', TALL)
+    setSplitFraction(root, WIDER, TALL)
+
+    toggleSplit(root, 'beside', WIDE)
+
+    expect(readSplit().fraction).toBe(NARROWER)
+  })
+
+  it('does not move the other orientation, which is what sharing one ratio did', () => {
+    const root = page()
+    toggleSplit(root, 'beside', WIDE)
+    setSplitFraction(root, NARROWER, WIDE)
+    toggleSplit(root, 'below', TALL)
+
+    setSplitFraction(root, WIDER, TALL)
+    toggleSplit(root, 'beside', WIDE)
+
+    expect(readSplit().fraction).toBe(NARROWER)
+  })
+})
+
+describe('a split the reader has dismissed', () => {
+  const NARROWER = 0.3
+
+  it('forgets what the divider was, so the next split of that orientation opens even', () => {
+    const root = page()
+    toggleSplit(root, 'beside', WIDE)
+    setSplitFraction(root, NARROWER, WIDE)
+
+    toggleSplit(root, 'beside', WIDE)
+    toggleSplit(root, 'beside', WIDE)
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
+  })
+
+  it('forgets the other orientation too, because the ratio belongs to a split that exists', () => {
+    const root = page()
+    toggleSplit(root, 'below', TALL)
+    setSplitFraction(root, NARROWER, TALL)
+
+    toggleSplit(root, 'below', TALL)
+    toggleSplit(root, 'below', TALL)
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
   })
 })

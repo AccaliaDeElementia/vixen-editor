@@ -66,7 +66,7 @@ test('dragging the divider moves the share, and the keyboard reaches it too', as
   expect(first ?? 0).toBeLessThan(second ?? 0)
 })
 
-test('a share set side by side carries over to above and below', async ({ page, request }) => {
+test('a share set side by side leaves above and below even, because each keeps its own', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `carry-${String(Date.now())}.md`))
   await page.locator('#split-beside').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
@@ -76,6 +76,20 @@ test('a share set side by side carries over to above and below', async ({ page, 
   await page.locator('#split-below').click()
 
   const [first, second] = await heights(page)
+  expect(Math.abs((first ?? 0) - (second ?? 0))).toBeLessThan(EVEN_ENOUGH)
+})
+
+test('a share set side by side comes back when the reader returns to it', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `back-${String(Date.now())}.md`))
+  await page.locator('#split-beside').click()
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  await page.locator(DIVIDER).focus()
+  await page.keyboard.press('ArrowLeft')
+  await page.locator('#split-below').click()
+
+  await page.locator('#split-beside').click()
+
+  const [first, second] = await widths(page)
   expect(first ?? 0).toBeLessThan(second ?? 0)
 })
 

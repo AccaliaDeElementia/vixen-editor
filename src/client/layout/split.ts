@@ -10,6 +10,13 @@ interface SplitState {
   fraction: number
 }
 
+type Shares = Record<SplitOrientation, number>
+
+interface StoredSplit {
+  orientation: SplitOrientation | null
+  shares: Shares
+}
+
 const SPLIT_KEY = 'vixen-editor:split'
 const ORIENTATIONS = ['beside', 'below'] as const
 const EVEN_SPLIT = 0.5
@@ -26,22 +33,37 @@ const PANE_SELECTOR = '.pane'
 const SECOND_PANE_TEMPLATE_SELECTOR = 'template[data-part="second-pane"]'
 const ONE_PANE = 1
 
-const SINGLE_PANE: SplitState = { orientation: null, fraction: EVEN_SPLIT }
+const EVEN_BOTH_WAYS: Shares = { beside: EVEN_SPLIT, below: EVEN_SPLIT }
+const SINGLE_PANE: StoredSplit = { orientation: null, shares: EVEN_BOTH_WAYS }
 
 function isOrientation(value: unknown): value is SplitOrientation {
   return ORIENTATIONS.some((candidate) => candidate === value)
 }
 
-export function readSplit(storage?: Storage | null): SplitState {
+function shareIn(held: unknown, orientation: SplitOrientation): number {
+  if (!isRecord(held)) return EVEN_SPLIT
+
+  const { [orientation]: share } = held
+
+  return typeof share === 'number' && Number.isFinite(share) ? share : EVEN_SPLIT
+}
+
+function storedSplit(storage?: Storage | null): StoredSplit {
   const stored = readJson(SPLIT_KEY, storage)
   if (!isRecord(stored)) return SINGLE_PANE
 
-  const { orientation, fraction } = stored
+  const { orientation, shares } = stored
 
   return {
     orientation: isOrientation(orientation) ? orientation : null,
-    fraction: typeof fraction === 'number' && Number.isFinite(fraction) ? fraction : EVEN_SPLIT,
+    shares: { beside: shareIn(shares, 'beside'), below: shareIn(shares, 'below') },
   }
+}
+
+export function readSplit(storage?: Storage | null): SplitState {
+  const { orientation, shares } = storedSplit(storage)
+
+  return { orientation, fraction: orientation === null ? EVEN_SPLIT : shares[orientation] }
 }
 
 function floorFor(orientation: SplitOrientation): number {
@@ -98,7 +120,7 @@ export function applySplit(root: ParentNode, axisPx: number): void {
   resizer.setAttribute('aria-valuenow', String(Math.round(shown * ALL_OF_THE_AXIS)))
 }
 
-function write(state: SplitState): void {
+function write(state: StoredSplit): void {
   writeJson(SPLIT_KEY, state)
 }
 
@@ -108,20 +130,20 @@ export function closeSplit(root: ParentNode, axisPx: number): void {
 }
 
 export function toggleSplit(root: ParentNode, orientation: SplitOrientation, axisPx: number): void {
-  const current = readSplit()
-  if (current.orientation === orientation) {
+  const { orientation: current, shares } = storedSplit()
+  if (current === orientation) {
     closeSplit(root, axisPx)
 
     return
   }
 
-  write({ orientation, fraction: current.fraction })
+  write({ orientation, shares })
   applySplit(root, axisPx)
 }
 
 export function openSplit(root: ParentNode, orientation: SplitOrientation, axisPx: number): void {
-  const { orientation: current, fraction } = readSplit()
-  if (current === null) write({ orientation, fraction })
+  const { orientation: current, shares } = storedSplit()
+  if (current === null) write({ orientation, shares })
 
   applySplit(root, axisPx)
 }
@@ -133,10 +155,10 @@ export function secondPaneIn(root: ParentNode): HTMLElement | null {
 }
 
 export function setSplitFraction(root: ParentNode, fraction: number, axisPx: number): void {
-  const { orientation } = readSplit()
+  const { orientation, shares } = storedSplit()
   if (orientation === null) return
 
-  write({ orientation, fraction: clampFraction(fraction, axisPx, orientation) })
+  write({ orientation, shares: { ...shares, [orientation]: clampFraction(fraction, axisPx, orientation) } })
   applySplit(root, axisPx)
 }
 
