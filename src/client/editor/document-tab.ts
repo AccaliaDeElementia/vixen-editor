@@ -58,6 +58,7 @@ export interface DocumentTab {
   view: EditorView
   recheck: () => Promise<void>
   caret: () => number
+  holding: () => string | null
   saveState: () => SaveState
   flush: () => Promise<void>
   insertAt: (text: string, at: number | null) => void
@@ -325,6 +326,8 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     flush: autosave.flush,
     insertAt,
     putCaretAt,
+    holding: () => openedAt,
+
     open,
     adopt,
     handOver,

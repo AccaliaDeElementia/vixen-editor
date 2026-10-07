@@ -49,4 +49,8 @@ export function writeKeptTabs(
   writeJson(keyFor(pane), { tabs, active }, storage)
 }
 
+export function forgetKeptTabs(pane: PaneId, storage?: Storage | null): void {
+  writeKeptTabs(pane, [], null, storage)
+}
+
 export const TestOnly = { keyFor }

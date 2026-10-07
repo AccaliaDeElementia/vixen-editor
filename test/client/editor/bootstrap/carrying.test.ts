@@ -8,6 +8,9 @@ import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
 import { requestKeep } from '../../../../src/client/keep-request.ts'
 import { requestOpenAside } from '../../../../src/client/open-aside.ts'
+import { readKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
+import { DRAG_TAB_MIME } from '../../../../src/client/drag-payload.ts'
+import { cast } from '../../../cast.ts'
 import { givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,
@@ -47,6 +50,15 @@ async function editing(session: Session = fakeSession()): Promise<{ view: Editor
   requestKeep(root, 'notes.md')
 
   return editor
+}
+
+function dropOnto(strip: HTMLElement, identity: string): void {
+  const data = cast<DataTransfer>({
+    getData: (mime: string) => (mime === DRAG_TAB_MIME ? identity : ''),
+    types: [DRAG_TAB_MIME],
+  })
+
+  strip.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: data })))
 }
 
 function carryToTheOtherPane(): void {
@@ -132,5 +144,58 @@ describe('collapsing onto a pane that was showing something no editor holds', ()
     await givenAsync(editor.settled())
 
     expect(root.querySelectorAll('[data-tab="image:photo.png"]')).toHaveLength(ONE_TAB)
+  })
+})
+
+describe('what is written down the instant a tab is dragged out of the first pane', () => {
+  async function draggedAcross(): Promise<void> {
+    const editor = await editing()
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+    root
+      .querySelector<HTMLElement>('[data-tab="editor:other.md"]')
+      ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+
+    const [, aside] = root.querySelectorAll<HTMLElement>('[data-part="tabs"]')
+    if (aside !== undefined) dropOnto(aside, 'editor:notes.md')
+    await givenAsync(editor.settled())
+  }
+
+  it('keeps an image dragged out of the last tab, rather than losing it with the pane that went', async () => {
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/photo.png',
+        session: fakeSession(),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    requestKeep(root, 'photo.png')
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+
+    const [, aside] = root.querySelectorAll<HTMLElement>('[data-part="tabs"]')
+    if (aside !== undefined) dropOnto(aside, 'image:photo.png')
+    await givenAsync(editor.settled())
+
+    expect(readKeptTabs('secondary').tabs).toStrictEqual([])
+  })
+
+  it('leaves the pane that went with nothing recorded, so a later split does not resurrect it', async () => {
+    await draggedAcross()
+
+    expect(readKeptTabs('secondary').tabs).toStrictEqual([])
+  })
+
+  it('records both tabs against the pane that survived, so neither is lost to the collapse', async () => {
+    await draggedAcross()
+
+    expect(
+      readKeptTabs('primary')
+        .tabs.map((at) => at.path)
+        .sort(),
+    ).toStrictEqual(['notes.md', 'other.md'])
   })
 })

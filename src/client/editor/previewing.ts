@@ -14,6 +14,7 @@ interface PreviewingOptions {
   previews: Previews
   primary: Pane
   summon: () => PaneWorkspace | null
+  showWhereItIs: (at: TabAt) => boolean
   releaseElsewhere: (at: TabAt) => void
   documentId: () => string
   contentNow: () => string
@@ -60,6 +61,7 @@ export function createPreviewing(options: PreviewingOptions): Previewing {
 
     showNamedByUrl: (wanted: TabView): void => {
       if (!isPreviewView(wanted) || !options.showingDocument()) return
+      if (options.showWhereItIs({ path: options.documentId(), view: wanted })) return
 
       show(wanted)
     },

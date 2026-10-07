@@ -11,6 +11,7 @@ import {
   documentIdFromPath,
   folderIndexAlternateFromPath,
   isPreviewView,
+  type PreviewView,
 } from '../doc-path.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { PaneId } from '../layout/kept-tabs.ts'
@@ -30,7 +31,7 @@ import { createPaneEditor } from './pane-editor.ts'
 import { bindViewDrops } from './view-drops.ts'
 import { uploadInto } from './drops.ts'
 import { announceStoreChanged } from '../store-changed.ts'
-import type { Previews } from './previews.ts'
+import { PREVIEW_ANNOUNCEMENTS, type Previews } from './previews.ts'
 import type { Session } from './session.ts'
 import { errorMessage } from '../error-message.ts'
 
@@ -63,6 +64,7 @@ export interface PaneWorkspaceOptions {
   onCloseRequested: (at: TabAt) => void
   onTabArrived: (identity: string, toIndex: number) => void
   onShowing: (entryPath: string) => void
+  contentOf: (entryPath: string) => string | null
   releaseElsewhere: (at: TabAt) => Promise<void>
   listenForFocus?: FocusListener | undefined
 }
@@ -233,6 +235,21 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     return `${template}\n${cheatsheet()}`
   }
 
+  async function textOf(entryPath: string): Promise<string> {
+    const held = options.contentOf(entryPath)
+    if (held !== null) return held
+
+    const loaded = await session.load(entryPath).catch(() => null)
+
+    return loaded?.content ?? ''
+  }
+
+  async function showPreview(entryPath: string, view: PreviewView): Promise<void> {
+    previews.render(element, { path: entryPath, view }, await textOf(entryPath))
+    workspace.show(view, entryPath)
+    announce(`${PREVIEW_ANNOUNCEMENTS[view]} ${entryPath}`)
+  }
+
   async function showDocumentAt(entryPath: string, shown: string, alternate: string | null): Promise<void> {
     if (classifyFile(entryPath) === 'image') {
       await options.releaseElsewhere({ path: entryPath, view: 'image' })
@@ -297,7 +314,11 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     },
 
     showTab: async (at: TabAt) => {
-      if (isPreviewView(at.view)) return
+      if (isPreviewView(at.view)) {
+        await showPreview(at.path, at.view)
+
+        return
+      }
 
       await showDocumentAt(at.path, at.path, null)
     },

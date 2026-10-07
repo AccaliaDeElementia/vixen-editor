@@ -1,6 +1,7 @@
 'use sanity'
 
 import { carryTab } from '../layout/pane.ts'
+import { forgetKeptTabs } from '../layout/kept-tabs.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
 import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import { closeSplit, type SplitOrientation } from '../layout/split.ts'
@@ -8,6 +9,7 @@ import { closeSplit, type SplitOrientation } from '../layout/split.ts'
 const PANE_SELECTOR = '[data-part="pane"]'
 const PANES_SELECTOR = '[data-part="panes"]'
 const FIRST_TAB = 0
+const ASIDE = 'secondary'
 const NOTHING_MEASURED = 0
 
 interface PaneMovesOptions {
@@ -42,6 +44,7 @@ export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
   }
 
   function dismissAside(): void {
+    forgetKeptTabs(ASIDE)
     options.forgetAside()
     options.goTo(options.primary)
     closeSplit(options.root, acrossThePanes())

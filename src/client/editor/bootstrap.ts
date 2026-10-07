@@ -27,6 +27,7 @@ import { bindTabKeys } from './tab-keys.ts'
 import { createClosingTabs, type ClosingSurface } from './closing-tabs.ts'
 import { createPaneMoves } from './pane-moves.ts'
 import { createAside } from './aside.ts'
+import { createAcrossPanes } from './across-panes.ts'
 import { createTabNavigation } from './tab-navigation.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -55,9 +56,16 @@ import { paneIn, wiringFor } from './wiring.ts'
 const BESIDE = 'beside'
 const EVERYTHING_PENDING = 0
 
-type PaneSettings = Omit<
+type PaneSettings = Pick<
   PaneWorkspaceOptions,
-  'root' | 'session' | 'files' | 'dialogs' | 'toast' | 'previews' | 'openUrl' | 'reopen' | 'announce' | 'onShowing'
+  | 'element'
+  | 'id'
+  | 'holds'
+  | 'onActivate'
+  | 'onCloseRequested'
+  | 'onTabArrived'
+  | 'releaseElsewhere'
+  | 'listenForFocus'
 >
 
 interface Editor {
@@ -117,6 +125,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       onShowing: (entryPath: string) => {
         openDocument.commit(entryPath)
       },
+      contentOf: (entryPath: string) => panes.contentOf(entryPath),
       ...settings,
     })
   }
@@ -247,22 +256,16 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     })
   }
 
-  function openPanes(): readonly PaneWorkspace[] {
-    const elsewhere = aside.current()
-
-    return elsewhere === null ? [primaryWorkspace] : [primaryWorkspace, elsewhere]
-  }
+  const panes = createAcrossPanes({
+    primary: primaryWorkspace,
+    aside: aside.current,
+    track: (work: Promise<void>) => {
+      pending.push(work)
+    },
+  })
 
   function everySurface(): readonly ClosingSurface[] {
-    return openPanes().map(surfaceFor)
-  }
-
-  function showsTheDocument(surface: PaneWorkspace, entryPath: string): boolean {
-    return surface.pane.held().some((at) => at.path === entryPath && !isPreviewView(at.view))
-  }
-
-  function paneHolding(entryPath: string): PaneWorkspace {
-    return openPanes().find((surface) => showsTheDocument(surface, entryPath)) ?? primaryWorkspace
+    return panes.open().map(surfaceFor)
   }
 
   const closingTabs = createClosingTabs({
@@ -296,6 +299,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     previews,
     primary,
     summon: () => aside.summon(BESIDE),
+    showWhereItIs: panes.showWhereItIs,
     releaseElsewhere: (at: TabAt) => {
       pending.push(releaseFrom(primaryWorkspace, at))
     },
@@ -346,7 +350,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
 
     settlePane(leaving)
-    settlePane(arriving)
+    if (panes.open().includes(arriving)) settlePane(arriving)
   }
 
   const paneMoves = createPaneMoves({
@@ -432,8 +436,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const restored = aside.reconcile()
   if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
 
-  touched = paneHolding(documentIdFromPath(pathname))
-  for (const surface of openPanes()) if (surface !== touched) settlePane(surface)
+  touched = panes.showingTheDocument(documentIdFromPath(pathname))
+  for (const surface of panes.open()) if (surface !== touched) settlePane(surface)
 
   await openPath(pathname, viewFromSearch(search))
   refreshHistoryButtons(root, navigator)

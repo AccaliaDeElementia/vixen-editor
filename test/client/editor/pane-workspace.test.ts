@@ -63,6 +63,7 @@ function paneHolding(
     onCloseRequested: () => undefined,
     onTabArrived: () => undefined,
     onShowing: () => undefined,
+    contentOf: () => null,
     releaseElsewhere: () => Promise.resolve(),
   })
   standing.push(built.teardownDocument)
