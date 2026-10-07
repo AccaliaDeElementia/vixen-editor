@@ -1,0 +1,136 @@
+'use sanity'
+
+import { beforeEach, describe, expect, it } from 'vitest'
+import { undoDepth } from '@codemirror/commands'
+import { EditorView } from '@codemirror/view'
+
+import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import type { Session } from '../../../../src/client/editor/session.ts'
+import { requestKeep } from '../../../../src/client/keep-request.ts'
+import { requestOpenAside } from '../../../../src/client/open-aside.ts'
+import { givenAsync } from '../../../conditions.ts'
+import {
+  dialogsDismissing,
+  filesAnsweringEmpty,
+  page,
+  recorded,
+  sessionRecording,
+  trackEditor,
+  type Recorded,
+} from '../../editor-fixtures.ts'
+
+const TYPED = ' and more'
+const SOMEWHERE_IN_THE_MIDDLE = 3
+const ONE_TAB = 1
+
+let root: HTMLElement = document.createElement('div')
+let record: Recorded = recorded()
+
+function fakeSession(overrides: Partial<Session> = {}): Session {
+  return sessionRecording(record, {
+    load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }),
+    ...overrides,
+  })
+}
+
+async function editing(session: Session = fakeSession()): Promise<{ view: EditorView; settled: () => Promise<void> }> {
+  const editor = trackEditor(
+    await bootstrapOrReport({
+      root,
+      pathname: '/doc/notes.md',
+      session,
+      files: filesAnsweringEmpty(),
+      dialogs: dialogsDismissing(),
+    }),
+  )
+  if (editor === null) throw new Error('the editor did not start')
+  requestKeep(root, 'notes.md')
+
+  return editor
+}
+
+function carryToTheOtherPane(): void {
+  root.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowRight',
+      altKey: true,
+      ctrlKey: true,
+      shiftKey: true,
+    }),
+  )
+}
+
+function editorHoldingTheTab(): EditorView | null {
+  const holder = [...root.querySelectorAll<HTMLElement>('[data-part="pane"]')].find(
+    (pane) => pane.querySelector('[data-tab="editor:notes.md"]') !== null,
+  )
+  const content = holder?.querySelector<HTMLElement>('.cm-content') ?? null
+
+  return content === null ? null : EditorView.findFromDOM(content)
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  record = recorded()
+  document.body.innerHTML = ''
+  root = page()
+})
+
+describe('carrying a document that has unsaved work to the other pane', () => {
+  it('takes the text across, rather than re-reading what the store still holds', async () => {
+    const editor = await editing()
+    editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: TYPED } })
+
+    carryToTheOtherPane()
+    await givenAsync(editor.settled())
+
+    expect(editorHoldingTheTab()?.state.doc.toString()).toBe(`# notes.md${TYPED}`)
+  })
+
+  it('takes the caret across, because it lives in the state the carry hands over', async () => {
+    const editor = await editing()
+    editor.view.dispatch({ selection: { anchor: SOMEWHERE_IN_THE_MIDDLE } })
+
+    carryToTheOtherPane()
+    await givenAsync(editor.settled())
+
+    expect(editorHoldingTheTab()?.state.selection.main.head).toBe(SOMEWHERE_IN_THE_MIDDLE)
+  })
+
+  it('takes the undo history across, so the reader can still take back what they typed', async () => {
+    const editor = await editing()
+    editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: TYPED } })
+
+    carryToTheOtherPane()
+    await givenAsync(editor.settled())
+
+    expect(undoDepth(editorHoldingTheTab()?.state ?? editor.view.state)).toBeGreaterThan(0)
+  })
+})
+
+describe('carrying a document the store refuses to save', () => {
+  it('leaves one editor holding the work, in the pane it was carried to', async () => {
+    const editor = await editing(fakeSession({ save: () => Promise.reject(new Error('the store refused')) }))
+    editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: TYPED } })
+
+    carryToTheOtherPane()
+    await givenAsync(editor.settled())
+
+    expect(root.querySelectorAll('[data-tab="editor:notes.md"]')).toHaveLength(1)
+  })
+})
+
+describe('collapsing onto a pane that was showing something no editor holds', () => {
+  it('opens it afresh, because there is no live state to hand over for an image', async () => {
+    const editor = await editing()
+    requestOpenAside(root, 'photo.png')
+    await givenAsync(editor.settled())
+
+    root.querySelector<HTMLElement>('[data-tab="editor:notes.md"] .tabs__close')?.click()
+    await givenAsync(editor.settled())
+
+    expect(root.querySelectorAll('[data-tab="image:photo.png"]')).toHaveLength(ONE_TAB)
+  })
+})

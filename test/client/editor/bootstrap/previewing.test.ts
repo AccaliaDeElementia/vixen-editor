@@ -12,6 +12,8 @@ import { DRAG_TAB_MIME } from '../../../../src/client/drag-payload.ts'
 
 const WIDE_ENOUGH = 1200
 const ONE_TAB = 1
+const ONE_EDITOR = 1
+const NONE = 0
 const { PREVIEW_SETTLES_MS } = previewTiming
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
@@ -47,6 +49,10 @@ function panes(): HTMLElement | null {
 
 function previewBody(): HTMLElement | null {
   return root.querySelectorAll<HTMLElement>('[data-part="source-body"]')[1] ?? null
+}
+
+function editorsHolding(text: string): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>('.cm-content')].filter((content) => content.textContent.includes(text))
 }
 
 function press(init: KeyboardEventInit): void {
@@ -624,7 +630,7 @@ describe('moving between the panes from the keyboard', () => {
     ).not.toBeNull()
   })
 
-  it('opens the document in the arriving pane, not only its tab handle', async () => {
+  it('brings the document with it, not only its tab handle', async () => {
     const editor = trackEditor(
       await bootstrapOrReport({
         root,
@@ -640,10 +646,10 @@ describe('moving between the panes from the keyboard', () => {
     press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
     await editor.settled()
 
-    expect(root.querySelectorAll<HTMLElement>('.cm-content')[1]?.textContent).toContain('# carried')
+    expect(editorsHolding('# carried').length).toBeGreaterThan(NONE)
   })
 
-  it('empties the editor it left, because a document has only one editor', async () => {
+  it('leaves just the one editor holding it, because a document has only one editor', async () => {
     const editor = trackEditor(
       await bootstrapOrReport({
         root,
@@ -659,7 +665,7 @@ describe('moving between the panes from the keyboard', () => {
     press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
     await editor.settled()
 
-    expect(root.querySelectorAll<HTMLElement>('.cm-content')[0]?.textContent).toBe('')
+    expect(editorsHolding('# carried')).toHaveLength(ONE_EDITOR)
   })
 
   it('leaves a carried preview tab to its own pane, because only an editor holds a document', async () => {

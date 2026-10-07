@@ -18,7 +18,7 @@ interface PaneMovesOptions {
   goTo: (surface: PaneWorkspace) => void
   onCarried: (at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace) => void
   forgetAside: () => void
-  show: (surface: PaneWorkspace, entryPath: string) => void
+  carry: (at: TabAt, from: PaneWorkspace) => void
 }
 
 interface PaneMoves {
@@ -52,8 +52,8 @@ export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
     const showing = from.pane.showing()
     for (const [index, at] of from.pane.held().entries()) options.primary.pane.receive(at, index)
 
+    if (showing !== null) options.carry(showing, from)
     dismissAside()
-    if (showing !== null) options.show(options.primary, showing.path)
   }
 
   return {

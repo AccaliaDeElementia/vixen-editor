@@ -10,6 +10,7 @@ export type SaveState = 'clean' | 'pending' | 'saving' | 'empty' | 'failed'
 export interface Autosave {
   changed: (content: string) => void
   reset: (content: string) => void
+  lastSaved: () => string
   flush: () => Promise<void>
   stop: () => void
   state: () => SaveState
@@ -149,6 +150,8 @@ export function createAutosave(options: AutosaveOptions): Autosave {
       current = content
       schedule()
     },
+
+    lastSaved: () => saved,
 
     reset(content: string): void {
       stopIdle()

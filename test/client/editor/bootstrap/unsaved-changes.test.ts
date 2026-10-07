@@ -1,5 +1,7 @@
 'use sanity'
 
+const ONE_EDITOR = 1
+
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import type { Session } from '../../../../src/client/editor/session.ts'
@@ -219,6 +221,12 @@ describe('a document with unsaved changes leaving a pane', () => {
     return started
   }
 
+  function editorsHolding(text: string): HTMLElement[] {
+    return [...root.querySelectorAll<HTMLElement>('.cm-content')].filter((content) =>
+      content.textContent.includes(text),
+    )
+  }
+
   function carryToTheOtherPane(): void {
     root.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true, bubbles: true }),
@@ -240,10 +248,10 @@ describe('a document with unsaved changes leaving a pane', () => {
     carryToTheOtherPane()
     await started.settled()
 
-    expect(root.querySelectorAll<HTMLElement>('.cm-content')[1]?.textContent).toContain('# stored and typed')
+    expect(editorsHolding('# stored and typed')).toHaveLength(ONE_EDITOR)
   })
 
-  it('keeps the buffer when the save fails and the reader will not let it go', async () => {
+  it('carries the work to the new pane even when the save failed, so nothing is stranded', async () => {
     const started = trackEditor(
       await bootstrapOrReport({
         root,
@@ -263,6 +271,6 @@ describe('a document with unsaved changes leaving a pane', () => {
     carryToTheOtherPane()
     await started.settled()
 
-    expect(root.querySelectorAll<HTMLElement>('.cm-content')[0]?.textContent).toContain('# stored and typed')
+    expect(editorsHolding('# stored and typed')).toHaveLength(ONE_EDITOR)
   })
 })

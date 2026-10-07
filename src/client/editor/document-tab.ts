@@ -49,6 +49,11 @@ interface DocumentTabOptions {
   listenForFocus?: FocusListener | undefined
 }
 
+export interface CarriedDocument {
+  state: EditorState
+  storedContent: string
+}
+
 export interface DocumentTab {
   view: EditorView
   recheck: () => Promise<void>
@@ -58,6 +63,8 @@ export interface DocumentTab {
   insertAt: (text: string, at: number | null) => void
   putCaretAt: (offset: number) => void
   open: (entryPath: string, content: string) => void
+  adopt: (entryPath: string, carried: CarriedDocument) => void
+  handOver: () => CarriedDocument
   load: (content: string) => void
   empty: () => void
   followMove: (to: string) => void
@@ -229,6 +236,25 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     view.dispatch({ effects: EditorView.scrollIntoView(caret) })
   }
 
+  function adopt(entryPath: string, carried: CarriedDocument): void {
+    const text = carried.state.doc.toString()
+    openedAt = entryPath
+    caretPosition = caretIn(carried.state)
+    view.setState(carried.state)
+    holder.follow(view, entryPath)
+    autosave.reset(carried.storedContent)
+    autosave.changed(text)
+    statusBar.showWordCount(text)
+  }
+
+  function handOver(): CarriedDocument {
+    const carried = { state: view.state, storedContent: autosave.lastSaved() }
+    openedAt = null
+    empty()
+
+    return carried
+  }
+
   async function settleBeforeLeaving(): Promise<boolean> {
     await autosave.flush()
 
@@ -300,6 +326,8 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     insertAt,
     putCaretAt,
     open,
+    adopt,
+    handOver,
     load,
     empty,
     followMove: (to: string) => {

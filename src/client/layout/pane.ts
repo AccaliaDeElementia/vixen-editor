@@ -141,10 +141,12 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
   }
 }
 
-export function carryTab(identity: string, to: Pane, from: Pane | null, toIndex: number): void {
+export function carryTab(identity: string, to: Pane, from: Pane | null, toIndex: number): TabAt | null {
   const at = tabFromIdentity(identity)
-  if (at === null || from === null) return
+  if (at === null || from === null) return null
 
   from.close(at)
   to.receive(at, toIndex)
+
+  return at
 }

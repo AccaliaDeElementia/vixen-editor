@@ -134,10 +134,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       closingTabs.requestClose(closingPrimary, at)
     },
     onTabArrived: (identity: string, toIndex: number) => {
-      carryTab(identity, primary, aside.current()?.pane ?? null, toIndex)
       const elsewhere = aside.current()
-      if (elsewhere !== null) settlePane(elsewhere)
-      settlePane(primaryWorkspace)
+      if (elsewhere !== null) tabArrived(identity, primaryWorkspace, elsewhere, toIndex)
     },
     releaseElsewhere: async (at: TabAt) => {
       await releaseFrom(aside.current(), at)
@@ -205,9 +203,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
           closingTabs.requestClose(closingAside(built), at)
         },
         onTabArrived: (identity: string, toIndex: number) => {
-          carryTab(identity, built.pane, primary, toIndex)
-          settlePane(primaryWorkspace)
-          if (aside.current() === built) settlePane(built)
+          tabArrived(identity, built, primaryWorkspace, toIndex)
         },
         releaseElsewhere: async (at: TabAt) => {
           await releaseFrom(primaryWorkspace, at)
@@ -324,9 +320,33 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     closingTabs.settle(surfaceFor(surface))
   }
 
-  async function carried(at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace): Promise<void> {
-    await leaving.leave()
-    await arriving.showDocument(at.path)
+  function handOverTo(arriving: PaneWorkspace, at: TabAt, leaving: PaneWorkspace): void {
+    const handed = leaving.handOver()
+    if (handed === null) {
+      pending.push(arriving.showDocument(at.path))
+
+      return
+    }
+
+    arriving.adopt(at.path, handed)
+  }
+
+  async function carryDocument(at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace): Promise<void> {
+    await leaving.flush()
+    handOverTo(arriving, at, leaving)
+    settlePane(leaving)
+  }
+
+  function tabArrived(identity: string, arriving: PaneWorkspace, leaving: PaneWorkspace, toIndex: number): void {
+    const moved = carryTab(identity, arriving.pane, leaving.pane, toIndex)
+    if (moved !== null && moved.view === 'editor') {
+      pending.push(carryDocument(moved, arriving, leaving))
+
+      return
+    }
+
+    settlePane(leaving)
+    settlePane(arriving)
   }
 
   const paneMoves = createPaneMoves({
@@ -334,7 +354,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onCarried: (at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace) => {
       if (at.view !== 'editor') return
 
-      pending.push(carried(at, arriving, leaving))
+      pending.push(carryDocument(at, arriving, leaving))
     },
     primary: primaryWorkspace,
     summon: aside.summon,
@@ -343,8 +363,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       touched = surface
     },
     forgetAside: aside.forget,
-    show: (surface: PaneWorkspace, entryPath: string) => {
-      pending.push(surface.showDocument(entryPath))
+    carry: (at: TabAt, from: PaneWorkspace) => {
+      handOverTo(primaryWorkspace, at, from)
     },
   })
 

@@ -24,7 +24,7 @@ import { createPane, type Pane } from '../layout/pane.ts'
 import { createStatusBar, type StatusBar } from '../layout/status-bar.ts'
 import { createWorkspace, type Workspace } from '../layout/workspace.ts'
 import type { Toast } from '../toast.ts'
-import type { DocumentTab, FocusListener } from './document-tab.ts'
+import type { CarriedDocument, DocumentTab, FocusListener } from './document-tab.ts'
 import { resolveIndex } from './folder-index.ts'
 import { createPaneEditor } from './pane-editor.ts'
 import { bindViewDrops } from './view-drops.ts'
@@ -82,10 +82,11 @@ export interface PaneWorkspace {
   workspace: Workspace
   openPath: (target: string) => Promise<void>
   showTab: (at: TabAt) => Promise<void>
+  handOver: () => CarriedDocument | null
+  adopt: (entryPath: string, carried: CarriedDocument) => void
   release: () => void
   flush: () => Promise<boolean>
   showDocument: (entryPath: string) => Promise<void>
-  leave: () => Promise<void>
 }
 
 function reportUnreachable(host: ParentNode, at: string, error: unknown): void {
@@ -303,11 +304,20 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
     release,
 
-    leave: async () => {
-      if (built !== null && !(await built.settleBeforeLeaving())) return
+    handOver: () => {
+      const carried = built?.handOver() ?? null
+      holding = null
 
-      release()
-      pane.leave()
+      return carried
+    },
+
+    adopt: (entryPath: string, carried: CarriedDocument) => {
+      options.onShowing(entryPath)
+      held.commit(entryPath)
+      editor().adopt(entryPath, carried)
+      pane.open({ path: entryPath, view: 'editor' })
+      workspace.show('document', entryPath)
+      announce(`Editing ${entryPath} — press Ctrl/Cmd+S to save`)
     },
 
     openPath,

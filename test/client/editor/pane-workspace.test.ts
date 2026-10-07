@@ -127,7 +127,8 @@ describe('a pane whose document has left it', () => {
   async function emptied(): Promise<ReturnType<typeof createPaneWorkspace>> {
     const pane = paneHolding('notes.md')
     await pane.showDocument('notes.md')
-    await pane.leave()
+    pane.release()
+    pane.pane.leave()
 
     return pane
   }
@@ -281,7 +282,7 @@ describe('dropping onto a pane that is showing a preview', () => {
     await expect(landed.promise).resolves.toBe('journal:p.png')
   })
 
-  it('uploads nothing when the pane is on no tab, because there is no file to be a sibling of', async () => {
+  it('uploads nothing when the pane is on no tab, because there is no file to be a sibling of', () => {
     const asked: string[] = []
     const pane = paneHolding('journal/notes.md', {
       upload: (directory: string) => {
@@ -290,7 +291,7 @@ describe('dropping onto a pane that is showing a preview', () => {
         return Promise.resolve(`${directory}/p.png`)
       },
     })
-    await pane.leave()
+    pane.pane.leave()
 
     dropOnTheMarkupView(cast<DataTransfer>({ getData: () => '', types: ['Files'], files: [new File(['x'], 'p.png')] }))
 
