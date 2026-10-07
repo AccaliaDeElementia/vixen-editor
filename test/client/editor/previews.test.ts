@@ -51,7 +51,7 @@ describe('a preview following the document it is of', () => {
     const previews = previewing()
     previews.render(host, MARKUP, '# before')
 
-    previews.refreshWith('# after')
+    previews.refreshWith(MARKUP.path, '# after')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS - 1)
 
     expect(shown('markup-body')).toBe('before')
@@ -61,7 +61,7 @@ describe('a preview following the document it is of', () => {
     const previews = previewing()
     previews.render(host, MARKUP, '# before')
 
-    previews.refreshWith('# after')
+    previews.refreshWith(MARKUP.path, '# after')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
     expect(shown('markup-body')).toBe('after')
@@ -71,9 +71,9 @@ describe('a preview following the document it is of', () => {
     const previews = previewing()
     previews.render(host, MARKUP, '# before')
 
-    previews.refreshWith('# one')
+    previews.refreshWith(MARKUP.path, '# one')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS - 1)
-    previews.refreshWith('# two')
+    previews.refreshWith(MARKUP.path, '# two')
     await vi.advanceTimersByTimeAsync(1)
 
     expect(shown('markup-body')).toBe('before')
@@ -83,9 +83,9 @@ describe('a preview following the document it is of', () => {
     const previews = previewing()
     previews.render(host, MARKUP, '# before')
 
-    previews.refreshWith('# one')
+    previews.refreshWith(MARKUP.path, '# one')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS - 1)
-    previews.refreshWith('# two')
+    previews.refreshWith(MARKUP.path, '# two')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
     expect(shown('markup-body')).toBe('two')
@@ -95,7 +95,7 @@ describe('a preview following the document it is of', () => {
     const previews = previewing()
     previews.render(host, SOURCE, '# before')
 
-    previews.refreshWith('# after')
+    previews.refreshWith(MARKUP.path, '# after')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
     expect(shown('source-body')).toBe('# after')
@@ -104,7 +104,7 @@ describe('a preview following the document it is of', () => {
   it('does nothing while no preview is showing', async () => {
     const previews = previewing()
 
-    previews.refreshWith('# after')
+    previews.refreshWith(MARKUP.path, '# after')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
     expect(shown('markup-body')).toBe('')
@@ -115,11 +115,33 @@ describe('letting the preview go', () => {
   it('drops work it had not done yet, so a torn-down editor renders nothing', async () => {
     const previews = previewing()
     previews.render(host, MARKUP, '# before')
-    previews.refreshWith('# after')
+    previews.refreshWith(MARKUP.path, '# after')
 
     previews.stop()
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
     expect(shown('markup-body')).toBe('before')
+  })
+})
+
+describe('a refresh carrying another document’s text', () => {
+  it('is ignored, so a preview cannot show what it is not named for', async () => {
+    const previews = previewing()
+    previews.render(host, MARKUP, '# ALPHA')
+
+    previews.refreshWith('bravo.md', '# BRAVO')
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(shown('markup-body')).toBe('ALPHA')
+  })
+
+  it('is ignored when the editor holds no document at all', async () => {
+    const previews = previewing()
+    previews.render(host, MARKUP, '# ALPHA')
+
+    previews.refreshWith(null, '# NOTHING')
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(shown('markup-body')).toBe('ALPHA')
   })
 })

@@ -19,7 +19,7 @@ interface Showing {
 
 export interface Previews {
   render: (host: ParentNode, at: TabAt, content: string) => void
-  refreshWith: (content: string) => void
+  refreshWith: (holder: string | null, content: string) => void
   revealOffset: (offset: number) => void
   stop: () => void
 }
@@ -50,9 +50,9 @@ export function createPreviews(putCaretAt: (offset: number) => void): Previews {
       showing = markup
     },
 
-    refreshWith(content: string): void {
+    refreshWith(holder: string | null, content: string): void {
       const target = rendered
-      if (target === null) return
+      if (target?.at.path !== holder) return
 
       stop()
       settling = setTimeout(() => {

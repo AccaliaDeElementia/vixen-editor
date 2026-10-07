@@ -2,9 +2,12 @@
 
 import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
+import { TestOnly as previewTiming } from '../src/client/editor/previews.ts'
 import type { Page } from '@playwright/test'
 
 const PANE = '.pane'
+const OUTLASTS_THE_SETTLE_BY = 3
+const PAST_THE_PREVIEW_SETTLE_MS = previewTiming.PREVIEW_SETTLES_MS * OUTLASTS_THE_SETTLE_BY
 
 test('the source preview opens beside the editor and shows the markup', async ({ page, request }) => {
   const name = `source-${String(Date.now())}.md`
@@ -459,4 +462,29 @@ test('an inline tag the allowlist refuses stays as source in the preview', async
   expect(await page.evaluate(() => 'pwned' in window)).toBe(false)
 
   await request.delete(`/api/files/entries/${name}`)
+})
+
+test('a preview keeps showing the document it names, not the one being typed in', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const a = `alpha-${stamp}.md`
+  const b = `bravo-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: a, content: '# ALPHA' } })
+  await request.post('/api/files/documents', { data: { path: b, content: '# BRAVO' } })
+
+  await page.goto(`/doc/${a}`)
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('ALPHA'))
+  await page.keyboard.press('Control+Alt+ArrowLeft')
+  await page.locator(`.tree__row[data-path="${b}"]`).dblclick()
+  const editor = page.locator('.pane').first().locator('.cm-content')
+  await givenAsync(expect(editor).toContainText('BRAVO'))
+
+  await editor.click()
+  await page.keyboard.type(' edited')
+  await page.waitForTimeout(PAST_THE_PREVIEW_SETTLE_MS)
+
+  await expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('ALPHA')
+
+  await request.delete(`/api/files/entries/${a}`)
+  await request.delete(`/api/files/entries/${b}`)
 })

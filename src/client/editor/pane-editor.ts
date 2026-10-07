@@ -44,10 +44,10 @@ export function createPaneEditor(options: PaneEditorOptions): DocumentTab {
     onEdited: (content: string) => {
       const holder = documentId()
       if (holder !== null) pane.keepWhenOpened({ path: holder, view: 'editor' })
-      previews.refreshWith(content)
+      previews.refreshWith(holder, content)
     },
     onReloaded: (content: string) => {
-      previews.refreshWith(content)
+      previews.refreshWith(documentId(), content)
     },
     onCaretMoved: (offset: number) => {
       previews.revealOffset(offset)
