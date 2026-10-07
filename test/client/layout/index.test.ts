@@ -11,6 +11,7 @@ import {
   TestOnly as explorerTestOnly,
 } from '../../../src/client/layout/explorer.ts'
 import { onSplitDismissRequested } from '../../../src/client/split-changed.ts'
+import { readSplit } from '../../../src/client/layout/split.ts'
 
 const BOTH_PANES = 2
 import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/layout/index.ts'
@@ -405,6 +406,36 @@ describe('splitting the workspace', () => {
     splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
 
     expect(share()).toBeCloseTo(0.7)
+  })
+
+  it('writes nothing while the divider is still moving, so a drag is one write and not many', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(pointer('pointerdown', 0))
+    splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
+
+    expect(readSplit().fraction).toBeCloseTo(0.5)
+  })
+
+  it('writes where the divider ended up once the reader lets go', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(pointer('pointerdown', 0))
+    splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
+    splitResizer().dispatchEvent(pointer('pointerup', PANES_WIDTH * 0.7))
+
+    expect(readSplit().fraction).toBeCloseTo(0.7)
+  })
+
+  it('paints nothing when the divider is dragged with no split to divide', () => {
+    started()
+
+    splitResizer().dispatchEvent(pointer('pointerdown', 0))
+    splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
+
+    expect(share()).toBeCloseTo(0.5)
   })
 
   it('ignores a drag that never started, so a stray move does not resize', () => {

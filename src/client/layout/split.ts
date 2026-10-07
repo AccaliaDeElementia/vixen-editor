@@ -96,21 +96,21 @@ function removeSecondPane(panes: HTMLElement): void {
   secondPaneOf(panes)?.remove()
 }
 
-export function applySplit(root: ParentNode, axisPx: number): void {
+interface Painted {
+  panes: HTMLElement
+  resizer: HTMLElement
+}
+
+function paintableIn(root: ParentNode): Painted | null {
   const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
   const resizer = panes?.querySelector<HTMLElement>(RESIZER_SELECTOR) ?? null
-  if (panes === null || resizer === null) return
+  if (panes === null || resizer === null) return null
 
-  const { orientation, fraction } = readSplit()
+  return { panes, resizer }
+}
 
-  if (orientation === null) {
-    delete panes.dataset.split
-    removeSecondPane(panes)
-  } else {
-    panes.dataset.split = orientation
-    addSecondPane(panes)
-  }
-
+function paint(painted: Painted, orientation: SplitOrientation | null, fraction: number, axisPx: number): void {
+  const { panes, resizer } = painted
   const shown = orientation === null ? EVEN_SPLIT : clampFraction(fraction, axisPx, orientation)
 
   panes.style.setProperty('--split', String(shown))
@@ -118,6 +118,30 @@ export function applySplit(root: ParentNode, axisPx: number): void {
   resizer.setAttribute('aria-valuemin', String(NONE_OF_THE_AXIS))
   resizer.setAttribute('aria-valuemax', String(ALL_OF_THE_AXIS))
   resizer.setAttribute('aria-valuenow', String(Math.round(shown * ALL_OF_THE_AXIS)))
+}
+
+export function applySplit(root: ParentNode, axisPx: number): void {
+  const painted = paintableIn(root)
+  if (painted === null) return
+
+  const { orientation, fraction } = readSplit()
+
+  if (orientation === null) {
+    delete painted.panes.dataset.split
+    removeSecondPane(painted.panes)
+  } else {
+    painted.panes.dataset.split = orientation
+    addSecondPane(painted.panes)
+  }
+
+  paint(painted, orientation, fraction, axisPx)
+}
+
+export function showSplitFraction(painted: Painted, fraction: number, axisPx: number): void {
+  const { orientation } = readSplit()
+  if (orientation === null) return
+
+  paint(painted, orientation, fraction, axisPx)
 }
 
 function write(state: StoredSplit): void {

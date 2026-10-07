@@ -12,7 +12,14 @@ import {
   TOGGLE_SELECTOR,
   toggleExplorer,
 } from './explorer.ts'
-import { applySplit, setSplitFraction, toggleSplit, readSplit, type SplitOrientation } from './split.ts'
+import {
+  applySplit,
+  setSplitFraction,
+  showSplitFraction,
+  toggleSplit,
+  readSplit,
+  type SplitOrientation,
+} from './split.ts'
 import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../split-changed.ts'
 import { createDialogs } from '../files/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../help.ts'
@@ -197,7 +204,7 @@ function bindSplitResizer(root: ParentNode): void {
 
   resizer.addEventListener('pointermove', (event: PointerEvent) => {
     if (!dragging) return
-    setSplitFraction(root, fractionFromPointer(panes, event), axisOf(panes))
+    showSplitFraction({ panes, resizer }, fractionFromPointer(panes, event), axisOf(panes))
   })
 
   resizer.addEventListener('pointerup', (event: PointerEvent) => {
