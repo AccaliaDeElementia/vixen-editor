@@ -13,6 +13,7 @@ import {
   toggleExplorer,
 } from './explorer.ts'
 import { applySplit, setSplitFraction, toggleSplit, readSplit, type SplitOrientation } from './split.ts'
+import { announceSplitChanged } from '../split-changed.ts'
 import { createDialogs } from '../files/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../help.ts'
 import { onInsertRequested } from '../insert-entry.ts'
@@ -161,6 +162,7 @@ function bindSplitButtons(root: ParentNode): void {
       const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
       toggleSplit(root, orientation, panes === null ? NO_SPLIT : axisOf(panes))
       reflectSplitButtons(root)
+      announceSplitChanged(root)
     })
   }
 }

@@ -37,7 +37,7 @@ export class MissingMountError extends Error {
   }
 }
 
-interface PaneWorkspaceOptions {
+export interface PaneWorkspaceOptions {
   root: ParentNode
   element: HTMLElement
   id: PaneId

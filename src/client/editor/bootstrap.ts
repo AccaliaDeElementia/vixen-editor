@@ -21,18 +21,24 @@ import { createFilesClient, type FilesClient } from '../files/files-client.ts'
 import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import { createPreviews } from './previews.ts'
 import { createPreviewing } from './previewing.ts'
-import { openSplit, secondPaneIn } from '../layout/split.ts'
+
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { carryTab } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
 import { createClosingTabs, type ClosingSurface } from './closing-tabs.ts'
 import { createPaneMoves } from './pane-moves.ts'
+import { createAside } from './aside.ts'
 import { createTabNavigation } from './tab-navigation.ts'
 
 import type { EditorView } from '@codemirror/view'
 
 import { startsALine } from './document-tab.ts'
-import { createPaneWorkspace, MissingMountError, type PaneWorkspace } from './pane-workspace.ts'
+import {
+  createPaneWorkspace,
+  MissingMountError,
+  type PaneWorkspace,
+  type PaneWorkspaceOptions,
+} from './pane-workspace.ts'
 import { createStaleBuild } from './stale-build.ts'
 import { buildThePageWasServed, watchBuild } from '../build-watch.ts'
 import { createSession, type Session } from './session.ts'
@@ -41,6 +47,7 @@ import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
 import { onKeepRequested } from '../keep-request.ts'
 import { onOpenAsideRequested } from '../open-aside.ts'
+import { onSplitChanged } from '../split-changed.ts'
 import { announceStoreChanged } from '../store-changed.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
@@ -48,6 +55,11 @@ import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 const PANE_SELECTOR = '[data-part="pane"]'
 const BESIDE = 'beside'
 const EVERYTHING_PENDING = 0
+
+type PaneSettings = Omit<
+  PaneWorkspaceOptions,
+  'root' | 'session' | 'files' | 'dialogs' | 'toast' | 'previews' | 'openUrl' | 'reopen' | 'announce' | 'onShowing'
+>
 
 interface Editor {
   view: EditorView
@@ -149,19 +161,28 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     tab.putCaretAt(offset)
   })
 
-  const primaryWorkspace = createPaneWorkspace({
-    root,
+  function paneWorkspaceWith(settings: PaneSettings): PaneWorkspace {
+    return createPaneWorkspace({
+      root,
+      session,
+      files,
+      dialogs,
+      toast,
+      previews,
+      openUrl,
+      reopen,
+      announce: setStatus,
+      onShowing: (entryPath: string) => {
+        openDocument.commit(entryPath)
+      },
+      ...settings,
+    })
+  }
+
+  const primaryWorkspace = paneWorkspaceWith({
     element: pane,
     id: 'primary',
     holds: documentIdFromPath(pathname),
-    session,
-    files,
-    dialogs,
-    toast,
-    previews,
-    openUrl,
-    reopen,
-    announce: setStatus,
     listenForFocus: options.listenForFocus,
     onActivate: (at: TabAt) => {
       touched = primaryWorkspace
@@ -171,14 +192,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       closingTabs.requestClose(closingPrimary, at)
     },
     onTabArrived: (identity: string, toIndex: number) => {
-      carryTab(identity, primary, secondary?.pane ?? null, toIndex)
-      if (secondary !== null) tabLeft(secondary)
-    },
-    onShowing: (entryPath: string) => {
-      openDocument.commit(entryPath)
+      carryTab(identity, primary, aside.current()?.pane ?? null, toIndex)
+      const elsewhere = aside.current()
+      if (elsewhere !== null) tabLeft(elsewhere)
     },
     releaseElsewhere: async (at: TabAt) => {
-      await releaseFrom(secondary, at)
+      await releaseFrom(aside.current(), at)
     },
   })
 
@@ -200,17 +219,17 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   const { offOpenAsideRequested } = onOpenAsideRequested(root, (entryPath: string) => {
-    const aside = touched === primaryWorkspace ? secondaryWorkspaceTowards(BESIDE) : primaryWorkspace
-    if (aside === null) return
+    const elsewhere = touched === primaryWorkspace ? aside.summon(BESIDE) : primaryWorkspace
+    if (elsewhere === null) return
 
-    touched = aside
-    pending.push(aside.showDocument(entryPath))
+    touched = elsewhere
+    pending.push(elsewhere.showDocument(entryPath))
   })
 
   const { offDocumentMoved } = onDocumentMoved(root, ({ from, to, rewritten }) => {
     caretsFollowMove({ from, to })
     primary.followMove({ from, to })
-    secondary?.pane.followMove({ from, to })
+    aside.current()?.pane.followMove({ from, to })
     const moved = pathAfterMove({ from, to }, documentId())
 
     if (moved !== documentId()) {
@@ -227,26 +246,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   })
 
-  let secondary: PaneWorkspace | null = null
-
-  function secondaryWorkspace(): PaneWorkspace | null {
-    const element = secondPaneIn(root)
-    if (element === null) return null
-    if (secondary?.element !== element) {
-      teardownSecondaryDocument()
-      const built: PaneWorkspace = createPaneWorkspace({
-        root,
+  const aside = createAside({
+    root,
+    acrossThePanes: () => paneMoves.acrossThePanes(),
+    build: (element: HTMLElement) => {
+      const built: PaneWorkspace = paneWorkspaceWith({
         element,
         id: 'secondary',
         holds: null,
-        session,
-        files,
-        dialogs,
-        toast,
-        previews,
-        openUrl,
-        reopen,
-        announce: setStatus,
         onActivate: (at: TabAt) => {
           touched = built
           activate(element, at)
@@ -258,19 +265,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
           carryTab(identity, built.pane, primary, toIndex)
           tabLeft(primaryWorkspace)
         },
-        onShowing: (entryPath: string) => {
-          openDocument.commit(entryPath)
-        },
         releaseElsewhere: async (at: TabAt) => {
           await releaseFrom(primaryWorkspace, at)
         },
       })
 
-      secondary = built
-    }
-
-    return secondary
-  }
+      return built
+    },
+  })
 
   function closingSurfaceFor(surface: PaneWorkspace, reveal: () => void): ClosingSurface {
     return {
@@ -285,7 +287,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   const closingPrimary = closingSurfaceFor(primaryWorkspace, () => {
-    const elsewhere = secondary
+    const elsewhere = aside.current()
     if (elsewhere !== null && !elsewhere.pane.isEmpty()) {
       paneMoves.collapseOntoPrimary(elsewhere)
 
@@ -301,9 +303,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     })
   }
 
+  function everySurface(): readonly ClosingSurface[] {
+    const elsewhere = aside.current()
+
+    return elsewhere === null ? [closingPrimary] : [closingPrimary, closingAside(elsewhere)]
+  }
+
   const closingTabs = createClosingTabs({
     inFront: () => (touched === primaryWorkspace ? closingPrimary : closingAside(touched)),
-    everySurface: () => (secondary === null ? [closingPrimary] : [closingPrimary, closingAside(secondary)]),
+    everySurface,
     showNothingAtAll: () => {
       navigator.replaceQuietly(docUrlFor(STORE_ROOT))
     },
@@ -323,17 +331,11 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     previews.render(host, at, view.state.doc.toString())
   }
 
-  function secondaryWorkspaceTowards(towards: 'beside' | 'below'): PaneWorkspace | null {
-    openSplit(root, towards, paneMoves.acrossThePanes())
-
-    return secondaryWorkspace()
-  }
-
   const previewing = createPreviewing({
     root,
     previews,
     primary,
-    summon: () => secondaryWorkspaceTowards(BESIDE),
+    summon: () => aside.summon(BESIDE),
     focus: (surface: PaneWorkspace) => {
       touched = surface
     },
@@ -372,15 +374,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       pending.push(carried(at, arriving, leaving))
     },
     primary: primaryWorkspace,
-    summon: secondaryWorkspaceTowards,
+    summon: aside.summon,
     inFront: () => touched,
     goTo: (surface: PaneWorkspace) => {
       touched = surface
     },
-    forgetAside: () => {
-      teardownSecondaryDocument()
-      secondary = null
-    },
+    forgetAside: aside.forget,
     show: (surface: PaneWorkspace, entryPath: string) => {
       pending.push(surface.showDocument(entryPath))
     },
@@ -443,13 +442,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
   bindHistoryButtons(root, navigator)
+  const splitChanges = onSplitChanged(root, () => {
+    aside.reconcile()
+  })
+
+  const restored = aside.reconcile()
+  if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
 
   await openPath(pathname, viewFromSearch(search))
   refreshHistoryButtons(root, navigator)
-
-  function teardownSecondaryDocument(): void {
-    secondary?.teardownDocument()
-  }
 
   function teardownDocument(): void {
     offDocumentMoved()
@@ -457,10 +458,11 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     offInsertRequested()
     offKeepRequested()
     offOpenAsideRequested()
+    splitChanges.offSplitChanged()
     previews.stop()
     toast.dismissRaised()
     tab.teardownDocument()
-    teardownSecondaryDocument()
+    aside.forget()
   }
 
   const staleBuild = createStaleBuild({
@@ -469,7 +471,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     reload: reopen,
     announce: setStatus,
     saveEverything: async () => {
-      const everywhere = [primaryWorkspace.flush(), secondary === null ? Promise.resolve(true) : secondary.flush()]
+      const everywhere = [primaryWorkspace.flush(), aside.current()?.flush() ?? Promise.resolve(true)]
 
       return (await Promise.all(everywhere)).every((saved) => saved)
     },

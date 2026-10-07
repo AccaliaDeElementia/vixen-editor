@@ -12,14 +12,15 @@ const CALLED = /^\s*(?<name>[A-Za-z][\w.]*)\(\)/gmv
 const BOTH_HALVES = 2
 
 const PER_DOCUMENT = [
+  'aside.forget',
   'offDocumentMoved',
   'offInsertRequested',
   'offKeepRequested',
   'offOpenAsideRequested',
   'previews.stop',
+  'splitChanges.offSplitChanged',
   'stopFollowingDeletion',
   'tab.teardownDocument',
-  'teardownSecondaryDocument',
   'toast.dismissRaised',
 ]
 

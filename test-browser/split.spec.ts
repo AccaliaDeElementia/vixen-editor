@@ -8,6 +8,7 @@ import { storedDocument } from './fixtures.ts'
 
 const PANE = '.pane'
 const DIVIDER = '[data-part="split-resizer"]'
+const EVEN_ENOUGH = 2
 
 async function widths(page: Page): Promise<number[]> {
   return await page.locator(PANE).evaluateAll((panes) => panes.map((pane) => pane.getBoundingClientRect().width))
@@ -78,10 +79,12 @@ test('a share set side by side carries over to above and below', async ({ page, 
   expect(first ?? 0).toBeLessThan(second ?? 0)
 })
 
-test('a share survives a reload, so a reader sets it once', async ({ page, request }) => {
-  await page.goto(await storedDocument(request, `persist-${String(Date.now())}.md`))
-  await page.locator('#split-beside').click()
+test('a share survives a reload of a split that is still live, so a reader sets it once', async ({ page, request }) => {
+  const name = `persist-${String(Date.now())}.md`
+  await page.goto(await storedDocument(request, name))
+  await page.locator('#preview-markup').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  await page.locator(PANE).nth(1).locator(`[data-tab="markup:${name}"]`).dblclick()
   await page.locator(DIVIDER).focus()
   await page.keyboard.press('ArrowLeft')
 
@@ -92,6 +95,21 @@ test('a share survives a reload, so a reader sets it once', async ({ page, reque
   expect(first ?? 0).toBeLessThan(second ?? 0)
 })
 
+test('a share goes back to even once the second pane has gone, however it went', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `even-${String(Date.now())}.md`))
+  await page.locator('#split-beside').click()
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  await page.locator(DIVIDER).focus()
+  await page.keyboard.press('ArrowLeft')
+
+  await page.reload()
+  await page.locator('#split-beside').click()
+
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  const [first, second] = await widths(page)
+  expect(Math.abs((first ?? 0) - (second ?? 0))).toBeLessThan(EVEN_ENOUGH)
+})
+
 test('closing the last tab in the second pane puts the workspace back to one pane', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `undo-${String(Date.now())}.md`))
   await page.locator('#preview-markup').click()
@@ -100,4 +118,12 @@ test('closing the last tab in the second pane puts the workspace back to one pan
   await page.locator(PANE).nth(1).locator('.tabs__close').click()
 
   await expect(page.locator(PANE)).toHaveCount(1)
+})
+
+test('a pane opened by the split control is wired up, not just drawn', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `wired-${String(Date.now())}.md`))
+
+  await page.locator('#split-beside').click()
+
+  await expect(page.locator(PANE).nth(1).locator('[role="tablist"]')).toBeAttached()
 })
