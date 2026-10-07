@@ -91,3 +91,13 @@ test('a share survives a reload, so a reader sets it once', async ({ page, reque
   const [first, second] = await widths(page)
   expect(first ?? 0).toBeLessThan(second ?? 0)
 })
+
+test('closing the last tab in the second pane puts the workspace back to one pane', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `undo-${String(Date.now())}.md`))
+  await page.locator('#preview-markup').click()
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+
+  await page.locator(PANE).nth(1).locator('.tabs__close').click()
+
+  await expect(page.locator(PANE)).toHaveCount(1)
+})

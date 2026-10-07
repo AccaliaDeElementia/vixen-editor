@@ -19,6 +19,7 @@ interface PaneMovesOptions {
 
 interface PaneMoves {
   toPane: (towards: SplitOrientation, forward: boolean, carrying: boolean) => void
+  markPaneInFront: () => void
 }
 
 export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
@@ -29,6 +30,8 @@ export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
   }
 
   return {
+    markPaneInFront,
+
     toPane(towards: SplitOrientation, forward: boolean, carrying: boolean): void {
       const arriving = forward ? options.summon(towards) : options.primary
       if (arriving === null) return

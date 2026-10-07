@@ -102,11 +102,20 @@ function write(state: SplitState): void {
   writeJson(SPLIT_KEY, state)
 }
 
+export function closeSplit(root: ParentNode, axisPx: number): void {
+  write(SINGLE_PANE)
+  applySplit(root, axisPx)
+}
+
 export function toggleSplit(root: ParentNode, orientation: SplitOrientation, axisPx: number): void {
   const current = readSplit()
-  const closing = current.orientation === orientation
+  if (current.orientation === orientation) {
+    closeSplit(root, axisPx)
 
-  write(closing ? SINGLE_PANE : { orientation, fraction: current.fraction })
+    return
+  }
+
+  write({ orientation, fraction: current.fraction })
   applySplit(root, axisPx)
 }
 

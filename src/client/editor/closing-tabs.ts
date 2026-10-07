@@ -16,10 +16,12 @@ export interface ClosingSurface {
 interface ClosingOptions {
   inFront: () => ClosingSurface
   everySurface: () => readonly ClosingSurface[]
+  showNothingAtAll: () => void
 }
 
 interface ClosingTabs {
   requestClose: (surface: ClosingSurface, at: TabAt) => void
+  showNothingIn: (surface: ClosingSurface) => void
   closeTheTabInFront: () => void
   settled: () => Promise<void>
 }
@@ -31,6 +33,7 @@ export function createClosingTabs(options: ClosingOptions): ClosingTabs {
     if (!surface.pane.isEmpty()) return
 
     surface.showNothing()
+    if (options.everySurface().every((candidate) => candidate.pane.isEmpty())) options.showNothingAtAll()
   }
 
   function closePreviewsOf(entryPath: string): void {
@@ -69,6 +72,7 @@ export function createClosingTabs(options: ClosingOptions): ClosingTabs {
 
   return {
     requestClose,
+    showNothingIn,
 
     closeTheTabInFront(): void {
       const surface = options.inFront()

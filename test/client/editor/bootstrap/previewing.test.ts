@@ -11,6 +11,7 @@ import { requestKeep } from '../../../../src/client/keep-request.ts'
 import { DRAG_TAB_MIME } from '../../../../src/client/drag-payload.ts'
 
 const WIDE_ENOUGH = 1200
+const ONE_TAB = 1
 const { PREVIEW_SETTLES_MS } = previewTiming
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
@@ -309,13 +310,13 @@ describe('closing a tab', () => {
     expect(root.querySelector('[data-tab="markup:notes.md"]')).toBeNull()
   })
 
-  it('leaves the second pane saying there is nothing in it', async () => {
+  it('dismisses the second pane when it was the only thing in it', async () => {
     await editing()
     root.querySelector<HTMLElement>('#preview-markup')?.click()
 
     closerFor('markup:notes.md')?.click()
 
-    expect(root.querySelectorAll<HTMLElement>('[data-part="view-empty"]')[1]?.hidden).toBe(false)
+    expect(panes()?.dataset.split).toBeUndefined()
   })
 
   it('takes the editor tab away and leaves the invitation to open something', async () => {
@@ -480,7 +481,7 @@ describe('dragging a tab to the other pane', () => {
     const first = stripIn(0)
     if (first !== null) dropOnto(first, 'markup:notes.md')
 
-    expect(root.querySelectorAll('[data-part="tabs"]')[1]?.querySelector('[data-tab="markup:notes.md"]')).toBeNull()
+    expect(root.querySelectorAll('[data-tab="markup:notes.md"]')).toHaveLength(ONE_TAB)
   })
 
   it('puts it into the pane it was dropped on', async () => {
@@ -669,6 +670,22 @@ describe('moving between the panes from the keyboard', () => {
     press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
 
     expect(root.querySelectorAll<HTMLElement>('.cm-content')[0]?.textContent).toContain('# carried')
+  })
+
+  it('dismisses the pane a dragged tab left, when that tab was the last thing in it', async () => {
+    await editing('# carried')
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    const carried = cast<DataTransfer>({
+      getData: (mime: string) => (mime === DRAG_TAB_MIME ? 'markup:notes.md' : ''),
+      types: [DRAG_TAB_MIME],
+    })
+
+    root
+      .querySelector<HTMLElement>('[data-part="tabs"]')
+      ?.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: carried })))
+
+    expect(panes()?.dataset.split).toBeUndefined()
   })
 
   it('ignores a tab dropped from nowhere, because there is no pane for it to have left', async () => {

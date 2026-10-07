@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { Session } from '../../../../src/client/editor/session.ts'
 import { requestOpenAside } from '../../../../src/client/open-aside.ts'
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
-import { page, recorded, sessionRecording, trackEditor, type Recorded } from '../../editor-fixtures.ts'
+import { openEditor, page, recorded, sessionRecording, trackEditor, type Recorded } from '../../editor-fixtures.ts'
 import { givenAsync } from '../../../conditions.ts'
 import { dialogsDismissing, filesAnsweringEmpty } from '../../editor-fixtures.ts'
 
@@ -65,5 +65,36 @@ describe('closing a document that is being previewed in the other pane', () => {
     closerFor('editor:notes.md')?.click()
 
     expect(root.querySelector('[data-tab="markup:notes.md"]')).toBeNull()
+  })
+})
+
+describe('closing the last tab in the second pane', () => {
+  it('dismisses the split, so the reader is not left with a pane they cannot get rid of', async () => {
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession('# stored'),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+
+    closerFor('editor:other.md')?.click()
+
+    expect(root.querySelector<HTMLElement>('[data-part="panes"]')?.dataset.split).toBeUndefined()
+  })
+})
+
+describe('closing the last tab in the only pane', () => {
+  it('puts the reader back at the document root, so a reload does not reopen what they closed', async () => {
+    await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# stored') })
+
+    closerFor('editor:notes.md')?.click()
+
+    expect(window.location.pathname).toBe('/doc/')
   })
 })

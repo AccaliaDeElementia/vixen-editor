@@ -1,7 +1,6 @@
 'use sanity'
 
 import {
-  displayPathFromPath,
   docUrlFor,
   documentIdFromPath,
   isPreviewView,
@@ -22,11 +21,11 @@ import { createFilesClient, type FilesClient } from '../files/files-client.ts'
 import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import { createPreviews } from './previews.ts'
 import { createPreviewing } from './previewing.ts'
-import { openSplit, secondPaneIn } from '../layout/split.ts'
+import { closeSplit, openSplit, secondPaneIn } from '../layout/split.ts'
+import { STORE_ROOT } from '../../shared/store-path.ts'
 import { carryTab } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
 import { createClosingTabs, type ClosingSurface } from './closing-tabs.ts'
-import { revealOnly } from '../layout/reveal-view.ts'
 import { createPaneMoves } from './pane-moves.ts'
 import { createTabNavigation } from './tab-navigation.ts'
 
@@ -47,7 +46,6 @@ import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
-const EMPTY_PART = 'view-empty'
 const PANES_SELECTOR = '[data-part="panes"]'
 const BESIDE = 'beside'
 const NOTHING_MEASURED = 0
@@ -176,6 +174,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
     onTabArrived: (identity: string, toIndex: number) => {
       carryTab(identity, primary, secondary?.pane ?? null, toIndex)
+      if (secondary !== null) tabLeft(secondary)
     },
     onShowing: (entryPath: string) => {
       openDocument.commit(entryPath)
@@ -259,6 +258,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         },
         onTabArrived: (identity: string, toIndex: number) => {
           carryTab(identity, built.pane, primary, toIndex)
+          tabLeft(primaryWorkspace)
         },
         onShowing: (entryPath: string) => {
           openDocument.commit(entryPath)
@@ -286,20 +286,33 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   }
 
+  function acrossThePanes(): number {
+    const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
+
+    return panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width
+  }
+
   const closingPrimary = closingSurfaceFor(primaryWorkspace, () => {
-    workspace.show('empty', displayPathFromPath(documentId()))
+    workspace.show('empty', STORE_ROOT)
   })
 
   function closingAside(surface: PaneWorkspace): ClosingSurface {
     return closingSurfaceFor(surface, () => {
-      revealOnly(surface.element, EMPTY_PART)
+      dismissTheSecondPane()
     })
   }
 
   const closingTabs = createClosingTabs({
     inFront: () => (touched === primaryWorkspace ? closingPrimary : closingAside(touched)),
     everySurface: () => (secondary === null ? [closingPrimary] : [closingPrimary, closingAside(secondary)]),
+    showNothingAtAll: () => {
+      navigator.replaceQuietly(docUrlFor(STORE_ROOT))
+    },
   })
+
+  function tabLeft(vacated: PaneWorkspace): void {
+    closingTabs.showNothingIn(vacated === primaryWorkspace ? closingPrimary : closingAside(vacated))
+  }
 
   function activate(host: HTMLElement, at: TabAt): void {
     if (!isPreviewView(at.view) || at.path !== documentId()) {
@@ -312,10 +325,17 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   function secondaryWorkspaceTowards(towards: 'beside' | 'below'): PaneWorkspace | null {
-    const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
-    openSplit(root, towards, panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width)
+    openSplit(root, towards, acrossThePanes())
 
     return secondaryWorkspace()
+  }
+
+  function dismissTheSecondPane(): void {
+    teardownSecondaryDocument()
+    secondary = null
+    touched = primaryWorkspace
+    closeSplit(root, acrossThePanes())
+    paneMoves.markPaneInFront()
   }
 
   const previewing = createPreviewing({
