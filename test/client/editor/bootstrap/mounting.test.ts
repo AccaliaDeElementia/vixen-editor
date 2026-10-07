@@ -47,6 +47,35 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+function walking(): { navigation: Navigation; go: (url: string) => Promise<void> } {
+  const handlers = new Map<string, (event?: unknown) => void>()
+
+  return {
+    go: async (url: string) => {
+      let navigated: Promise<void> = Promise.resolve()
+      handlers.get('navigate')?.({
+        canIntercept: true,
+        hashChange: false,
+        downloadRequest: null,
+        formData: null,
+        destination: { url: new URL(url, 'https://example.test').href },
+        intercept: (intercepted: { handler: () => Promise<void> }) => {
+          navigated = intercepted.handler()
+        },
+      })
+      await navigated
+    },
+    navigation: cast<Navigation>({
+      addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
+      removeEventListener: (type: string) => handlers.delete(type),
+      canGoBack: false,
+      canGoForward: false,
+      back: () => undefined,
+      forward: () => undefined,
+    }),
+  }
+}
+
 describe('bootstrap', () => {
   it('mounts an editor into the configured selector', async () => {
     await openEditor({ root, pathname: '/doc/', session: fakeSession() })
@@ -541,7 +570,7 @@ describe('the caret across a reload', () => {
     expect(view.state.selection.main.head).toBe(view.state.doc.length)
   })
 
-  it('records the caret on a save, so a crash costs only the edits since', async () => {
+  it('records the caret as the reader moves it, not only when the document is written', async () => {
     const view = await open('/doc/notes.md')
     view.dispatch({ changes: { from: 0, insert: 'extra ' }, selection: { anchor: 4 } })
 
@@ -550,14 +579,14 @@ describe('the caret across a reload', () => {
     expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(4)
   })
 
-  it('records nothing when the save failed, so the position still matches what is stored', async () => {
+  it('records it even when the save failed, because where the reader is does not depend on the store', async () => {
     const session = fakeSession({ save: () => Promise.reject(new Error('server exploded')) })
     const view = await openEditor({ root, pathname: '/doc/notes.md', session })
     view.dispatch({ changes: { from: 0, insert: 'extra ' }, selection: { anchor: 4 } })
 
     await pressSave(view, root)
 
-    expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(0)
+    expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(4)
   })
 
   it('carries the caret to the new path when the document moves', async () => {
@@ -935,35 +964,6 @@ describe('several tabs', () => {
       .map((tab) => tab.dataset.path)
   }
 
-  function walking(): { navigation: Navigation; go: (url: string) => Promise<void> } {
-    const handlers = new Map<string, (event?: unknown) => void>()
-
-    return {
-      go: async (url: string) => {
-        let navigated: Promise<void> = Promise.resolve()
-        handlers.get('navigate')?.({
-          canIntercept: true,
-          hashChange: false,
-          downloadRequest: null,
-          formData: null,
-          destination: { url: new URL(url, 'https://example.test').href },
-          intercept: (intercepted: { handler: () => Promise<void> }) => {
-            navigated = intercepted.handler()
-          },
-        })
-        await navigated
-      },
-      navigation: cast<Navigation>({
-        addEventListener: (type: string, handler: (event: unknown) => void) => handlers.set(type, handler),
-        removeEventListener: (type: string) => handlers.delete(type),
-        canGoBack: false,
-        canGoForward: false,
-        back: () => undefined,
-        forward: () => undefined,
-      }),
-    }
-  }
-
   it('replaces the tab it was only looking at, so browsing does not pile up tabs', async () => {
     const walk = walking()
     await openEditor({ root, pathname: '/doc/a.md', session: fakeSession(), navigation: walk.navigation })
@@ -1069,6 +1069,24 @@ describe('several tabs', () => {
     await walk.go('/trash/entry-1')
 
     expect(paths()).toStrictEqual(['a.md'])
+  })
+})
+
+describe('a caret in the document the reader is leaving', () => {
+  it('is recorded where it was left when they open something else', async () => {
+    const stub = walking()
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession(),
+      navigation: stub.navigation,
+    })
+    view.dispatch({ selection: { anchor: 4 } })
+    view.dispatch({ selection: { anchor: 2 } })
+
+    await stub.go('/doc/other.md')
+
+    expect(recallCaret('notes.md', LONG_ENOUGH)).toBe(2)
   })
 })
 

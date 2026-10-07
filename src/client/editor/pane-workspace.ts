@@ -28,6 +28,7 @@ import type { Toast } from '../toast.ts'
 import type { CarriedDocument, DocumentTab, FocusListener } from './document-tab.ts'
 import { resolveIndex } from './folder-index.ts'
 import { createPaneEditor } from './pane-editor.ts'
+import type { CaretMemory } from './caret-memory.ts'
 import { bindViewDrops } from './view-drops.ts'
 import { uploadInto } from './drops.ts'
 import { announceStoreChanged } from '../store-changed.ts'
@@ -65,6 +66,7 @@ export interface PaneWorkspaceOptions {
   onTabArrived: (identity: string, toIndex: number) => void
   onShowing: (entryPath: string) => void
   contentOf: (entryPath: string) => string | null
+  caretMemory: CaretMemory
   releaseElsewhere: (at: TabAt) => Promise<void>
   listenForFocus?: FocusListener | undefined
 }
@@ -141,6 +143,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       openUrl: options.openUrl,
       announce,
       onStored: tellTheBrowser,
+      caretMemory: options.caretMemory,
       showingDocument: () => workspace.showing() === 'document',
       listenForFocus: options.listenForFocus,
     })

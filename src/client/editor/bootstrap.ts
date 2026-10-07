@@ -28,6 +28,7 @@ import { createClosingTabs, type ClosingSurface } from './closing-tabs.ts'
 import { createPaneMoves } from './pane-moves.ts'
 import { createAside } from './aside.ts'
 import { createAcrossPanes } from './across-panes.ts'
+import { createCaretMemory } from './caret-memory.ts'
 import { createTabNavigation } from './tab-navigation.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -100,6 +101,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const openDocument = openDocumentIn(root, pathname)
 
   const toast = createToast(root)
+  const caretMemory = createCaretMemory()
   const setStatus = (text: string): void => {
     toast.show(text)
   }
@@ -126,6 +128,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         openDocument.commit(entryPath)
       },
       contentOf: (entryPath: string) => panes.contentOf(entryPath),
+      caretMemory,
       ...settings,
     })
   }

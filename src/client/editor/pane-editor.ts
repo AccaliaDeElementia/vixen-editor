@@ -7,6 +7,7 @@ import type { StatusBar } from '../layout/status-bar.ts'
 import type { Toast } from '../toast.ts'
 import { createDocumentTab, type DocumentTab, type FocusListener } from './document-tab.ts'
 import type { Previews } from './previews.ts'
+import type { CaretMemory } from './caret-memory.ts'
 import type { Session } from './session.ts'
 
 interface PaneEditorOptions {
@@ -22,6 +23,7 @@ interface PaneEditorOptions {
   openUrl: (url: string) => void
   announce: (text: string) => void
   onStored: () => void
+  caretMemory: CaretMemory
   showingDocument: () => boolean
   listenForFocus?: FocusListener | undefined
 }
@@ -40,6 +42,7 @@ export function createPaneEditor(options: PaneEditorOptions): DocumentTab {
     openUrl: options.openUrl,
     announce: options.announce,
     onStored: options.onStored,
+    caretMemory: options.caretMemory,
     showingDocument: options.showingDocument,
     listenForFocus: options.listenForFocus,
 

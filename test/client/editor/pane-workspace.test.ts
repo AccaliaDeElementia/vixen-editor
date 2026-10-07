@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createPaneWorkspace } from '../../../src/client/editor/pane-workspace.ts'
 import { createPreviews } from '../../../src/client/editor/previews.ts'
+import { createCaretMemory } from '../../../src/client/editor/caret-memory.ts'
 import { createToast, type Toast } from '../../../src/client/toast.ts'
 import type { Session } from '../../../src/client/editor/session.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
@@ -64,6 +65,7 @@ function paneHolding(
     onTabArrived: () => undefined,
     onShowing: () => undefined,
     contentOf: () => null,
+    caretMemory: createCaretMemory(),
     releaseElsewhere: () => Promise.resolve(),
   })
   standing.push(built.teardownDocument)

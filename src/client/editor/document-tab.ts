@@ -14,7 +14,8 @@ import type { StatusBar } from '../layout/status-bar.ts'
 import type { Toast } from '../toast.ts'
 
 import { createAutosave, type SaveState } from './autosave.ts'
-import { recallCaret, rememberCaret } from './carets.ts'
+import { recallCaret } from './carets.ts'
+import type { CaretMemory } from './caret-memory.ts'
 import { isConflict, offerResolution } from './conflict.ts'
 import { bindEntryDrops, bindFileDrops } from './drops.ts'
 import { watchFreshness } from './freshness.ts'
@@ -46,6 +47,7 @@ interface DocumentTabOptions {
   onEdited: (content: string) => void
   onReloaded: (content: string) => void
   onCaretMoved: (offset: number) => void
+  caretMemory: CaretMemory
   listenForFocus?: FocusListener | undefined
 }
 
@@ -97,6 +99,17 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     announce(`${merged} merged — every change resolved`)
   })
 
+  function rememberWhereTheCaretIs(): void {
+    if (openedAt === null) return
+
+    options.caretMemory.moved(openedAt, caretPosition)
+  }
+
+  function settleTheCaret(): void {
+    rememberWhereTheCaretIs()
+    options.caretMemory.settle()
+  }
+
   async function writeDocument(content: string): Promise<void> {
     const target = documentId()
     if (target === null) return
@@ -104,7 +117,6 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     try {
       await session.save(target, content)
       lastRefusal = null
-      rememberCaret(target, caretPosition)
     } catch (error) {
       lastRefusal = error
       toast.error(`Save failed: ${errorMessage(error)}`)
@@ -163,6 +175,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
           caretPosition = caretIn(update.state)
           merging.endWhenResolved(update.view)
           options.onCaretMoved(caretPosition)
+          rememberWhereTheCaretIs()
           if (!update.docChanged) return
 
           const content = update.state.doc.toString()
@@ -223,6 +236,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   }
 
   function open(entryPath: string, content: string): void {
+    settleTheCaret()
     if (openedAt !== null) materialised.remember(openedAt, view.state)
     openedAt = entryPath
 
@@ -230,6 +244,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     const caret = loaded === null ? recallCaret(entryPath, content.length) : caretIn(loaded)
 
     caretPosition = caret
+    options.caretMemory.opened(entryPath, caret)
     view.setState(loaded ?? stateFor(content, caret))
     holder.follow(view, entryPath)
     autosave.reset(content)
@@ -241,6 +256,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     const text = carried.state.doc.toString()
     openedAt = entryPath
     caretPosition = caretIn(carried.state)
+    options.caretMemory.opened(entryPath, caretPosition)
     view.setState(carried.state)
     holder.follow(view, entryPath)
     autosave.reset(carried.storedContent)
@@ -249,6 +265,8 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   }
 
   function handOver(): CarriedDocument {
+    settleTheCaret()
+
     const carried = { state: view.state, storedContent: autosave.lastSaved() }
     openedAt = null
     empty()
@@ -337,12 +355,14 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
       holder.follow(view, to)
     },
     rescue: () => {
+      settleTheCaret()
       const target = documentId()
       const content = view.state.doc.toString()
       if (target !== null && !isBlank(content)) session.saveOnUnload(target, content)
     },
     settleBeforeLeaving,
     teardownDocument: () => {
+      settleTheCaret()
       autosave.stop()
       unwatchFreshness()
       view.destroy()
