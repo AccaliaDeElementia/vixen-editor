@@ -2,7 +2,7 @@
 
 import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
-import type { Page } from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 
 import { storedDocument } from './fixtures.ts'
 
@@ -160,4 +160,28 @@ test('the second pane strip comes back as tall as the first after a reload', asy
     .locator('[data-part="tabs"]')
     .evaluateAll((found) => found.map((strip) => strip.getBoundingClientRect().height))
   expect(strips[0]).toBe(strips[1])
+})
+
+async function dismissedWithTabsAside(page: Page, request: APIRequestContext, stamp: string): Promise<string> {
+  const aside = `aside-${stamp}.md`
+  await storedDocument(request, aside)
+  await page.goto(await storedDocument(request, `home-${stamp}.md`))
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${aside}"]`)).toBeVisible())
+  await page.locator(`.tree__row[data-path="${aside}"]`).click({ modifiers: ['ControlOrMeta'] })
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  await page.locator('#split-beside').click()
+
+  return aside
+}
+
+test('dismissing a pane that holds tabs leaves one pane', async ({ page, request }) => {
+  await dismissedWithTabsAside(page, request, String(Date.now()))
+
+  await expect(page.locator(PANE)).toHaveCount(1)
+})
+
+test('dismissing a pane that holds tabs brings them to the one that survives', async ({ page, request }) => {
+  const aside = await dismissedWithTabsAside(page, request, String(Date.now()))
+
+  await expect(page.locator(PANE).first().locator(`[data-tab="editor:${aside}"]`)).toBeVisible()
 })

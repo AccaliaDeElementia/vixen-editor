@@ -33,7 +33,8 @@ function movesBetween(primary: PaneWorkspace, aside: PaneWorkspace): ReturnType<
     goTo: () => undefined,
     onCarried: () => undefined,
     forgetAside: () => undefined,
-    carry: (at: TabAt, _from: PaneWorkspace) => {
+    aside: () => aside,
+    settleOn: (at: TabAt, _carryingFrom: PaneWorkspace | null) => {
       shown.push(at.path)
     },
   })

@@ -20,13 +20,15 @@ interface PaneMovesOptions {
   goTo: (surface: PaneWorkspace) => void
   onCarried: (at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace) => void
   forgetAside: () => void
-  carry: (at: TabAt, from: PaneWorkspace) => void
+  aside: () => PaneWorkspace | null
+  settleOn: (at: TabAt, carryingFrom: PaneWorkspace | null) => void
 }
 
 interface PaneMoves {
   toPane: (towards: SplitOrientation, forward: boolean, carrying: boolean) => void
   acrossThePanes: () => number
   dismissAside: () => void
+  closeTheAside: () => void
   collapseOntoPrimary: (from: PaneWorkspace) => void
 }
 
@@ -51,17 +53,37 @@ export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
     markPaneInFront()
   }
 
+  function heldBy(surface: PaneWorkspace, at: TabAt): boolean {
+    const wanted = tabIdentity(at)
+
+    return surface.pane.held().some((candidate) => tabIdentity(candidate) === wanted)
+  }
+
   function collapseOntoPrimary(from: PaneWorkspace): void {
-    const showing = from.pane.showing()
+    const winner = options.inFront().pane.showing() ?? from.pane.showing()
+    const carryingFrom = winner !== null && heldBy(from, winner) ? from : null
+
     for (const [index, at] of from.pane.held().entries()) options.primary.pane.receive(at, index)
 
-    if (showing !== null) options.carry(showing, from)
+    if (winner !== null) options.settleOn(winner, carryingFrom)
     dismissAside()
+  }
+
+  function closeTheAside(): void {
+    const elsewhere = options.aside()
+    if (elsewhere === null || elsewhere.pane.isEmpty()) {
+      dismissAside()
+
+      return
+    }
+
+    collapseOntoPrimary(elsewhere)
   }
 
   return {
     acrossThePanes,
     dismissAside,
+    closeTheAside,
     collapseOntoPrimary,
 
     toPane(towards: SplitOrientation, forward: boolean, carrying: boolean): void {

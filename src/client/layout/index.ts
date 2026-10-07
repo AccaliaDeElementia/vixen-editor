@@ -13,7 +13,7 @@ import {
   toggleExplorer,
 } from './explorer.ts'
 import { applySplit, setSplitFraction, toggleSplit, readSplit, type SplitOrientation } from './split.ts'
-import { announceSplitChanged } from '../split-changed.ts'
+import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../split-changed.ts'
 import { createDialogs } from '../files/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../help.ts'
 import { onInsertRequested } from '../insert-entry.ts'
@@ -159,6 +159,12 @@ function reflectSplitButtons(root: ParentNode): void {
 function bindSplitButtons(root: ParentNode): void {
   for (const [selector, orientation] of SPLIT_BUTTONS) {
     root.querySelector<HTMLElement>(selector)?.addEventListener('click', () => {
+      if (readSplit().orientation === orientation) {
+        requestSplitDismissed(root)
+
+        return
+      }
+
       const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
       toggleSplit(root, orientation, panes === null ? NO_SPLIT : axisOf(panes))
       reflectSplitButtons(root)
@@ -222,6 +228,10 @@ export function initLayout(options: LayoutOptions = {}): Layout {
   refreshSplit(root)
   reflectSplitButtons(root)
   bindSplitButtons(root)
+  const { offSplitChanged } = onSplitChanged(root, () => {
+    refreshSplit(root)
+    reflectSplitButtons(root)
+  })
   bindSplitResizer(root)
   bindResizer(root, view)
   bindToggle(root, view)
@@ -233,6 +243,7 @@ export function initLayout(options: LayoutOptions = {}): Layout {
     teardownLayout: () => {
       offInsertRequested()
       offResize()
+      offSplitChanged()
     },
   }
 }

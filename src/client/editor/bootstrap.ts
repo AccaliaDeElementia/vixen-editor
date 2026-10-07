@@ -48,7 +48,7 @@ import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
 import { onKeepRequested } from '../keep-request.ts'
 import { onOpenAsideRequested } from '../open-aside.ts'
-import { onSplitChanged } from '../split-changed.ts'
+import { onSplitChanged, onSplitDismissRequested } from '../split-changed.ts'
 import { announceStoreChanged } from '../store-changed.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
@@ -267,13 +267,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  function everySurface(): readonly ClosingSurface[] {
-    return panes.open().map(surfaceFor)
-  }
-
   const closingTabs = createClosingTabs({
     inFront: () => (touched === primaryWorkspace ? closingPrimary : closingAside(touched)),
-    everySurface,
+    everySurface: () => panes.open().map(surfaceFor),
     showNothingAtAll: () => {
       navigator.replaceQuietly(docUrlFor(STORE_ROOT))
     },
@@ -370,8 +366,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       touched = surface
     },
     forgetAside: aside.forget,
-    carry: (at: TabAt, from: PaneWorkspace) => {
-      handOverTo(primaryWorkspace, at, from)
+    aside: aside.current,
+    settleOn: (at: TabAt, carryingFrom: PaneWorkspace | null) => {
+      if (carryingFrom === null) {
+        primary.open(at)
+
+        return
+      }
+
+      handOverTo(primaryWorkspace, at, carryingFrom)
     },
   })
 
@@ -432,6 +435,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
   bindHistoryButtons(root, navigator)
+  const dismissals = onSplitDismissRequested(root, paneMoves.closeTheAside)
   const splitChanges = onSplitChanged(root, () => {
     aside.reconcile()
   })
@@ -452,6 +456,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     offKeepRequested()
     offOpenAsideRequested()
     splitChanges.offSplitChanged()
+    dismissals.offSplitDismissRequested()
     previews.stop()
     toast.dismissRaised()
     tab.teardownDocument()

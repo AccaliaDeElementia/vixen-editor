@@ -13,6 +13,7 @@ const BOTH_HALVES = 2
 
 const PER_DOCUMENT = [
   'aside.forget',
+  'dismissals.offSplitDismissRequested',
   'offDocumentMoved',
   'offInsertRequested',
   'offKeepRequested',

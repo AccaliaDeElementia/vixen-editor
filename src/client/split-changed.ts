@@ -1,6 +1,7 @@
 'use sanity'
 
 const SPLIT_CHANGED = 'vixen:split-changed'
+const SPLIT_DISMISS_REQUESTED = 'vixen:split-dismiss-requested'
 
 interface SplitChangedListener {
   offSplitChanged: () => void
@@ -24,4 +25,26 @@ export function onSplitChanged(root: ParentNode, handle: () => void): SplitChang
   }
 }
 
-export const TestOnly = { SPLIT_CHANGED }
+interface DismissListener {
+  offSplitDismissRequested: () => void
+}
+
+export function requestSplitDismissed(root: ParentNode): void {
+  root.dispatchEvent(new Event(SPLIT_DISMISS_REQUESTED, { bubbles: true }))
+}
+
+export function onSplitDismissRequested(root: ParentNode, handle: () => void): DismissListener {
+  const hear = (): void => {
+    handle()
+  }
+
+  root.addEventListener(SPLIT_DISMISS_REQUESTED, hear)
+
+  return {
+    offSplitDismissRequested: () => {
+      root.removeEventListener(SPLIT_DISMISS_REQUESTED, hear)
+    },
+  }
+}
+
+export const TestOnly = { SPLIT_CHANGED, SPLIT_DISMISS_REQUESTED }

@@ -10,6 +10,9 @@ import {
   setExplorerWidth,
   TestOnly as explorerTestOnly,
 } from '../../../src/client/layout/explorer.ts'
+import { onSplitDismissRequested } from '../../../src/client/split-changed.ts'
+
+const BOTH_PANES = 2
 import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/layout/index.ts'
 import { requestInsert } from '../../../src/client/insert-entry.ts'
 
@@ -394,15 +397,6 @@ describe('splitting the workspace', () => {
     expect(button('beside').getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('returns to one pane when the control in force is pressed again', () => {
-    started()
-    button('beside').click()
-
-    button('beside').click()
-
-    expect(panes().dataset.split).toBeUndefined()
-  })
-
   it('moves the divider where it was dragged', () => {
     started()
     button('beside').click()
@@ -564,5 +558,29 @@ describe('a divider dragged before anything has been laid out', () => {
     root.querySelector<HTMLElement>('[data-part="split-resizer"]')?.dispatchEvent(pointer('pointermove', 400))
 
     expect(Number.parseFloat(panes?.style.getPropertyValue('--split') ?? '')).toBeCloseTo(0.5)
+  })
+})
+
+describe('a split control pressed while that split is the one on screen', () => {
+  it('asks for the split to be dismissed rather than tearing it down itself', () => {
+    const asked: string[] = []
+    initLayout({ root, view: fakeView() })
+    root.querySelector<HTMLElement>('#split-beside')?.click()
+    onSplitDismissRequested(root, () => {
+      asked.push('asked')
+    })
+
+    root.querySelector<HTMLElement>('#split-beside')?.click()
+
+    expect(asked).toStrictEqual(['asked'])
+  })
+
+  it('leaves the second pane in place, because what becomes of its tabs is not the layout to decide', () => {
+    initLayout({ root, view: fakeView() })
+    root.querySelector<HTMLElement>('#split-beside')?.click()
+
+    root.querySelector<HTMLElement>('#split-beside')?.click()
+
+    expect(root.querySelectorAll('.pane')).toHaveLength(BOTH_PANES)
   })
 })
