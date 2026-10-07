@@ -96,3 +96,29 @@ describe('a change arriving while a row is being dragged', () => {
     expect(pathsShown()).toContain('arrived.md')
   })
 })
+
+describe('a press that does not end on the tree', () => {
+  function pressTheTree(): void {
+    host.querySelector('#file-tree')?.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+  }
+
+  it('releases when the pointer comes up somewhere else entirely', async () => {
+    await start()
+    pressTheTree()
+    await changedElsewhere()
+
+    document.dispatchEvent(new Event('pointerup', { bubbles: true }))
+
+    expect(pathsShown()).toContain('arrived.md')
+  })
+
+  it('releases when the gesture is cancelled, which is what touch does', async () => {
+    await start()
+    pressTheTree()
+    await changedElsewhere()
+
+    document.dispatchEvent(new Event('pointercancel', { bubbles: true }))
+
+    expect(pathsShown()).toContain('arrived.md')
+  })
+})

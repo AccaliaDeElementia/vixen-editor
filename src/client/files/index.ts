@@ -430,9 +430,10 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     draw(open)
   }
 
-  tree.addEventListener('pointerup', theDragIsOver)
-  tree.addEventListener('dragend', theDragIsOver)
-  tree.addEventListener('drop', theDragIsOver)
+  const RELEASES = ['pointerup', 'pointercancel', 'dragend', 'drop']
+  const { ownerDocument: releasedOn } = tree
+
+  for (const release of RELEASES) releasedOn.addEventListener(release, theDragIsOver)
 
   const { offStoreChanged } = onStoreChanged(root, () => {
     runs.track(reload())
@@ -447,6 +448,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     teardownFileTree: () => {
       offStoreChanged()
       offRevealRequested()
+      for (const release of RELEASES) releasedOn.removeEventListener(release, theDragIsOver)
       toast.dismissRaised()
     },
   }
