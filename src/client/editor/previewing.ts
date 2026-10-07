@@ -14,7 +14,6 @@ interface PreviewingOptions {
   previews: Previews
   primary: Pane
   summon: () => PaneWorkspace | null
-  focus: (surface: PaneWorkspace) => void
   releaseElsewhere: (at: TabAt) => void
   documentId: () => string
   contentNow: () => string
@@ -33,8 +32,6 @@ export function createPreviewing(options: PreviewingOptions): Previewing {
   function show(wanted: PreviewView): void {
     const target = options.summon()
     if (target === null) return
-
-    options.focus(target)
 
     const at: TabAt = { path: options.documentId(), view: wanted }
     options.releaseElsewhere(at)

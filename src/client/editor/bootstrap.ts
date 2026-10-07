@@ -336,9 +336,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     previews,
     primary,
     summon: () => aside.summon(BESIDE),
-    focus: (surface: PaneWorkspace) => {
-      touched = surface
-    },
     releaseElsewhere: (at: TabAt) => {
       pending.push(releaseFrom(primaryWorkspace, at))
     },

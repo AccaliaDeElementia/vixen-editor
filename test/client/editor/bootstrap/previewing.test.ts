@@ -666,6 +666,7 @@ describe('moving between the panes from the keyboard', () => {
     await editing('# carried')
     requestKeep(root, 'notes.md')
     root.querySelector<HTMLElement>('#preview-markup')?.click()
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
 
     press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
 
@@ -712,6 +713,20 @@ describe('moving between the panes from the keyboard', () => {
     await editor.settled()
 
     expect(panes()?.dataset.split).toBeUndefined()
+  })
+
+  it('takes a carried preview back out of the pane it was carried into, because one of a kind is enough', async () => {
+    await editing('# carried')
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
+    press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    expect(
+      root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[0]?.querySelector('[data-tab="markup:notes.md"]'),
+    ).toBeNull()
   })
 
   it('ignores a tab dropped from nowhere, because there is no pane for it to have left', async () => {

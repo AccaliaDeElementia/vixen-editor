@@ -62,6 +62,14 @@ describe('the buffer when the workspace leaves a document', () => {
   })
 })
 
+function press(init: KeyboardEventInit): void {
+  root.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+}
+
+function goToTheSecondPane(): void {
+  press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
+}
+
 function stubbedNavigation(): { navigation: Navigation; go: (url: string) => Promise<void> } {
   const handlers = new Map<string, (event?: unknown) => void>()
 
@@ -289,10 +297,6 @@ describe('navigating to a URL that names a view', () => {
 })
 
 describe('opening a document the other pane already holds', () => {
-  function press(init: KeyboardEventInit): void {
-    root.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
-  }
-
   function stripOf(which: number): HTMLElement | undefined {
     return root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[which]
   }
@@ -331,9 +335,9 @@ describe('which pane a plain open targets', () => {
     const stub = stubbedNavigation()
     const session = fakeSession({ load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }) })
     await openEditor({ root, pathname: '/doc/a.md', session, navigation: stub.navigation })
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    goToTheSecondPane()
     given(() => {
-      expect(root.querySelectorAll<HTMLElement>('[data-part="pane"]')[1]?.dataset.infront).not.toBe('false')
+      expect(root.querySelectorAll<HTMLElement>('[data-part="pane"]')[1]?.dataset.infront).toBe('true')
     })
 
     await stub.go('/doc/b.md')
@@ -399,7 +403,7 @@ describe('opening a document beside what is already open', () => {
       }),
     )
     if (editor === null) throw new Error('the editor did not start')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    goToTheSecondPane()
 
     requestOpenAside(root, 'b.md')
     await editor.settled()
