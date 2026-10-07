@@ -72,6 +72,7 @@ export interface PaneWorkspace {
   teardownDocument: () => void
   workspace: Workspace
   openPath: (target: string) => Promise<void>
+  release: () => void
   flush: () => Promise<boolean>
   showDocument: (entryPath: string) => Promise<void>
   leave: () => Promise<void>
@@ -131,6 +132,11 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     })
 
     return built
+  }
+
+  function release(): void {
+    built?.empty()
+    holding = null
   }
 
   function showInstead(at: TabAt): void {
@@ -247,12 +253,13 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       await showDocumentAt(entryPath, entryPath, null)
     },
 
+    release,
+
     leave: async () => {
       if (built !== null && !(await built.settleBeforeLeaving())) return
 
-      built?.empty()
+      release()
       pane.leave()
-      holding = null
     },
 
     openPath: async (target: string) => {

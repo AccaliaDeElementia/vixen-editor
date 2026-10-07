@@ -1,23 +1,25 @@
 'use sanity'
 
-import { revealOnly } from '../layout/reveal-view.ts'
+import { PREVIEW_VIEWS } from '../doc-path.ts'
 import type { Pane } from '../layout/pane.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 
-const EMPTY_PART = 'view-empty'
 const OLDEST = 0
 
-interface ClosingOptions {
-  primary: Pane
-  inFront: () => Pane
-  emptyTheEditor: () => void
+export interface ClosingSurface {
+  pane: Pane
   saveState: () => string
   settleBeforeLeaving: () => Promise<boolean>
-  showEmpty: () => void
+  showNothing: () => void
+}
+
+interface ClosingOptions {
+  inFront: () => ClosingSurface
+  everySurface: () => readonly ClosingSurface[]
 }
 
 interface ClosingTabs {
-  requestClose: (target: Pane, at: TabAt) => void
+  requestClose: (surface: ClosingSurface, at: TabAt) => void
   closeTheTabInFront: () => void
   settled: () => Promise<void>
 }
@@ -25,35 +27,42 @@ interface ClosingTabs {
 export function createClosingTabs(options: ClosingOptions): ClosingTabs {
   const closing: Array<Promise<void>> = []
 
-  function showNothingIn(target: Pane): void {
-    if (!target.isEmpty()) return
-    if (target === options.primary) options.showEmpty()
-    else revealOnly(target.element, EMPTY_PART)
+  function showNothingIn(surface: ClosingSurface): void {
+    if (!surface.pane.isEmpty()) return
+
+    surface.showNothing()
   }
 
-  function closeEditorTab(target: Pane, at: TabAt): void {
-    target.close(at)
-    options.emptyTheEditor()
-    showNothingIn(target)
+  function closePreviewsOf(entryPath: string): void {
+    for (const surface of options.everySurface()) {
+      for (const view of PREVIEW_VIEWS) surface.pane.close({ path: entryPath, view })
+      showNothingIn(surface)
+    }
   }
 
-  function requestClose(target: Pane, at: TabAt): void {
+  function closeEditorTab(surface: ClosingSurface, at: TabAt): void {
+    surface.pane.close(at)
+    closePreviewsOf(at.path)
+    showNothingIn(surface)
+  }
+
+  function requestClose(surface: ClosingSurface, at: TabAt): void {
     if (at.view !== 'editor') {
-      target.close(at)
-      showNothingIn(target)
+      surface.pane.close(at)
+      showNothingIn(surface)
 
       return
     }
 
-    if (options.saveState() === 'clean') {
-      closeEditorTab(target, at)
+    if (surface.saveState() === 'clean') {
+      closeEditorTab(surface, at)
 
       return
     }
 
     closing.push(
-      options.settleBeforeLeaving().then((mayLeave) => {
-        if (mayLeave) closeEditorTab(target, at)
+      surface.settleBeforeLeaving().then((mayLeave) => {
+        if (mayLeave) closeEditorTab(surface, at)
       }),
     )
   }
@@ -62,8 +71,9 @@ export function createClosingTabs(options: ClosingOptions): ClosingTabs {
     requestClose,
 
     closeTheTabInFront(): void {
-      const at = options.inFront().showing()
-      if (at !== null) requestClose(options.inFront(), at)
+      const surface = options.inFront()
+      const at = surface.pane.showing()
+      if (at !== null) requestClose(surface, at)
     },
 
     settled: async () => {

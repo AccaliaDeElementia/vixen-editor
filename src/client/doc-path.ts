@@ -6,8 +6,10 @@ import { DOC_PREFIX } from '../shared/page-urls.ts'
 
 export const TAB_VIEWS = ['editor', 'source', 'markup', 'image', 'missing', 'deleted', 'unreachable'] as const
 
+export const PREVIEW_VIEWS = ['source', 'markup'] as const
+
 export type TabView = (typeof TAB_VIEWS)[number]
-export type PreviewView = 'source' | 'markup'
+export type PreviewView = (typeof PREVIEW_VIEWS)[number]
 
 const DEFAULT_VIEW: TabView = 'editor'
 const VIEW_PARAMETER = 'view'
@@ -66,7 +68,7 @@ export function docUrlFor(entryPath: string, view: TabView = DEFAULT_VIEW): stri
 }
 
 export function isPreviewView(view: TabView): view is PreviewView {
-  return view === 'source' || view === 'markup'
+  return PREVIEW_VIEWS.some((candidate) => candidate === view)
 }
 
 export function viewFromSearch(search: string): TabView {

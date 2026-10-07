@@ -25,7 +25,8 @@ import { createPreviewing } from './previewing.ts'
 import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { carryTab } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
-import { createClosingTabs } from './closing-tabs.ts'
+import { createClosingTabs, type ClosingSurface } from './closing-tabs.ts'
+import { revealOnly } from '../layout/reveal-view.ts'
 import { createPaneMoves } from './pane-moves.ts'
 import { createTabNavigation } from './tab-navigation.ts'
 
@@ -46,6 +47,7 @@ import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
+const EMPTY_PART = 'view-empty'
 const PANES_SELECTOR = '[data-part="panes"]'
 const BESIDE = 'beside'
 const NOTHING_MEASURED = 0
@@ -170,7 +172,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       activate(pane, at)
     },
     onCloseRequested: (at: TabAt) => {
-      closingTabs.requestClose(primary, at)
+      closingTabs.requestClose(closingPrimary, at)
     },
     onTabArrived: (identity: string, toIndex: number) => {
       carryTab(identity, primary, secondary?.pane ?? null, toIndex)
@@ -253,7 +255,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
           activate(element, at)
         },
         onCloseRequested: (at: TabAt) => {
-          closingTabs.requestClose(built.pane, at)
+          closingTabs.requestClose(closingAside(built), at)
         },
         onTabArrived: (identity: string, toIndex: number) => {
           carryTab(identity, built.pane, primary, toIndex)
@@ -272,17 +274,31 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     return secondary
   }
 
+  function closingSurfaceFor(surface: PaneWorkspace, reveal: () => void): ClosingSurface {
+    return {
+      pane: surface.pane,
+      saveState: () => surface.editor().saveState(),
+      settleBeforeLeaving: async () => await surface.editor().settleBeforeLeaving(),
+      showNothing: () => {
+        surface.release()
+        reveal()
+      },
+    }
+  }
+
+  const closingPrimary = closingSurfaceFor(primaryWorkspace, () => {
+    workspace.show('empty', displayPathFromPath(documentId()))
+  })
+
+  function closingAside(surface: PaneWorkspace): ClosingSurface {
+    return closingSurfaceFor(surface, () => {
+      revealOnly(surface.element, EMPTY_PART)
+    })
+  }
+
   const closingTabs = createClosingTabs({
-    primary,
-    inFront: () => touched.pane,
-    emptyTheEditor: () => {
-      tab.empty()
-    },
-    saveState: tab.saveState,
-    settleBeforeLeaving: tab.settleBeforeLeaving,
-    showEmpty: () => {
-      workspace.show('empty', displayPathFromPath(documentId()))
-    },
+    inFront: () => (touched === primaryWorkspace ? closingPrimary : closingAside(touched)),
+    everySurface: () => (secondary === null ? [closingPrimary] : [closingPrimary, closingAside(secondary)]),
   })
 
   function activate(host: HTMLElement, at: TabAt): void {

@@ -216,3 +216,14 @@ describe('a pane told to show an image without a url to classify it', () => {
     expect(asked).toStrictEqual([])
   })
 })
+
+describe('a pane released without being asked to settle first', () => {
+  it('lets go of the document it held, so nothing it no longer shows can be written back', async () => {
+    const pane = paneHolding('notes.md')
+    await pane.showDocument('notes.md')
+
+    pane.release()
+
+    expect(pane.held.path()).toBeNull()
+  })
+})
