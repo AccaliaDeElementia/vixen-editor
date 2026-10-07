@@ -7,11 +7,13 @@ import type { StoreChange } from '../../src/shared/store-change.ts'
 import { cast } from '../cast.ts'
 
 const WRITTEN = { kind: 'written', path: 'journal/a.md' } as const
+const ONE_RESYNC = 1
+const NO_RESYNCS = 0
 
 interface FakeChannel {
   source: EventSource
   openedAt: string[]
-  deliver: (type: string, data: string) => void
+  deliver: (type: string, data: string, lastEventId?: string) => void
   listenerCount: () => number
   closed: () => number
 }
@@ -38,8 +40,8 @@ function fakeChannel(): FakeChannel {
   return {
     source,
     openedAt,
-    deliver: (type: string, data: string) => {
-      for (const handle of listeners.get(type) ?? []) handle({ data })
+    deliver: (type: string, data: string, lastEventId = '') => {
+      for (const handle of listeners.get(type) ?? []) handle({ data, lastEventId })
     },
     listenerCount: () => [...listeners.values()].reduce((total, forType) => total + forType.size, 0),
     closed: () => closes,
@@ -50,9 +52,13 @@ let channel: FakeChannel = fakeChannel()
 let heard: StoreChange[] = []
 let builds: string[] = []
 let connections = 0
+let resyncs = 0
 
 function connect(): { disconnect: () => void } {
   return connectToChanges({
+    onStale: () => {
+      resyncs += 1
+    },
     onChange: (change) => {
       heard.push(change)
     },
@@ -75,6 +81,7 @@ beforeEach(() => {
   channel = fakeChannel()
   heard = []
   connections = 0
+  resyncs = 0
 })
 
 describe('listening for what the server changed', () => {
@@ -164,5 +171,43 @@ describe('the build the server is serving', () => {
     channel.deliver('build', 'build-one')
 
     expect(builds).toStrictEqual([])
+  })
+})
+
+describe('a connection that comes back after a gap', () => {
+  it('says everything it holds is stale when the store moved on while it was away', () => {
+    connect()
+    channel.deliver('sync', '', '100')
+
+    channel.deliver('sync', '', '140')
+
+    expect(resyncs).toBe(ONE_RESYNC)
+  })
+
+  it('says nothing of the sort when the store is where it left it', () => {
+    connect()
+    channel.deliver('sync', '', '100')
+
+    channel.deliver('sync', '', '100')
+
+    expect(resyncs).toBe(NO_RESYNCS)
+  })
+
+  it('says nothing on the first connection, because there is nothing yet to be stale', () => {
+    connect()
+
+    channel.deliver('sync', '', '100')
+
+    expect(resyncs).toBe(NO_RESYNCS)
+  })
+
+  it('counts a heartbeat as having been there, so a quiet connection is not read as a gap', () => {
+    connect()
+    channel.deliver('sync', '', '100')
+    channel.deliver('heartbeat', '', '140')
+
+    channel.deliver('sync', '', '140')
+
+    expect(resyncs).toBe(NO_RESYNCS)
   })
 })

@@ -23,6 +23,7 @@ interface AppDependencies {
   limits?: Limits
   changes?: Changes
   buildId?: string | null
+  heartbeatMs?: number | undefined
 }
 
 export function buildApp({
@@ -30,6 +31,7 @@ export function buildApp({
   limits = DEFAULT_LIMITS,
   changes = createChanges(),
   buildId = null,
+  heartbeatMs,
 }: AppDependencies): Hono {
   const app = new Hono()
   const announcing = announcingStore(store, changes)
@@ -45,7 +47,7 @@ export function buildApp({
   app.route(`${API_PREFIX}/documents`, documentRoutes(announcing))
   app.route(`${API_PREFIX}/files`, fileRoutes(announcing, limits))
   app.route(`${API_PREFIX}/trash`, trashRoutes(announcing))
-  app.route(`${API_PREFIX}/events`, eventRoutes(changes, buildId))
+  app.route(`${API_PREFIX}/events`, eventRoutes({ changes, buildId, heartbeatMs }))
 
   return app
 }

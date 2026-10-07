@@ -457,6 +457,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onConnected: () => {
       void tab.recheck()
     },
+    onStale: () => {
+      void tab.recheck()
+      announceStoreChanged(root)
+    },
   })
 
   function teardownApplication(): void {

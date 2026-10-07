@@ -182,6 +182,7 @@ const TIMER_OWNERS = [
   'src/client/editor/autosave.ts',
   'src/client/editor/previews.ts',
   'src/client/toast.ts',
+  'src/server/routes/events.ts',
   'src/server/storage/lock.ts',
 ]
 

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { LoadedDocument, Session } from '../../../../src/client/editor/session.ts'
 import type { EditorView } from '@codemirror/view'
@@ -8,6 +8,7 @@ import type { EditorView } from '@codemirror/view'
 import { cast } from '../../../cast.ts'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { onStoreChanged } from '../../../../src/client/store-changed.ts'
 import { TestOnly as staleBuild } from '../../../../src/client/editor/stale-build.ts'
 import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
 import {
@@ -24,8 +25,10 @@ import {
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
 let afterTheCheck: () => Promise<void> = () => Promise.resolve()
-let deliver: (type: string, data: string) => void = () => undefined
+let deliver: (type: string, data: string, lastEventId?: string) => void = () => undefined
 let closes = 0
+const standing: Array<() => void> = []
+const NONE_LEFT = 0
 
 function fakeSession(overrides: Partial<Session> = {}): Session {
   return sessionRecording(record, overrides)
@@ -34,8 +37,8 @@ function fakeSession(overrides: Partial<Session> = {}): Session {
 function fakeChannel(): EventSource {
   const listeners = new Map<string, (event: unknown) => void>()
 
-  deliver = (type: string, data: string) => {
-    listeners.get(type)?.({ data })
+  deliver = (type: string, data: string, lastEventId = '') => {
+    listeners.get(type)?.({ data, lastEventId })
   }
 
   return cast<EventSource>({
@@ -235,5 +238,41 @@ describe('a server serving a newer build than this page', () => {
     await editor.settled()
 
     expect(reloads).toBe(1)
+  })
+})
+
+afterEach(() => {
+  for (const release of standing.splice(NONE_LEFT)) release()
+})
+
+describe('a channel that comes back having missed something', () => {
+  it('reloads the file browser, because what it last drew may name files that have gone', async () => {
+    const reloads: string[] = []
+    await editing(() => Promise.resolve(null))
+    standing.push(
+      onStoreChanged(root, () => {
+        reloads.push('reloaded')
+      }).offStoreChanged,
+    )
+    deliver('sync', '', '100')
+
+    deliver('sync', '', '140')
+
+    expect(reloads).toStrictEqual(['reloaded'])
+  })
+
+  it('leaves the file browser alone when nothing happened while it was away', async () => {
+    const reloads: string[] = []
+    await editing(() => Promise.resolve(null))
+    standing.push(
+      onStoreChanged(root, () => {
+        reloads.push('reloaded')
+      }).offStoreChanged,
+    )
+    deliver('sync', '', '100')
+
+    deliver('sync', '', '100')
+
+    expect(reloads).toStrictEqual([])
   })
 })

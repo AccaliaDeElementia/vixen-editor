@@ -12,13 +12,18 @@ type Hear = (change: StoreChange) => void
 export interface Changes {
   announce: (change: StoreChange) => void
   listen: (hear: Hear) => () => void
+  lastAnnouncedAt: () => number
 }
 
-export function createChanges(): Changes {
+export function createChanges(now: () => number = Date.now): Changes {
   const listeners = new Set<Hear>()
+  let announcedAt = now()
 
   return {
+    lastAnnouncedAt: () => announcedAt,
+
     announce(change: StoreChange): void {
+      announcedAt = now()
       for (const hear of [...listeners]) {
         try {
           hear(change)
