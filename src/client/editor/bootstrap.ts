@@ -21,7 +21,7 @@ import { createFilesClient, type FilesClient } from '../files/files-client.ts'
 import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import { createPreviews } from './previews.ts'
 import { createPreviewing } from './previewing.ts'
-import { closeSplit, openSplit, secondPaneIn } from '../layout/split.ts'
+import { openSplit, secondPaneIn } from '../layout/split.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { carryTab } from '../layout/pane.ts'
 import { bindTabKeys } from './tab-keys.ts'
@@ -46,9 +46,7 @@ import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
-const PANES_SELECTOR = '[data-part="panes"]'
 const BESIDE = 'beside'
-const NOTHING_MEASURED = 0
 const EVERYTHING_PENDING = 0
 
 interface Editor {
@@ -286,19 +284,20 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     }
   }
 
-  function acrossThePanes(): number {
-    const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
-
-    return panes === null ? NOTHING_MEASURED : panes.getBoundingClientRect().width
-  }
-
   const closingPrimary = closingSurfaceFor(primaryWorkspace, () => {
+    const elsewhere = secondary
+    if (elsewhere !== null && !elsewhere.pane.isEmpty()) {
+      paneMoves.collapseOntoPrimary(elsewhere)
+
+      return
+    }
+
     workspace.show('empty', STORE_ROOT)
   })
 
   function closingAside(surface: PaneWorkspace): ClosingSurface {
     return closingSurfaceFor(surface, () => {
-      dismissTheSecondPane()
+      paneMoves.dismissAside()
     })
   }
 
@@ -325,17 +324,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   function secondaryWorkspaceTowards(towards: 'beside' | 'below'): PaneWorkspace | null {
-    openSplit(root, towards, acrossThePanes())
+    openSplit(root, towards, paneMoves.acrossThePanes())
 
     return secondaryWorkspace()
-  }
-
-  function dismissTheSecondPane(): void {
-    teardownSecondaryDocument()
-    secondary = null
-    touched = primaryWorkspace
-    closeSplit(root, acrossThePanes())
-    paneMoves.markPaneInFront()
   }
 
   const previewing = createPreviewing({
@@ -385,6 +376,13 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     inFront: () => touched,
     goTo: (surface: PaneWorkspace) => {
       touched = surface
+    },
+    forgetAside: () => {
+      teardownSecondaryDocument()
+      secondary = null
+    },
+    show: (surface: PaneWorkspace, entryPath: string) => {
+      pending.push(surface.showDocument(entryPath))
     },
   })
 

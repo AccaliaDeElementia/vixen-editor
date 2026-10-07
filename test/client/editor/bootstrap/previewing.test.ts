@@ -688,6 +688,32 @@ describe('moving between the panes from the keyboard', () => {
     expect(panes()?.dataset.split).toBeUndefined()
   })
 
+  it("collapses onto one pane when the tab dragged away was the first pane's last", async () => {
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession('# carried'),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    requestKeep(root, 'notes.md')
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    const carried = cast<DataTransfer>({
+      getData: (mime: string) => (mime === DRAG_TAB_MIME ? 'editor:notes.md' : ''),
+      types: [DRAG_TAB_MIME],
+    })
+
+    root
+      .querySelectorAll<HTMLElement>('[data-part="tabs"]')[1]
+      ?.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: carried })))
+    await editor.settled()
+
+    expect(panes()?.dataset.split).toBeUndefined()
+  })
+
   it('ignores a tab dropped from nowhere, because there is no pane for it to have left', async () => {
     await editing('# carried')
     const carried = cast<DataTransfer>({

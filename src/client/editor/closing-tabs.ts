@@ -36,17 +36,15 @@ export function createClosingTabs(options: ClosingOptions): ClosingTabs {
     if (options.everySurface().every((candidate) => candidate.pane.isEmpty())) options.showNothingAtAll()
   }
 
-  function closePreviewsOf(entryPath: string): void {
-    for (const surface of options.everySurface()) {
-      for (const view of PREVIEW_VIEWS) surface.pane.close({ path: entryPath, view })
-      showNothingIn(surface)
-    }
-  }
-
   function closeEditorTab(surface: ClosingSurface, at: TabAt): void {
+    const everywhere = [...options.everySurface()]
     surface.pane.close(at)
-    closePreviewsOf(at.path)
-    showNothingIn(surface)
+
+    for (const candidate of everywhere) {
+      for (const view of PREVIEW_VIEWS) candidate.pane.close({ path: at.path, view })
+    }
+
+    for (const candidate of everywhere) showNothingIn(candidate)
   }
 
   function requestClose(surface: ClosingSurface, at: TabAt): void {
