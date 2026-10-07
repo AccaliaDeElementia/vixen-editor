@@ -86,12 +86,15 @@ describe('reading what was dragged', () => {
 describe('dropping onto the editor', () => {
   let inserted: Array<{ text: string; at: number | null }> = []
 
-  function editor(positionAt: (event: DragEvent) => number | null = () => 7): HTMLElement {
+  function editor(
+    positionAt: (event: DragEvent) => number | null = () => 7,
+    holder: () => string | null = () => 'journal/notes.md',
+  ): HTMLElement {
     const element = document.createElement('div')
     document.body.append(element)
 
     bindEntryDrops(element, positionAt, {
-      holder: () => 'journal/notes.md',
+      holder,
       insert: (text, at) => {
         inserted.push({ text, at })
       },
@@ -153,5 +156,28 @@ describe('dropping onto the editor', () => {
     drag(element, 'drop', { [DRAG_MIME]: 'a.md', [DRAG_KIND_MIME]: 'document' })
 
     expect(inserted).toStrictEqual([{ text: '[a.md](../a.md)', at: null }])
+  })
+})
+
+describe('dropping onto an editor that holds no document', () => {
+  it('inserts nothing, because there is nothing for a link to be relative to', () => {
+    const inserted: Array<{ text: string; at: number | null }> = []
+    const element = document.createElement('div')
+    document.body.append(element)
+    bindEntryDrops(element, () => 7, {
+      holder: () => null,
+      insert: (text, at) => {
+        inserted.push({ text, at })
+      },
+    })
+
+    const event = cast<DragEvent>(new Event('drop', { bubbles: true, cancelable: true }))
+    Object.defineProperty(event, 'dataTransfer', {
+      value: transferWith({ [DRAG_MIME]: 'journal/other.md', [DRAG_KIND_MIME]: 'document' }),
+      configurable: true,
+    })
+    element.dispatchEvent(event)
+
+    expect(inserted).toStrictEqual([])
   })
 })

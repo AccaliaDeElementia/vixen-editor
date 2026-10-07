@@ -38,7 +38,7 @@ interface DocumentTabOptions {
   dialogs: Dialogs
   toast: Toast
   statusBar: StatusBar
-  documentId: () => string
+  documentId: () => string | null
   openUrl: (url: string) => void
   showingDocument: () => boolean
   announce: (text: string) => void
@@ -83,12 +83,15 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
 
   const holder = createHolderControl()
 
+  let merged = ''
   const merging = createMergeControl(() => {
-    announce(`${documentId()} merged — every change resolved`)
+    announce(`${merged} merged — every change resolved`)
   })
 
   async function writeDocument(content: string): Promise<void> {
     const target = documentId()
+    if (target === null) return
+
     try {
       await session.save(target, content)
       lastRefusal = null
@@ -119,6 +122,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
 
   const save = (): boolean => {
     const target = documentId()
+    if (target === null) return false
     if (autosave.state() === 'clean') {
       announce(`No changes in ${target}`)
       return true
@@ -250,6 +254,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
           await autosave.flush()
         },
         merge: (onDisk: string) => {
+          merged = target
           merging.begin(view, onDisk)
           announce(`Merging ${target} — accept or reject each change, then it saves as usual`)
         },
@@ -263,6 +268,8 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     if (!options.showingDocument() || autosave.state() === 'saving') return
 
     const target = documentId()
+    if (target === null) return
+
     const loaded = await session.reread(target).catch(() => null)
     if (loaded === null || target !== documentId()) return
 
@@ -297,8 +304,9 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
       holder.follow(view, to)
     },
     rescue: () => {
+      const target = documentId()
       const content = view.state.doc.toString()
-      if (!isBlank(content)) session.saveOnUnload(documentId(), content)
+      if (target !== null && !isBlank(content)) session.saveOnUnload(target, content)
     },
     settleBeforeLeaving,
     teardownDocument: () => {

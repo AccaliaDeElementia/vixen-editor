@@ -54,7 +54,7 @@ function draggedEntry(transfer: DataTransfer | null): DroppedEntry | null {
 }
 
 interface DropOptions {
-  holder: () => string
+  holder: () => string | null
   insert: (text: string, at: number | null) => void
 }
 
@@ -80,7 +80,10 @@ export function bindEntryDrops(
       if (entry === null) return
 
       event.preventDefault()
-      options.insert(linkFor(entry, options.holder()), positionAt(event))
+      const holder = options.holder()
+      if (holder === null) return
+
+      options.insert(linkFor(entry, holder), positionAt(event))
     },
     BEFORE_THE_EDITOR,
   )
@@ -111,7 +114,7 @@ function collided(error: unknown): boolean {
 }
 
 interface FileDropOptions {
-  holder: () => string
+  holder: () => string | null
   client: FilesClient
   dialogs: Dialogs
   toast: Toast
@@ -167,12 +170,15 @@ async function receive(
   atLineStart: (position: number | null) => boolean,
   options: FileDropOptions,
 ): Promise<void> {
-  const directory = directoryOf(options.holder())
+  const holder = options.holder()
+  if (holder === null) return
+
+  const directory = directoryOf(holder)
   const links: string[] = []
 
   await serially(files, async (file) => {
     const stored = await storeOne(file, directory, options)
-    if (stored !== null) links.push(linkFor(entryFor(stored), options.holder()))
+    if (stored !== null) links.push(linkFor(entryFor(stored), holder))
   })
 
   if (links.length > NO_LINKS) options.insert(insertionFor(links, atLineStart(at)), at)

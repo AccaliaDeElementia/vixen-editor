@@ -1,6 +1,13 @@
 'use sanity'
 
-import { displayPathFromPath, docUrlFor, pathAfterMove, viewFromSearch, type TabView } from '../doc-path.ts'
+import {
+  displayPathFromPath,
+  docUrlFor,
+  documentIdFromPath,
+  pathAfterMove,
+  viewFromSearch,
+  type TabView,
+} from '../doc-path.ts'
 import { onDocumentMoved } from '../document-moved.ts'
 import { connectToChanges } from '../store-events.ts'
 import { changeTouches } from '../../shared/store-change.ts'
@@ -147,7 +154,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     root,
     element: pane,
     id: 'primary',
-    pathname,
+    holds: documentIdFromPath(pathname),
     session,
     files,
     dialogs,
@@ -231,7 +238,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         root,
         element,
         id: 'secondary',
-        pathname,
+        holds: null,
         session,
         files,
         dialogs,

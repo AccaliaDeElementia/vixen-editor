@@ -28,6 +28,7 @@ interface DropOptions {
   answerPrompt?: (submit: (name: string) => Promise<string | null>) => Promise<boolean>
   atLineStart?: boolean
   at?: number | null
+  holder?: () => string | null
 }
 
 function declinePrompt(): Promise<boolean> {
@@ -38,7 +39,7 @@ const AT_CARET = 3
 
 function dropOptions(options: DropOptions = {}): Parameters<typeof receive>[3] {
   return {
-    holder: () => 'journal/notes.md',
+    holder: options.holder ?? (() => 'journal/notes.md'),
     client: cast<FilesClient>({ upload }),
     dialogs: cast<Dialogs>({
       prompt: async (request: { title: string; value?: string; submit: (name: string) => Promise<string | null> }) => {
@@ -361,5 +362,16 @@ describe('dragover carrying something other than files', () => {
     element.dispatchEvent(event)
 
     expect(event.defaultPrevented).toBe(false)
+  })
+})
+
+describe('dropping a file onto an editor that holds no document', () => {
+  it('uploads nothing, because there is no directory for it to land beside', async () => {
+    const element = editor({ holder: () => null })
+
+    dropFiles(element, [new File(['x'], 'photo.png', { type: 'image/png' })])
+    await Promise.resolve()
+
+    expect(upload).not.toHaveBeenCalled()
   })
 })

@@ -18,7 +18,7 @@ interface PaneEditorOptions {
   toast: Toast
   statusBar: StatusBar
   previews: Previews
-  documentId: () => string
+  documentId: () => string | null
   openUrl: (url: string) => void
   announce: (text: string) => void
   showingDocument: () => boolean
@@ -42,7 +42,8 @@ export function createPaneEditor(options: PaneEditorOptions): DocumentTab {
     listenForFocus: options.listenForFocus,
 
     onEdited: (content: string) => {
-      pane.keepWhenOpened({ path: documentId(), view: 'editor' })
+      const holder = documentId()
+      if (holder !== null) pane.keepWhenOpened({ path: holder, view: 'editor' })
       previews.refreshWith(content)
     },
     onReloaded: (content: string) => {

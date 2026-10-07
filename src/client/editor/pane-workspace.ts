@@ -17,7 +17,6 @@ import { createMissingView } from '../layout/missing-view.ts'
 import { createPane, type Pane } from '../layout/pane.ts'
 import { createStatusBar, type StatusBar } from '../layout/status-bar.ts'
 import { createWorkspace, type Workspace } from '../layout/workspace.ts'
-import { openDocumentIn, type OpenDocument } from '../navigation.ts'
 import type { Toast } from '../toast.ts'
 import type { DocumentTab, FocusListener } from './document-tab.ts'
 import { resolveIndex } from './folder-index.ts'
@@ -41,7 +40,7 @@ interface PaneWorkspaceOptions {
   root: ParentNode
   element: HTMLElement
   id: PaneId
-  pathname: string
+  holds: string | null
   session: Session
   files: FilesClient
   dialogs: Dialogs
@@ -58,11 +57,16 @@ interface PaneWorkspaceOptions {
   listenForFocus?: FocusListener | undefined
 }
 
+interface HeldDocument {
+  path: () => string | null
+  commit: (entryPath: string) => void
+}
+
 export interface PaneWorkspace {
   element: HTMLElement
   statusBar: StatusBar
   pane: Pane
-  held: OpenDocument
+  held: HeldDocument
   editor: () => DocumentTab
   teardownDocument: () => void
   workspace: Workspace
@@ -87,7 +91,13 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
   const mount: Element = found
 
-  const held = openDocumentIn(element, options.pathname)
+  let holding: string | null = options.holds
+  const held: HeldDocument = {
+    path: () => holding,
+    commit: (entryPath: string) => {
+      holding = entryPath
+    },
+  }
   const statusBar = createStatusBar(element)
   const pane = createPane(element, options.id, {
     onActivate: options.onActivate,
@@ -225,6 +235,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
       built?.empty()
       pane.leave()
+      holding = null
     },
 
     openPath: async (target: string) => {
