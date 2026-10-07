@@ -62,7 +62,8 @@ describe('a workspace that was split when the page was last open', () => {
     writeKeptTabs('secondary', [{ path: 'other.md', view: 'editor' }])
     toggleSplit(root, 'beside', WIDE_ENOUGH)
 
-    await reopened()
+    const editor = await reopened()
+    await givenAsync(editor.settled())
 
     expect(tabsIn(1)).toStrictEqual(['editor:other.md'])
   })
@@ -76,7 +77,8 @@ describe('a second pane that kept the very document the url opens', () => {
     ])
     toggleSplit(root, 'beside', WIDE_ENOUGH)
 
-    await reopened()
+    const editor = await reopened()
+    await givenAsync(editor.settled())
 
     expect(tabsIn(1)).toStrictEqual(['editor:other.md'])
   })

@@ -14,10 +14,9 @@ import { changeTouches } from '../../shared/store-change.ts'
 import { interceptNavigation, openDocumentIn } from '../navigation.ts'
 
 import { caretsFollowMove } from './carets.ts'
-import { createDocumentClient } from './document-client.ts'
 import { followDeletion } from './follow-deletion.ts'
 import { createToast } from '../toast.ts'
-import { createFilesClient, type FilesClient } from '../files/files-client.ts'
+import type { FilesClient } from '../files/files-client.ts'
 import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import { createPreviews } from './previews.ts'
 import { createPreviewing } from './previewing.ts'
@@ -40,8 +39,8 @@ import {
   type PaneWorkspaceOptions,
 } from './pane-workspace.ts'
 import { createStaleBuild } from './stale-build.ts'
-import { buildThePageWasServed, watchBuild } from '../build-watch.ts'
-import { createSession, type Session } from './session.ts'
+import { watchBuild } from '../build-watch.ts'
+import type { Session } from './session.ts'
 import { guardUnload } from './unload.ts'
 import { linkTo } from './drops.ts'
 import { onInsertRequested } from '../insert-entry.ts'
@@ -51,8 +50,8 @@ import { onSplitChanged } from '../split-changed.ts'
 import { announceStoreChanged } from '../store-changed.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
+import { paneIn, wiringFor } from './wiring.ts'
 
-const PANE_SELECTOR = '[data-part="pane"]'
 const BESIDE = 'beside'
 const EVERYTHING_PENDING = 0
 
@@ -85,63 +84,6 @@ interface BootstrapOptions {
   navigation?: Navigation
   dialogs?: Dialogs
   listenForFocus?: (wake: () => void, settled: () => Promise<void>) => () => void
-}
-
-function paneIn(root: ParentNode): HTMLElement {
-  const pane = root.querySelector<HTMLElement>(PANE_SELECTOR)
-  if (pane === null) throw new MissingMountError(PANE_SELECTOR)
-
-  return pane
-}
-
-function replaceAddress(url: string): void {
-  window.history.replaceState(null, '', url)
-}
-
-function reloadPage(): void {
-  window.location.reload()
-}
-
-function openPage(url: string): void {
-  window.location.assign(url)
-}
-
-function replacePage(url: string): void {
-  window.location.replace(url)
-}
-
-interface Wiring {
-  root: ParentNode
-  pathname: string
-  search: string
-  servedBuild: string | null
-  session: Session
-  navigate: (url: string) => void
-  files: FilesClient
-  reopen: () => void
-  openUrl: (url: string) => void
-  replaceUrl: (url: string) => void
-}
-
-function pageAsServed(options: BootstrapOptions): Pick<Wiring, 'pathname' | 'search' | 'servedBuild'> {
-  return {
-    pathname: options.pathname ?? window.location.pathname,
-    search: options.search ?? window.location.search,
-    servedBuild: options.servedBuild ?? buildThePageWasServed(),
-  }
-}
-
-function wiringFor(options: BootstrapOptions): Wiring {
-  return {
-    ...pageAsServed(options),
-    root: options.root ?? document,
-    session: options.session ?? createSession(createDocumentClient()),
-    navigate: options.navigate ?? replaceAddress,
-    files: options.files ?? createFilesClient(),
-    reopen: options.reopen ?? reloadPage,
-    openUrl: options.openUrl ?? openPage,
-    replaceUrl: options.replaceUrl ?? replacePage,
-  }
 }
 
 async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
@@ -194,7 +136,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     onTabArrived: (identity: string, toIndex: number) => {
       carryTab(identity, primary, aside.current()?.pane ?? null, toIndex)
       const elsewhere = aside.current()
-      if (elsewhere !== null) tabLeft(elsewhere)
+      if (elsewhere !== null) settlePane(elsewhere)
+      settlePane(primaryWorkspace)
     },
     releaseElsewhere: async (at: TabAt) => {
       await releaseFrom(aside.current(), at)
@@ -263,7 +206,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         },
         onTabArrived: (identity: string, toIndex: number) => {
           carryTab(identity, built.pane, primary, toIndex)
-          tabLeft(primaryWorkspace)
+          settlePane(primaryWorkspace)
+          if (aside.current() === built) settlePane(built)
         },
         releaseElsewhere: async (at: TabAt) => {
           await releaseFrom(primaryWorkspace, at)
@@ -282,6 +226,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       showNothing: () => {
         surface.release()
         reveal()
+      },
+      showActive: () => {
+        const at = surface.pane.showing()
+        if (at !== null) pending.push(surface.showTab(at))
       },
     }
   }
@@ -317,8 +265,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  function tabLeft(vacated: PaneWorkspace): void {
-    closingTabs.showNothingIn(vacated === primaryWorkspace ? closingPrimary : closingAside(vacated))
+  function surfaceFor(surface: PaneWorkspace): ClosingSurface {
+    return surface === primaryWorkspace ? closingPrimary : closingAside(surface)
+  }
+
+  function settlePane(surface: PaneWorkspace): void {
+    closingTabs.settle(surfaceFor(surface))
   }
 
   function activate(host: HTMLElement, at: TabAt): void {
@@ -354,8 +306,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (surface === null) return
     if (!surface.pane.held().some((candidate) => tabIdentity(candidate) === tabIdentity(at))) return
 
+    if (at.view === 'editor') await surface.flush()
+
     surface.pane.close(at)
-    if (at.view === 'editor') await surface.leave()
+    closingTabs.settle(surfaceFor(surface))
   }
 
   async function carried(at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace): Promise<void> {
@@ -516,4 +470,4 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
   return await bootstrap(options).catch(() => null)
 }
 
-export const TestOnly = { MissingMountError, bootstrap, openPage, replacePage, reloadPage, startsALine }
+export const TestOnly = { MissingMountError, bootstrap, startsALine }

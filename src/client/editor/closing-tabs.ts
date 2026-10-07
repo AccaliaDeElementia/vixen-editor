@@ -11,6 +11,7 @@ export interface ClosingSurface {
   saveState: () => string
   settleBeforeLeaving: () => Promise<boolean>
   showNothing: () => void
+  showActive: () => void
 }
 
 interface ClosingOptions {
@@ -21,7 +22,7 @@ interface ClosingOptions {
 
 interface ClosingTabs {
   requestClose: (surface: ClosingSurface, at: TabAt) => void
-  showNothingIn: (surface: ClosingSurface) => void
+  settle: (surface: ClosingSurface) => void
   closeTheTabInFront: () => void
   settled: () => Promise<void>
 }
@@ -29,8 +30,12 @@ interface ClosingTabs {
 export function createClosingTabs(options: ClosingOptions): ClosingTabs {
   const closing: Array<Promise<void>> = []
 
-  function showNothingIn(surface: ClosingSurface): void {
-    if (!surface.pane.isEmpty()) return
+  function settle(surface: ClosingSurface): void {
+    if (!surface.pane.isEmpty()) {
+      surface.showActive()
+
+      return
+    }
 
     surface.showNothing()
     if (options.everySurface().every((candidate) => candidate.pane.isEmpty())) options.showNothingAtAll()
@@ -44,13 +49,13 @@ export function createClosingTabs(options: ClosingOptions): ClosingTabs {
       for (const view of PREVIEW_VIEWS) candidate.pane.close({ path: at.path, view })
     }
 
-    for (const candidate of everywhere) showNothingIn(candidate)
+    for (const candidate of everywhere) settle(candidate)
   }
 
   function requestClose(surface: ClosingSurface, at: TabAt): void {
     if (at.view !== 'editor') {
       surface.pane.close(at)
-      showNothingIn(surface)
+      settle(surface)
 
       return
     }
@@ -70,7 +75,7 @@ export function createClosingTabs(options: ClosingOptions): ClosingTabs {
 
   return {
     requestClose,
-    showNothingIn,
+    settle,
 
     closeTheTabInFront(): void {
       const surface = options.inFront()

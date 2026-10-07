@@ -25,6 +25,7 @@ interface OpenTabs {
 }
 
 const NOT_HELD = -1
+const LAST_TAB = -1
 const ONE_TAB = 1
 const FIRST_TAB = 0
 const PAST_SEPARATOR = 1
@@ -102,7 +103,10 @@ export function createOpenTabs(): OpenTabs {
       if (held === NOT_HELD) return
 
       order.splice(held, ONE_TAB)
-      if (current !== null && tabIdentity(current) === tabIdentity(at)) current = null
+      if (current === null || tabIdentity(current) !== tabIdentity(at)) return
+
+      const survivor = order[held] ?? order.at(LAST_TAB)
+      current = survivor === undefined ? null : { path: survivor.path, view: survivor.view }
     },
 
     leave(): void {

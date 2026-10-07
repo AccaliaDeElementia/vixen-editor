@@ -5,7 +5,7 @@ import { classifyFile } from '../../shared/documents.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { trashEntryIdFromPath } from '../../shared/page-urls.ts'
-import { displayPathFromPath, documentIdFromPath, folderIndexAlternateFromPath } from '../doc-path.ts'
+import { displayPathFromPath, documentIdFromPath, folderIndexAlternateFromPath, isPreviewView } from '../doc-path.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { PaneId } from '../layout/kept-tabs.ts'
 import { cheatsheet } from '../help.ts'
@@ -72,6 +72,7 @@ export interface PaneWorkspace {
   teardownDocument: () => void
   workspace: Workspace
   openPath: (target: string) => Promise<void>
+  showTab: (at: TabAt) => Promise<void>
   release: () => void
   flush: () => Promise<boolean>
   showDocument: (entryPath: string) => Promise<void>
@@ -251,6 +252,12 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
     showDocument: async (entryPath: string) => {
       await showDocumentAt(entryPath, entryPath, null)
+    },
+
+    showTab: async (at: TabAt) => {
+      if (isPreviewView(at.view)) return
+
+      await showDocumentAt(at.path, at.path, null)
     },
 
     release,

@@ -9,6 +9,7 @@ import { requestInsert } from '../../../../src/client/insert-entry.ts'
 import { requestKeep } from '../../../../src/client/keep-request.ts'
 import { recallCaret, rememberCaret } from '../../../../src/client/editor/carets.ts'
 import { bootstrapOrReport, TestOnly } from '../../../../src/client/editor/bootstrap.ts'
+import { TestOnly as pageWiring } from '../../../../src/client/editor/wiring.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
 
 import { cast } from '../../../cast.ts'
@@ -574,7 +575,7 @@ describe('the default way back to a page whose document now exists', () => {
     const reload = vi.fn<() => void>()
     vi.spyOn(window, 'location', 'get').mockReturnValue(cast<Location>({ reload }))
 
-    TestOnly.reloadPage()
+    pageWiring.reloadPage()
 
     expect(reload).toHaveBeenCalledTimes(1)
   })
@@ -585,7 +586,7 @@ describe('the default way to a different page', () => {
     const assign = vi.fn<(url: string) => void>()
     vi.spyOn(window, 'location', 'get').mockReturnValue(cast<Location>({ assign }))
 
-    TestOnly.openPage('/doc/journal/a.md')
+    pageWiring.openPage('/doc/journal/a.md')
 
     expect(assign).toHaveBeenCalledWith('/doc/journal/a.md')
   })
@@ -594,7 +595,7 @@ describe('the default way to a different page', () => {
     const replace = vi.fn<(url: string) => void>()
     vi.spyOn(window, 'location', 'get').mockReturnValue(cast<Location>({ replace }))
 
-    TestOnly.replacePage('/doc/journal/a.md')
+    pageWiring.replacePage('/doc/journal/a.md')
 
     expect(replace).toHaveBeenCalledWith('/doc/journal/a.md')
   })
