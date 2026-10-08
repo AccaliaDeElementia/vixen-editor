@@ -16,6 +16,9 @@ const ONE_EDITOR = 1
 const NONE = 0
 const { PREVIEW_SETTLES_MS } = previewTiming
 
+import type { EditorView } from '@codemirror/view'
+
+import { givenAsync } from '../../../conditions.ts'
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import {
   dialogsDismissing,
@@ -35,8 +38,19 @@ function fakeSession(content: string): Session {
   return sessionRecording(record, { load: () => Promise.resolve({ content, stored: true }) })
 }
 
-async function editing(content = '# stored'): Promise<void> {
-  await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession(content) })
+async function editing(content = '# stored'): Promise<{ view: EditorView; settled: () => Promise<void> }> {
+  const editor = trackEditor(
+    await bootstrapOrReport({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession(content),
+      files: filesAnsweringEmpty(),
+      dialogs: dialogsDismissing(),
+    }),
+  )
+  if (editor === null) throw new Error('the editor did not start')
+
+  return editor
 }
 
 function ribbonButton(): HTMLElement | null {
@@ -76,25 +90,31 @@ describe('showing the document as source', () => {
   })
 
   it('writes the document into the second pane, not over the editor', async () => {
-    await editing('# stored\n\nprose')
+    const started = await editing('# stored\n\nprose')
 
     ribbonButton()?.click()
+
+    await givenAsync(started.settled())
 
     expect(previewBody()?.textContent).toBe('# stored\n\nprose')
   })
 
   it('reveals the preview, which the new pane keeps hidden until something shows in it', async () => {
-    await editing()
+    const started = await editing()
 
     ribbonButton()?.click()
+
+    await givenAsync(started.settled())
 
     expect(root.querySelectorAll<HTMLElement>('[data-part="view-source"]')[1]?.hidden).toBe(false)
   })
 
   it('says what it is showing', async () => {
-    await editing()
+    const started = await editing()
 
     ribbonButton()?.click()
+
+    await givenAsync(started.settled())
 
     expect(root.querySelector('#status')?.textContent).toContain('Showing the source of notes.md')
   })
@@ -162,17 +182,21 @@ describe('showing the document rendered', () => {
   }
 
   it('renders the document in the second pane', async () => {
-    await editing('# A heading')
+    const started = await editing('# A heading')
 
     root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    await givenAsync(started.settled())
 
     expect(markupBody()?.querySelector('h1')?.textContent).toBe('A heading')
   })
 
   it('says what it is showing', async () => {
-    await editing()
+    const started = await editing()
 
     root.querySelector<HTMLElement>('#preview-markup')?.click()
+
+    await givenAsync(started.settled())
 
     expect(root.querySelector('#status')?.textContent).toContain('Showing a preview of notes.md')
   })
@@ -436,27 +460,22 @@ describe('closing a tab whose unsaved work does save', () => {
 
 describe('clicking a block in the rendered preview', () => {
   it('puts the caret where that block came from in the source', async () => {
-    const view = await openEditor({
-      root,
-      pathname: '/doc/notes.md',
-      session: fakeSession('# one\n\n# two'),
-    })
+    const started = await editing('# one\n\n# two')
     root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(started.settled())
 
     root
       .querySelectorAll<HTMLElement>('[data-part="markup-body"] h1')[1]
       ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
-    expect(view.state.selection.main.head).toBe(7)
+    expect(started.view.state.selection.main.head).toBe(7)
   })
 
   it('does not run past the end of a document that has since shrunk', async () => {
-    const view = await openEditor({
-      root,
-      pathname: '/doc/notes.md',
-      session: fakeSession('# one\n\n# two'),
-    })
+    const started = await editing('# one\n\n# two')
     root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(started.settled())
+    const { view } = started
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '#' } })
 
     root
@@ -785,9 +804,11 @@ describe('moving between the panes from the keyboard', () => {
 
 describe('a preview of the document being typed into', () => {
   it('renders again once the typing settles', async () => {
-    vi.useFakeTimers()
-    const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# before') })
+    const started = await editing('# before')
     root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(started.settled())
+    vi.useFakeTimers()
+    const { view } = started
 
     view.dispatch({ changes: { from: view.state.doc.length, insert: ' and after' } })
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)

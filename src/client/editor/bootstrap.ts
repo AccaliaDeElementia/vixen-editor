@@ -124,9 +124,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       openUrl,
       reopen,
       announce: setStatus,
-      onShowing: (entryPath: string) => {
-        openDocument.commit(entryPath)
-      },
+      onShowing: openDocument.commit,
       contentOf: (entryPath: string) => panes.contentOf(entryPath),
       caretMemory,
       ...settings,
@@ -295,17 +293,18 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const previewing = createPreviewing({
     root,
-    previews,
-    primary,
-    summon: () => aside.summon(BESIDE),
+    holdsPermanently: (at: TabAt) => panes.showingTheDocument(at.path).pane.holdsPermanently(at),
+    summon: () =>
+      panes.showingTheDocument(documentId()) === primaryWorkspace ? aside.summon(BESIDE) : primaryWorkspace,
     showWhereItIs: panes.showWhereItIs,
     releaseElsewhere: (at: TabAt) => {
       pending.push(releaseFrom(primaryWorkspace, at))
     },
     documentId,
-    contentNow: () => view.state.doc.toString(),
     showingDocument: () => touched.workspace.showing() === 'document',
-    setStatus,
+    show: (surface: PaneWorkspace, at: TabAt) => {
+      pending.push(surface.showTab(at))
+    },
     navigate: (url: string) => {
       navigator.replaceQuietly(url)
     },

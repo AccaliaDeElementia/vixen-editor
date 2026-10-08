@@ -7,7 +7,8 @@ import { EditorView } from '@codemirror/view'
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
-import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
+import { requestOpenAside } from '../../../../src/client/open-aside.ts'
+import { readKeptTabs, writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
 import { given, givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,
@@ -185,5 +186,54 @@ describe('a preview the reader moved to the pane its editor is in', () => {
     })
 
     expect(shownIn(1)).toStrictEqual(['view-image'])
+  })
+})
+
+describe('previewing into a pane that is already showing an editor', () => {
+  it('puts the preview in the other pane, leaving the editor where the reader had it', async () => {
+    const editor = await reopened()
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(editor.settled())
+
+    expect(shownIn(1)).toStrictEqual(['editor'])
+  })
+
+  it('shows the preview alone there, rather than beside an editor', async () => {
+    const editor = await reopened()
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(editor.settled())
+
+    expect(shownIn(0)).toStrictEqual(['view-markup'])
+  })
+
+  it('paints what that editor holds, so the preview is not an empty panel', async () => {
+    const editor = await reopened()
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(editor.settled())
+
+    expect(markupIn(0)).toContain('other.md')
+  })
+
+  it('keeps the preview tab as permanent when the editor it mirrors is permanent', async () => {
+    const editor = await reopened()
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+    root
+      .querySelector<HTMLElement>('[data-tab="editor:other.md"]')
+      ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(editor.settled())
+
+    expect(readKeptTabs('primary').tabs).toStrictEqual([{ path: 'other.md', view: 'markup' }])
   })
 })
