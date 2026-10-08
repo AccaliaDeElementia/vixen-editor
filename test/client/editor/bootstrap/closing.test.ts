@@ -60,7 +60,7 @@ describe('closing a document that is being previewed in the other pane', () => {
       }),
     )
     if (editor === null) throw new Error('the editor did not start')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     closerFor('editor:notes.md')?.click()
 

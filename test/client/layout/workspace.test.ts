@@ -207,6 +207,34 @@ describe('markup that does not match', () => {
   })
 })
 
+describe('the chrome that belongs to the editor rather than to the pane', () => {
+  function chrome(root: ParentNode): string[] {
+    return [...root.querySelectorAll<HTMLElement>('[data-part="controls"], [data-part="footing"]')]
+      .filter((element) => element.hidden === false)
+      .flatMap((element) => element.dataset.part ?? [])
+  }
+
+  it('shows the editing bar and the footing while a document is open', () => {
+    const root = page()
+
+    workspace(root).show('document', 'notes.md')
+
+    expect(chrome(root)).toStrictEqual(['controls', 'footing'])
+  })
+
+  it('takes both away on a view that is not the editor, because neither has anything to act on', () => {
+    const root = page()
+    const active = workspace(root)
+    given(() => {
+      active.show('document', 'notes.md')
+    })
+
+    active.show('markup', 'notes.md')
+
+    expect(chrome(root)).toStrictEqual([])
+  })
+})
+
 describe('a second pane', () => {
   function panes(): { first: HTMLElement; second: HTMLElement } {
     const container = document.createElement('div')

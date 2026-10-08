@@ -5,6 +5,8 @@ import { expect, test } from './store-server.ts'
 import { TestOnly as previewTiming } from '../src/client/editor/previews.ts'
 import type { Page } from '@playwright/test'
 
+import { previewControl } from './fixtures.ts'
+
 const PANE = '.pane'
 const OUTLASTS_THE_SETTLE_BY = 3
 const PAST_THE_PREVIEW_SETTLE_MS = previewTiming.PREVIEW_SETTLES_MS * OUTLASTS_THE_SETTLE_BY
@@ -15,7 +17,7 @@ test('the source preview opens beside the editor and shows the html it renders',
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('A heading'))
 
-  await page.locator('#preview-source').click()
+  await previewControl(page, 'source').click()
 
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   await expect(page.locator('[data-part="source-body"]').last()).toContainText('<p>A <strong>bold</strong> word</p>')
@@ -29,7 +31,7 @@ test('the source preview highlights the html it shows', async ({ page, request }
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('A heading'))
 
-  await page.locator('#preview-source').click()
+  await previewControl(page, 'source').click()
 
   await expect(page.locator('[data-part="source-body"]').last().locator('span').first()).toBeVisible()
 
@@ -55,7 +57,7 @@ test('the rendered preview shows a heading as a heading', async ({ page, request
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('A heading'))
 
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
 
   await expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('A heading')
 
@@ -80,10 +82,10 @@ test('asking for the source after the rendered view shows one, not both', async 
   await request.post('/api/files/documents', { data: { path: name, content: '# swap' } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('swap'))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('swap'))
 
-  await page.locator('#preview-source').click()
+  await previewControl(page, 'source').click()
 
   await expect(page.locator('[data-part="view-markup"]').last()).toBeHidden()
 
@@ -96,7 +98,7 @@ test('the rendered preview keeps the structure a document legitimately writes', 
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('table'))
 
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
 
   await expect(page.locator('[data-part="markup-body"] td').last()).toHaveText('kept')
 
@@ -109,7 +111,7 @@ test('the preview arrives as a tab in the second pane', async ({ page, request }
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('tabbed'))
 
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
 
   await expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible()
 
@@ -122,10 +124,10 @@ test('both previews sit as separate tabs once the document is kept', async ({ pa
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
   await page.locator(`[data-tab="editor:${name}"]`).dblclick()
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
 
-  await page.locator('#preview-source').click()
+  await previewControl(page, 'source').click()
 
   await expect(page.locator('.pane').last().locator('[role="tab"]')).toHaveCount(2)
 
@@ -137,10 +139,10 @@ test('a preview of a document only being looked at replaces the other preview', 
   await request.post('/api/files/documents', { data: { path: name, content: '# one' } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('one'))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
 
-  await page.locator('#preview-source').click()
+  await previewControl(page, 'source').click()
 
   await expect(page.locator(`[data-tab="markup:${name}"]`)).toHaveCount(0)
 
@@ -153,9 +155,9 @@ test('activating a preview tab shows that preview again', async ({ page, request
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
   await page.locator(`[data-tab="editor:${name}"]`).dblclick()
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
-  await page.locator('#preview-source').click()
+  await previewControl(page, 'source').click()
 
   await page.locator(`[data-tab="markup:${name}"]`).click()
 
@@ -169,7 +171,7 @@ test('the cross on a tab closes it', async ({ page, request }) => {
   await request.post('/api/files/documents', { data: { path: name, content: '# closing' } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
 
   await page.locator(`[data-tab="markup:${name}"] .tabs__close`).click()
@@ -197,7 +199,7 @@ test('Alt+W closes the tab in front of the reader', async ({ page, request }) =>
   await request.post('/api/files/documents', { data: { path: name, content: '# altw' } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
 
   await page.keyboard.press('Alt+w')
@@ -216,7 +218,7 @@ test('the preview follows the caret to the part of the document being worked on'
   await request.post('/api/files/documents', { data: { path: name, content: blocks.join('\n\n') } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('Heading 0'))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] h2').first()).toBeVisible())
 
   await page.locator('.cm-content').click()
@@ -236,7 +238,7 @@ test('the preview stays where it was while the caret stays in the same block', a
   await request.post('/api/files/documents', { data: { path: name, content: blocks.join('\n\n') } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('Heading 0'))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] h2').first()).toBeVisible())
 
   await page.locator('.cm-content').click()
@@ -253,7 +255,7 @@ test('clicking a block in the preview takes the editor to that part of the docum
   await request.post('/api/files/documents', { data: { path: name, content: blocks.join('\n\n') } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('Heading 0'))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] h2').first()).toBeVisible())
 
   await page.locator('[data-part="markup-body"] h2').last().click()
@@ -269,7 +271,7 @@ test('a tab dragged onto the other strip moves to that pane', async ({ page, req
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
   await page.locator(`[data-tab="editor:${name}"]`).dblclick()
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
 
   await page.locator(`[data-tab="markup:${name}"]`).dragTo(page.locator('.pane').first().locator('[data-part="tabs"]'))
@@ -384,7 +386,7 @@ test('the preview follows the document as it is typed into', async ({ page, requ
   await request.post('/api/files/documents', { data: { path: name, content: '# before' } })
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('before'))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('before'))
 
   await page.locator('.cm-content').click()
@@ -443,7 +445,7 @@ test('an inline tag the allowlist keeps becomes that element in the preview', as
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('kept'))
 
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
 
   await expect(page.locator('[data-part="markup-body"] p span strong').last()).toHaveText('bold')
 
@@ -456,7 +458,7 @@ test('an inline tag the allowlist refuses stays as source in the preview', async
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator('.cm-content')).toContainText('pwned'))
 
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] p').last()).toContainText('script'))
 
   expect(await page.evaluate(() => 'pwned' in window)).toBe(false)
@@ -472,7 +474,7 @@ test('a preview keeps showing the document it names, not the one being typed in'
   await request.post('/api/files/documents', { data: { path: b, content: '# BRAVO' } })
 
   await page.goto(`/doc/${a}`)
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] h1').last()).toHaveText('ALPHA'))
   await page.keyboard.press('Control+Alt+ArrowLeft')
   await page.locator(`.tree__row[data-path="${b}"]`).dblclick()

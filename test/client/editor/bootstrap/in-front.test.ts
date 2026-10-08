@@ -77,7 +77,7 @@ describe('opening a document after a preview was shown', () => {
       }),
     )
     if (editor === null) throw new Error('the editor did not start')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     await givenAsync(stub.go('/doc/other.md'))
 

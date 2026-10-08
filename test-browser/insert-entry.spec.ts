@@ -77,7 +77,7 @@ test('Mod-i with no file selected says why it did nothing', async ({ page, reque
   await deleted.focus()
   await page.keyboard.press('ControlOrMeta+i')
 
-  await expect(page.locator('#status .toast').last()).toContainText('Select a file in the browser first')
+  await expect(page.locator('#status')).toContainText('Select a file in the browser first')
 
   await request.delete(`/api/files/entries/${folder}`)
 })

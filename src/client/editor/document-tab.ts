@@ -14,6 +14,7 @@ import type { StatusBar } from '../layout/status-bar.ts'
 import type { Toast } from '../toast.ts'
 
 import { createAutosave, type SaveState } from './autosave.ts'
+import { formattingKeys } from './control-bar.ts'
 import { recallCaret } from './carets.ts'
 import type { CaretMemory } from './caret-memory.ts'
 import { isConflict, offerResolution } from './conflict.ts'
@@ -169,6 +170,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
           keymap.of([
             { key: KEYS.save, preventDefault: true, run: save },
             { key: KEYS.openLink, run: openLinkAtCaret },
+            ...formattingKeys,
           ]),
         ),
         EditorView.updateListener.of((update) => {

@@ -315,7 +315,7 @@ describe('opening a document the other pane already holds', () => {
       }),
     )
     if (editor === null) throw new Error('the editor did not start')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     press({ key: 'ArrowLeft', altKey: true, ctrlKey: true })
     press({ key: 'ArrowRight', altKey: true, ctrlKey: true, shiftKey: true })
     await editor.settled()

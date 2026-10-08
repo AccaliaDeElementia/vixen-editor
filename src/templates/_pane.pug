@@ -6,6 +6,63 @@ mixin pane(primary)
       .tabs__scroller(data-part='tabs-scroller' aria-label='Open documents')
       button.tabs__scroll.tabs__scroll--after(data-part='tabs-after' type='button' aria-label='Show the tabs to the right')
         span.icon(aria-hidden='true') chevron_right
+    .controls(data-part='controls' role='toolbar' aria-label='Editing' hidden)
+      button.control(
+        data-part='format-bold'
+        type='button'
+        aria-label='Bold'
+        title='Bold (Ctrl/Cmd + B)'
+        aria-keyshortcuts='Control+B Meta+B'
+      )
+        span.icon(aria-hidden='true') format_bold
+      button.control(
+        data-part='format-italic'
+        type='button'
+        aria-label='Italic'
+        title='Italic (Ctrl/Cmd + I)'
+        aria-keyshortcuts='Control+I Meta+I'
+      )
+        span.icon(aria-hidden='true') format_italic
+      button.control(data-part='format-strikethrough' type='button' aria-label='Strikethrough' title='Strikethrough')
+        span.icon(aria-hidden='true') format_strikethrough
+      button.control(
+        data-part='format-code'
+        type='button'
+        aria-label='Code'
+        title='Code (Ctrl/Cmd + E)'
+        aria-keyshortcuts='Control+E Meta+E'
+      )
+        span.icon(aria-hidden='true') code
+      button.control(
+        data-part='format-link'
+        type='button'
+        aria-label='Link'
+        title='Link (Ctrl/Cmd + K)'
+        aria-keyshortcuts='Control+K Meta+K'
+      )
+        span.icon(aria-hidden='true') link
+      span.control__divider(aria-hidden='true')
+      button.control(data-part='format-heading' type='button' aria-label='Heading' title='Heading')
+        span.icon(aria-hidden='true') title
+      button.control(data-part='format-list' type='button' aria-label='List' title='List')
+        span.icon(aria-hidden='true') format_list_bulleted
+      button.control(data-part='format-quote' type='button' aria-label='Quote' title='Quote')
+        span.icon(aria-hidden='true') format_quote
+      .controls__end
+        button.control(
+          data-part='preview-markup'
+          type='button'
+          aria-label='Show the document rendered'
+          title='Show the document rendered'
+        )
+          span.icon(aria-hidden='true') preview
+        button.control(
+          data-part='preview-source'
+          type='button'
+          aria-label='Show the HTML the preview renders'
+          title='Show the HTML the preview renders'
+        )
+          span.icon(aria-hidden='true') code_blocks
     .pane__editor(data-part='editor' hidden tabindex='-1')&attributes(primary ? { id: 'editor' } : {})
     .footing(data-part='footing' hidden)
       span.footing__save(data-part='save-label' role='status')

@@ -9,6 +9,10 @@ interface Entry {
 export const KEYS = {
   save: 'Mod-s',
   openLink: 'Mod-Enter',
+  bold: 'Mod-b',
+  italic: 'Mod-i',
+  code: 'Mod-e',
+  link: 'Mod-k',
   dismissTooltip: 'Escape',
   nextRow: 'ArrowDown',
   previousRow: 'ArrowUp',
@@ -42,6 +46,11 @@ const SHORTCUTS: readonly Entry[] = [
   { does: 'Save the document', how: 'Ctrl/Cmd + S', keys: [KEYS.save] },
   { does: 'Open the link the caret is in', how: 'Ctrl/Cmd + Enter', keys: [KEYS.openLink] },
   { does: 'Dismiss a link tooltip', how: 'Escape', keys: [KEYS.dismissTooltip] },
+  {
+    does: 'Put bold, italic, code or a link around the selection',
+    how: 'Ctrl/Cmd + B, I, E and K',
+    keys: [KEYS.bold, KEYS.italic, KEYS.code, KEYS.link],
+  },
   {
     does: 'Move through the file browser',
     how: 'Arrow keys',

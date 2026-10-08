@@ -4,6 +4,8 @@ import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 import type { Page } from '@playwright/test'
 
+import { previewControl } from './fixtures.ts'
+
 const SENTINEL = 'vixenPwned'
 const BEACON = '/api/health?beacon=sanitiser'
 
@@ -61,7 +63,7 @@ test.describe('a document full of hostile markup', () => {
     await page.goto(`/doc/${name}`)
     await givenAsync(expect(page.locator('.cm-content')).toContainText('script'))
 
-    await page.locator('#preview-markup').click()
+    await previewControl(page, 'markup').click()
     await givenAsync(expect(page.locator('[data-part="view-markup"]').last()).toBeVisible())
     await givenAsync(afterEveryHandlerHasHadItsTurn(page))
 
@@ -80,7 +82,7 @@ test.describe('a document full of hostile markup', () => {
 
     await page.goto(`/doc/${name}`)
     await givenAsync(expect(page.locator('.cm-content')).toContainText('script'))
-    await page.locator('#preview-markup').click()
+    await previewControl(page, 'markup').click()
     await givenAsync(expect(page.locator('[data-part="view-markup"]').last()).toBeVisible())
 
     expect(beacons).toStrictEqual([])
@@ -94,7 +96,7 @@ test.describe('a document full of hostile markup', () => {
 
     await page.goto(`/doc/${name}`)
     await givenAsync(expect(page.locator('.cm-content')).toContainText('script'))
-    await page.locator('#preview-markup').click()
+    await previewControl(page, 'markup').click()
     await givenAsync(expect(page.locator('[data-part="view-markup"]').last()).toBeVisible())
 
     expect(new URL(page.url()).pathname).toBe(`/doc/${name}`)
@@ -108,7 +110,7 @@ test.describe('a document full of hostile markup', () => {
 
     await page.goto(`/doc/${name}`)
     await givenAsync(expect(page.locator('.cm-content')).toContainText('script'))
-    await page.locator('#preview-markup').click()
+    await previewControl(page, 'markup').click()
     await givenAsync(expect(page.locator('[data-part="view-markup"]').last()).toBeVisible())
 
     const preview = page.locator('[data-part="markup-body"]').last()
@@ -124,7 +126,7 @@ test.describe('a document full of hostile markup', () => {
 
     await page.goto(`/doc/${name}`)
     await givenAsync(expect(page.locator('.cm-content')).toContainText('script'))
-    await page.locator('#preview-markup').click()
+    await previewControl(page, 'markup').click()
     await givenAsync(expect(page.locator('[data-part="view-markup"]').last()).toBeVisible())
 
     await expect(page.locator('[data-part="markup-body"] [data-part]')).toHaveCount(0)

@@ -3,7 +3,7 @@
 import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 
-import { storedDocument } from './fixtures.ts'
+import { previewControl, storedDocument } from './fixtures.ts'
 
 const SECOND_PANE = 1
 
@@ -12,7 +12,7 @@ test('a document dropped from the file browser onto a preview opens there', asyn
   const dropped = `dropped-${stamp}.md`
   await storedDocument(request, dropped, '# dropped')
   await page.goto(await storedDocument(request, `host-${stamp}.md`))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
 
   await page.evaluate((path: string) => {
@@ -30,7 +30,7 @@ test('a document dropped from the file browser onto a preview opens there', asyn
 
 test('a preview claims a file drag, so the browser does not navigate to the file', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `claim-${String(Date.now())}.md`))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
 
   const claimed = await page.evaluate(() => {
@@ -49,7 +49,7 @@ test('a file dropped from the desktop onto a preview lands beside what it shows'
   const stamp = String(Date.now())
   const folder = `dropfolder-${stamp}`
   await page.goto(await storedDocument(request, `${folder}/host.md`))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
 
   await page.evaluate(() => {

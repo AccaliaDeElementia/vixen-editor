@@ -19,11 +19,15 @@ const VIEW_ELEMENTS: ReadonlyArray<readonly [WorkspaceView, string]> = [
 
 const DEFAULT_ACTION_SELECTOR = '[data-default-action]'
 const MISSING_PATH_SELECTOR = '[data-part="missing-path"]'
-const FOOTING_SELECTOR = '[data-part="footing"]'
+const DOCUMENT_CHROME = ['[data-part="controls"]', '[data-part="footing"]']
 
 export interface Workspace {
   show: (view: WorkspaceView, at: string) => void
   showing: () => WorkspaceView | null
+}
+
+function chromeIn(root: ParentNode): HTMLElement[] {
+  return DOCUMENT_CHROME.flatMap((selector) => root.querySelector<HTMLElement>(selector) ?? [])
 }
 
 function elementsOf(root: ParentNode): Map<WorkspaceView, HTMLElement> {
@@ -43,12 +47,12 @@ interface WorkspaceOptions {
 
 export function createWorkspace(host: ParentNode, options: WorkspaceOptions): Workspace {
   const elements = elementsOf(host)
-  const footing = host.querySelector<HTMLElement>(FOOTING_SELECTOR)
+  const chrome = chromeIn(host)
   let current: WorkspaceView | null = null
 
   function reveal(view: WorkspaceView): HTMLElement | undefined {
     for (const [candidate, element] of elements) element.hidden = candidate !== view
-    if (footing !== null) footing.hidden = view !== 'document'
+    for (const element of chrome) element.hidden = view !== 'document'
 
     return elements.get(view)
   }

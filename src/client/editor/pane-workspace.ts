@@ -29,6 +29,7 @@ import type { Toast } from '../toast.ts'
 import type { CarriedDocument, DocumentTab, FocusListener } from './document-tab.ts'
 import { resolveIndex } from './folder-index.ts'
 import { createPaneEditor } from './pane-editor.ts'
+import { bindControlBar, type PreviewControls } from './control-bar.ts'
 import type { CaretMemory } from './caret-memory.ts'
 import { bindViewDrops } from './view-drops.ts'
 import { uploadInto } from './drops.ts'
@@ -59,6 +60,7 @@ export interface PaneWorkspaceOptions {
   dialogs: Dialogs
   toast: Toast
   previews: Previews
+  previewControls: () => PreviewControls
   openUrl: (url: string) => void
   reopen: () => void
   announce: (text: string) => void
@@ -170,6 +172,8 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
     await openEntry(landed)
   }
+
+  bindControlBar(element, { editor, previewing: options.previewControls })
 
   bindViewDrops(element, {
     holder: () => pane.showing()?.path ?? null,

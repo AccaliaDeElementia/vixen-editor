@@ -3,6 +3,8 @@
 import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 
+import { previewControl } from './fixtures.ts'
+
 test('the tab in front stays in front when another client changes the store', async ({ page, request }) => {
   const stamp = String(Date.now())
   const mine = `chaostab-${stamp}.md`
@@ -10,7 +12,7 @@ test('the tab in front stays in front when another client changes the store', as
   await request.post('/api/files/documents', { data: { path: mine, content: '# mine' } })
 
   await page.goto(`/doc/${mine}`)
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   const preview = page.locator(`[data-tab="markup:${mine}"]`)
   await givenAsync(expect(preview).toBeVisible())
 

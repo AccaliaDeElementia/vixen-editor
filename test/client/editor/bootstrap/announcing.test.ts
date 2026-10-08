@@ -171,9 +171,9 @@ describe('a tab that closed to make room for the one being opened', () => {
     )
     if (editor === null) throw new Error('the editor did not start')
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(editor.settled())
-    root.querySelector<HTMLElement>('#preview-source')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-source"]')?.click()
     await givenAsync(editor.settled())
   }
 

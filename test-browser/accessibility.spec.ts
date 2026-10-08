@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test'
 
 import { violationsOn } from './axe.ts'
 import { stringFieldOf } from './json.ts'
-import { openLayout, storedDocument } from './fixtures.ts'
+import { openLayout, previewControl, storedDocument } from './fixtures.ts'
 
 async function workspaceWith(page: Page, request: Page['request'], folder: string): Promise<void> {
   await request.post('/api/files/folders', { data: { path: folder } })
@@ -155,8 +155,8 @@ test('a split workspace with both previews has no accessibility violations', asy
 
   await page.goto(`/doc/${folder}/notes.md`)
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
-  await page.locator('#preview-source').click()
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'source').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator('[data-part="markup-body"] h1')).toBeVisible())
 
   expect(await violationsOn(page)).toStrictEqual([])
@@ -170,7 +170,7 @@ test('a preview tab is announced as a preview, not as the document it previews',
 
   await page.goto(`/doc/${folder}/notes.md`)
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
 
   await expect(page.locator(`[data-tab="markup:${folder}/notes.md"]`)).toHaveAccessibleName('notes.md, preview')
 

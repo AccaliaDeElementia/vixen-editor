@@ -195,7 +195,7 @@ describe('previewing into a pane that is already showing an editor', () => {
     requestOpenAside(root, 'other.md')
     await givenAsync(editor.settled())
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(editor.settled())
 
     expect(shownIn(1)).toStrictEqual(['editor'])
@@ -206,7 +206,7 @@ describe('previewing into a pane that is already showing an editor', () => {
     requestOpenAside(root, 'other.md')
     await givenAsync(editor.settled())
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(editor.settled())
 
     expect(shownIn(0)).toStrictEqual(['view-markup'])
@@ -217,7 +217,7 @@ describe('previewing into a pane that is already showing an editor', () => {
     requestOpenAside(root, 'other.md')
     await givenAsync(editor.settled())
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(editor.settled())
 
     expect(markupIn(0)).toContain('other.md')
@@ -231,7 +231,7 @@ describe('previewing into a pane that is already showing an editor', () => {
       .querySelector<HTMLElement>('[data-tab="editor:other.md"]')
       ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(editor.settled())
 
     expect(readKeptTabs('primary').tabs).toStrictEqual([{ path: 'other.md', view: 'markup' }])

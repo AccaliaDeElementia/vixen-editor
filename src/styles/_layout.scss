@@ -218,6 +218,61 @@
   }
 }
 
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
+  padding: $space-xs $space-sm;
+  border-bottom: 1px solid $border;
+  background: $gray-900;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2em;
+  height: 2em;
+  padding: 0;
+  border: 0;
+  border-radius: $radius;
+  background: transparent;
+  color: $muted;
+  cursor: pointer;
+
+  .icon {
+    font-size: 1.15em;
+  }
+
+  &:hover:not(:disabled) {
+    color: $body-color;
+    background: $surface;
+  }
+
+  &[aria-pressed='true'] {
+    color: $info;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
+  }
+}
+
+.controls__end {
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
+  margin-left: auto;
+}
+
+.control__divider {
+  width: 1px;
+  height: 1.4em;
+  margin: 0 0.35em;
+  background: $border;
+}
+
 .panes {
   --divider: 24px;
 

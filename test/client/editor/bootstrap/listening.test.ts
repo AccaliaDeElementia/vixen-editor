@@ -207,7 +207,7 @@ describe('a server serving a newer build than this page', () => {
       }),
     )
     if (editor === null) throw new Error('the editor did not start')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     deliver('build', 'built-today')
     await editor.settled()

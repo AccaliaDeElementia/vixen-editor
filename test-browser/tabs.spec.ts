@@ -5,7 +5,7 @@ import { expect, test } from './store-server.ts'
 
 import type { Page } from '@playwright/test'
 
-import { storedDocument, storedImage } from './fixtures.ts'
+import { previewControl, storedDocument, storedImage } from './fixtures.ts'
 
 const TAB_SELECTOR = '[data-part="tabs"] [role="tab"]'
 
@@ -98,8 +98,8 @@ test('the two previews of one document are not the same colour', async ({ page, 
   await page.goto(await storedDocument(request, name))
   await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${name}"]`)).toBeVisible())
   await page.locator(`${TAB_SELECTOR}[data-path="${name}"]`).dblclick()
-  await page.locator('#preview-markup').click()
-  await page.locator('#preview-source').click()
+  await previewControl(page, 'markup').click()
+  await previewControl(page, 'source').click()
   await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-tab="source:${name}"] .tabs__icon`)).toBeVisible())
 
   const onTheSource = await colourOf(page, `${TAB_SELECTOR}[data-tab="source:${name}"] .tabs__icon`)
@@ -112,7 +112,7 @@ test('a preview tab says which view it is in words, not only in its glyph', asyn
   await page.goto(await storedDocument(request, name))
   await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${name}"]`)).toBeVisible())
   await page.locator(`${TAB_SELECTOR}[data-path="${name}"]`).dblclick()
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
 
   const shown = await page
     .locator(`${TAB_SELECTOR}[data-tab="markup:${name}"] .tabs__kind`)

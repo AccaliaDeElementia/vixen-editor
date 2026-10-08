@@ -1,9 +1,17 @@
 'use sanity'
 
-import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
 import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 import { stringFieldOf } from './json.ts'
+
+export function paneAt(page: Page, index = 0): Locator {
+  return page.locator('.pane').nth(index)
+}
+
+export function previewControl(page: Page, view: 'markup' | 'source', pane = 0): Locator {
+  return paneAt(page, pane).locator(`[data-part="preview-${view}"]`)
+}
 
 export function newDocument(name: string): string {
   return `/doc/${name}`

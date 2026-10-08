@@ -4,7 +4,7 @@ import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 import type { APIRequestContext, Page } from '@playwright/test'
 
-import { storedDocument, storedImage } from './fixtures.ts'
+import { previewControl, storedDocument, storedImage } from './fixtures.ts'
 
 const PRIMARY = 0
 const ASIDE = 1
@@ -20,7 +20,7 @@ async function previewingADocumentHeldAside(page: Page, request: APIRequestConte
   await page.locator(`.tree__row[data-path="${doc}"]`).click({ modifiers: ['ControlOrMeta'] })
   await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
   await page.locator('.pane').nth(ASIDE).locator(`[data-tab="editor:${doc}"]`).dblclick()
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup', ASIDE).click()
 
   return doc
 }

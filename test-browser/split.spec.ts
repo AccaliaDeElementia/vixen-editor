@@ -4,7 +4,7 @@ import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 import type { APIRequestContext, Page } from '@playwright/test'
 
-import { storedDocument } from './fixtures.ts'
+import { previewControl, storedDocument } from './fixtures.ts'
 
 const PANE = '.pane'
 const DIVIDER = '[data-part="split-resizer"]'
@@ -96,7 +96,7 @@ test('a share set side by side comes back when the reader returns to it', async 
 test('a share survives a reload of a split that is still live, so a reader sets it once', async ({ page, request }) => {
   const name = `persist-${String(Date.now())}.md`
   await page.goto(await storedDocument(request, name))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   await page.locator(PANE).nth(1).locator(`[data-tab="markup:${name}"]`).dblclick()
   await page.locator(DIVIDER).focus()
@@ -126,7 +126,7 @@ test('a share goes back to even once the second pane has gone, however it went',
 
 test('closing the last tab in the second pane puts the workspace back to one pane', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `undo-${String(Date.now())}.md`))
-  await page.locator('#preview-markup').click()
+  await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
 
   await page.locator(PANE).nth(1).locator('.tabs__close').click()

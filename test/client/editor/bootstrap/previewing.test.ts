@@ -53,8 +53,8 @@ async function editing(content = '# stored'): Promise<{ view: EditorView; settle
   return editor
 }
 
-function ribbonButton(): HTMLElement | null {
-  return root.querySelector<HTMLElement>('#preview-source')
+function previewControl(): HTMLElement | null {
+  return root.querySelector<HTMLElement>('[data-part="preview-source"]')
 }
 
 function panes(): HTMLElement | null {
@@ -84,7 +84,7 @@ describe('showing the document as source', () => {
   it('splits the workspace, because the preview goes beside the editor', async () => {
     await editing()
 
-    ribbonButton()?.click()
+    previewControl()?.click()
 
     expect(panes()?.dataset.split).toBe('beside')
   })
@@ -92,7 +92,7 @@ describe('showing the document as source', () => {
   it('writes the html of the document into the second pane, not over the editor', async () => {
     const started = await editing('# stored\n\nprose')
 
-    ribbonButton()?.click()
+    previewControl()?.click()
 
     await givenAsync(started.settled())
 
@@ -102,7 +102,7 @@ describe('showing the document as source', () => {
   it('reveals the preview, which the new pane keeps hidden until something shows in it', async () => {
     const started = await editing()
 
-    ribbonButton()?.click()
+    previewControl()?.click()
 
     await givenAsync(started.settled())
 
@@ -112,7 +112,7 @@ describe('showing the document as source', () => {
   it('says what it is showing', async () => {
     const started = await editing()
 
-    ribbonButton()?.click()
+    previewControl()?.click()
 
     await givenAsync(started.settled())
 
@@ -159,7 +159,7 @@ describe('asking for the preview when the workspace is already split', () => {
     await editing()
     toggleSplit(root, 'below', WIDE_ENOUGH)
 
-    ribbonButton()?.click()
+    previewControl()?.click()
 
     expect(panes()?.dataset.split).toBe('below')
   })
@@ -168,9 +168,10 @@ describe('asking for the preview when the workspace is already split', () => {
 describe('a page with nowhere to put a preview', () => {
   it('is left alone rather than failing', async () => {
     await editing()
+    const control = previewControl()
     root.querySelector('[data-part="panes"]')?.remove()
 
-    ribbonButton()?.click()
+    control?.click()
 
     expect(root.querySelector('[data-part="panes"]')).toBeNull()
   })
@@ -184,7 +185,7 @@ describe('showing the document rendered', () => {
   it('renders the document in the second pane', async () => {
     const started = await editing('# A heading')
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     await givenAsync(started.settled())
 
@@ -194,7 +195,7 @@ describe('showing the document rendered', () => {
   it('says what it is showing', async () => {
     const started = await editing()
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     await givenAsync(started.settled())
 
@@ -219,9 +220,9 @@ describe('showing the document rendered', () => {
 
   it('puts the source preview away, since one pane shows one thing', async () => {
     await editing()
-    root.querySelector<HTMLElement>('#preview-source')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-source"]')?.click()
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(root.querySelectorAll<HTMLElement>('[data-part="view-source"]')[1]?.hidden).toBe(true)
   })
@@ -235,16 +236,16 @@ describe('a preview that is already a tab', () => {
   it('appears in the second pane as a tab of its own view type', async () => {
     await editing()
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(previewTab('notes.md', 'markup')).not.toBeNull()
   })
 
   it('displaces the other preview while both are only being looked at', async () => {
     await editing()
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
-    root.querySelector<HTMLElement>('#preview-source')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-source"]')?.click()
 
     expect(previewTab('notes.md', 'markup')).toBeNull()
   })
@@ -252,16 +253,16 @@ describe('a preview that is already a tab', () => {
   it('sits beside the other preview once the document is kept', async () => {
     await editing()
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
-    root.querySelector<HTMLElement>('#preview-source')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-source"]')?.click()
 
     expect(previewTab('notes.md', 'markup')).not.toBeNull()
   })
 
   it('renders again when its tab is activated', async () => {
     const started = await editing('# first')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     const [, body] = root.querySelectorAll<HTMLElement>('[data-part="markup-body"]')
     body?.replaceChildren('wiped')
 
@@ -275,7 +276,7 @@ describe('a preview that is already a tab', () => {
   it('is only looked at when the editor tab it came from is', async () => {
     await editing()
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(previewTab('notes.md', 'markup')?.classList.contains('tabs__tab--looking')).toBe(true)
   })
@@ -284,7 +285,7 @@ describe('a preview that is already a tab', () => {
     await editing()
     requestKeep(root, 'notes.md')
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(previewTab('notes.md', 'markup')?.classList.contains('tabs__tab--looking')).toBe(false)
   })
@@ -305,7 +306,7 @@ describe('a preview tab for a document the editor has left', () => {
       }),
     )
     if (started === null) throw new Error('the editor did not start')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(started.settled())
 
     root.querySelector<HTMLElement>('[data-tab="markup:elsewhere.md"]')?.click()
@@ -319,10 +320,10 @@ describe('a preview tab for a document the editor has left', () => {
 describe('a second pane that was dismissed and summoned again', () => {
   it('builds its tabs in the pane that is on screen now, not the one that went', async () => {
     await editing()
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     toggleSplit(root, 'beside', WIDE_ENOUGH)
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(root.querySelector('[data-tab="markup:notes.md"]')).not.toBeNull()
   })
@@ -341,7 +342,7 @@ describe('closing a tab', () => {
 
   it('takes a preview tab away', async () => {
     await editing()
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     closerFor('markup:notes.md')?.click()
 
@@ -350,7 +351,7 @@ describe('closing a tab', () => {
 
   it('dismisses the second pane when it was the only thing in it', async () => {
     await editing()
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     closerFor('markup:notes.md')?.click()
 
@@ -376,7 +377,7 @@ describe('closing a tab', () => {
   it('leaves a tab the reader did not ask to close alone', async () => {
     await editing()
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     closerFor('markup:notes.md')?.click()
 
@@ -385,7 +386,7 @@ describe('closing a tab', () => {
 
   it('is reached by Alt and W', async () => {
     await editing()
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     press({ key: 'w', altKey: true })
 
@@ -436,8 +437,8 @@ describe('closing one of several tabs in a pane', () => {
   it('leaves the pane showing what is left rather than the invitation', async () => {
     await editing()
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
-    root.querySelector<HTMLElement>('#preview-source')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-source"]')?.click()
 
     root.querySelector<HTMLElement>('[data-tab="source:notes.md"] .tabs__close')?.click()
 
@@ -469,7 +470,7 @@ describe('closing a tab whose unsaved work does save', () => {
 describe('clicking a block in the rendered preview', () => {
   it('puts the caret where that block came from in the source', async () => {
     const started = await editing('# one\n\n# two')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(started.settled())
 
     root
@@ -481,7 +482,7 @@ describe('clicking a block in the rendered preview', () => {
 
   it('does not run past the end of a document that has since shrunk', async () => {
     const started = await editing('# one\n\n# two')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(started.settled())
     const { view } = started
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '#' } })
@@ -509,7 +510,7 @@ describe('dragging a tab to the other pane', () => {
   it('moves it out of the pane it came from', async () => {
     await editing()
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     const first = stripIn(0)
     if (first !== null) dropOnto(first, 'markup:notes.md')
@@ -520,7 +521,7 @@ describe('dragging a tab to the other pane', () => {
   it('puts it into the pane it was dropped on', async () => {
     await editing()
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     const first = stripIn(0)
     if (first !== null) dropOnto(first, 'markup:notes.md')
@@ -531,7 +532,7 @@ describe('dragging a tab to the other pane', () => {
   it('carries an editor tab the other way, into the pane that was dropped on', async () => {
     await editing()
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     const second = stripIn(1)
     if (second !== null) dropOnto(second, 'editor:notes.md')
@@ -542,7 +543,7 @@ describe('dragging a tab to the other pane', () => {
   it('ignores a drop naming a tab this build cannot read', async () => {
     await editing()
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     const first = stripIn(0)
     if (first !== null) dropOnto(first, 'hologram:notes.md')
@@ -698,7 +699,7 @@ describe('moving between the panes from the keyboard', () => {
   it('leaves a carried preview tab to its own pane, because only an editor holds a document', async () => {
     await editing('# carried')
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
 
     press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
@@ -709,7 +710,7 @@ describe('moving between the panes from the keyboard', () => {
   it('dismisses the pane a dragged tab left, when that tab was the last thing in it', async () => {
     await editing('# carried')
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     const carried = cast<DataTransfer>({
       getData: (mime: string) => (mime === DRAG_TAB_MIME ? 'markup:notes.md' : ''),
       types: [DRAG_TAB_MIME],
@@ -734,7 +735,7 @@ describe('moving between the panes from the keyboard', () => {
     )
     if (editor === null) throw new Error('the editor did not start')
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     const carried = cast<DataTransfer>({
       getData: (mime: string) => (mime === DRAG_TAB_MIME ? 'editor:notes.md' : ''),
       types: [DRAG_TAB_MIME],
@@ -751,11 +752,11 @@ describe('moving between the panes from the keyboard', () => {
   it('takes a carried preview back out of the pane it was carried into, because one of a kind is enough', async () => {
     await editing('# carried')
     requestKeep(root, 'notes.md')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     press({ key: 'ArrowRight', altKey: true, ctrlKey: true })
     press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(
       root.querySelectorAll<HTMLElement>('[data-part="tabs"]')[0]?.querySelector('[data-tab="markup:notes.md"]'),
@@ -780,8 +781,8 @@ describe('moving between the panes from the keyboard', () => {
     await editing('# stored')
     requestKeep(root, 'notes.md')
 
-    root.querySelector<HTMLElement>('#preview-source')?.click()
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-source"]')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(
       ['editor', 'source', 'markup'].map((view) => root.querySelectorAll(`[data-tab="${view}:notes.md"]`).length),
@@ -790,10 +791,10 @@ describe('moving between the panes from the keyboard', () => {
 
   it('raises the preview that already exists rather than opening a second', async () => {
     await editing('# stored')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     press({ key: 'ArrowLeft', altKey: true, ctrlKey: true, shiftKey: true })
 
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
 
     expect(root.querySelectorAll('[data-tab="markup:notes.md"]')).toHaveLength(1)
   })
@@ -813,7 +814,7 @@ describe('moving between the panes from the keyboard', () => {
 describe('a preview of the document being typed into', () => {
   it('renders again once the typing settles', async () => {
     const started = await editing('# before')
-    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     await givenAsync(started.settled())
     vi.useFakeTimers()
     const { view } = started
@@ -845,7 +846,7 @@ describe('a preview of a document that changed on disk', () => {
         return () => undefined
       },
     })
-    ribbonButton()?.click()
+    previewControl()?.click()
 
     wake()
     await afterTheCheck()
@@ -860,7 +861,7 @@ describe('the URL naming which view is in front', () => {
   it('names the view it switched to, so a preview can be reloaded into or shared', async () => {
     await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# stored') })
 
-    ribbonButton()?.click()
+    previewControl()?.click()
 
     expect(window.location.search).toBe('?view=source')
   })

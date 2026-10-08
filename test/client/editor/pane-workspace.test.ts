@@ -57,6 +57,7 @@ function paneHolding(
     dialogs: dialogsDismissing(),
     toast: { ...createToast(root), ...complaining },
     previews: createPreviews(() => undefined),
+    previewControls: () => ({ showMarkup: () => undefined, showSource: () => undefined }),
     openUrl: () => undefined,
     reopen: () => undefined,
     announce: () => undefined,

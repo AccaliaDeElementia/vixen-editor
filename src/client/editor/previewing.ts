@@ -4,11 +4,7 @@ import { docUrlFor, isPreviewView, type PreviewView, type TabView } from '../doc
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
 
-const PREVIEW_SOURCE_SELECTOR = '#preview-source'
-const PREVIEW_MARKUP_SELECTOR = '#preview-markup'
-
 interface PreviewingOptions {
-  root: ParentNode
   holdsPermanently: (at: TabAt) => boolean
   summon: () => PaneWorkspace | null
   showWhereItIs: (at: TabAt) => boolean
@@ -45,9 +41,6 @@ export function createPreviewing(options: PreviewingOptions): Previewing {
   const showMarkup = (): void => {
     show('markup')
   }
-
-  options.root.querySelector<HTMLElement>(PREVIEW_SOURCE_SELECTOR)?.addEventListener('click', showSource)
-  options.root.querySelector<HTMLElement>(PREVIEW_MARKUP_SELECTOR)?.addEventListener('click', showMarkup)
 
   return {
     showSource,

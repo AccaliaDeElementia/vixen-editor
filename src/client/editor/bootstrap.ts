@@ -122,6 +122,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       dialogs,
       toast,
       previews,
+      previewControls: () => previewing,
       openUrl,
       reopen,
       announce: setStatus,
@@ -163,12 +164,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { view } = tab
   let touched: PaneWorkspace = primaryWorkspace
   const documentId = (): string => openDocument.path()
-  const editorTab = (at: string): TabAt => ({ path: at, view: 'editor' })
-
-  function nowShowing(entryPath: string): void {
-    openDocument.commit(entryPath)
-    primaryWorkspace.held.commit(entryPath)
-  }
 
   const { offOpenAsideRequested } = onOpenAsideRequested(root, (entryPath: string) => {
     const elsewhere = touched === primaryWorkspace ? aside.summon(BESIDE) : primaryWorkspace
@@ -186,7 +181,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
     if (moved !== documentId()) {
       session.rename(documentId(), moved)
-      nowShowing(moved)
+      openDocument.commit(moved)
+      primaryWorkspace.held.commit(moved)
       tab.followMove(moved)
       navigate(docUrlFor(moved))
       statusBar.forgetSaveState()
@@ -294,7 +290,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   }
 
   const previewing = createPreviewing({
-    root,
     holdsPermanently: (at: TabAt) => panes.showingTheDocument(at.path).pane.holdsPermanently(at),
     summon: () =>
       panes.showingTheDocument(documentId()) === primaryWorkspace ? aside.summon(BESIDE) : primaryWorkspace,
@@ -387,7 +382,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
 
   const { offKeepRequested } = onKeepRequested(root, (entryPath) => {
-    primary.keepWhenOpened(editorTab(entryPath))
+    primary.keepWhenOpened({ path: entryPath, view: 'editor' })
   })
 
   const { stopFollowingDeletion } = followDeletion({

@@ -4,7 +4,7 @@ import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 import type { APIRequestContext, Locator, Page } from '@playwright/test'
 
-import { storedDocument } from './fixtures.ts'
+import { previewControl, storedDocument } from './fixtures.ts'
 
 const ASIDE = 1
 const BLOCKS = 40
@@ -18,11 +18,11 @@ function aLongDocument(): string {
   ).join('\n\n')
 }
 
-async function previewing(page: Page, request: APIRequestContext, control: string): Promise<Locator> {
+async function previewing(page: Page, request: APIRequestContext, control: 'markup' | 'source'): Promise<Locator> {
   const name = `reading-${String(Date.now())}-${control}.md`
   await page.goto(await storedDocument(request, name, aLongDocument()))
   await givenAsync(expect(page.locator('.cm-content')).toContainText('Heading 0'))
-  await page.locator(`#preview-${control}`).click()
+  await previewControl(page, control).click()
 
   return page.locator('.pane').nth(ASIDE)
 }
