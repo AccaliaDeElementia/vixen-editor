@@ -138,7 +138,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     listenForFocus: options.listenForFocus,
     onActivate: (at: TabAt) => {
       touched = primaryWorkspace
-      activate(pane, at)
+      activate(at)
     },
     onCloseRequested: (at: TabAt) => {
       closingTabs.requestClose(closingPrimary, at)
@@ -207,7 +207,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         holds: null,
         onActivate: (at: TabAt) => {
           touched = built
-          activate(element, at)
+          activate(at)
         },
         onCloseRequested: (at: TabAt) => {
           closingTabs.requestClose(closingAside(built), at)
@@ -281,14 +281,15 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     closingTabs.settle(surfaceFor(surface))
   }
 
-  function activate(host: HTMLElement, at: TabAt): void {
-    if (!isPreviewView(at.view) || at.path !== documentId()) {
+  function activate(at: TabAt): void {
+    if (!isPreviewView(at.view)) {
       replaceUrl(docUrlFor(at.path, at.view))
 
       return
     }
 
-    previews.render(host, at, view.state.doc.toString())
+    touched.pane.open(at)
+    pending.push(touched.showTab(at))
   }
 
   const previewing = createPreviewing({
@@ -324,13 +325,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   function handOverTo(arriving: PaneWorkspace, at: TabAt, leaving: PaneWorkspace): void {
     const handed = leaving.handOver()
-    if (handed === null) {
-      pending.push(arriving.showDocument(at.path))
-
-      return
-    }
-
-    arriving.adopt(at.path, handed)
+    if (handed === null) pending.push(arriving.showDocument(at.path))
+    else arriving.adopt(at.path, handed)
   }
 
   async function carryDocument(at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace): Promise<void> {
@@ -377,12 +373,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  const navigation = createTabNavigation(
-    () => touched.pane,
-    (host, at) => {
-      activate(host, at)
-    },
-  )
+  const navigation = createTabNavigation(() => touched.pane, activate)
 
   const unbindTabKeys = bindTabKeys(root, {
     cycle: navigation.cycle,
@@ -443,7 +434,11 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
 
   touched = panes.showingTheDocument(documentIdFromPath(pathname))
-  for (const surface of panes.open()) if (surface !== touched) settlePane(surface)
+  for (const surface of panes.open()) {
+    if (surface === touched) continue
+    if (surface.pane.isEmpty()) surface.workspace.show('empty', STORE_ROOT)
+    else settlePane(surface)
+  }
 
   await openPath(pathname, viewFromSearch(search))
   refreshHistoryButtons(root, navigator)

@@ -1,9 +1,7 @@
 'use sanity'
 
 import { renderMarkdown } from '../render-markdown.ts'
-import { revealOnly } from './reveal-view.ts'
 
-const SECTION_PART = 'view-markup'
 const BODY_SELECTOR = '[data-part="markup-body"]'
 const POSITIONED_SELECTOR = '[data-from]'
 
@@ -43,7 +41,6 @@ export function createMarkupView(host: ParentNode, onBlockChosen: (offset: numbe
     show: (content: string) => {
       body.replaceChildren(renderMarkdown(content))
       answerClicksIn(body, onBlockChosen)
-      revealOnly(host, SECTION_PART)
     },
 
     revealOffset: (offset: number) => {

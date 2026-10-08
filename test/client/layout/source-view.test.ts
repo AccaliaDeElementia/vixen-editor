@@ -60,26 +60,6 @@ describe('showing a document as its own source', () => {
   })
 })
 
-describe('bringing the preview into view', () => {
-  it('reveals the section, which the pane keeps hidden until something shows in it', () => {
-    createSourceView(host).show('# shown')
-
-    expect(host.querySelector<HTMLElement>('[data-part="view-source"]')?.hidden).toBe(false)
-  })
-})
-
-describe('a pane with a source section but nothing to write into', () => {
-  it('declines rather than failing', () => {
-    const bare = document.createElement('div')
-    bare.innerHTML = '<section data-part="view-source" hidden></section>'
-    document.body.append(bare)
-
-    createSourceView(bare).show('# ignored')
-
-    expect(bare.querySelector<HTMLElement>('[data-part="view-source"]')?.hidden).toBe(true)
-  })
-})
-
 describe('a pane with no source section in it', () => {
   it('declines rather than failing', () => {
     const bare = document.createElement('div')

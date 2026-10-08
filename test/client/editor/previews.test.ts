@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createPreviews, TestOnly } from '../../../src/client/editor/previews.ts'
 
+import { given } from '../../conditions.ts'
 import { renderPane } from '../templates.ts'
 
 const { PREVIEW_SETTLES_MS } = TestOnly
@@ -24,6 +25,10 @@ function page(): HTMLElement {
 
 function shown(part: string): string {
   return host.querySelector<HTMLElement>(`[data-part="${part}"]`)?.textContent ?? ''
+}
+
+function sectionFor(part: string): HTMLElement | null {
+  return host.querySelector<HTMLElement>(`[data-part="${part}"]`)
 }
 
 function previewing(): ReturnType<typeof createPreviews> {
@@ -143,5 +148,29 @@ describe('a refresh carrying another document’s text', () => {
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
     expect(shown('markup-body')).toBe('ALPHA')
+  })
+})
+
+describe('writing a preview into a pane', () => {
+  it('does not put it on screen, because the pane alone decides which view is showing', () => {
+    const previews = previewing()
+
+    previews.render(host, MARKUP, '# shown')
+
+    expect(sectionFor('view-markup')?.hidden).toBe(true)
+  })
+
+  it('leaves a settled refresh unable to bring back a view the pane has moved off', async () => {
+    const previews = previewing()
+    previews.render(host, MARKUP, '# before')
+    given(() => {
+      const section = sectionFor('view-markup')
+      if (section !== null) section.hidden = true
+    })
+
+    previews.refreshWith(MARKUP.path, '# after')
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(sectionFor('view-markup')?.hidden).toBe(true)
   })
 })

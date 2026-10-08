@@ -22,6 +22,8 @@ import {
 const WIDE_ENOUGH = 1200
 const ONE_PANE = 1
 const ONE_TAB = 1
+const BOTH_PANES = 2
+const EDITING_NOTES = { path: 'notes.md', view: 'editor' } as const
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -121,5 +123,29 @@ describe('a second pane that comes back holding nothing', () => {
     await reopened()
 
     expect(root.querySelectorAll('[data-part="pane"]')).toHaveLength(ONE_PANE)
+  })
+})
+
+describe('a first pane that comes back with nothing of its own', () => {
+  it('leaves the second pane alone, because loading empty is not the reader emptying it', async () => {
+    writeKeptTabs('secondary', [EDITING_NOTES], EDITING_NOTES)
+    toggleSplit(root, 'beside', WIDE_ENOUGH)
+
+    const editor = await reopened()
+    await givenAsync(editor.settled())
+
+    expect(root.querySelectorAll('[data-part="pane"]')).toHaveLength(BOTH_PANES)
+  })
+
+  it('shows the invitation rather than whatever the page started on', async () => {
+    writeKeptTabs('secondary', [EDITING_NOTES], EDITING_NOTES)
+    toggleSplit(root, 'beside', WIDE_ENOUGH)
+
+    const editor = await reopened()
+    await givenAsync(editor.settled())
+
+    const [first] = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
+
+    expect(first?.querySelector<HTMLElement>('[data-part="view-empty"]')?.hidden).toBe(false)
   })
 })

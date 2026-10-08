@@ -47,3 +47,48 @@ test('that arrangement survives a reload, with neither pane taking the other ove
 
   await expect(page.locator('.pane').nth(ASIDE).locator(`[data-tab="editor:${doc}"]`)).toBeVisible()
 })
+
+async function bothTabsHeldAside(page: Page, request: APIRequestContext, stamp: string): Promise<string> {
+  const doc = await previewingADocumentHeldAside(page, request, stamp)
+  const aside = page.locator('.pane').nth(ASIDE)
+  await givenAsync(
+    expect(page.locator('.pane').nth(PRIMARY).locator('[data-part="markup-body"]')).toContainText('heading'),
+  )
+  await givenAsync(page.locator('.pane').nth(PRIMARY).locator(`[data-tab="markup:${doc}"]`).click())
+  await givenAsync(page.keyboard.press('Control+Alt+Shift+ArrowRight'))
+  await givenAsync(expect(aside.locator(`[data-tab="markup:${doc}"]`)).toBeVisible())
+
+  return doc
+}
+
+test('switching to a preview tab beside its editor hides that editor, rather than halving the pane', async ({
+  page,
+  request,
+}) => {
+  const doc = await bothTabsHeldAside(page, request, String(Date.now()))
+  const aside = page.locator('.pane').nth(ASIDE)
+  await givenAsync(aside.locator(`[data-tab="editor:${doc}"]`).click())
+  await givenAsync(expect(aside.locator('.cm-editor')).toBeVisible())
+
+  await aside.locator(`[data-tab="markup:${doc}"]`).click()
+
+  await expect(aside.locator('[data-part="editor"]')).toBeHidden()
+})
+
+test('typing after leaving a preview tab does not bring that preview back over the editor', async ({
+  page,
+  request,
+}) => {
+  const doc = await bothTabsHeldAside(page, request, String(Date.now()))
+  const aside = page.locator('.pane').nth(ASIDE)
+  await givenAsync(aside.locator(`[data-tab="markup:${doc}"]`).click())
+  await givenAsync(expect(aside.locator('[data-part="markup-body"]')).toContainText('heading'))
+  await givenAsync(aside.locator(`[data-tab="editor:${doc}"]`).click())
+  await givenAsync(expect(aside.locator('.cm-editor')).toBeVisible())
+
+  await aside.locator('.cm-content').pressSequentially('typed')
+
+  await givenAsync(expect(aside.locator('[data-part="markup-body"]')).toContainText('typed'))
+
+  await expect(aside.locator('[data-part="view-markup"]')).toBeHidden()
+})

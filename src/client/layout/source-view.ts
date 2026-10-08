@@ -3,9 +3,7 @@
 import { markdownLanguage } from '@codemirror/lang-markdown'
 
 import { highlightCode } from '../highlight-code.ts'
-import { revealOnly } from './reveal-view.ts'
 
-const SECTION_PART = 'view-source'
 const BODY_SELECTOR = '[data-part="source-body"]'
 
 interface SourceView {
@@ -21,7 +19,6 @@ export function createSourceView(host: ParentNode): SourceView {
   return {
     show: (content: string) => {
       body.replaceChildren(highlightCode(content, markdownLanguage))
-      revealOnly(host, SECTION_PART)
     },
   }
 }

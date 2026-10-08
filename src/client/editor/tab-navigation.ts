@@ -13,10 +13,7 @@ interface TabNavigation {
   jumpTo: (position: number) => void
 }
 
-export function createTabNavigation(
-  paneInFront: () => Pane,
-  activate: (host: HTMLElement, at: TabAt) => void,
-): TabNavigation {
+export function createTabNavigation(paneInFront: () => Pane, activate: (at: TabAt) => void): TabNavigation {
   function positionOfShowing(pane: Pane): number {
     const current = pane.showing()
 
@@ -32,7 +29,7 @@ export function createTabNavigation(
       const next = held.at((positionOfShowing(pane) + by) % held.length)
       if (next === undefined) return
 
-      activate(pane.element, next)
+      activate(next)
     },
 
     move(by: number): void {
@@ -48,7 +45,7 @@ export function createTabNavigation(
       const wanted = pane.held().at(position - PAST_THE_FIRST)
       if (wanted === undefined) return
 
-      activate(pane.element, wanted)
+      activate(wanted)
     },
   }
 }

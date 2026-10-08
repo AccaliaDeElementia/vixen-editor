@@ -35,7 +35,7 @@ function paneHolding(...tabs: TabAt[]): Pane {
 function navigating(pane: Pane): ReturnType<typeof createTabNavigation> {
   return createTabNavigation(
     () => pane,
-    (_host, at) => {
+    (at) => {
       activated.push(at)
     },
   )

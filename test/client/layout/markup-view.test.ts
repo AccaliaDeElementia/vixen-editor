@@ -3,7 +3,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createMarkupView } from '../../../src/client/layout/markup-view.ts'
-import { createSourceView } from '../../../src/client/layout/source-view.ts'
 
 import { renderPane } from '../templates.ts'
 
@@ -23,10 +22,6 @@ function page(): HTMLElement {
 
 function body(): HTMLElement | null {
   return host.querySelector<HTMLElement>('[data-part="markup-body"]')
-}
-
-function sectionFor(part: string): HTMLElement | null {
-  return host.querySelector<HTMLElement>(`[data-part="${part}"]`)
 }
 
 beforeEach(() => {
@@ -60,30 +55,6 @@ describe('showing a document rendered', () => {
     createMarkupView(host, ignoringClicks).show('<img src=x onerror="window.pwned = 1">')
 
     expect(body()?.querySelector('img')).toBeNull()
-  })
-
-  it('brings itself into view', () => {
-    createMarkupView(host, ignoringClicks).show('# shown')
-
-    expect(sectionFor('view-markup')?.hidden).toBe(false)
-  })
-})
-
-describe('two previews in one pane', () => {
-  it('puts the rendered view away when the source is asked for', () => {
-    createMarkupView(host, ignoringClicks).show('# markup')
-
-    createSourceView(host).show('# source')
-
-    expect(sectionFor('view-markup')?.hidden).toBe(true)
-  })
-
-  it('puts the source away when the rendered view is asked for', () => {
-    createSourceView(host).show('# source')
-
-    createMarkupView(host, ignoringClicks).show('# markup')
-
-    expect(sectionFor('view-source')?.hidden).toBe(true)
   })
 })
 

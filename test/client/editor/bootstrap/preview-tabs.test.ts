@@ -8,7 +8,7 @@ import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { requestOpenAside } from '../../../../src/client/open-aside.ts'
-import { readKeptTabs, writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
+import { readKeptTabs, writeKeptTabs, type PaneId } from '../../../../src/client/layout/kept-tabs.ts'
 import { given, givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,
@@ -235,5 +235,58 @@ describe('previewing into a pane that is already showing an editor', () => {
     await givenAsync(editor.settled())
 
     expect(readKeptTabs('primary').tabs).toStrictEqual([{ path: 'other.md', view: 'markup' }])
+  })
+})
+
+describe('clicking the preview tab beside the editor it mirrors', () => {
+  const EDITING = { path: 'notes.md', view: 'editor' } as const
+  const PREVIEWING = { path: 'notes.md', view: 'markup' } as const
+
+  async function openedOnTheEditorIn(pane: PaneId): Promise<{ settled: () => Promise<void> }> {
+    writeKeptTabs(pane, [EDITING, PREVIEWING], EDITING)
+    if (pane === 'secondary') toggleSplit(root, 'beside', WIDE_ENOUGH)
+
+    const editor = await reopened()
+    await givenAsync(editor.settled())
+
+    return editor
+  }
+
+  async function clickedThePreviewTabIn(pane: number, editor: { settled: () => Promise<void> }): Promise<void> {
+    const { [pane]: host } = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
+    host?.querySelector<HTMLElement>('[data-tab="markup:notes.md"]')?.click()
+    await editor.settled()
+  }
+
+  it('shows the preview alone, rather than stacked above the editor it replaces', async () => {
+    const editor = await openedOnTheEditorIn('primary')
+
+    await clickedThePreviewTabIn(0, editor)
+
+    expect(shownIn(0)).toStrictEqual(['view-markup'])
+  })
+
+  it('does as much in a pane beside the first, which hides its own editor and no other', async () => {
+    const editor = await openedOnTheEditorIn('secondary')
+
+    await clickedThePreviewTabIn(1, editor)
+
+    expect(shownIn(1)).toStrictEqual(['view-markup'])
+  })
+
+  it('marks that tab as the one in front, so the strip says what the pane is showing', async () => {
+    const editor = await openedOnTheEditorIn('primary')
+
+    await clickedThePreviewTabIn(0, editor)
+
+    expect(root.querySelector('[data-tab="markup:notes.md"]')?.getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('paints what the editor beside it holds, not what some other pane is editing', async () => {
+    const editor = await openedOnTheEditorIn('secondary')
+
+    await clickedThePreviewTabIn(1, editor)
+
+    expect(markupIn(1)).toContain('notes.md')
   })
 })

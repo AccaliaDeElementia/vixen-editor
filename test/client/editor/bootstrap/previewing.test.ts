@@ -260,12 +260,14 @@ describe('a preview that is already a tab', () => {
   })
 
   it('renders again when its tab is activated', async () => {
-    await editing('# first')
+    const started = await editing('# first')
     root.querySelector<HTMLElement>('#preview-markup')?.click()
     const [, body] = root.querySelectorAll<HTMLElement>('[data-part="markup-body"]')
     body?.replaceChildren('wiped')
 
     previewTab('notes.md', 'markup')?.click()
+
+    await givenAsync(started.settled())
 
     expect(body?.querySelector('h1')?.textContent).toBe('first')
   })
@@ -289,22 +291,28 @@ describe('a preview that is already a tab', () => {
 })
 
 describe('a preview tab for a document the editor has left', () => {
-  it('opens that document rather than showing something stale', async () => {
+  it('renders that document rather than showing something stale', async () => {
     writeKeptTabs('secondary', [{ path: 'elsewhere.md', view: 'markup' }], null)
-    const opened: string[] = []
-    await openEditor({
-      root,
-      pathname: '/doc/notes.md',
-      session: fakeSession('# stored'),
-      replaceUrl: (url: string) => {
-        opened.push(url)
-      },
-    })
+    const started = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: sessionRecording(record, {
+          load: (id: string) => Promise.resolve({ content: `# ${id}`, stored: true }),
+        }),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (started === null) throw new Error('the editor did not start')
     root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(started.settled())
 
     root.querySelector<HTMLElement>('[data-tab="markup:elsewhere.md"]')?.click()
 
-    expect(opened).toStrictEqual(['/doc/elsewhere.md?view=preview'])
+    await givenAsync(started.settled())
+
+    expect(root.querySelectorAll<HTMLElement>('[data-part="markup-body"]')[1]?.textContent).toContain('elsewhere.md')
   })
 })
 
