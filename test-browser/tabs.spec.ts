@@ -120,3 +120,34 @@ test('a preview tab says which view it is in words, not only in its glyph', asyn
 
   expect(shown).toBe('preview')
 })
+
+test('a tab the reader is only looking at is set apart from one they kept', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const kept = `held-${stamp}.md`
+  const looked = `glanced-${stamp}.md`
+  await storedDocument(request, looked)
+  await page.goto(await storedDocument(request, kept))
+  await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${kept}"]`)).toBeVisible())
+  await givenAsync(page.locator(`${TAB_SELECTOR}[data-path="${kept}"]`).dblclick())
+  await givenAsync(page.locator(`[role="treeitem"][data-path="${looked}"]`).click())
+  await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${looked}"]`)).toBeVisible())
+
+  const styles = await page
+    .locator(TAB_SELECTOR)
+    .evaluateAll((tabs) => tabs.map((tab) => getComputedStyle(tab).fontStyle))
+
+  expect(styles).toStrictEqual(['normal', 'italic'])
+})
+
+test('opening a document over one you were only looking at says what closed', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const looked = `passing-${stamp}.md`
+  const next = `next-${stamp}.md`
+  await storedDocument(request, next)
+  await page.goto(await storedDocument(request, looked))
+  await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${looked}"]`)).toBeVisible())
+
+  await page.locator(`[role="treeitem"][data-path="${next}"]`).click()
+
+  await expect(page.locator('#status')).toContainText(`Closed ${looked}`)
+})

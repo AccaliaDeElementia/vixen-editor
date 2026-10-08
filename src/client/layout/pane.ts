@@ -12,6 +12,7 @@ interface PaneOptions {
   onActivate: (at: TabAt) => void
   onCloseRequested: (at: TabAt) => void
   onTabArrived: (identity: string, toIndex: number) => void
+  onDisplaced: (at: TabAt) => void
 }
 
 export interface Pane {
@@ -100,10 +101,11 @@ export function createPane(element: HTMLElement, id: PaneId, options: PaneOption
     element,
 
     open(at: TabAt): void {
-      tabs.open(at)
+      const displaced = tabs.open(at)
       if (awaited === tabIdentity(at)) tabs.promote(at)
       awaited = null
       rememberAndDraw()
+      if (displaced !== null) options.onDisplaced(displaced)
     },
 
     keep,

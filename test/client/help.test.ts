@@ -64,3 +64,17 @@ describe('the keys the help list claims, against the keys the app binds', () => 
     expect(undescribed).toStrictEqual([])
   })
 })
+
+describe('what the cheatsheet says about a tab that will not last', () => {
+  it('explains the italic, which is otherwise a state with no name anywhere a reader looks', () => {
+    const said = cheatsheet()
+
+    expect(said).toContain('closes when you open something else')
+  })
+
+  it('says how to stop a tab being replaced, which is the answer to noticing it', () => {
+    const gestures = HELP_SECTIONS.flatMap((section) => section.entries.map((entry) => entry.does))
+
+    expect(gestures).toContain('Keep a tab you are only looking at')
+  })
+})

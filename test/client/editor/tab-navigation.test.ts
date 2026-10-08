@@ -26,6 +26,7 @@ function paneHolding(...tabs: TabAt[]): Pane {
     onActivate: () => undefined,
     onCloseRequested: () => undefined,
     onTabArrived: () => undefined,
+    onDisplaced: () => undefined,
   })
   for (const tab of tabs) pane.keep(tab)
 

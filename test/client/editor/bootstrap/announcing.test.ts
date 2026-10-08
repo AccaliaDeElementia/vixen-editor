@@ -10,7 +10,19 @@ import type { Session } from '../../../../src/client/editor/session.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 
 import { cast } from '../../../cast.ts'
-import { openEditor, page, recorded, sessionRecording, statusText, type Recorded } from '../../editor-fixtures.ts'
+import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { givenAsync } from '../../../conditions.ts'
+import {
+  dialogsDismissing,
+  filesAnsweringEmpty,
+  openEditor,
+  page,
+  recorded,
+  sessionRecording,
+  statusText,
+  trackEditor,
+  type Recorded,
+} from '../../editor-fixtures.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -139,5 +151,37 @@ describe('when the document being edited is deleted', () => {
     announceEntryTrashed(root, { entryPath: 'journal/a.md', trashId: 'abc-123' })
 
     expect(opened).toStrictEqual(['/trash/abc-123'])
+  })
+})
+
+describe('a tab that closed to make room for the one being opened', () => {
+  async function lookedAtBothPreviews(): Promise<void> {
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession(),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+
+    root.querySelector<HTMLElement>('#preview-markup')?.click()
+    await givenAsync(editor.settled())
+    root.querySelector<HTMLElement>('#preview-source')?.click()
+    await givenAsync(editor.settled())
+  }
+
+  it('is announced, because a tab vanishing otherwise reads as losing the document', async () => {
+    await lookedAtBothPreviews()
+
+    expect(root.querySelector('#status')?.textContent).toContain('Closed notes.md, preview')
+  })
+
+  it('says why it went, which is the rule the italic was standing for', async () => {
+    await lookedAtBothPreviews()
+
+    expect(root.querySelector('#status')?.textContent).toContain('only being looked at')
   })
 })

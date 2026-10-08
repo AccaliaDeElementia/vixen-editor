@@ -12,8 +12,8 @@ interface HeldTab extends TabAt {
 }
 
 interface OpenTabs {
-  open: (at: TabAt) => void
-  keep: (at: TabAt) => void
+  open: (at: TabAt) => TabAt | null
+  keep: (at: TabAt) => TabAt | null
   promote: (at: TabAt) => void
   close: (at: TabAt) => void
   reorder: (at: TabAt, toIndex: number) => void
@@ -59,32 +59,34 @@ export function createOpenTabs(): OpenTabs {
     if (held !== undefined) order.splice(index, ONE_TAB, { ...held, ephemeral: false })
   }
 
-  function admit(at: TabAt, ephemeral: boolean): void {
+  function admit(at: TabAt, ephemeral: boolean): TabAt | null {
     const already = heldAt(at)
     if (already !== NOT_HELD) {
       if (!ephemeral) keepAt(already)
       current = at
 
-      return
+      return null
     }
 
-    const displaced = order.findIndex((candidate) => candidate.ephemeral)
+    const inTheWay = order.find((candidate) => candidate.ephemeral)
     const arriving: HeldTab = { ...at, ephemeral }
-
-    if (ephemeral && displaced !== NOT_HELD) order.splice(displaced, ONE_TAB, arriving)
-    else order.push(arriving)
-
     current = at
+
+    if (!ephemeral || inTheWay === undefined) {
+      order.push(arriving)
+
+      return null
+    }
+
+    order.splice(order.indexOf(inTheWay), ONE_TAB, arriving)
+
+    return { path: inTheWay.path, view: inTheWay.view }
   }
 
   return {
-    open(at: TabAt): void {
-      admit(at, true)
-    },
+    open: (at: TabAt) => admit(at, true),
 
-    keep(at: TabAt): void {
-      admit(at, false)
-    },
+    keep: (at: TabAt) => admit(at, false),
 
     promote(at: TabAt): void {
       keepAt(heldAt(at))

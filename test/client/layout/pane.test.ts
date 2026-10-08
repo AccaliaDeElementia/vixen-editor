@@ -16,6 +16,7 @@ const OTHER = { path: 'other.md', view: 'editor' } as const
 let activated: TabAt[] = []
 let closeRequests: TabAt[] = []
 let arrivals: Array<{ identity: string; toIndex: number }> = []
+let displaced: TabAt[] = []
 
 function paneElement(): HTMLElement {
   const container = document.createElement('div')
@@ -39,6 +40,9 @@ function pane(id: PaneId = 'primary', element = paneElement()): Pane {
     onTabArrived: (identity, toIndex) => {
       arrivals.push({ identity, toIndex })
     },
+    onDisplaced: (at) => {
+      displaced.push(at)
+    },
   })
 }
 
@@ -52,6 +56,7 @@ beforeEach(() => {
   activated = []
   closeRequests = []
   arrivals = []
+  displaced = []
 })
 
 describe('a pane holding its own tabs', () => {
@@ -111,6 +116,7 @@ describe('a pane holding its own tabs', () => {
         onActivate: () => undefined,
         onCloseRequested: () => undefined,
         onTabArrived: () => undefined,
+        onDisplaced: () => undefined,
       }).open(EDITING)
     }).not.toThrow()
   })
@@ -244,5 +250,25 @@ describe('a pane receiving a tab from the other one', () => {
     held.receive(PREVIEWING, 0)
 
     expect(readKeptTabs('secondary').tabs).toStrictEqual([{ ...PREVIEWING }])
+  })
+})
+
+describe('a tab that goes to make room for another', () => {
+  it('is reported, so the reader can be told what closed', () => {
+    const held = pane()
+    held.open(EDITING)
+
+    held.open(OTHER)
+
+    expect(displaced).toStrictEqual([EDITING])
+  })
+
+  it('is not reported when the tab in the way was one the reader kept', () => {
+    const held = pane()
+    held.keep(EDITING)
+
+    held.open(OTHER)
+
+    expect(displaced).toStrictEqual([])
   })
 })

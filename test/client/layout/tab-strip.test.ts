@@ -179,6 +179,33 @@ describe('a tab that is only being looked at', () => {
     expect(tabs().at(0)?.hasAttribute('aria-description')).toBe(false)
   })
 
+  it('says so on hover too, since italics explain nothing to a reader who can see them', () => {
+    strip().show([{ ...EDITING, ephemeral: true }], EDITING)
+
+    expect(tabs().at(0)?.title).toBe('journal/a.md — closes when you open something else')
+  })
+
+  it('keeps that out of the way once it is permanent, because it no longer applies', () => {
+    strip().show([{ ...EDITING, ephemeral: false }], EDITING)
+
+    expect(tabs().at(0)?.title).toBe('journal/a.md')
+  })
+
+  it('drops it the moment the reader keeps the tab, rather than at the next redraw', () => {
+    const showing = strip()
+    showing.show([{ ...EDITING, ephemeral: true }], EDITING)
+
+    showing.show([{ ...EDITING, ephemeral: false }], EDITING)
+
+    expect(tabs().at(0)?.title).toBe('journal/a.md')
+  })
+
+  it('says it after naming which view it is, so the name comes first', () => {
+    strip().show([{ ...PREVIEWING, ephemeral: true }], PREVIEWING)
+
+    expect(tabs().at(0)?.title).toBe('journal/a.md, preview — closes when you open something else')
+  })
+
   it('asks to be kept when it is double-clicked', () => {
     strip().show([{ ...EDITING, ephemeral: true }], EDITING)
 

@@ -85,6 +85,10 @@ const GESTURES: readonly Entry[] = [
   { does: 'Select a file or folder', how: 'Click a row, or move to it with the arrow keys' },
   { does: 'Open a document', how: 'Double-click a row, or press Enter on it' },
   { does: 'Open a document in the other pane', how: 'Ctrl/Cmd + click a row' },
+  {
+    does: 'Keep a tab you are only looking at',
+    how: 'Double-click the tab — an italic one closes when you open something else',
+  },
   { does: 'Follow a link in the text', how: 'Ctrl/Cmd + click, or tap it and then tap Open' },
   { does: 'Insert a link to a file', how: 'Drag the row into the document, or select it and press Insert' },
   { does: 'Move a file or folder', how: 'Drag the row onto a folder' },

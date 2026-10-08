@@ -23,6 +23,7 @@ const KIND_CLASS = 'tabs__kind'
 const NOTHING_DRAGGED = ''
 const CLOSE_GLYPH = 'close'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
+const WHILE_LOOKING = `— ${EPHEMERAL_DESCRIPTION}`
 const VIEW_DESCRIPTIONS: Readonly<Record<string, string>> = { source: 'HTML', markup: 'preview' }
 const ICON_CLASS = 'icon tabs__icon'
 const MUTED_TONE = 'muted'
@@ -78,6 +79,16 @@ function viewShownBy(tab: ShownTab): string | null {
 
 function sayingWhich(what: string, shows: string | null): string {
   return shows === null ? what : `${what}, ${shows}`
+}
+
+export function tabNamed(at: TabAt): string {
+  return sayingWhich(at.path, viewShownBy(at))
+}
+
+function titleFor(tab: ShownTab, looking: boolean): string {
+  const named = sayingWhich(tab.path, viewShownBy(tab))
+
+  return looking ? `${named} ${WHILE_LOOKING}` : named
 }
 
 function kindFor(shows: string): HTMLElement {
@@ -152,7 +163,6 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     name.className = NAME_CLASS
     name.textContent = labelFor(tab)
     const shows = viewShownBy(tab)
-    element.title = sayingWhich(path, shows)
     element.append(iconFor(view), name)
 
     if (shows !== null) {
@@ -194,6 +204,7 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     element.tabIndex = active ? REACHABLE : PASSED_OVER
 
     const looking = tab.ephemeral === true
+    element.title = titleFor(tab, looking)
     element.classList.toggle(EPHEMERAL_CLASS, looking)
     if (looking) element.setAttribute('aria-description', EPHEMERAL_DESCRIPTION)
     else element.removeAttribute('aria-description')

@@ -148,6 +148,40 @@ describe('a tab opened just to look at something', () => {
   })
 })
 
+describe('what an opening displaced', () => {
+  it('names the tab that went, so the reader can be told it closed', () => {
+    const tabs = createOpenTabs()
+    tabs.open(EDITING)
+
+    expect(tabs.open(OTHER)).toStrictEqual(EDITING)
+  })
+
+  it('names nothing when the tab in the way was one the reader kept', () => {
+    const tabs = createOpenTabs()
+    tabs.keep(EDITING)
+
+    expect(tabs.open(OTHER)).toBeNull()
+  })
+
+  it('names nothing when the strip was empty, since nothing was in the way', () => {
+    expect(createOpenTabs().open(EDITING)).toBeNull()
+  })
+
+  it('names nothing when the tab was already open, because looking again closes nothing', () => {
+    const tabs = createOpenTabs()
+    tabs.open(EDITING)
+
+    expect(tabs.open({ ...EDITING })).toBeNull()
+  })
+
+  it('names nothing when the reader asked to keep it, which displaces no one', () => {
+    const tabs = createOpenTabs()
+    tabs.open(EDITING)
+
+    expect(tabs.keep(OTHER)).toBeNull()
+  })
+})
+
 describe('a tab the reader means to keep', () => {
   it('arrives permanent when it was opened to be kept', () => {
     const tabs = createOpenTabs()

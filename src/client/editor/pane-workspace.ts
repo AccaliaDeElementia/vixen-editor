@@ -22,6 +22,7 @@ import { createDeletedView } from '../layout/deleted-view.ts'
 import { createImageView } from '../layout/image-view.ts'
 import { createMissingView } from '../layout/missing-view.ts'
 import { createPane, type Pane } from '../layout/pane.ts'
+import { tabNamed } from '../layout/tab-strip.ts'
 import { createStatusBar, type StatusBar } from '../layout/status-bar.ts'
 import { createWorkspace, type Workspace } from '../layout/workspace.ts'
 import type { Toast } from '../toast.ts'
@@ -120,6 +121,9 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     onActivate: options.onActivate,
     onCloseRequested: options.onCloseRequested,
     onTabArrived: options.onTabArrived,
+    onDisplaced: (at: TabAt) => {
+      announce(`Closed ${tabNamed(at)} — it was only being looked at`)
+    },
   })
 
   let built: DocumentTab | null = null
