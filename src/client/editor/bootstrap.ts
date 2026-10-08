@@ -331,9 +331,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     settlePane(leaving)
   }
 
-  function tabArrived(identity: string, arriving: PaneWorkspace, leaving: PaneWorkspace, toIndex: number): void {
-    const moved = carryTab(identity, arriving.pane, leaving.pane, toIndex)
-    if (moved !== null && moved.view === 'editor') {
+  function settleCarry(moved: TabAt | null, arriving: PaneWorkspace, leaving: PaneWorkspace): void {
+    if (moved?.view === 'editor') {
       pending.push(carryDocument(moved, arriving, leaving))
 
       return
@@ -343,13 +342,13 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     if (panes.open().includes(arriving)) settlePane(arriving)
   }
 
+  function tabArrived(identity: string, arriving: PaneWorkspace, leaving: PaneWorkspace, toIndex: number): void {
+    settleCarry(carryTab(identity, arriving.pane, leaving.pane, toIndex), arriving, leaving)
+  }
+
   const paneMoves = createPaneMoves({
     root,
-    onCarried: (at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace) => {
-      if (at.view !== 'editor') return
-
-      pending.push(carryDocument(at, arriving, leaving))
-    },
+    onCarried: settleCarry,
     primary: primaryWorkspace,
     summon: aside.summon,
     inFront: () => touched,

@@ -11,7 +11,7 @@ import { requestOpenAside } from '../../../../src/client/open-aside.ts'
 import { readKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
 import { DRAG_TAB_MIME } from '../../../../src/client/drag-payload.ts'
 import { cast } from '../../../cast.ts'
-import { givenAsync } from '../../../conditions.ts'
+import { given, givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,
@@ -25,6 +25,7 @@ import {
 const TYPED = ' and more'
 const SOMEWHERE_IN_THE_MIDDLE = 3
 const ONE_TAB = 1
+const FIRST_PANE = 0
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -61,12 +62,12 @@ function dropOnto(strip: HTMLElement, identity: string): void {
   strip.dispatchEvent(cast<DragEvent>(Object.assign(new Event('drop', { bubbles: true }), { dataTransfer: data })))
 }
 
-function carryToTheOtherPane(): void {
+function carryToTheOtherPane(key = 'ArrowRight'): void {
   root.dispatchEvent(
     new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
-      key: 'ArrowRight',
+      key,
       altKey: true,
       ctrlKey: true,
       shiftKey: true,
@@ -197,5 +198,41 @@ describe('what is written down the instant a tab is dragged out of the first pan
         .tabs.map((at) => at.path)
         .sort(),
     ).toStrictEqual(['notes.md', 'other.md'])
+  })
+})
+
+describe('carrying a tab that is not an editor to the other pane', () => {
+  function paneAt(index: number): HTMLElement | undefined {
+    const { [index]: held } = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
+
+    return held
+  }
+
+  function shownIn(pane: number, part: string): string {
+    return paneAt(pane)?.querySelector<HTMLElement>(`[data-part="${part}"]`)?.textContent ?? ''
+  }
+
+  async function carryingAnImageBack(): Promise<void> {
+    const editor = await editing()
+    requestOpenAside(root, 'photo.png')
+    await givenAsync(editor.settled())
+    given(() => {
+      expect(shownIn(FIRST_PANE, 'image-path')).toBe('')
+    })
+
+    carryToTheOtherPane('ArrowLeft')
+    await givenAsync(editor.settled())
+  }
+
+  it('offers it to the pane it arrives in, rather than leaving that pane never told', async () => {
+    await carryingAnImageBack()
+
+    expect(shownIn(FIRST_PANE, 'image-path')).toBe('photo.png')
+  })
+
+  it('brings the tab with it, so the pane it arrives in holds what it was asked to show', async () => {
+    await carryingAnImageBack()
+
+    expect(paneAt(FIRST_PANE)?.querySelector('[data-tab="image:photo.png"]')).not.toBeNull()
   })
 })

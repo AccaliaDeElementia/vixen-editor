@@ -73,6 +73,15 @@ async function bothTabsHeldAside(page: Page, request: APIRequestContext, stamp: 
   return doc
 }
 
+test('a preview tab carried by the keyboard is painted where it lands, with no second press', async ({
+  page,
+  request,
+}) => {
+  await bothTabsHeldAside(page, request, String(Date.now()))
+
+  await expect(page.locator('.pane').nth(ASIDE).locator('[data-part="markup-body"]')).toContainText('heading')
+})
+
 test('switching to a preview tab beside its editor hides that editor, rather than halving the pane', async ({
   page,
   request,

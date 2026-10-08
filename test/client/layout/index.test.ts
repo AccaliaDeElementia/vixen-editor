@@ -18,6 +18,7 @@ import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/layou
 import { requestInsert } from '../../../src/client/insert-entry.ts'
 
 import { renderPage } from '../templates.ts'
+import { given } from '../../conditions.ts'
 
 const { KEYBOARD_STEP_PX } = indexTestOnly
 const { readExplorerState } = explorerTestOnly
@@ -133,6 +134,28 @@ describe('dragging the resizer', () => {
     expect(readExplorerState(VIEWPORT).widthPx).toBe(450)
   })
 
+  it('records where the reader reached when the browser takes the pointer away', () => {
+    initLayout({ root, view: fakeView() })
+
+    resizer().dispatchEvent(pointer('pointerdown', EXPLORER_LEFT + 300))
+    resizer().dispatchEvent(pointer('pointermove', EXPLORER_LEFT + 450))
+    resizer().dispatchEvent(pointer('pointercancel', EXPLORER_LEFT + 450))
+
+    expect(readExplorerState(VIEWPORT).widthPx).toBe(450)
+  })
+
+  it('stops dragging on a cancel, so a later move with nothing held does not resize', () => {
+    initLayout({ root, view: fakeView() })
+    given(() => {
+      resizer().dispatchEvent(pointer('pointerdown', EXPLORER_LEFT + 300))
+      resizer().dispatchEvent(pointer('pointercancel', EXPLORER_LEFT + 300))
+    })
+
+    resizer().dispatchEvent(pointer('pointermove', EXPLORER_LEFT + 450))
+
+    expect(app().style.getPropertyValue('--explorer-width')).toBe('300px')
+  })
+
   it('ignores movement when no drag is in progress', () => {
     initLayout({ root, view: fakeView() })
 
@@ -145,6 +168,14 @@ describe('dragging the resizer', () => {
     initLayout({ root, view: fakeView() })
 
     resizer().dispatchEvent(pointer('pointerup', EXPLORER_LEFT + 450))
+
+    expect(readExplorerState(VIEWPORT).widthPx).toBeNull()
+  })
+
+  it('ignores a cancel when no drag is in progress', () => {
+    initLayout({ root, view: fakeView() })
+
+    resizer().dispatchEvent(pointer('pointercancel', EXPLORER_LEFT + 450))
 
     expect(readExplorerState(VIEWPORT).widthPx).toBeNull()
   })
@@ -427,6 +458,31 @@ describe('splitting the workspace', () => {
     splitResizer().dispatchEvent(pointer('pointerup', PANES_WIDTH * 0.7))
 
     expect(readSplit().fraction).toBeCloseTo(0.7)
+  })
+
+  it('writes where the divider reached when the browser takes the pointer away', () => {
+    started()
+    button('beside').click()
+
+    splitResizer().dispatchEvent(pointer('pointerdown', 0))
+    splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
+    splitResizer().dispatchEvent(pointer('pointercancel', PANES_WIDTH * 0.7))
+
+    expect(readSplit().fraction).toBeCloseTo(0.7)
+  })
+
+  it('stops dividing on a cancel, so a later move with nothing held leaves it alone', () => {
+    started()
+    button('beside').click()
+    given(() => {
+      splitResizer().dispatchEvent(pointer('pointerdown', 0))
+      splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.7))
+      splitResizer().dispatchEvent(pointer('pointercancel', PANES_WIDTH * 0.7))
+    })
+
+    splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.3))
+
+    expect(panes().style.getPropertyValue('--split')).toBe('0.7')
   })
 
   it('paints nothing when the divider is dragged with no split to divide', () => {

@@ -44,15 +44,12 @@ interface LayoutOptions {
   view?: Window
 }
 
-function widthFromPointer(explorer: Element, clientX: number): number {
-  return clientX - explorer.getBoundingClientRect().left
+interface DragHandlers {
+  show: (event: PointerEvent) => void
+  settle: (event: PointerEvent) => void
 }
 
-function bindResizer(root: ParentNode, view: Window): void {
-  const resizer = root.querySelector<HTMLElement>(RESIZER_SELECTOR)
-  const explorer = root.querySelector<HTMLElement>(EXPLORER_SELECTOR)
-  if (resizer === null || explorer === null) return
-
+function bindDragging(resizer: HTMLElement, handlers: DragHandlers): void {
   let dragging = false
 
   resizer.addEventListener('pointerdown', (event: PointerEvent) => {
@@ -62,16 +59,42 @@ function bindResizer(root: ParentNode, view: Window): void {
   })
 
   resizer.addEventListener('pointermove', (event: PointerEvent) => {
-    if (!dragging) return
-    applyExplorerWidth(root, widthFromPointer(explorer, event.clientX), view.innerWidth)
+    if (dragging) handlers.show(event)
   })
 
   resizer.addEventListener('pointerup', (event: PointerEvent) => {
     if (!dragging) return
+
     dragging = false
     resizer.releasePointerCapture(event.pointerId)
-    setExplorerWidth(widthFromPointer(explorer, event.clientX), view.innerWidth)
-    applyExplorerState(root, view.innerWidth)
+    handlers.settle(event)
+  })
+
+  resizer.addEventListener('pointercancel', (event: PointerEvent) => {
+    if (!dragging) return
+
+    dragging = false
+    handlers.settle(event)
+  })
+}
+
+function widthFromPointer(explorer: Element, clientX: number): number {
+  return clientX - explorer.getBoundingClientRect().left
+}
+
+function bindResizer(root: ParentNode, view: Window): void {
+  const resizer = root.querySelector<HTMLElement>(RESIZER_SELECTOR)
+  const explorer = root.querySelector<HTMLElement>(EXPLORER_SELECTOR)
+  if (resizer === null || explorer === null) return
+
+  bindDragging(resizer, {
+    show: (event: PointerEvent) => {
+      applyExplorerWidth(root, widthFromPointer(explorer, event.clientX), view.innerWidth)
+    },
+    settle: (event: PointerEvent) => {
+      setExplorerWidth(widthFromPointer(explorer, event.clientX), view.innerWidth)
+      applyExplorerState(root, view.innerWidth)
+    },
   })
 
   resizer.addEventListener('keydown', (event: KeyboardEvent) => {
@@ -195,24 +218,13 @@ function bindSplitResizer(root: ParentNode): void {
   const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
   if (resizer === null || panes === null) return
 
-  let dragging = false
-
-  resizer.addEventListener('pointerdown', (event: PointerEvent) => {
-    dragging = true
-    resizer.setPointerCapture(event.pointerId)
-    event.preventDefault()
-  })
-
-  resizer.addEventListener('pointermove', (event: PointerEvent) => {
-    if (!dragging) return
-    showSplitFraction({ panes, resizer }, fractionFromPointer(panes, event), axisOf(panes))
-  })
-
-  resizer.addEventListener('pointerup', (event: PointerEvent) => {
-    if (!dragging) return
-    dragging = false
-    resizer.releasePointerCapture(event.pointerId)
-    setSplitFraction(root, fractionFromPointer(panes, event), axisOf(panes))
+  bindDragging(resizer, {
+    show: (event: PointerEvent) => {
+      showSplitFraction({ panes, resizer }, fractionFromPointer(panes, event), axisOf(panes))
+    },
+    settle: (event: PointerEvent) => {
+      setSplitFraction(root, fractionFromPointer(panes, event), axisOf(panes))
+    },
   })
 
   resizer.addEventListener('keydown', (event: KeyboardEvent) => {
