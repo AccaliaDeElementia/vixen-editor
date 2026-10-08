@@ -4,7 +4,7 @@ import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 import type { Page } from '@playwright/test'
 
-import { workspace } from './fixtures.ts'
+import { deletedEntry, workspace } from './fixtures.ts'
 
 async function selectWithoutOpening(page: Page, folder: string, name: string): Promise<void> {
   const row = page.locator(`[role="treeitem"][data-path="${folder}/${name}"]`)
@@ -67,11 +67,13 @@ test('Mod-i on the tree inserts the selected file', async ({ page, request }) =>
 
 test('Mod-i with no file selected says why it did nothing', async ({ page, request }) => {
   const folder = `insn-${String(Date.now())}`
+  const gone = `insn-gone-${String(Date.now())}.md`
+  await deletedEntry(request, gone)
   await page.goto(await workspace(request, folder))
   await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
   await page.locator('#show-trash').click()
-  const deleted = page.locator('#trash-list [role="treeitem"]').first()
+  const deleted = page.locator('#trash-list [role="treeitem"]').filter({ hasText: gone })
   await givenAsync(expect(deleted).toBeVisible())
   await deleted.click()
   await deleted.focus()
