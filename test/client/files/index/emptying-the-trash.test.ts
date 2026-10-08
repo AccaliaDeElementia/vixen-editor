@@ -127,6 +127,27 @@ describe('asking to empty the trash', () => {
   })
 })
 
+describe('a confirmation the trash moved out from under', () => {
+  async function trashBecomes(entries: unknown[]): Promise<void> {
+    client.trash.mockResolvedValue(entries)
+    announceStoreChanged(host)
+    await settled()
+  }
+
+  it('is dropped while the trash is empty, where there is no button to carry it', async () => {
+    await start([TRASHED])
+    control().click()
+    given(() => {
+      expect(control().textContent).toBe('Delete 1 entry for good')
+    })
+
+    await trashBecomes([])
+    await trashBecomes([TRASHED])
+
+    expect(control().textContent).toBe('delete_sweep')
+  })
+})
+
 describe('a confirmation that outlives a redraw', () => {
   it('still deletes on the second click, rather than asking all over again', async () => {
     await start()

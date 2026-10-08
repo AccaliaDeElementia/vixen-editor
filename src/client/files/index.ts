@@ -131,15 +131,23 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     }
 
     visible = renderTree(tree, { nodes, trash, open, selected })
+    noticeTheTrashChanging()
     bindEmptyTrash()
     reflectSelection()
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
   }
 
-  let armedAgainst: string | null = null
+  let armed = false
+  let trashWas: string | null = null
 
   function whatIsInTheTrash(): string {
     return trash.map((entry) => entry.id).join(',')
+  }
+
+  function noticeTheTrashChanging(): void {
+    const holds = whatIsInTheTrash()
+    if (trashWas !== null && trashWas !== holds) armed = false
+    trashWas = holds
   }
 
   function bindEmptyTrash(): void {
@@ -147,24 +155,23 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     if (button === null) return
 
     function askOnce(): void {
-      armedAgainst = whatIsInTheTrash()
+      armed = true
       button?.replaceChildren(`Delete ${entriesIn(trash.length)} for good`)
     }
 
-    if (armedAgainst !== null && armedAgainst !== whatIsInTheTrash()) armedAgainst = null
-    if (armedAgainst !== null) askOnce()
+    if (armed) askOnce()
 
     button.addEventListener('click', (event) => {
       event.preventDefault()
       event.stopPropagation()
 
-      if (armedAgainst === null) {
+      if (!armed) {
         askOnce()
 
         return
       }
 
-      armedAgainst = null
+      armed = false
       runs.track(
         emptyTrash().catch((error: unknown) => {
           toast.error(errorMessage(error))
