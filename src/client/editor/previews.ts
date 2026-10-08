@@ -1,7 +1,8 @@
 'use sanity'
 
-import { createMarkupView, type MarkupView } from '../layout/markup-view.ts'
+import { createMarkupView } from '../layout/markup-view.ts'
 import { createSourceView } from '../layout/source-view.ts'
+import type { PreviewBody } from '../layout/preview-body.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { PreviewView } from '../doc-path.ts'
 
@@ -25,7 +26,7 @@ export interface Previews {
 }
 
 export function createPreviews(putCaretAt: (offset: number) => void): Previews {
-  let showing: MarkupView | null = null
+  let showing: PreviewBody | null = null
   let rendered: Showing | null = null
   let settling: ReturnType<typeof setTimeout> | null = null
 
@@ -38,16 +39,9 @@ export function createPreviews(putCaretAt: (offset: number) => void): Previews {
     render(host: ParentNode, at: TabAt, content: string): void {
       rendered = { host, at }
 
-      if (at.view === 'source') {
-        showing = null
-        createSourceView(host).show(content)
-
-        return
-      }
-
-      const markup = createMarkupView(host, putCaretAt)
-      markup.show(content)
-      showing = markup
+      const view = at.view === 'source' ? createSourceView(host) : createMarkupView(host, putCaretAt)
+      view.show(content)
+      showing = view
     },
 
     refreshWith(holder: string | null, content: string): void {

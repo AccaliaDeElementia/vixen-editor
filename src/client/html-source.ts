@@ -4,6 +4,7 @@ import { renderMarkdown } from './render-markdown.ts'
 
 const INDENT = '  '
 const OWN_ATTRIBUTE = 'data-'
+const POSITION_ATTRIBUTE = 'data-from'
 const TOP_LEVEL = 1
 const ONE_LEVEL = 1
 const CODE_SELECTOR = 'pre > code'
@@ -34,13 +35,23 @@ function layOut(element: Element, depth: number): void {
   element.append(document.createTextNode(`\n${INDENT.repeat(depth - ONE_LEVEL)}`))
 }
 
-export function htmlSourceOf(markdown: string): string {
+export interface SourceBlock {
+  from: number
+  html: string
+}
+
+export function htmlSourceBlocks(markdown: string): readonly SourceBlock[] {
   const host = document.createElement('div')
   host.append(renderMarkdown(markdown))
 
+  const blocks = [...host.children].map((element) => ({
+    element,
+    from: Number(element.getAttribute(POSITION_ATTRIBUTE)),
+  }))
+
   dropOwnAttributes(host)
   flattenCode(host)
-  for (const block of host.children) layOut(block, TOP_LEVEL)
+  for (const { element } of blocks) layOut(element, TOP_LEVEL)
 
-  return [...host.children].map((block) => block.outerHTML).join('\n')
+  return blocks.map(({ element, from }) => ({ from, html: element.outerHTML }))
 }

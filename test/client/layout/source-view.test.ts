@@ -70,3 +70,44 @@ describe('a pane with no source section in it', () => {
     expect(bare.childElementCount).toBe(0)
   })
 })
+
+describe('following the caret', () => {
+  function scrolledFrom(markdown: string, caret: number): string | undefined {
+    const source = createSourceView(host)
+    source.show(markdown)
+
+    const reached: string[] = []
+    for (const block of host.querySelectorAll<HTMLElement>('[data-from]')) {
+      block.scrollIntoView = () => {
+        reached.push(block.dataset.from ?? '')
+      }
+    }
+
+    source.revealOffset(caret)
+
+    return reached.at(-1)
+  }
+
+  it('brings the html of the block the caret sits in into view, as the rendered preview does', () => {
+    expect(scrolledFrom('# one\n\n# two\n\n# three', 8)).toBe('7')
+  })
+
+  it('stays on the first block while the caret is still in it', () => {
+    expect(scrolledFrom('# one\n\n# two', 2)).toBe('0')
+  })
+
+  it('leaves the positions out of the html it shows, keeping them on the wrapper instead', () => {
+    createSourceView(host).show('# A heading')
+
+    expect(body()?.textContent).toBe('<h1>A heading</h1>')
+  })
+
+  it('has nothing to scroll to in a pane with no source section', () => {
+    const bare = document.createElement('div')
+    document.body.append(bare)
+
+    expect(() => {
+      createSourceView(bare).revealOffset(0)
+    }).not.toThrow()
+  })
+})

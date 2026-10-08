@@ -1,19 +1,14 @@
 'use sanity'
 
 import { renderMarkdown } from '../render-markdown.ts'
+import { blockAt, positionedBlocksIn, type PreviewBody } from './preview-body.ts'
 
 const BODY_SELECTOR = '[data-part="markup-body"]'
-const POSITIONED_SELECTOR = '[data-from]'
 
-export interface MarkupView {
-  show: (content: string) => void
-  revealOffset: (offset: number) => void
-}
-
-const INERT: MarkupView = { show: () => undefined, revealOffset: () => undefined }
+const INERT: PreviewBody = { show: () => undefined, revealOffset: () => undefined }
 
 function answerClicksIn(body: HTMLElement, onBlockChosen: (offset: number) => void): void {
-  for (const block of body.querySelectorAll<HTMLElement>(POSITIONED_SELECTOR)) {
+  for (const block of positionedBlocksIn(body)) {
     const from = Number(block.dataset.from)
 
     block.addEventListener('click', (event: MouseEvent) => {
@@ -23,17 +18,7 @@ function answerClicksIn(body: HTMLElement, onBlockChosen: (offset: number) => vo
   }
 }
 
-function blockAt(body: HTMLElement, offset: number): HTMLElement | null {
-  let reached: HTMLElement | null = null
-
-  for (const block of body.querySelectorAll<HTMLElement>(POSITIONED_SELECTOR)) {
-    if (Number(block.dataset.from) <= offset) reached = block
-  }
-
-  return reached
-}
-
-export function createMarkupView(host: ParentNode, onBlockChosen: (offset: number) => void): MarkupView {
+export function createMarkupView(host: ParentNode, onBlockChosen: (offset: number) => void): PreviewBody {
   const body = host.querySelector<HTMLElement>(BODY_SELECTOR)
   if (body === null) return INERT
 

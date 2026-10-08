@@ -68,6 +68,17 @@ test('following the caret scrolls the preview, leaving the pane around it where 
   expect(await aside.evaluate((element) => element.scrollTop)).toBe(NOT_SCROLLED)
 })
 
+test('following the caret scrolls the source preview as well as the rendered one', async ({ page, request }) => {
+  const aside = await previewing(page, request, 'source')
+  const scroller = aside.locator('.source')
+  await givenAsync(expect(aside.locator('[data-part="source-body"]')).toContainText('Heading 0'))
+  await givenAsync(page.locator('.cm-content').click())
+
+  await page.keyboard.press('Control+End')
+
+  await expect.poll(async () => await scroller.evaluate((element) => element.scrollTop)).toBeGreaterThan(NOT_SCROLLED)
+})
+
 test('a source preview colours the html, rather than printing it as flat monospace', async ({ page, request }) => {
   const aside = await previewing(page, request, 'source')
   const body = aside.locator('[data-part="source-body"]')

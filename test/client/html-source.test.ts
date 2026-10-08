@@ -2,7 +2,13 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { htmlSourceOf } from '../../src/client/html-source.ts'
+import { htmlSourceBlocks } from '../../src/client/html-source.ts'
+
+function htmlSourceOf(markdown: string): string {
+  return htmlSourceBlocks(markdown)
+    .map(({ html }) => html)
+    .join('\n')
+}
 
 describe('the html a document is converted into', () => {
   it('shows a heading as the tag the preview renders', () => {
@@ -35,5 +41,19 @@ describe('the html a document is converted into', () => {
 
   it('shows an empty document as nothing at all', () => {
     expect(htmlSourceOf('')).toBe('')
+  })
+})
+
+describe('where each block came from', () => {
+  function offsets(markdown: string): number[] {
+    return htmlSourceBlocks(markdown).map(({ from }) => from)
+  }
+
+  it('records the offset each block was written at, so the caret can be followed into it', () => {
+    expect(offsets('# one\n\n# two\n\n# three')).toStrictEqual([0, 7, 14])
+  })
+
+  it('records nothing for a document with no blocks in it', () => {
+    expect(offsets('')).toStrictEqual([])
   })
 })
