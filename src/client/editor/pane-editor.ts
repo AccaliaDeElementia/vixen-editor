@@ -55,7 +55,7 @@ export function createPaneEditor(options: PaneEditorOptions): DocumentTab {
       previews.refreshWith(documentId(), content)
     },
     onCaretMoved: (offset: number) => {
-      previews.revealOffset(offset)
+      previews.revealOffset(documentId(), offset)
     },
   })
 }

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { givenAsync } from '../test/conditions.ts'
+import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
 import type { APIRequestContext, Locator, Page } from '@playwright/test'
 
@@ -91,4 +91,28 @@ test('a source preview colours the html, rather than printing it as flat monospa
   })
 
   expect(coloured).toBeGreaterThan(UNCOLOURED)
+})
+
+test('a caret moved in another document leaves the preview where the reader put it', async ({ page, request }) => {
+  const elsewhere = `elsewhere-${String(Date.now())}.md`
+  await storedDocument(request, elsewhere, aLongDocument())
+  const aside = await previewing(page, request, 'markup')
+  const body = aside.locator('[data-part="markup-body"]')
+  await givenAsync(expect(body).toContainText('Heading 0'))
+  const reach = await scrolledToTheEnd(body)
+  given(() => {
+    expect(reach).toBeGreaterThan(NOT_SCROLLED)
+  })
+  await givenAsync(
+    body.evaluate((element, top) => {
+      element.scrollTo({ top })
+    }, NOT_SCROLLED),
+  )
+  await givenAsync(page.locator(`.tree__row[data-path="${elsewhere}"]`).dblclick())
+  await givenAsync(expect(page.locator('.pane').first().locator('.cm-content')).toContainText('Heading 0'))
+  await givenAsync(page.locator('.pane').first().locator('.cm-content').click())
+
+  await page.keyboard.press('Control+End')
+
+  expect(await body.evaluate((element) => element.scrollTop)).toBe(NOT_SCROLLED)
 })

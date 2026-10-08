@@ -16,17 +16,17 @@ export const PREVIEW_ANNOUNCEMENTS: Readonly<Record<PreviewView, string>> = {
 interface Showing {
   host: ParentNode
   at: TabAt
+  body: PreviewBody
 }
 
 export interface Previews {
   render: (host: ParentNode, at: TabAt, content: string) => void
   refreshWith: (holder: string | null, content: string) => void
-  revealOffset: (offset: number) => void
+  revealOffset: (holder: string | null, offset: number) => void
   stop: () => void
 }
 
 export function createPreviews(putCaretAt: (entryPath: string, offset: number) => void): Previews {
-  let showing: PreviewBody | null = null
   let rendered: Showing | null = null
   let settling: ReturnType<typeof setTimeout> | null = null
 
@@ -37,14 +37,12 @@ export function createPreviews(putCaretAt: (entryPath: string, offset: number) =
 
   return {
     render(host: ParentNode, at: TabAt, content: string): void {
-      rendered = { host, at }
-
       const intoTheDocument = (offset: number): void => {
         putCaretAt(at.path, offset)
       }
-      const view = at.view === 'source' ? createSourceView(host) : createMarkupView(host, intoTheDocument)
-      view.show(content)
-      showing = view
+      const body = at.view === 'source' ? createSourceView(host) : createMarkupView(host, intoTheDocument)
+      body.show(content)
+      rendered = { host, at, body }
     },
 
     refreshWith(holder: string | null, content: string): void {
@@ -58,8 +56,10 @@ export function createPreviews(putCaretAt: (entryPath: string, offset: number) =
       }, PREVIEW_SETTLES_MS)
     },
 
-    revealOffset(offset: number): void {
-      showing?.revealOffset(offset)
+    revealOffset(holder: string | null, offset: number): void {
+      if (rendered?.at.path !== holder) return
+
+      rendered.body.revealOffset(offset)
     },
 
     stop,

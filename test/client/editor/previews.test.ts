@@ -190,3 +190,33 @@ describe('clicking a block in a preview', () => {
     expect(asked).toStrictEqual([['elsewhere.md', 7]])
   })
 })
+
+describe('following the caret into the preview', () => {
+  function reachedBy(moved: string | null, offset: number, at = MARKUP): string[] {
+    const previews = previewing()
+    previews.render(host, at, '# one\n\n# two')
+
+    const reached: string[] = []
+    for (const block of host.querySelectorAll<HTMLElement>('[data-from]')) {
+      block.scrollIntoView = () => {
+        reached.push(block.dataset.from ?? '')
+      }
+    }
+
+    previews.revealOffset(moved, offset)
+
+    return reached
+  }
+
+  it('brings the block the caret sits in into view', () => {
+    expect(reachedBy(MARKUP.path, 7)).toStrictEqual(['7'])
+  })
+
+  it('ignores a caret that moved in another document, which is not the one on show', () => {
+    expect(reachedBy('bravo.md', 7)).toStrictEqual([])
+  })
+
+  it('ignores a caret moved in a pane that holds no document at all', () => {
+    expect(reachedBy(null, 7)).toStrictEqual([])
+  })
+})
