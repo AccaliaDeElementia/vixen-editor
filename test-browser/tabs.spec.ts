@@ -106,3 +106,17 @@ test('the two previews of one document are not the same colour', async ({ page, 
 
   expect(onTheSource).not.toBe(await colourOf(page, `${TAB_SELECTOR}[data-tab="markup:${name}"] .tabs__icon`))
 })
+
+test('a preview tab says which view it is in words, not only in its glyph', async ({ page, request }) => {
+  const name = `worded-${String(Date.now())}.md`
+  await page.goto(await storedDocument(request, name))
+  await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${name}"]`)).toBeVisible())
+  await page.locator(`${TAB_SELECTOR}[data-path="${name}"]`).dblclick()
+  await page.locator('#preview-markup').click()
+
+  const shown = await page
+    .locator(`${TAB_SELECTOR}[data-tab="markup:${name}"] .tabs__kind`)
+    .evaluate((element) => (element.checkVisibility() ? element.textContent : ''))
+
+  expect(shown).toBe('preview')
+})

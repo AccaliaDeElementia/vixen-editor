@@ -457,3 +457,17 @@ describe('a redraw while the reader is part way through something', () => {
     expect(pathsShown()).toStrictEqual(['notes.md', TRASH_PATH])
   })
 })
+
+describe('a row whose name is too long to show', () => {
+  it('carries that name as a title, so the clipped part can still be read', () => {
+    render({ open: new Set(['journal']) })
+
+    expect(rowFor('journal/entry.md').title).toBe('entry.md')
+  })
+
+  it('carries the folder name too, since a folder clips the same way', () => {
+    render()
+
+    expect(rowFor('journal').title).toBe('journal')
+  })
+})

@@ -1,29 +1,45 @@
 nav.ribbon(aria-label='Primary')
-  button.ribbon__button#nav-back(type='button' aria-label='Back' disabled aria-disabled='true')
+  button.ribbon__button#nav-back(type='button' aria-label='Back' title='Back' disabled aria-disabled='true')
     span.icon(aria-hidden='true') arrow_back
-  button.ribbon__button#nav-forward(type='button' aria-label='Forward' disabled aria-disabled='true')
+  button.ribbon__button#nav-forward(type='button' aria-label='Forward' title='Forward' disabled aria-disabled='true')
     span.icon(aria-hidden='true') arrow_forward
   button.ribbon__button.ribbon__button--stale#stale-build(
     type='button'
     aria-label='This page is out of date — the server is serving a newer version'
+    title='This page is out of date — the server is serving a newer version'
     hidden
   )
     span.icon(aria-hidden='true') warning
   button.ribbon__button#toggle-explorer(
     type='button'
     aria-label='Toggle file browser'
+    title='Toggle file browser'
     aria-controls='explorer'
     aria-expanded='true'
     aria-pressed='true'
   )
     span.icon(aria-hidden='true') library_books
-  button.ribbon__button#split-beside(type='button' aria-label='Split the editor side by side' aria-pressed='false')
+  button.ribbon__button#split-beside(
+    type='button'
+    aria-label='Split the editor side by side'
+    title='Split the editor side by side'
+    aria-pressed='false'
+  )
     span.icon(aria-hidden='true') vertical_split
-  button.ribbon__button#split-below(type='button' aria-label='Split the editor above and below' aria-pressed='false')
+  button.ribbon__button#split-below(
+    type='button'
+    aria-label='Split the editor above and below'
+    title='Split the editor above and below'
+    aria-pressed='false'
+  )
     span.icon(aria-hidden='true') horizontal_split
-  button.ribbon__button#preview-markup(type='button' aria-label='Show the document rendered')
+  button.ribbon__button#preview-markup(type='button' aria-label='Show the document rendered' title='Show the document rendered')
     span.icon(aria-hidden='true') preview
-  button.ribbon__button#preview-source(type='button' aria-label='Show the HTML the preview renders')
+  button.ribbon__button#preview-source(
+    type='button'
+    aria-label='Show the HTML the preview renders'
+    title='Show the HTML the preview renders'
+  )
     span.icon(aria-hidden='true') code_blocks
   button.ribbon__button#show-help(type='button' aria-label='Help' title='Help')
     span.icon(aria-hidden='true') help

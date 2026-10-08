@@ -19,6 +19,7 @@ const TAB_CLASS = 'tabs__tab'
 const EPHEMERAL_CLASS = 'tabs__tab--looking'
 const CLOSE_CLASS = 'tabs__close'
 const NAME_CLASS = 'tabs__name'
+const KIND_CLASS = 'tabs__kind'
 const NOTHING_DRAGGED = ''
 const CLOSE_GLYPH = 'close'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
@@ -69,10 +70,22 @@ function labelFor(tab: ShownTab): string {
   return basenameOf(tab.path)
 }
 
-function announcedAs(tab: ShownTab): string | null {
+function viewShownBy(tab: ShownTab): string | null {
   const { [tab.view]: shows } = VIEW_DESCRIPTIONS
 
-  return shows === undefined ? null : `${labelFor(tab)}, ${shows}`
+  return shows ?? null
+}
+
+function sayingWhich(what: string, shows: string | null): string {
+  return shows === null ? what : `${what}, ${shows}`
+}
+
+function kindFor(shows: string): HTMLElement {
+  const element = document.createElement('span')
+  element.className = KIND_CLASS
+  element.textContent = shows
+
+  return element
 }
 
 const NOTHING_TO_SHOW: TabStrip = { show: () => undefined }
@@ -138,11 +151,14 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     const name = document.createElement('span')
     name.className = NAME_CLASS
     name.textContent = labelFor(tab)
-    element.title = path
+    const shows = viewShownBy(tab)
+    element.title = sayingWhich(path, shows)
     element.append(iconFor(view), name)
 
-    const announced = announcedAs(tab)
-    if (announced !== null) element.setAttribute('aria-label', announced)
+    if (shows !== null) {
+      element.append(kindFor(shows))
+      element.setAttribute('aria-label', sayingWhich(labelFor(tab), shows))
+    }
 
     element.addEventListener('click', () => {
       options.onActivate({ path, view })

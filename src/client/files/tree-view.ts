@@ -94,6 +94,7 @@ function row(options: RowOptions, drawn: Map<string, HTMLElement>): HTMLElement 
   drawn.set(identity, element)
 
   element.className = 'tree__row'
+  element.title = name
   element.style.setProperty('--depth', String(depth))
   element.setAttribute('aria-selected', String(selected))
   if (draggable === true) element.draggable = true
@@ -242,7 +243,7 @@ function renderTrash(model: TreeViewModel, drawn: Map<string, HTMLElement>): Ren
       drawn,
     )
     deleted.dataset.trashId = id
-    deleted.title = `Deleted ${deletedAt}`
+    deleted.title = `${originalPath} — deleted ${deletedAt}`
     const item = itemFor(deleted)
     syncChildren(item, [deleted])
     held.push(item)

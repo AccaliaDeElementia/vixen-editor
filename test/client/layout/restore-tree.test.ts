@@ -427,3 +427,27 @@ describe('putting one item back somewhere else', () => {
     expect(rows().at(1)?.getAttribute('aria-label')).toBe('a.md')
   })
 })
+
+describe('a restore row naming itself on hover', () => {
+  function render(children: unknown[]): void {
+    renderRestoreTree(into, entryOf(children), { onChanged: () => undefined, onRename: () => undefined })
+  }
+
+  it('carries its name as a title, the way a file browser row does', () => {
+    render([file('a.md')])
+
+    expect(rows().at(1)?.title).toBe('a.md')
+  })
+
+  it('carries the reason it cannot go back, so a hover gives the whole row at once', () => {
+    render([file('a.md', { restorable: false, blockedBy: 'a.md' })])
+
+    expect(rows().at(1)?.title).toBe('a.md, a.md is back')
+  })
+
+  it('says the same thing it announces, so hover and speech cannot drift apart', () => {
+    render([file('a.md', { restorable: false, blockedBy: 'a.md' })])
+
+    expect(rows().at(1)?.title).toBe(rows().at(1)?.getAttribute('aria-label'))
+  })
+})

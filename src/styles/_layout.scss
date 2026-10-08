@@ -36,7 +36,47 @@
   width: $ribbon-width;
   background: $gray-900;
   border-right: 1px solid $border;
-  overflow: hidden;
+}
+
+.ribbon__button {
+  position: relative;
+}
+
+.ribbon__button::after,
+.explorer__action::after {
+  content: attr(aria-label);
+  position: absolute;
+  z-index: 2;
+  padding: 0.3em 0.6em;
+  border: 1px solid $muted;
+  border-radius: $radius;
+  background: $dark;
+  color: $body-color;
+  font-family: $font-family-base;
+  font-size: $font-size-sm;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ribbon__button::after {
+  top: 50%;
+  left: 100%;
+  margin-left: $space-xs;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.explorer__action::after {
+  top: 100%;
+  left: 0;
+  max-width: 100%;
+  margin-top: 0.2em;
+}
+
+.ribbon__button:focus-visible::after,
+.explorer__action:focus-visible::after {
+  opacity: 1;
 }
 
 .ribbon__button {
@@ -195,6 +235,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tabs__kind {
+  flex: 0 0 auto;
+  padding: 0 0.35em;
+  border-radius: 3px;
+  background: $border;
+  color: $body-color;
+  font-size: 0.85em;
 }
 
 .tabs__close {
@@ -405,6 +454,7 @@
 }
 
 .explorer__toolbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.15em;

@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test'
 
 import { violationsOn } from './axe.ts'
 import { stringFieldOf } from './json.ts'
-import { storedDocument } from './fixtures.ts'
+import { openLayout, storedDocument } from './fixtures.ts'
 
 async function workspaceWith(page: Page, request: Page['request'], folder: string): Promise<void> {
   await request.post('/api/files/folders', { data: { path: folder } })
@@ -214,4 +214,40 @@ test('the split divider says what its number means', async ({ page, request }) =
   await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
 
   await expect(page.locator('[data-part="split-resizer"]')).toHaveAttribute('aria-valuetext', /percent$/v)
+})
+
+async function nameShownOn(page: Page, selector: string): Promise<string> {
+  return await page.locator(selector).evaluate((element) => {
+    const { content, opacity, visibility } = getComputedStyle(element, '::after')
+
+    return opacity === '0' || visibility === 'hidden' ? '' : content
+  })
+}
+
+test('a ribbon control reached by keyboard names itself on screen, where a title never would', async ({ page }) => {
+  await openLayout(page)
+  await givenAsync(page.locator('.skip-link').press('Tab'))
+  await givenAsync(expect(page.locator('#toggle-explorer')).toBeFocused())
+
+  const shown = await nameShownOn(page, '#toggle-explorer')
+
+  expect(shown).toContain('Toggle file browser')
+})
+
+test('a file browser control does the same, so the two rails behave alike', async ({ page }) => {
+  await openLayout(page)
+  await givenAsync(page.locator('#new-document').press('Tab'))
+  await givenAsync(expect(page.locator('#new-folder')).toBeFocused())
+
+  const shown = await nameShownOn(page, '#new-folder')
+
+  expect(shown).toContain('New folder')
+})
+
+test('a ribbon control nobody has reached names itself nowhere, so the rail stays quiet', async ({ page }) => {
+  await openLayout(page)
+
+  const shown = await nameShownOn(page, '#toggle-explorer')
+
+  expect(shown).toBe('')
 })

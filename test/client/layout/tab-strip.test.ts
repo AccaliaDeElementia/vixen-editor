@@ -613,3 +613,33 @@ describe('a tab whose name is too long to show', () => {
     expect(tabs().at(0)?.title).toBe('journal/a.md')
   })
 })
+
+describe('a tab saying which view it is', () => {
+  function kindOn(tab: HTMLElement | undefined): string {
+    return tab?.querySelector<HTMLElement>('.tabs__kind')?.textContent ?? ''
+  }
+
+  it('writes the type beside the name, so the glyph is not the only way to tell', () => {
+    strip().show([{ ...PREVIEWING }], PREVIEWING)
+
+    expect(kindOn(tabs().at(0))).toBe('preview')
+  })
+
+  it('uses the same word it announces, rather than a second name for one thing', () => {
+    strip().show([{ ...SOURCING }], SOURCING)
+
+    expect(kindOn(tabs().at(0))).toBe('HTML')
+  })
+
+  it('says nothing on an editor tab, which has no other view to be confused with', () => {
+    strip().show([{ ...EDITING }], EDITING)
+
+    expect(kindOn(tabs().at(0))).toBe('')
+  })
+
+  it('names the type in the title too, so hovering answers it without a click', () => {
+    strip().show([{ ...PREVIEWING }], PREVIEWING)
+
+    expect(tabs().at(0)?.title).toBe('journal/a.md, preview')
+  })
+})

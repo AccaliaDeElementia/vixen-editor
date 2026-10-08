@@ -90,7 +90,9 @@ function rowFor(node: TrashEntryNode, depth: number): Row {
   element.append(tick, label(node))
 
   const reason = blockingReason(node)
-  element.setAttribute('aria-label', reason === null ? node.name : `${node.name}, ${reason}`)
+  const described = reason === null ? node.name : `${node.name}, ${reason}`
+  element.setAttribute('aria-label', described)
+  element.title = described
   if (reason !== null) element.append(blockedNote(reason))
   element.append(rename)
 
