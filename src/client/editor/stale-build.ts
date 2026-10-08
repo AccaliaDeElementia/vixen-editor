@@ -10,8 +10,8 @@ const CARRY_ON = 'carry-on'
 
 const CHOICES = [
   { value: RELOAD_NOW, label: 'Reload now' },
-  { value: SAVE_AND_RELOAD, label: 'Save my work and reload' },
-  { value: CARRY_ON, label: 'Continue without reloading' },
+  { value: SAVE_AND_RELOAD, label: 'Save my work and reload', tone: 'success' },
+  { value: CARRY_ON, label: 'Continue without reloading', tone: 'warning' },
 ]
 
 const TITLE = 'This page is out of date'
@@ -56,7 +56,14 @@ export function createStaleBuild(options: StaleBuildOptions): StaleBuild {
       return
     }
 
-    if (warning !== null) warning.hidden = false
+    leaveTheWarningUp()
+  }
+
+  function leaveTheWarningUp(): void {
+    if (warning?.hidden !== true) return
+
+    warning.hidden = false
+    options.announce(warning.getAttribute('aria-label') ?? TITLE)
   }
 
   warning?.addEventListener('click', () => {

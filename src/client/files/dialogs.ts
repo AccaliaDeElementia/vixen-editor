@@ -5,6 +5,7 @@ type RejectionMessage = string
 const DIALOG_SELECTOR = '#file-dialog'
 
 const CONFIRM_VALUE = 'confirm'
+const DEFAULT_TONE = 'primary'
 
 export type NameResolver = (typed: string) => string
 
@@ -26,6 +27,7 @@ interface ConfirmRequest {
 interface Choice {
   value: string
   label: string
+  tone?: string
 }
 
 interface ChooseRequest {
@@ -198,10 +200,10 @@ async function confirmWith(parts: Parts, request: ConfirmRequest): Promise<boole
 }
 
 function choiceButton(choice: Choice): HTMLButtonElement {
-  const { value, label } = choice
+  const { value, label, tone = DEFAULT_TONE } = choice
   const button = document.createElement('button')
   button.type = 'submit'
-  button.className = 'modal__button modal__button--primary'
+  button.className = `modal__button modal__button--${tone}`
   button.value = value
   button.textContent = label
 

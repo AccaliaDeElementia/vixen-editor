@@ -155,6 +155,16 @@ describe('the build the server is serving', () => {
   })
 })
 
+describe('a reader whose stream has dropped', () => {
+  it('is told how soon to come back, rather than left on the browser’s own long wait', async () => {
+    const reader = await listeningTo(app)
+
+    const opening = await nextText(reader)
+
+    expect(opening).toMatch(/\nretry: \d+\n/v)
+  })
+})
+
 describe('a stream nothing is happening on', () => {
   it('beats, so whatever sits between the server and the reader has traffic to see', async () => {
     const reader = await listeningTo(beatingQuickly())

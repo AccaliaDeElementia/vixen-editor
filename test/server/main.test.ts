@@ -350,6 +350,19 @@ describe('startServer', () => {
     expect(orphanWhenServeRan).toBe(false)
   })
 
+  it('still serves when the build cannot be identified, because that is a diagnostic', async () => {
+    vi.spyOn(fs, 'readFile').mockRejectedValue(Object.assign(new Error('EACCES'), { code: 'EACCES' }))
+    const { runtime, order } = recordingRuntime()
+
+    const server = await startServer(runtime)
+
+    expect({ closes: typeof server.close, order }).toStrictEqual({
+      closes: 'function',
+      order: ['loadEnvFile', 'serve'],
+    })
+    vi.restoreAllMocks()
+  })
+
   it('still serves when the sweep fails, because housekeeping is not the job', async () => {
     vi.spyOn(fs, 'readdir').mockRejectedValue(Object.assign(new Error('EACCES'), { code: 'EACCES' }))
     const { runtime, order } = recordingRuntime()

@@ -1,7 +1,7 @@
 'use sanity'
 
 import { Hono } from 'hono'
-import { streamSSE, type SSEStreamingApi } from 'hono/streaming'
+import { streamSSE, type SSEMessage, type SSEStreamingApi } from 'hono/streaming'
 
 import type { Changes, StoreChange } from '../changes.ts'
 
@@ -12,6 +12,7 @@ const SYNC_EVENT = 'sync'
 const NOTHING_TO_SAY = ''
 
 const HEARTBEAT_MS = 60_000
+const RECONNECT_AFTER_MS = 500
 
 interface KeepingAlive {
   reset: () => void
@@ -52,7 +53,13 @@ export function eventRoutes(options: EventOptions): Hono {
 
       function say(event: string, data: string): void {
         alive.reset()
-        void stream.writeSSE({ event, data, id: String(changes.lastAnnouncedAt()) })
+        const message: SSEMessage = {
+          event,
+          data,
+          id: String(changes.lastAnnouncedAt()),
+          retry: RECONNECT_AFTER_MS,
+        }
+        void stream.writeSSE(message)
       }
 
       if (buildId !== null) await stream.writeSSE({ event: BUILD_EVENT, data: buildId })

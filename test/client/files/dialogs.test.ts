@@ -713,3 +713,29 @@ describe('closing without a form', () => {
     expect(dialog().open).toBe(true)
   })
 })
+
+describe('a choice that says how it should look', () => {
+  function classesOn(position: number): string {
+    return document.querySelectorAll('#file-dialog-choices button')[position]?.className ?? ''
+  }
+
+  it('takes the look it asks for, so a dangerous course can be marked as one', () => {
+    const dialogs = createDialogs(document)
+
+    void dialogs.choose({
+      title: 'Out of date',
+      message: 'It moved on',
+      choices: [{ value: 'stay', label: 'Stay', tone: 'warning' }],
+    })
+
+    expect(classesOn(0)).toContain('modal__button--warning')
+  })
+
+  it('looks like every other button when it asks for nothing', () => {
+    const dialogs = createDialogs(document)
+
+    void dialogs.choose({ title: 'Out of date', message: 'It moved on', choices: [{ value: 'go', label: 'Go' }] })
+
+    expect(classesOn(0)).toContain('modal__button--primary')
+  })
+})

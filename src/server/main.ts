@@ -57,6 +57,16 @@ const defaultRuntime: Runtime = {
   publicDir: DEFAULT_PUBLIC_DIR,
 }
 
+async function buildIdOrUnknown(publicDir: string, templatesDir: string): Promise<string | null> {
+  try {
+    return await buildIdFor(publicDir, templatesDir)
+  } catch (error) {
+    logStartup('could not identify the build served from %s: %O', publicDir, error)
+
+    return null
+  }
+}
+
 async function sweepBeforeServing(docsRoot: string): Promise<void> {
   try {
     await sweepTemporaries(docsRoot)
@@ -71,7 +81,7 @@ export async function startServer(runtime: Runtime = defaultRuntime): Promise<Re
 
   const config = loadConfig(runtime.env)
   await sweepBeforeServing(config.docsRoot)
-  const app = createApp(config, runtime.publicDir, await buildIdFor(runtime.publicDir))
+  const app = createApp(config, runtime.publicDir, await buildIdOrUnknown(runtime.publicDir, config.templatesDir))
 
   return runtime.serve({ fetch: withClacks(app.fetch), port: config.port, hostname: config.host }, (info) => {
     logStartup('listening on http://%s:%d (docs: %s)', config.host, info.port, config.docsRoot)
