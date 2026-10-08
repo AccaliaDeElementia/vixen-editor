@@ -41,8 +41,12 @@ function decorationsFor(doc: string): FlatDecoration[] {
   return flatten(computeDecorations(createEditorState({ doc })))
 }
 
-function classesFor(doc: string): string[] {
-  return decorationsFor(doc).map((decoration) => decoration.class)
+function stylesIn(doc: string): FlatDecoration[] {
+  return decorationsFor(doc).filter((decoration) => decoration.class !== '')
+}
+
+function classesIn(doc: string): string[] {
+  return stylesIn(doc).map((decoration) => decoration.class)
 }
 
 describe('heading decorations', () => {
@@ -54,24 +58,22 @@ describe('heading decorations', () => {
     ['##### five', 5],
     ['###### six', 6],
   ])('decorates %s as level %i', (doc, level) => {
-    expect(classesFor(doc)).toStrictEqual([`cm-vixen-heading cm-vixen-heading-${String(level)}`])
+    expect(classesIn(doc)).toStrictEqual([`cm-vixen-heading cm-vixen-heading-${String(level)}`])
   })
 
   it('anchors the heading decoration at the start of the line', () => {
-    expect(decorationsFor('intro\n# title')).toStrictEqual([
-      { from: 6, to: 6, class: 'cm-vixen-heading cm-vixen-heading-1' },
-    ])
+    expect(stylesIn('intro\n# title')).toStrictEqual([{ from: 6, to: 6, class: 'cm-vixen-heading cm-vixen-heading-1' }])
   })
 
   it('decorates every heading in the document', () => {
-    expect(classesFor('# a\ntext\n## b')).toStrictEqual([
+    expect(classesIn('# a\ntext\n## b')).toStrictEqual([
       'cm-vixen-heading cm-vixen-heading-1',
       'cm-vixen-heading cm-vixen-heading-2',
     ])
   })
 
   it('allows leading spaces up to the markdown limit of three', () => {
-    expect(classesFor('   # indented')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+    expect(classesIn('   # indented')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
   })
 
   it.each([
@@ -82,35 +84,31 @@ describe('heading decorations', () => {
     ['an empty document', ''],
     ['plain prose', 'just some text'],
   ])('does not decorate %s', (_label, doc) => {
-    expect(classesFor(doc)).toStrictEqual([])
+    expect(classesIn(doc)).toStrictEqual([])
   })
 
   it('treats a lone hash with no text as a heading', () => {
-    expect(classesFor('#')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+    expect(classesIn('#')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
   })
 
   it('decorates a setext heading, which the line scan never recognised', () => {
-    expect(classesFor('Title\n=====')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+    expect(classesIn('Title\n=====')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
   })
 
   it('anchors a setext heading on its text, not on its underline', () => {
-    expect(decorationsFor('Title\n=====')).toStrictEqual([
-      { from: 0, to: 0, class: 'cm-vixen-heading cm-vixen-heading-1' },
-    ])
+    expect(stylesIn('Title\n=====')).toStrictEqual([{ from: 0, to: 0, class: 'cm-vixen-heading cm-vixen-heading-1' }])
   })
 
   it('decorates the second setext level', () => {
-    expect(classesFor('Title\n-----')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-2'])
+    expect(classesIn('Title\n-----')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-2'])
   })
 
   it('decorates a heading inside a blockquote, which the line scan skipped', () => {
-    expect(decorationsFor('> # quoted')).toStrictEqual([
-      { from: 0, to: 0, class: 'cm-vixen-heading cm-vixen-heading-1' },
-    ])
+    expect(stylesIn('> # quoted')).toStrictEqual([{ from: 0, to: 0, class: 'cm-vixen-heading cm-vixen-heading-1' }])
   })
 
   it('decorates a heading inside a list item', () => {
-    expect(classesFor('- # listed')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+    expect(classesIn('- # listed')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
   })
 })
 
@@ -120,15 +118,15 @@ describe('marker decorations', () => {
     ['FIXME', 'fixme'],
     ['NOTE', 'note'],
   ])('decorates a %s marker', (keyword, modifier) => {
-    expect(classesFor(`text ${keyword}: do it`)).toStrictEqual([`cm-vixen-marker cm-vixen-marker-${modifier}`])
+    expect(classesIn(`text ${keyword}: do it`)).toStrictEqual([`cm-vixen-marker cm-vixen-marker-${modifier}`])
   })
 
   it('spans the keyword and its colon', () => {
-    expect(decorationsFor('TODO: x')).toStrictEqual([{ from: 0, to: 5, class: 'cm-vixen-marker cm-vixen-marker-todo' }])
+    expect(stylesIn('TODO: x')).toStrictEqual([{ from: 0, to: 5, class: 'cm-vixen-marker cm-vixen-marker-todo' }])
   })
 
   it('decorates several markers on one line', () => {
-    expect(classesFor('TODO: a FIXME: b')).toStrictEqual([
+    expect(classesIn('TODO: a FIXME: b')).toStrictEqual([
       'cm-vixen-marker cm-vixen-marker-todo',
       'cm-vixen-marker cm-vixen-marker-fixme',
     ])
@@ -141,74 +139,74 @@ describe('marker decorations', () => {
     ['embedded in a word', 'ANTODO: x'],
     ['followed by letters', 'TODOS: x'],
   ])('does not decorate %s', (_label, doc) => {
-    expect(classesFor(doc)).toStrictEqual([])
+    expect(classesIn(doc)).toStrictEqual([])
   })
 
   it('decorates a marker that ends the document', () => {
-    expect(classesFor('TODO:')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
+    expect(classesIn('TODO:')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
   })
 
   it('ignores a marker inside inline code, which the line scan used to decorate', () => {
-    expect(classesFor('use `TODO: x` here')).toStrictEqual([])
+    expect(classesIn('use `TODO: x` here')).toStrictEqual([])
   })
 
   it('ignores a marker inside an indented block, which the line scan used to decorate', () => {
-    expect(classesFor('    TODO: x')).toStrictEqual([])
+    expect(classesIn('    TODO: x')).toStrictEqual([])
   })
 
   it('decorates a marker that begins where inline code ends, with nothing between', () => {
-    expect(classesFor('`code`TODO: x')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
+    expect(classesIn('`code`TODO: x')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
   })
 
   it('still decorates a marker beside inline code on the same line', () => {
-    expect(classesFor('`code` TODO: x')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
+    expect(classesIn('`code` TODO: x')).toStrictEqual(['cm-vixen-marker cm-vixen-marker-todo'])
   })
 })
 
 describe('fenced code blocks', () => {
   it('ignores headings inside a fence', () => {
-    expect(classesFor('```\n# not a heading\n```')).toStrictEqual([])
+    expect(classesIn('```\n# not a heading\n```')).toStrictEqual([])
   })
 
   it('ignores markers inside a fence', () => {
-    expect(classesFor('```\nTODO: ignored\n```')).toStrictEqual([])
+    expect(classesIn('```\nTODO: ignored\n```')).toStrictEqual([])
   })
 
   it('ignores content inside a tilde fence', () => {
-    expect(classesFor('~~~\n# not a heading\n~~~')).toStrictEqual([])
+    expect(classesIn('~~~\n# not a heading\n~~~')).toStrictEqual([])
   })
 
   it('handles an info string on the opening fence', () => {
-    expect(classesFor('```ts\n# not a heading\n```')).toStrictEqual([])
+    expect(classesIn('```ts\n# not a heading\n```')).toStrictEqual([])
   })
 
   it('resumes decorating after the fence closes', () => {
-    expect(classesFor('```\n# inside\n```\n# outside')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+    expect(classesIn('```\n# inside\n```\n# outside')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
   })
 
   it('treats an unterminated fence as running to the end of the document', () => {
-    expect(classesFor('```\n# inside\n# still inside')).toStrictEqual([])
+    expect(classesIn('```\n# inside\n# still inside')).toStrictEqual([])
   })
 
   it('does not let a tilde fence be closed by a backtick fence', () => {
-    expect(classesFor('~~~\n```\n# still inside')).toStrictEqual([])
+    expect(classesIn('~~~\n```\n# still inside')).toStrictEqual([])
   })
 
   it('decorates before the fence opens', () => {
-    expect(classesFor('# before\n```\n# inside\n```')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
+    expect(classesIn('# before\n```\n# inside\n```')).toStrictEqual(['cm-vixen-heading cm-vixen-heading-1'])
   })
 })
 
 describe('ordering', () => {
   it('emits decorations sorted by position', () => {
-    const decorations = decorationsFor('# title\nTODO: later\n## sub')
+    const decorations = stylesIn('# title\nTODO: later\n## sub')
     const positions = decorations.map((decoration) => decoration.from)
 
     expect(positions).toStrictEqual([...positions].sort((a, b) => a - b))
   })
 
   it('places a line decoration before a marker on the same line', () => {
-    expect(classesFor('# TODO: both')).toStrictEqual([
+    expect(classesIn('# TODO: both')).toStrictEqual([
       'cm-vixen-heading cm-vixen-heading-1',
       'cm-vixen-marker cm-vixen-marker-todo',
     ])
@@ -254,7 +252,7 @@ describe('vixenDecorationField', () => {
     )
     holder.follow(view, 'journal/notes.md')
 
-    const titles = flatten(view.state.field(vixenDecorationField))
+    const titles = flatten(view.state.field(vixenDecorationField)).filter((shown) => shown.class !== '')
 
     given(() => {
       expect(titles).toHaveLength(1)
@@ -389,5 +387,37 @@ describe('a markdown link to somewhere in the store', () => {
 
   it('needs the markdown language, which is why createEditorState composes them', () => {
     expect(computeDecorations(EditorState.create({ doc: '[a](a.md)', extensions: [vixenDecorations] })).size).toBe(0)
+  })
+})
+
+describe('what the spell checker is kept away from', () => {
+  function skipped(doc: string): string[] {
+    return decorationsFor(doc)
+      .filter((decoration) => decoration.class === '')
+      .map(({ from, to }) => doc.slice(from, to))
+  }
+
+  it('skips a code span, where a misspelling is usually an identifier', () => {
+    expect(skipped('a `wrod` here')).toStrictEqual(['`wrod`'])
+  })
+
+  it('skips a fenced block, for the same reason at a larger scale', () => {
+    expect(skipped('```\nwrod\n```')).toStrictEqual(['```\nwrod\n```'])
+  })
+
+  it('skips a link destination, which is a path and not a word', () => {
+    expect(skipped('[text](jrnl/entrie.md)')).toStrictEqual(['jrnl/entrie.md'])
+  })
+
+  it('skips an autolink, which is the same thing without a label', () => {
+    expect(skipped('<https://exmaple.test/pth>')).toStrictEqual(['<https://exmaple.test/pth>'])
+  })
+
+  it('leaves the words of a link alone, because the label is prose a reader wrote', () => {
+    expect(skipped('[teh label](a.md)')).toStrictEqual(['a.md'])
+  })
+
+  it('leaves ordinary prose alone, which is the whole point of turning the checker on', () => {
+    expect(skipped('just some words')).toStrictEqual([])
   })
 })

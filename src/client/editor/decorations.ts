@@ -7,6 +7,7 @@ import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { linkTargetsIn } from './link-targets.ts'
+import { isSyntax, notProse } from './spelling.ts'
 import { inputsChanged } from './recompute.ts'
 
 const WHOLE_MATCH = 0
@@ -71,6 +72,7 @@ function decorateLinks(state: EditorState, text: string, ranges: Array<Range<Dec
 function computeDecorations(state: EditorState): DecorationSet {
   const ranges: Array<Range<Decoration>> = []
   const code: CodeRange[] = []
+  const syntax: CodeRange[] = []
   const text = state.doc.toString()
 
   syntaxTree(state).iterate({
@@ -79,6 +81,10 @@ function computeDecorations(state: EditorState): DecorationSet {
       if (level !== null) ranges.push(headingDecoration(level).range(state.doc.lineAt(node.from).from))
 
       if (CODE_NODES.has(node.name)) code.push({ from: node.from, to: node.to })
+      if (!isSyntax(node.name) || inCode(node.from, syntax)) return
+
+      syntax.push({ from: node.from, to: node.to })
+      ranges.push(notProse.range(node.from, node.to))
     },
   })
 

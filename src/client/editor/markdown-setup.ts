@@ -9,6 +9,7 @@ import { vixenDecorations } from './decorations.ts'
 import { vixenImages } from './images.ts'
 import { vixenEditorLabel } from './labelling.ts'
 import { vixenLinkTooltip } from './link-tooltip.ts'
+import { vixenSpellcheck } from './spelling.ts'
 import { vixenDarkSurface, vixenHighlighting } from '../highlight.ts'
 
 const START_OF_DOCUMENT = 0
@@ -31,6 +32,7 @@ export function createEditorState(options: CreateEditorStateOptions = {}): Edito
       vixenImages,
       vixenEditorLabel,
       vixenLinkTooltip,
+      vixenSpellcheck,
       ...(options.extensions ?? []),
     ],
   })
