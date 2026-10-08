@@ -116,3 +116,43 @@ describe('a caret in a document that has only just opened', () => {
     expect(stored()).toStrictEqual([])
   })
 })
+
+describe('two documents being read at once, one in each pane', () => {
+  it('writes the second one even while the first is still inside its throttle', () => {
+    const memory = remembering()
+    memory.moved('notes.md', SOMEWHERE)
+    clock += MIDWAY
+
+    memory.moved('other.md', FURTHER_ON)
+
+    expect(stored()).toStrictEqual([
+      { path: 'other.md', position: FURTHER_ON },
+      { path: 'notes.md', position: SOMEWHERE },
+    ])
+  })
+
+  it('writes what each was last at on leaving, rather than only the one that moved last', () => {
+    const memory = remembering()
+    memory.moved('notes.md', SOMEWHERE)
+    memory.moved('notes.md', FURTHER_ON)
+    memory.moved('other.md', SOMEWHERE)
+
+    memory.settle()
+
+    expect(stored()).toStrictEqual([
+      { path: 'notes.md', position: FURTHER_ON },
+      { path: 'other.md', position: SOMEWHERE },
+    ])
+  })
+
+  it('keeps a caret one of them has not written yet when the other opens somewhere new', () => {
+    const memory = remembering()
+    memory.moved('notes.md', SOMEWHERE)
+    memory.moved('notes.md', FURTHER_ON)
+
+    memory.opened('other.md', SOMEWHERE)
+    memory.settle()
+
+    expect(stored()).toStrictEqual([{ path: 'notes.md', position: FURTHER_ON }])
+  })
+})

@@ -9,9 +9,10 @@ interface CaretMemoryOptions {
   now?: (() => number) | undefined
 }
 
-interface RestingCaret {
-  path: string
-  position: number
+interface Tracked {
+  written: number | null
+  wroteAt: number | null
+  latest: number | null
 }
 
 export interface CaretMemory {
@@ -20,44 +21,42 @@ export interface CaretMemory {
   settle: () => void
 }
 
-function theSamePlace(one: RestingCaret | null, another: RestingCaret): boolean {
-  return one !== null && one.path === another.path && one.position === another.position
-}
+const UNTOUCHED: Tracked = { written: null, wroteAt: null, latest: null }
 
 export function createCaretMemory(options: CaretMemoryOptions = {}): CaretMemory {
   const settlesMs = options.settlesMs ?? SETTLES_MS
   const now = options.now ?? Date.now
+  const tracked = new Map<string, Tracked>()
 
-  let latest: RestingCaret | null = null
-  let written: RestingCaret | null = null
-  let wroteAt: number | null = null
+  function trackedFor(entryPath: string): Tracked {
+    return tracked.get(entryPath) ?? UNTOUCHED
+  }
 
-  function write(resting: RestingCaret): void {
-    if (theSamePlace(written, resting)) return
+  function write(entryPath: string, position: number): void {
+    const held = trackedFor(entryPath)
+    if (position === held.written) return
 
-    written = resting
-    wroteAt = now()
-    rememberCaret(resting.path, resting.position)
+    tracked.set(entryPath, { ...held, written: position, wroteAt: now() })
+    rememberCaret(entryPath, position)
   }
 
   return {
     opened(entryPath: string, position: number): void {
-      latest = null
-      written = { path: entryPath, position }
-      wroteAt = null
+      tracked.set(entryPath, { written: position, wroteAt: null, latest: null })
     },
 
     moved(entryPath: string, position: number): void {
-      latest = { path: entryPath, position }
-      if (wroteAt !== null && now() - wroteAt < settlesMs) return
+      const held = trackedFor(entryPath)
+      tracked.set(entryPath, { ...held, latest: position })
+      if (held.wroteAt !== null && now() - held.wroteAt < settlesMs) return
 
-      write(latest)
+      write(entryPath, position)
     },
 
     settle(): void {
-      if (latest === null) return
-
-      write(latest)
+      for (const [entryPath, held] of tracked) {
+        if (held.latest !== null) write(entryPath, held.latest)
+      }
     },
   }
 }
