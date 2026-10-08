@@ -190,6 +190,8 @@
 }
 
 .tabs__name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -930,6 +932,9 @@
 }
 
 .tabs__tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
   flex: 0 1 auto;
   min-width: 8ch;
   max-width: 24ch;
@@ -939,7 +944,6 @@
   color: $muted;
   font-size: $font-size-sm;
   white-space: nowrap;
-  text-overflow: ellipsis;
   overflow: hidden;
   cursor: pointer;
 
