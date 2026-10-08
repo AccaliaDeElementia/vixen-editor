@@ -2,6 +2,8 @@
 
 import { basenameOf } from '../../shared/link-paths.ts'
 import { DRAG_MIME, DRAG_TAB_MIME } from '../drag-payload.ts'
+import { decorativeIcon, ENTRY_GLYPHS } from '../tree-rows.ts'
+import type { TabView } from '../doc-path.ts'
 import { tabIdentity, type TabAt } from './open-tabs.ts'
 
 const SCROLLER_SELECTOR = '[data-part="tabs-scroller"]'
@@ -21,8 +23,32 @@ const NOTHING_DRAGGED = ''
 const CLOSE_GLYPH = 'close'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
 const VIEW_DESCRIPTIONS: Readonly<Record<string, string>> = { source: 'HTML', markup: 'preview' }
+const ICON_CLASS = 'icon tabs__icon'
+const MUTED_TONE = 'muted'
+
+interface TabIcon {
+  glyph: string
+  tone: string
+}
+
+const TAB_ICONS: Readonly<Record<TabView, TabIcon>> = {
+  editor: { glyph: ENTRY_GLYPHS.document, tone: 'document' },
+  image: { glyph: ENTRY_GLYPHS.image, tone: 'image' },
+  source: { glyph: 'code_blocks', tone: 'source' },
+  markup: { glyph: 'preview', tone: 'markup' },
+  missing: { glyph: 'search_off', tone: MUTED_TONE },
+  deleted: { glyph: 'delete', tone: MUTED_TONE },
+  unreachable: { glyph: 'cloud_off', tone: MUTED_TONE },
+}
+
 const REACHABLE = 0
 const PASSED_OVER = -1
+
+function iconFor(view: TabView): HTMLElement {
+  const { [view]: shown } = TAB_ICONS
+
+  return decorativeIcon(shown.glyph, `${ICON_CLASS} icon--${shown.tone}`)
+}
 
 interface ShownTab extends TabAt {
   ephemeral?: boolean
@@ -112,7 +138,8 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     const name = document.createElement('span')
     name.className = NAME_CLASS
     name.textContent = labelFor(tab)
-    element.append(name)
+    element.title = path
+    element.append(iconFor(view), name)
 
     const announced = announcedAs(tab)
     if (announced !== null) element.setAttribute('aria-label', announced)

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../../cast.ts'
 import { createTabStrip, type TabStrip } from '../../../src/client/layout/tab-strip.ts'
+import { ENTRY_GLYPHS } from '../../../src/client/tree-rows.ts'
 
 import { renderPane } from '../templates.ts'
 
@@ -535,5 +536,80 @@ describe('a strip whose markup carries no scroller', () => {
     }).show([EDITING], EDITING)
 
     expect(bare.childElementCount).toBe(0)
+  })
+})
+
+describe('a tab looking like the row it came from', () => {
+  const IMAGE = { path: 'journal/photo.png', view: 'image' } as const
+  const MISSING = { path: 'journal/gone.md', view: 'missing' } as const
+
+  function glyphOn(tab: HTMLElement | undefined): string {
+    return tab?.querySelector<HTMLElement>('.tabs__icon')?.textContent ?? ''
+  }
+
+  function toneOn(tab: HTMLElement | undefined): string {
+    return tab?.querySelector<HTMLElement>('.tabs__icon')?.className ?? ''
+  }
+
+  it('carries the glyph the file browser gives a document', () => {
+    strip().show([{ ...EDITING }], EDITING)
+
+    expect(glyphOn(tabs().at(0))).toBe(ENTRY_GLYPHS.document)
+  })
+
+  it('carries the glyph the file browser gives an image', () => {
+    strip().show([{ ...IMAGE }], IMAGE)
+
+    expect(glyphOn(tabs().at(0))).toBe(ENTRY_GLYPHS.image)
+  })
+
+  it('takes the colour that kind has in the file browser', () => {
+    strip().show([{ ...IMAGE }], IMAGE)
+
+    expect(toneOn(tabs().at(0))).toContain('icon--image')
+  })
+
+  it('gives a rendered preview the glyph its ribbon control carries', () => {
+    strip().show([{ ...PREVIEWING }], PREVIEWING)
+
+    expect(glyphOn(tabs().at(0))).toBe('preview')
+  })
+
+  it('gives an html preview the glyph its ribbon control carries', () => {
+    strip().show([{ ...SOURCING }], SOURCING)
+
+    expect(glyphOn(tabs().at(0))).toBe('code_blocks')
+  })
+
+  it('gives every kind of tab a glyph, so no tab sits in the strip without one', () => {
+    strip().show([{ ...MISSING }], MISSING)
+
+    expect(glyphOn(tabs().at(0))).not.toBe('')
+  })
+
+  it('gives the rendered preview a tone of its own, so two previews are told apart at a glance', () => {
+    strip().show([{ ...PREVIEWING }], PREVIEWING)
+
+    expect(toneOn(tabs().at(0))).toContain('icon--markup')
+  })
+
+  it('gives the html preview a different one, rather than the two sharing muted', () => {
+    strip().show([{ ...SOURCING }], SOURCING)
+
+    expect(toneOn(tabs().at(0))).toContain('icon--source')
+  })
+
+  it('hides the glyph from anything that cannot see it, so the name is unchanged', () => {
+    strip().show([{ ...EDITING }], EDITING)
+
+    expect(tabs().at(0)?.querySelector('.tabs__icon')?.getAttribute('aria-hidden')).toBe('true')
+  })
+})
+
+describe('a tab whose name is too long to show', () => {
+  it('carries the whole path, so the part that is clipped can still be read', () => {
+    strip().show([{ ...EDITING }], EDITING)
+
+    expect(tabs().at(0)?.title).toBe('journal/a.md')
   })
 })

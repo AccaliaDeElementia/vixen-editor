@@ -355,22 +355,32 @@
 .tree__icon {
   flex: none;
   font-size: 1.15em;
+}
 
-  &--folder {
-    color: $muted;
-  }
+.tabs__icon {
+  flex: 0 0 auto;
+  font-size: 1.1em;
+}
 
-  &--document {
-    color: $info;
-  }
+.icon--folder,
+.icon--muted {
+  color: $muted;
+}
 
-  &--image {
-    color: $success;
-  }
+.icon--document {
+  color: $info;
+}
 
-  &--trash {
-    color: $muted;
-  }
+.icon--image {
+  color: $success;
+}
+
+.icon--markup {
+  color: $warning;
+}
+
+.icon--source {
+  color: $danger;
 }
 
 .tree__empty-trash {

@@ -43,8 +43,8 @@ export interface TreeViewModel {
   selected: string | null
 }
 
-function icon(name: string, modifier: string): HTMLElement {
-  return decorativeIcon(name, `icon tree__icon tree__icon--${modifier}`)
+function icon(name: string, tone: string): HTMLElement {
+  return decorativeIcon(name, `icon tree__icon icon--${tone}`)
 }
 
 function twisty(expanded: boolean | null): HTMLElement {
@@ -88,6 +88,7 @@ function rowIdentity(path: string, kind: EntryKind | 'trash-root'): string {
 
 function row(options: RowOptions, drawn: Map<string, HTMLElement>): HTMLElement {
   const { path, kind, draggable, name, depth, expanded, selected, href } = options
+  const shownAs = kind === 'trash-root' ? 'folder' : kind
   const identity = rowIdentity(path, kind)
   const element = drawn.get(identity) ?? treeRow({ path, kind, depth }, href)
   drawn.set(identity, element)
@@ -100,11 +101,7 @@ function row(options: RowOptions, drawn: Map<string, HTMLElement>): HTMLElement 
   if (expanded === null) element.removeAttribute('aria-expanded')
   else element.setAttribute('aria-expanded', String(expanded))
 
-  element.replaceChildren(
-    twisty(expanded),
-    icon(ENTRY_GLYPHS[kind === 'trash-root' ? 'folder' : kind], kind),
-    label(name),
-  )
+  element.replaceChildren(twisty(expanded), icon(ENTRY_GLYPHS[shownAs], shownAs), label(name))
 
   return element
 }
