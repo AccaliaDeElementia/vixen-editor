@@ -49,6 +49,7 @@ import { onInsertRequested } from '../insert-entry.ts'
 import { onKeepRequested } from '../keep-request.ts'
 import { onOpenAsideRequested } from '../open-aside.ts'
 import { onSplitChanged, onSplitDismissRequested } from '../split-changed.ts'
+import { onTrashEmptied } from '../trash-emptied.ts'
 import { announceStoreChanged } from '../store-changed.ts'
 import { createDialogs, type Dialogs } from '../files/dialogs.ts'
 import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
@@ -430,6 +431,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     aside.reconcile()
   })
 
+  const emptied = onTrashEmptied(root, closingTabs.closeTrashTabs)
+
   const restored = aside.reconcile()
   if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
 
@@ -450,6 +453,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     offKeepRequested()
     offOpenAsideRequested()
     splitChanges.offSplitChanged()
+    emptied.offTrashEmptied()
     dismissals.offSplitDismissRequested()
     previews.stop()
     toast.dismissRaised()

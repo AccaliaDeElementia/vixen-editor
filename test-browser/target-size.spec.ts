@@ -40,7 +40,7 @@ test('every pointer target in the workspace is at least 24 by 24', async ({ page
   await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: '# hi\n' } })
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
   expect(await undersizedTargetsOn(page)).toStrictEqual([])
 
@@ -61,18 +61,16 @@ test('every pointer target in an open dialog is at least 24 by 24', async ({ pag
   await request.delete(`/api/files/entries/${folder}`)
 })
 
-test('every pointer target in an expanded trash is at least 24 by 24', async ({ page, request }) => {
+test('every pointer target in the trash panel is at least 24 by 24', async ({ page, request }) => {
   const folder = `sizet-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: folder } })
   await request.post('/api/files/documents', { data: { path: `${folder}/gone.md`, content: '# gone\n' } })
   await request.delete(`/api/files/entries/${folder}/gone.md`)
 
   await page.goto(`/doc/${folder}/`)
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
-  const trash = page.locator('[role="treeitem"][data-path=".trash"]')
-  await givenAsync(expect(trash).toBeVisible())
-  await trash.click()
+  await page.locator('#show-trash').click()
   await givenAsync(
     expect(
       page.locator('[role="treeitem"][data-path^=".trash/"]').filter({ hasText: `${folder}/gone.md` }),
@@ -113,7 +111,7 @@ test('the resize handle straddles the boundary rather than sitting inside the ex
   await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: '# hi\n' } })
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
   const geometry = await page.evaluate(() => {
     const handle = document.querySelector('#explorer-resizer')?.getBoundingClientRect()

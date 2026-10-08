@@ -12,7 +12,7 @@ import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, rows, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, rows, showTrash, trashRows, treePage } from '../../tree-fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [
@@ -60,7 +60,7 @@ describe('loading', () => {
   it('renders the tree it fetched', async () => {
     await start()
 
-    expect(paths()).toStrictEqual(['journal', 'notes.md', TRASH_PATH])
+    expect(paths()).toStrictEqual(['journal', 'notes.md'])
   })
 
   it('opens collapsed', async () => {
@@ -128,7 +128,7 @@ describe('defaults', () => {
 
     await mountTree()
 
-    expect(paths()).toStrictEqual(['a.md', TRASH_PATH])
+    expect(paths()).toStrictEqual(['a.md'])
     vi.unstubAllGlobals()
   })
 })
@@ -186,14 +186,11 @@ describe('remembering open folders', () => {
     expect([...readOpenFolders()]).not.toContain('journal')
   })
 
-  it('keeps the trash open across a reload', async () => {
+  it('leaves the trash out of the folders it remembers, since it is a panel and not a folder', async () => {
     await start()
-    rowFor(TRASH_PATH).click()
+    showTrash(host)
 
-    host = treePage()
-    await start()
-
-    expect([...readOpenFolders()]).toContain(TRASH_PATH)
+    expect([...readOpenFolders()]).not.toContain(TRASH_PATH)
   })
 })
 
@@ -241,10 +238,10 @@ describe('clicking', () => {
     expect(event.defaultPrevented).toBe(false)
   })
 
-  it('opens the trash to show what is in it', async () => {
+  it('shows what is in the trash once its panel is asked for', async () => {
     await start('/doc/', fakeClient(SAMPLE, [TRASHED]))
 
-    rowFor(TRASH_PATH).click()
+    showTrash(host)
 
     expect(document.querySelectorAll('[role="treeitem"][data-trash-id]')).toHaveLength(1)
   })
@@ -270,9 +267,9 @@ describe('keyboard navigation', () => {
   it('stays put at the end of the tree rather than wrapping to the top', async () => {
     await start()
 
-    press(TRASH_PATH, 'ArrowDown')
+    press('notes.md', 'ArrowDown')
 
-    expect(document.activeElement).toBe(rowFor(TRASH_PATH))
+    expect(document.activeElement).toBe(rowFor('notes.md'))
   })
 
   it('stays put at the top of the tree rather than wrapping to the bottom', async () => {
@@ -305,7 +302,7 @@ describe('keyboard navigation', () => {
 
     press('notes.md', 'ArrowRight')
 
-    expect(document.activeElement).not.toBe(rowFor(TRASH_PATH))
+    expect(document.activeElement).toBe(rowFor('notes.md'))
   })
 
   it('collapses an open folder with the left arrow', async () => {
@@ -340,7 +337,7 @@ describe('keyboard navigation', () => {
 
     press('notes.md', 'ArrowLeft')
 
-    expect(paths()).toStrictEqual(['journal', 'notes.md', TRASH_PATH])
+    expect(paths()).toStrictEqual(['journal', 'notes.md'])
   })
 
   it('toggles a folder with Enter', async () => {
@@ -432,15 +429,15 @@ describe('something else changing the store', () => {
 })
 
 describe('being asked to show an entry', () => {
-  it('opens the trash so a deleted entry can be seen', async () => {
+  it('shows the trash panel so a deleted entry can be seen at all', async () => {
     await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])) })
     given(() => {
-      expect(rowFor(TRASH_PATH).getAttribute('aria-expanded')).toBe('false')
+      expect(trashRows()).toStrictEqual([])
     })
 
     requestReveal(host, joinPath(TRASH_PATH, TRASHED.id))
 
-    expect(rowFor(TRASH_PATH).getAttribute('aria-expanded')).toBe('true')
+    expect(trashRows().map((row) => row.dataset.trashId)).toStrictEqual([TRASHED.id])
   })
 
   it('selects the entry, so it is obvious which one is meant', async () => {
@@ -460,5 +457,30 @@ describe('being asked to show an entry', () => {
     requestReveal(host, joinPath(TRASH_PATH, TRASHED.id))
 
     expect(document.activeElement).toBe(elsewhere)
+  })
+})
+
+describe('a page with no trash panel in it', () => {
+  function withoutTheTrashPanel(): HTMLElement {
+    const page = treePage()
+    page.querySelector('[data-panel="trash"]')?.remove()
+
+    return page
+  }
+
+  it('still renders the file browser, which is the panel that is there', async () => {
+    host = withoutTheTrashPanel()
+
+    await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])) })
+
+    expect(paths()).toStrictEqual(['journal', 'notes.md'])
+  })
+
+  it('asks nothing of the control that is not there either', async () => {
+    host = withoutTheTrashPanel()
+
+    await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(fakeClient(SAMPLE, [TRASHED])) })
+
+    expect(host.querySelector('#empty-trash')).toBeNull()
   })
 })

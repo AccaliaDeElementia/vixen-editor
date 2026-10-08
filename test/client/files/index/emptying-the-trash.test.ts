@@ -1,14 +1,14 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { announceStoreChanged } from '../../../../src/client/store-changed.ts'
+import { onTrashEmptied } from '../../../../src/client/trash-emptied.ts'
 import { parseTree } from '../../../../src/client/files/tree-model.ts'
-import { EMPTY_TRASH_SELECTOR, TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
 import { cast } from '../../../cast.ts'
-import { given } from '../../../conditions.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, statusText, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, showTrash, statusText, trashRows, treePage } from '../../tree-fixtures.ts'
 
 const SAMPLE = parseTree({ tree: [{ name: 'notes.md', path: 'notes.md', kind: 'document' }] })
 
@@ -18,11 +18,19 @@ let settled: () => Promise<void> = () => Promise.resolve()
 
 async function start(trash = [TRASHED, { ...TRASHED, id: 'bbbb' }]): Promise<void> {
   client = fakeClient(SAMPLE, trash)
-  settled = await mountTree({ root: host, pathname: '/doc/', client: cast<FilesClient>(client) })
+  dialogs.confirm.mockResolvedValue(true)
+  settled = await mountTree({
+    root: host,
+    pathname: '/doc/',
+    client: cast<FilesClient>(client),
+    dialogs: cast<Dialogs>(dialogs),
+  })
+  showTrash(host)
+  await settled()
 }
 
 function control(): HTMLButtonElement {
-  const button = rowFor(TRASH_PATH).querySelector<HTMLButtonElement>(EMPTY_TRASH_SELECTOR)
+  const button = host.querySelector<HTMLButtonElement>('#empty-trash')
   if (button === null) throw new Error('the trash offers no way to empty it')
 
   return button
@@ -33,8 +41,10 @@ beforeEach(() => {
   host = treePage()
 })
 
+const dialogs: { confirm: ReturnType<typeof vi.fn> } = { confirm: vi.fn().mockResolvedValue(true) }
+
 describe('asking to empty the trash', () => {
-  it('does nothing on the first click, because the second is the confirmation', async () => {
+  it('asks first, the same way deleting a file from the browser does', async () => {
     await start()
 
     control().click()
@@ -42,25 +52,18 @@ describe('asking to empty the trash', () => {
     expect(client.emptyTrash).not.toHaveBeenCalled()
   })
 
-  it('says what a second click would cost', async () => {
+  it('says what it would cost, where there is room to read it', async () => {
     await start()
 
     control().click()
 
-    expect(control().textContent).toBe('Delete 2 entries for good')
+    expect(dialogs.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '2 entries will be deleted for good, and cannot be restored afterwards.' }),
+    )
   })
 
-  it('leaves the trash closed, so confirming is not also a navigation', async () => {
+  it('empties it once the reader agrees', async () => {
     await start()
-
-    control().click()
-
-    expect(rowFor(TRASH_PATH).getAttribute('aria-expanded')).toBe('false')
-  })
-
-  it('empties it on the second click', async () => {
-    await start()
-    control().click()
 
     control().click()
     await settled()
@@ -68,10 +71,19 @@ describe('asking to empty the trash', () => {
     expect(client.emptyTrash).toHaveBeenCalledTimes(1)
   })
 
+  it('leaves it alone when the reader does not', async () => {
+    await start()
+    dialogs.confirm.mockResolvedValue(false)
+
+    control().click()
+    await settled()
+
+    expect(client.emptyTrash).not.toHaveBeenCalled()
+  })
+
   it('says how many actually went, which the server is the judge of', async () => {
     await start()
     client.emptyTrash.mockResolvedValue(2)
-    control().click()
 
     control().click()
     await settled()
@@ -82,7 +94,6 @@ describe('asking to empty the trash', () => {
   it('says it in the singular when one entry went', async () => {
     await start([TRASHED])
     client.emptyTrash.mockResolvedValue(1)
-    control().click()
 
     control().click()
     await settled()
@@ -92,84 +103,89 @@ describe('asking to empty the trash', () => {
 
   it('redraws from the server, so the trash reflects what is really left', async () => {
     await start()
-    control().click()
     client.trash.mockResolvedValue([])
 
     control().click()
     await settled()
 
-    expect(rowFor(TRASH_PATH).textContent).toContain('Trash (0)')
+    expect(trashRows()).toStrictEqual([])
   })
 
   it('reports a refusal rather than looking as though the trash emptied', async () => {
     await start()
     client.emptyTrash.mockRejectedValue(new Error('Busy'))
-    control().click()
 
     control().click()
     await settled()
 
     expect(statusText()).toContain('Busy')
   })
-
-  it('disarms when the trash itself changes, so a stale confirmation cannot fire', async () => {
-    await start()
-    control().click()
-    given(() => {
-      expect(control().textContent).toBe('Delete 2 entries for good')
-    })
-
-    client.trash.mockResolvedValue([TRASHED])
-    announceStoreChanged(host)
-    await settled()
-
-    expect(control().textContent).toBe('delete_sweep')
-  })
 })
 
-describe('a confirmation the trash moved out from under', () => {
-  async function trashBecomes(entries: unknown[]): Promise<void> {
-    client.trash.mockResolvedValue(entries)
-    announceStoreChanged(host)
-    await settled()
+describe('a trash panel with nothing in it', () => {
+  function placeholder(): HTMLElement | null {
+    return host.querySelector<HTMLElement>('[data-part="trash-empty"]')
   }
 
-  it('is dropped while the trash is empty, where there is no button to carry it', async () => {
+  it('says so, rather than showing an empty pane that reads as broken', async () => {
+    await start([])
+
+    expect(placeholder()?.hidden).toBe(false)
+  })
+
+  it('says what the panel is for, since a reader is seeing it before using it', async () => {
+    await start([])
+
+    expect(placeholder()?.textContent).toContain('until you empty the trash')
+  })
+
+  it('gets out of the way once something has been deleted', async () => {
     await start([TRASHED])
-    control().click()
-    given(() => {
-      expect(control().textContent).toBe('Delete 1 entry for good')
-    })
 
-    await trashBecomes([])
-    await trashBecomes([TRASHED])
+    expect(placeholder()?.hidden).toBe(true)
+  })
 
-    expect(control().textContent).toBe('delete_sweep')
+  it('comes back when the last entry goes', async () => {
+    await start([TRASHED])
+    client.trash.mockResolvedValue([])
+    announceStoreChanged(host)
+    await settled()
+
+    expect(placeholder()?.hidden).toBe(false)
+  })
+
+  it('offers nothing to empty, since there is nothing to empty', async () => {
+    await start([])
+
+    expect(host.querySelector<HTMLElement>('#empty-trash')?.hidden).toBe(true)
   })
 })
 
-describe('a confirmation that outlives a redraw', () => {
-  it('still deletes on the second click, rather than asking all over again', async () => {
+describe('what emptying the trash tells the rest of the app', () => {
+  it('announces it, so a pane showing a deleted entry can let go of it', async () => {
     await start()
-    control().click()
-    given(() => {
-      expect(client.emptyTrash).not.toHaveBeenCalled()
+    let heard = 0
+    onTrashEmptied(host, () => {
+      heard += 1
     })
 
-    announceStoreChanged(host)
-    await settled()
     control().click()
+    await settled()
 
-    expect(client.emptyTrash).toHaveBeenCalledTimes(1)
+    expect(heard).toBe(1)
   })
 
-  it('still reads as armed after the tree is drawn again', async () => {
+  it('says nothing when the reader declines, since nothing went', async () => {
     await start()
-    control().click()
+    let heard = 0
+    onTrashEmptied(host, () => {
+      heard += 1
+    })
+    dialogs.confirm.mockResolvedValue(false)
 
-    announceStoreChanged(host)
+    control().click()
     await settled()
 
-    expect(control().textContent).toContain('for good')
+    expect(heard).toBe(0)
   })
 })

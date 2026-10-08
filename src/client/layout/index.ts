@@ -9,9 +9,9 @@ import {
   MIN_EXPLORER_PX,
   RESIZER_SELECTOR,
   setExplorerWidth,
-  TOGGLE_SELECTOR,
-  toggleExplorer,
+  askForPanel,
 } from './explorer.ts'
+import { PANEL_NAMES } from '../panels.ts'
 import {
   applySplit,
   setSplitFraction,
@@ -21,6 +21,7 @@ import {
   type SplitOrientation,
 } from './split.ts'
 import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../split-changed.ts'
+import { announcePanelChanged } from '../panel-changed.ts'
 import { createDialogs } from '../files/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../help.ts'
 import { onInsertRequested } from '../insert-entry.ts'
@@ -94,13 +95,13 @@ function keyboardWidth(key: string, currentPx: number, maxPx: number): number | 
 }
 
 function bindToggle(root: ParentNode, view: Window): void {
-  const toggle = root.querySelector<HTMLElement>(TOGGLE_SELECTOR)
-  if (toggle === null) return
-
-  toggle.addEventListener('click', () => {
-    toggleExplorer(root)
-    applyExplorerState(root, view.innerWidth)
-  })
+  for (const name of PANEL_NAMES) {
+    root.querySelector<HTMLElement>(`[data-shows-panel="${name}"]`)?.addEventListener('click', () => {
+      askForPanel(root, name)
+      applyExplorerState(root, view.innerWidth)
+      announcePanelChanged(root)
+    })
+  }
 }
 
 function bindHelp(root: ParentNode): void {

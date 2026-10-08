@@ -9,22 +9,25 @@ import { workspace } from './fixtures.ts'
 async function selectWithoutOpening(page: Page, folder: string, name: string): Promise<void> {
   const row = page.locator(`[role="treeitem"][data-path="${folder}/${name}"]`)
   await row.focus()
-  await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('ArrowDown')
   await givenAsync(expect(row).toHaveAttribute('aria-selected', 'true'))
 }
 
 test('the insert button is off when the selection is not a file', async ({ page, request }) => {
   const folder = `ins-${String(Date.now())}`
   await page.goto(await workspace(request, folder))
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
   await givenAsync(expect(page.locator('#insert-entry')).toBeEnabled())
 
-  await page.locator('[role="treeitem"][data-path=".trash"]').click()
+  await page.locator('#show-trash').click()
+  await givenAsync(expect(page.locator('#file-tree')).toBeHidden())
 
   await givenAsync(expect(page.locator('#insert-entry')).toBeDisabled())
 
+  await page.locator('#toggle-explorer').click()
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
   await selectWithoutOpening(page, folder, 'other.md')
 
   await expect(page.locator('#insert-entry')).toBeEnabled()
@@ -65,11 +68,13 @@ test('Mod-i on the tree inserts the selected file', async ({ page, request }) =>
 test('Mod-i with no file selected says why it did nothing', async ({ page, request }) => {
   const folder = `insn-${String(Date.now())}`
   await page.goto(await workspace(request, folder))
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
-  const trash = page.locator('[role="treeitem"][data-path=".trash"]')
-  await trash.click()
-  await trash.focus()
+  await page.locator('#show-trash').click()
+  const deleted = page.locator('#trash-list [role="treeitem"]').first()
+  await givenAsync(expect(deleted).toBeVisible())
+  await deleted.click()
+  await deleted.focus()
   await page.keyboard.press('ControlOrMeta+i')
 
   await expect(page.locator('#status .toast').last()).toContainText('Select a file in the browser first')

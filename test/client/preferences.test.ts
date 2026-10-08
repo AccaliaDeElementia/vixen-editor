@@ -50,13 +50,13 @@ describe('readPreferences', () => {
   })
 
   it('defaults to open with no custom width', () => {
-    expect(DEFAULT_PREFERENCES).toStrictEqual({ widthPx: null, open: true, openFolders: [] })
+    expect(DEFAULT_PREFERENCES).toStrictEqual({ widthPx: null, open: true, openFolders: [], panel: 'files' })
   })
 
   it('round-trips a stored value', () => {
-    writePreferences({ widthPx: 420, open: false, openFolders: ['journal'] })
+    writePreferences({ widthPx: 420, open: false, openFolders: ['journal'], panel: 'trash' })
 
-    expect(readPreferences()).toStrictEqual({ widthPx: 420, open: false, openFolders: ['journal'] })
+    expect(readPreferences()).toStrictEqual({ widthPx: 420, open: false, openFolders: ['journal'], panel: 'trash' })
   })
 
   it('survives storage that throws on read, as in private browsing', () => {
@@ -76,7 +76,7 @@ describe('readPreferences', () => {
   it('writes without throwing when even reaching for localStorage throws', () => {
     whileLocalStorageThrows(() => {
       expect(() => {
-        writePreferences({ widthPx: 300, open: true, openFolders: [] })
+        writePreferences({ widthPx: 300, open: true, openFolders: [], panel: 'files' })
       }).not.toThrow()
     })
   })
@@ -102,13 +102,23 @@ describe('readPreferences', () => {
   ])('rejects a %s width and keeps the rest of the record', (_label, widthPx) => {
     const raw = JSON.stringify({ widthPx, open: false })
 
-    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: null, open: false, openFolders: [] })
+    expect(readPreferences(storageHolding(raw))).toStrictEqual({
+      widthPx: null,
+      open: false,
+      openFolders: [],
+      panel: 'files',
+    })
   })
 
   it('defaults a wrong-typed folder list without discarding the rest of the record', () => {
     const raw = '{"widthPx":300,"open":true,"openFolders":"journal"}'
 
-    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: 300, open: true, openFolders: [] })
+    expect(readPreferences(storageHolding(raw))).toStrictEqual({
+      widthPx: 300,
+      open: true,
+      openFolders: [],
+      panel: 'files',
+    })
   })
 
   it('keeps only the strings from a folder list holding junk', () => {
@@ -120,33 +130,40 @@ describe('readPreferences', () => {
   it('keeps an implausibly large width for the caller to clamp', () => {
     const raw = JSON.stringify({ widthPx: 99999, open: true })
 
-    expect(readPreferences(storageHolding(raw))).toStrictEqual({ widthPx: 99999, open: true, openFolders: [] })
+    expect(readPreferences(storageHolding(raw))).toStrictEqual({
+      widthPx: 99999,
+      open: true,
+      openFolders: [],
+      panel: 'files',
+    })
   })
 })
 
 describe('writePreferences', () => {
   it('stores under the agreed key', () => {
-    writePreferences({ widthPx: 300, open: true, openFolders: [] })
+    writePreferences({ widthPx: 300, open: true, openFolders: [], panel: 'files' })
 
-    expect(localStorage.getItem(PREFERENCES_KEY)).toBe(JSON.stringify({ widthPx: 300, open: true, openFolders: [] }))
+    expect(localStorage.getItem(PREFERENCES_KEY)).toBe(
+      JSON.stringify({ widthPx: 300, open: true, openFolders: [], panel: 'files' }),
+    )
   })
 
   it('survives storage that throws, so a full quota costs a preference and not the app', () => {
     expect(() => {
-      writePreferences({ widthPx: 300, open: true, openFolders: [] }, throwingStorage())
+      writePreferences({ widthPx: 300, open: true, openFolders: [], panel: 'files' }, throwingStorage())
     }).not.toThrow()
   })
 
   it('survives storage being unavailable entirely', () => {
     expect(() => {
-      writePreferences({ widthPx: 300, open: true, openFolders: [] }, null)
+      writePreferences({ widthPx: 300, open: true, openFolders: [], panel: 'files' }, null)
     }).not.toThrow()
   })
 
   it('defaults to localStorage, so preferences outlive the tab', () => {
     sessionStorage.clear()
 
-    writePreferences({ widthPx: 256, open: true, openFolders: [] })
+    writePreferences({ widthPx: 256, open: true, openFolders: [], panel: 'files' })
 
     expect(localStorage.getItem(PREFERENCES_KEY)).not.toBeNull()
   })
@@ -154,8 +171,24 @@ describe('writePreferences', () => {
   it('does not write to sessionStorage, which the tab closing would clear', () => {
     sessionStorage.clear()
 
-    writePreferences({ widthPx: 256, open: true, openFolders: [] })
+    writePreferences({ widthPx: 256, open: true, openFolders: [], panel: 'files' })
 
     expect(sessionStorage.getItem(PREFERENCES_KEY)).toBeNull()
+  })
+})
+
+describe('which panel the sidebar was left showing', () => {
+  it('is remembered by name, so a third panel needs no new field', () => {
+    writePreferences({ ...DEFAULT_PREFERENCES, panel: 'tabs' })
+
+    expect(readPreferences().panel).toBe('tabs')
+  })
+
+  it('is the file browser when nothing was stored, which is where a reader starts', () => {
+    expect(readPreferences(storageHolding(null)).panel).toBe('files')
+  })
+
+  it('is the file browser when what was stored is not a name at all', () => {
+    expect(readPreferences(storageHolding('{"open":true,"panel":7}')).panel).toBe('files')
   })
 })

@@ -5,6 +5,8 @@ import type { Pane } from '../layout/pane.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 
 const OLDEST = 0
+const NOTHING_CLOSED = 0
+const TRASHED_VIEW = 'deleted'
 
 export interface ClosingSurface {
   pane: Pane
@@ -24,6 +26,7 @@ interface ClosingTabs {
   requestClose: (surface: ClosingSurface, at: TabAt) => void
   settle: (surface: ClosingSurface) => void
   closeTheTabInFront: () => void
+  closeTrashTabs: () => void
   settled: () => Promise<void>
 }
 
@@ -76,6 +79,14 @@ export function createClosingTabs(options: ClosingOptions): ClosingTabs {
   return {
     requestClose,
     settle,
+
+    closeTrashTabs(): void {
+      for (const surface of options.everySurface()) {
+        const stale = surface.pane.held().filter((at) => at.view === TRASHED_VIEW)
+        for (const at of stale) surface.pane.close(at)
+        if (stale.length > NOTHING_CLOSED) settle(surface)
+      }
+    },
 
     closeTheTabInFront(): void {
       const surface = options.inFront()

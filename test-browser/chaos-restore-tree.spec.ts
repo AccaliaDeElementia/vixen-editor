@@ -19,6 +19,7 @@ test('a choice in the restore tree survives another client changing the store', 
   await givenAsync(expect(chosen).toHaveAttribute('aria-checked', 'false'))
 
   await request.post('/api/files/documents', { data: { path: noise, content: '# elsewhere' } })
+  await givenAsync(page.locator('#toggle-explorer').click())
   await givenAsync(expect(page.locator(`.tree__row[data-path="${noise}"]`)).toBeVisible())
 
   await expect(chosen).toHaveAttribute('aria-checked', 'false')

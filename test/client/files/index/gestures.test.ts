@@ -10,7 +10,7 @@ import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 
 import { cast } from '../../../cast.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, statusText, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, showTrash, statusText, treePage } from '../../tree-fixtures.ts'
 
 const SAMPLE = [
   { name: 'journal', path: 'journal', kind: 'folder' as const, children: [] },
@@ -131,10 +131,11 @@ describe('a double click', () => {
     expect(opened).toStrictEqual(['/doc/journal/'])
   })
 
-  it('opens no index for a row that is not in the store', async () => {
+  it('opens no index for a deleted entry, which is not a place in the store', async () => {
     await start()
+    showTrash(host)
 
-    doubleClick(TRASH_PATH)
+    doubleClick(joinPath(TRASH_PATH, TRASHED.id))
 
     expect(opened).toStrictEqual([])
   })
@@ -255,12 +256,13 @@ describe('inserting the selection with the keyboard', () => {
     expect(heard).toStrictEqual(['notes.md'])
   })
 
-  it('says why it did nothing when the trash is what is selected', async () => {
+  it('says why it did nothing when a deleted entry is what is selected', async () => {
     await start()
     const heard = requested()
-    rowFor(TRASH_PATH).click()
+    showTrash(host)
+    rowFor(joinPath(TRASH_PATH, TRASHED.id)).click()
 
-    press(TRASH_PATH, { key: 'i', ctrlKey: true })
+    press(joinPath(TRASH_PATH, TRASHED.id), { key: 'i', ctrlKey: true })
 
     expect({ heard, said: statusText() }).toStrictEqual({
       heard: [],
@@ -308,7 +310,7 @@ describe('the Open selected action', () => {
 
   it('opens a trash entry the same way, by its id', async () => {
     await start()
-    rowFor(TRASH_PATH).click()
+    showTrash(host)
     click(joinPath(TRASH_PATH, TRASHED.id))
     opened.length = 0
 

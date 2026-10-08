@@ -12,13 +12,24 @@ nav.ribbon(aria-label='Primary')
     span.icon(aria-hidden='true') warning
   button.ribbon__button#toggle-explorer(
     type='button'
-    aria-label='Toggle file browser'
-    title='Toggle file browser'
+    data-shows-panel='files'
+    aria-label='Show the file browser'
+    title='Show the file browser'
     aria-controls='explorer'
     aria-expanded='true'
     aria-pressed='true'
   )
     span.icon(aria-hidden='true') library_books
+  button.ribbon__button#show-trash(
+    type='button'
+    data-shows-panel='trash'
+    aria-label='Show the trash'
+    title='Show the trash'
+    aria-controls='explorer'
+    aria-expanded='false'
+    aria-pressed='false'
+  )
+    span.icon(aria-hidden='true') delete
   button.ribbon__button#split-beside(
     type='button'
     aria-label='Split the editor side by side'

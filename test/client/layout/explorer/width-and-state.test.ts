@@ -8,7 +8,7 @@ import {
   MAX_EXPLORER_FRACTION,
   MIN_EXPLORER_PX,
   setExplorerWidth,
-  toggleExplorer,
+  askForPanel,
   TestOnly,
 } from '../../../../src/client/layout/explorer.ts'
 import { writePreferences } from '../../../../src/client/preferences.ts'
@@ -62,33 +62,34 @@ describe('clampExplorerWidth', () => {
 
 describe('readExplorerState', () => {
   it('returns the default when nothing is stored', () => {
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: null, open: true, openFolders: [] })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: null, open: true, openFolders: [], panel: 'files' })
   })
 
   it('returns a stored width that fits', () => {
-    writePreferences({ widthPx: 400, open: true, openFolders: [] })
+    writePreferences({ widthPx: 400, open: true, openFolders: [], panel: 'files' })
 
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 400, open: true, openFolders: [] })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 400, open: true, openFolders: [], panel: 'files' })
   })
 
   it('clamps a stored width wider than the current viewport allows', () => {
-    writePreferences({ widthPx: 1800, open: true, openFolders: [] })
+    writePreferences({ widthPx: 1800, open: true, openFolders: [], panel: 'files' })
 
     expect(readExplorerState(VIEWPORT)).toStrictEqual({
       widthPx: VIEWPORT * MAX_EXPLORER_FRACTION,
       open: true,
       openFolders: [],
+      panel: 'files',
     })
   })
 
   it('clamps a stored width below the minimum', () => {
-    writePreferences({ widthPx: 10, open: true, openFolders: [] })
+    writePreferences({ widthPx: 10, open: true, openFolders: [], panel: 'files' })
 
     expect(readExplorerState(VIEWPORT).widthPx).toBe(MIN_EXPLORER_PX)
   })
 
   it('restores a stored closed state', () => {
-    writePreferences({ widthPx: null, open: false, openFolders: [] })
+    writePreferences({ widthPx: null, open: false, openFolders: [], panel: 'files' })
 
     expect(readExplorerState(VIEWPORT).open).toBe(false)
   })
@@ -105,7 +106,7 @@ describe('setExplorerWidth', () => {
     setExplorerOpen(false)
     setExplorerWidth(300, VIEWPORT)
 
-    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 300, open: false, openFolders: [] })
+    expect(readExplorerState(VIEWPORT)).toStrictEqual({ widthPx: 300, open: false, openFolders: [], panel: 'files' })
   })
 })
 
@@ -125,9 +126,9 @@ describe('the width at which the explorer stops sharing the screen', () => {
   })
 })
 
-describe('toggleExplorer', () => {
+describe('asking the rail for the panel already showing', () => {
   function toggleOnce(): boolean {
-    const next = toggleExplorer(root)
+    const next = askForPanel(root, 'files')
     applyExplorerState(root, VIEWPORT)
 
     return next
@@ -157,19 +158,19 @@ describe('toggleExplorer', () => {
   it('tolerates a root without the layout shell', () => {
     document.body.innerHTML = '<p>no layout here</p>'
 
-    expect(() => toggleExplorer(document.body)).not.toThrow()
+    expect(() => askForPanel(document.body, 'files')).not.toThrow()
   })
 
   it('keeps the custom width across a close and reopen', () => {
     const roomy = 1400
     setExplorerWidth(420, roomy)
     applyExplorerState(root, roomy)
-    toggleExplorer(root)
+    askForPanel(root, 'files')
     applyExplorerState(root, roomy)
-    toggleExplorer(root)
+    askForPanel(root, 'files')
     applyExplorerState(root, roomy)
 
-    expect(readExplorerState(roomy)).toStrictEqual({ widthPx: 420, open: true, openFolders: [] })
+    expect(readExplorerState(roomy)).toStrictEqual({ widthPx: 420, open: true, openFolders: [], panel: 'files' })
   })
 })
 

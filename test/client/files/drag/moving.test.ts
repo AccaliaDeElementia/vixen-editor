@@ -6,11 +6,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TestOnly } from '../../../../src/client/files/drag.ts'
 import { FilesRequestError } from '../../../../src/client/files/files-client.ts'
 import { parseTree } from '../../../../src/client/files/tree-model.ts'
-import { TRASH_PATH, TREE_SELECTOR } from '../../../../src/client/files/tree-view.ts'
+import { ROW_SELECTOR, TREE_SELECTOR } from '../../../../src/client/files/tree-view.ts'
 import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 import { cast } from '../../../cast.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, rows, treePage, type FakeClient } from '../../tree-fixtures.ts'
+import {
+  TRASHED,
+  fakeClient,
+  mountTree,
+  rowFor,
+  rows,
+  showTrash,
+  treePage,
+  type FakeClient,
+} from '../../tree-fixtures.ts'
 
 const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf } = TestOnly
 
@@ -151,11 +160,10 @@ describe('containerOf', () => {
     expect(containerOf(undefined)).toBe('')
   })
 
-  it.each([
-    ['the trash pseudo-folder', { path: TRASH_PATH, expandable: true, kind: 'trash-root' as const, opens: null }],
-    ['a deleted entry', { path: 'gone.md', expandable: false, kind: 'trash-entry' as const, opens: null }],
-  ])('refuses drops onto %s, which is not a place in the store', (_label, row) => {
-    expect(containerOf(row)).toBeNull()
+  it('refuses drops onto a deleted entry, which is not a place in the store', () => {
+    const deleted = { path: 'gone.md', expandable: false, kind: 'trash-entry' as const, opens: null }
+
+    expect(containerOf(deleted)).toBeNull()
   })
 })
 
@@ -336,17 +344,6 @@ describe('where a drop is refused', () => {
     expect(document.querySelectorAll(`.${DROP_TARGET_CLASS}`)).toHaveLength(0)
   })
 
-  it('offers no affordance onto the trash', async () => {
-    await start()
-    const transfer = internalTransfer('notes.md')
-    rowFor('notes.md').dispatchEvent(dragEvent('dragstart', transfer))
-
-    const over = dragEvent('dragover', transfer)
-    rowFor(TRASH_PATH).dispatchEvent(over)
-
-    expect(over.defaultPrevented).toBe(false)
-  })
-
   it('does not move when dropped somewhere illegal', async () => {
     await start()
 
@@ -354,14 +351,20 @@ describe('where a drop is refused', () => {
 
     expect(client.move).not.toHaveBeenCalled()
   })
+})
 
-  it('does not drag the trash pseudo-folder itself', async () => {
-    await start()
-    const transfer = new DataTransfer()
+describe('a drag while the sidebar has moved on to another panel', () => {
+  it('refuses the drop, because the row under the pointer is no longer a place in the store', async () => {
+    await start([])
+    const first = tree().querySelector<HTMLElement>(ROW_SELECTOR)
+    showTrash(document)
+    const transfer = internalTransfer('notes.md')
+    first?.dispatchEvent(dragEvent('dragstart', transfer))
 
-    rowFor(TRASH_PATH).dispatchEvent(dragEvent('dragstart', transfer))
+    const over = dragEvent('dragover', transfer)
+    first?.dispatchEvent(over)
 
-    expect(transfer.getData(DRAG_MIME)).toBe('')
+    expect(over.defaultPrevented).toBe(false)
   })
 })
 

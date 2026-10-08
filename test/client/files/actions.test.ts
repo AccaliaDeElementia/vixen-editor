@@ -13,7 +13,16 @@ import type { Dialogs } from '../../../src/client/files/dialogs.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import { cast } from '../../cast.ts'
 import { given } from '../../conditions.ts'
-import { fakeClient, mountTree, rowFor, statusText, treePage, type FakeClient } from '../tree-fixtures.ts'
+import {
+  TRASHED,
+  fakeClient,
+  mountTree,
+  rowFor,
+  showTrash,
+  statusText,
+  treePage,
+  type FakeClient,
+} from '../tree-fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [
@@ -98,10 +107,13 @@ describe('the Insert action', () => {
     expect(button().disabled).toBe(false)
   })
 
-  it('goes off again for the trash, which is not a file', async () => {
+  it('goes off again for a deleted entry, which is not a file in the store', async () => {
+    client = fakeClient(SAMPLE, [TRASHED])
     await start()
     rowFor('notes.md').click()
-    rowFor(TRASH_PATH).click()
+    showTrash(host)
+    await settled()
+    rowFor(joinPath(TRASH_PATH, TRASHED.id)).click()
 
     expect(button().disabled).toBe(true)
   })
@@ -621,7 +633,8 @@ describe('a trash entry is not a place in the store', () => {
   async function withTrashEntrySelected(): Promise<void> {
     client = fakeClient(SAMPLE, [DELETED])
     await start()
-    rowFor(TRASH_PATH).click()
+    showTrash(host)
+    await settled()
     rowFor(joinPath(TRASH_PATH, DELETED.id)).click()
   }
 

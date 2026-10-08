@@ -58,11 +58,15 @@ test('a single click opens a document and selects it', async ({ page, request })
 })
 
 test('moving through the tree selects without opening, so a file can be aimed at', async ({ page, request }) => {
-  const name = `aim-${String(Date.now())}.md`
+  const stamp = String(Date.now())
+  const name = `aim-${stamp}.md`
+  const below = `aimb-${stamp}.md`
   await request.post('/api/files/documents', { data: { path: name, content: '# seed' } })
+  await request.post('/api/files/documents', { data: { path: below, content: '# below' } })
   await page.goto('/doc/')
 
   const row = page.locator(`[role="treeitem"][data-path="${name}"]`)
+  await givenAsync(expect(page.locator(`[role="treeitem"][data-path="${below}"]`)).toBeVisible())
   await row.focus()
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('ArrowUp')

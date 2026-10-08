@@ -1,6 +1,7 @@
 'use sanity'
 
 import { readPreferences, writePreferences, type ExplorerPreferences } from '../preferences.ts'
+import { choosePanel, PANEL_CONTROL_SELECTOR, panelShowing, showPanel } from '../panels.ts'
 
 export const MIN_EXPLORER_PX = 160
 const MIN_EDITOR_PX = 672
@@ -10,7 +11,6 @@ export const MAX_EXPLORER_FRACTION = 0.8
 
 const APP_SELECTOR = '#app'
 export const EXPLORER_SELECTOR = '#explorer'
-export const TOGGLE_SELECTOR = '#toggle-explorer'
 export const RESIZER_SELECTOR = '#explorer-resizer'
 
 function clampExplorerWidth(requestedPx: number, viewportPx: number): number {
@@ -46,15 +46,19 @@ function decideOpen(stored: boolean, cramped: boolean, wasCramped: boolean | nul
   return { open: stored, auto: false }
 }
 
-export function toggleExplorer(root: ParentNode): boolean {
+export function askForPanel(root: ParentNode, wanted: string): boolean {
   const app = root.querySelector<HTMLElement>(APP_SELECTOR)
-  const next = app?.dataset.explorer === 'closed'
+  const { panel, open } = choosePanel({
+    wanted,
+    showing: panelShowing(root),
+    open: app?.dataset.explorer !== 'closed',
+  })
 
   if (app !== null) delete app.dataset.explorerAuto
 
-  setExplorerOpen(next)
+  writePreferences({ ...readPreferences(), open, panel })
 
-  return next
+  return open
 }
 
 export function closeExplorerWhenCramped(root: ParentNode): boolean {
@@ -113,9 +117,12 @@ export function applyExplorerState(root: ParentNode, viewportPx: number): void {
   app.dataset.explorerCramped = String(cramped)
   app.dataset.explorer = open ? 'open' : 'closed'
 
-  const toggle = root.querySelector(TOGGLE_SELECTOR)
-  toggle?.setAttribute('aria-expanded', String(open))
-  toggle?.setAttribute('aria-pressed', String(open))
+  showPanel(root, state.panel)
+  for (const control of root.querySelectorAll<HTMLElement>(PANEL_CONTROL_SELECTOR)) {
+    const up = open && control.dataset.showsPanel === state.panel
+    control.setAttribute('aria-expanded', String(up))
+    control.setAttribute('aria-pressed', String(up))
+  }
 
   if (state.widthPx === null) {
     app.style.removeProperty('--explorer-width')

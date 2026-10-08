@@ -136,6 +136,21 @@
   }
 }
 
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.panel__empty {
+  margin: 0;
+  padding: $space-sm;
+  color: $muted;
+  font-size: $font-size-sm;
+}
+
 .explorer__list {
   flex: 1;
   margin: 0;

@@ -26,20 +26,24 @@ test('a real drag moves a document into a folder', async ({ page, request }) => 
 test('a real drag shows the drop affordance only where a drop is legal', async ({ page, request }) => {
   const stamp = String(Date.now())
   const folder = `affordance-${stamp}`
+  const document_ = `affordance-${stamp}.md`
   await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', { data: { path: document_, content: '# leaf' } })
 
   await page.goto('/doc/')
   const source = page.locator(`.tree__row[data-path="${folder}"]`)
-  const trash = page.locator('.tree__row[data-kind="trash-root"]')
+  const leaf = page.locator(`.tree__row[data-path="${document_}"]`)
+  await givenAsync(expect(leaf).toBeVisible())
 
   await source.hover()
   await page.mouse.down()
-  await trash.hover()
+  await leaf.hover()
 
-  await expect(trash).not.toHaveClass(/tree__row--drop/v)
+  await expect(leaf).not.toHaveClass(/tree__row--drop/v)
   await page.mouse.up()
 
   await request.delete(`/api/files/entries/${folder}`)
+  await request.delete(`/api/files/entries/${document_}`)
 })
 
 test('a real drag reveals the moved document at its new location', async ({ page, request }) => {

@@ -24,7 +24,7 @@ test('the document view has no accessibility violations', async ({ page, request
 
   await page.goto(`/doc/${folder}/notes.md`)
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
   expect(await violationsOn(page)).toStrictEqual([])
 
@@ -231,7 +231,7 @@ test('a ribbon control reached by keyboard names itself on screen, where a title
 
   const shown = await nameShownOn(page, '#toggle-explorer')
 
-  expect(shown).toContain('Toggle file browser')
+  expect(shown).toContain('Show the file browser')
 })
 
 test('a file browser control does the same, so the two rails behave alike', async ({ page }) => {

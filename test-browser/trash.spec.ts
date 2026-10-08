@@ -6,7 +6,6 @@ import type { APIRequestContext, Page } from '@playwright/test'
 
 import { deletedEntry } from './fixtures.ts'
 import { stringFieldOf } from './json.ts'
-import { TRASH_PATH } from '../src/client/files/tree-view.ts'
 import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
 test('a trashed document is offered back at the path it came from', async ({ page, request }) => {
@@ -122,7 +121,7 @@ test('the file browser offers no buttons on a deleted entry of its own', async (
   await deletedEntry(request, name)
 
   await page.goto('/doc/')
-  await page.locator('.tree__row[data-kind="trash-root"]').click()
+  await page.locator('#show-trash').click()
   const mine = page.locator('[role="treeitem"][data-path^=".trash/"]').filter({ hasText: name })
   await givenAsync(expect(mine).toBeVisible())
 
@@ -142,7 +141,7 @@ test('deleting the open image shows it in the trash, expanded and selected', asy
   await page.locator('#file-dialog-confirm').click()
   await givenAsync(expect(page).toHaveURL(/\/trash\//v))
 
-  await expect(page.locator('.tree__row[data-kind="trash-root"]')).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator(`#trash-list [role="treeitem"]`).filter({ hasText: name })).toBeVisible()
 })
 
 test('the deleted entry is the one selected in the file browser', async ({ page, request }) => {
@@ -215,6 +214,8 @@ test('a selection inside a trashed folder brings the rest of it back', async ({ 
   const folder = `cherry-${String(Date.now())}`
   const trashId = await cherryPicked(page, request, folder)
 
+  await givenAsync(page.locator('#toggle-explorer').click())
+
   await expect(page.locator(`.tree__row[data-path="${folder}"]`)).toBeVisible()
 
   await request.delete(`/api/files/entries/${folder}`)
@@ -256,7 +257,7 @@ test('a row offers to put its own item back somewhere else', async ({ page, requ
 // test/client/files/files-client.test.ts for the request this sends and the
 // count it reads back, and by test/server/routes/trash.test.ts for the server
 // actually emptying the trash.
-test('a second click asks the server to empty the trash, and says what went', async ({ page, request }) => {
+test('confirming asks the server to empty the trash, and says what went', async ({ page, request }) => {
   const name = `sweep-${String(Date.now())}.md`
   const trashId = await deletedEntry(request, name)
   await page.route('**/api/trash', async (route) => {
@@ -265,29 +266,63 @@ test('a second click asks the server to empty the trash, and says what went', as
   })
 
   await page.goto('/doc/')
-  const control = page.locator('.tree__empty-trash')
-  await givenAsync(expect(control).toBeVisible())
-  await control.click()
-  await givenAsync(expect(control).toHaveText(/Delete \d+ (?:entry|entries) for good/v))
+  await givenAsync(page.locator('#show-trash').click())
+  await givenAsync(page.locator('#empty-trash').click())
+  await givenAsync(expect(page.locator('#file-dialog[open]')).toBeVisible())
 
-  await control.click()
+  await page.locator('#file-dialog-confirm').click()
 
   await expect(page.locator('#status')).toContainText('Deleted 2 entries for good')
 
   await request.delete(`/api/trash/${trashId}`)
 })
 
-test('arming the trash does not also open it', async ({ page, request }) => {
-  const name = `armed-${String(Date.now())}.md`
+test('the question it asks is readable, rather than crammed into the control', async ({ page, request }) => {
+  const name = `asked-${String(Date.now())}.md`
   const trashId = await deletedEntry(request, name)
 
   await page.goto('/doc/')
-  const control = page.locator('.tree__empty-trash')
-  await givenAsync(expect(control).toBeVisible())
+  await givenAsync(page.locator('#show-trash').click())
 
-  await control.click()
+  await page.locator('#empty-trash').click()
 
-  await expect(page.locator(`.tree__row[data-path="${TRASH_PATH}"]`)).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.locator('#file-dialog-message')).toContainText('cannot be restored afterwards')
 
   await request.delete(`/api/trash/${trashId}`)
+})
+
+test('declining leaves the trash as it was', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const name = `kept-${stamp}.md`
+  const later = `later-${stamp}.md`
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto('/doc/')
+  await givenAsync(page.locator('#show-trash').click())
+  await givenAsync(page.locator('#empty-trash').click())
+  await givenAsync(expect(page.locator('#file-dialog[open]')).toBeVisible())
+
+  await page.locator('#file-dialog-cancel').click()
+
+  const second = await deletedEntry(request, later)
+  await givenAsync(expect(page.locator('#trash-list [role="treeitem"]').filter({ hasText: later })).toBeVisible())
+  await expect(page.locator('#trash-list [role="treeitem"]').filter({ hasText: name })).toBeVisible()
+
+  await request.delete(`/api/trash/${trashId}`)
+  await request.delete(`/api/trash/${second}`)
+})
+
+test('emptying the trash closes the tab that was showing a deleted entry', async ({ page, request }) => {
+  const name = `tabbed-${String(Date.now())}.md`
+  const trashId = await deletedEntry(request, name)
+
+  await page.goto(`/trash/${trashId}`)
+  await givenAsync(expect(page.locator('[data-part="view-deleted"]')).toBeVisible())
+  await givenAsync(expect(page.locator(`[data-tab="deleted:${name}"]`)).toBeVisible())
+  await givenAsync(page.locator('#empty-trash').click())
+  await givenAsync(expect(page.locator('#file-dialog[open]')).toBeVisible())
+
+  await page.locator('#file-dialog-confirm').click()
+
+  await expect(page.locator(`[data-tab="deleted:${name}"]`)).toHaveCount(0)
 })

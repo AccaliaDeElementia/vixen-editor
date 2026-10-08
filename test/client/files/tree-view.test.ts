@@ -6,11 +6,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/files/tree-model.ts'
 import { joinPath } from '../../../src/shared/store-path.ts'
 import {
+  renderTrashPanel,
   renderTree,
   rowIndexOf,
   ROW_SELECTOR,
   TRASH_PATH,
-  EMPTY_TRASH_SELECTOR,
   type TreeViewModel,
 } from '../../../src/client/files/tree-view.ts'
 
@@ -38,9 +38,10 @@ const GLYPH_TRASH_ENTRY: TrashNode = {
 }
 
 let tree: HTMLElement = document.createElement('ul')
+let list: HTMLElement = document.createElement('ul')
 
 function render(overrides: Partial<TreeViewModel> = {}): void {
-  const model: TreeViewModel = { nodes: SAMPLE, trash: [], open: new Set(), selected: null, ...overrides }
+  const model: TreeViewModel = { nodes: SAMPLE, open: new Set(), selected: null, ...overrides }
   renderTree(tree, model)
 }
 
@@ -67,17 +68,19 @@ function twistyOf(entryPath: string): string {
 }
 
 beforeEach(() => {
-  document.body.innerHTML = '<ul id="file-tree" role="tree"></ul>'
+  document.body.innerHTML = '<ul id="file-tree" role="tree"></ul><ul id="trash-list" role="tree"></ul>'
   const element = document.body.querySelector<HTMLElement>('#file-tree')
-  if (element === null) throw new Error('missing tree')
+  const deleted = document.body.querySelector<HTMLElement>('#trash-list')
+  if (element === null || deleted === null) throw new Error('missing tree')
   tree = element
+  list = deleted
 })
 
 describe('rendering', () => {
   it('shows every top-level entry', () => {
     render()
 
-    expect(pathsShown()).toStrictEqual(['journal', 'notes.md', 'photo.png', TRASH_PATH])
+    expect(pathsShown()).toStrictEqual(['journal', 'notes.md', 'photo.png'])
   })
 
   it('hides the contents of a collapsed folder', () => {
@@ -111,7 +114,7 @@ describe('rendering', () => {
     render()
     render()
 
-    expect(pathsShown()).toStrictEqual(['journal', 'notes.md', 'photo.png', TRASH_PATH])
+    expect(pathsShown()).toStrictEqual(['journal', 'notes.md', 'photo.png'])
   })
 
   it('records depth, so indentation follows the structure', () => {
@@ -195,7 +198,7 @@ describe('accessibility', () => {
   })
 
   it('hides every decorative glyph from assistive technology, since each repeats its row', () => {
-    render({ trash: [GLYPH_TRASH_ENTRY], open: new Set([TRASH_PATH]) })
+    render({ open: new Set(['journal']) })
     const glyphs = [...tree.querySelectorAll<HTMLElement>('.icon')]
     given(() => {
       expect(glyphs.length).toBeGreaterThan(0)
@@ -206,7 +209,7 @@ describe('accessibility', () => {
 
   it('marks every entry row draggable, which is what lets a drag begin at all', () => {
     render()
-    const entries = rows().filter((element) => element.dataset.path !== TRASH_PATH)
+    const entries = rows()
     given(() => {
       expect(entries.length).toBeGreaterThan(0)
     })
@@ -244,14 +247,14 @@ describe('accessibility', () => {
     expect(rowFor('journal').getAttribute('tabindex')).toBe('0')
   })
 
-  it('still leaves a tab stop when the tree holds nothing but the trash', () => {
-    renderTree(tree, { nodes: [], trash: [], open: new Set(), selected: null })
+  it('leaves the first deleted entry reachable when the trash panel is what is showing', () => {
+    renderTrashPanel(list, { trash: [GLYPH_TRASH_ENTRY], selected: null })
 
-    expect(rowFor(TRASH_PATH).getAttribute('tabindex')).toBe('0')
+    expect(list.querySelector('[role="treeitem"]')?.getAttribute('tabindex')).toBe('0')
   })
 })
 
-describe('the trash pseudo-folder', () => {
+describe('the trash panel', () => {
   const entry: TrashNode = {
     id: 'aaaa',
     originalPath: 'journal/gone.md',
@@ -259,97 +262,57 @@ describe('the trash pseudo-folder', () => {
     deletedAt: '2026-01-01T00:00:00.000Z',
   }
 
-  it('sits at the bottom, where a user looks for it', () => {
-    render()
+  function deleted(...held: readonly TrashNode[]): HTMLElement | null {
+    renderTrashPanel(list, { trash: held, selected: null })
 
-    expect(pathsShown().at(-1)).toBe(TRASH_PATH)
-  })
-
-  it('counts what it holds without being opened', () => {
-    render({ trash: [entry] })
-
-    expect(rowFor(TRASH_PATH).textContent).toContain('Trash (1)')
-  })
-
-  it('offers a way to be rid of everything in it', () => {
-    render({ trash: [entry] })
-
-    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)).not.toBeNull()
-  })
-
-  it('offers nothing to empty while it is already empty', () => {
-    render()
-
-    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)).toBeNull()
-  })
-
-  it('names what emptying it would cost, for anything reading the row aloud', () => {
-    render({ trash: [entry] })
-
-    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)?.getAttribute('aria-label')).toBe(
-      'Empty the trash of 1 entry',
-    )
-  })
-
-  it('counts the entries rather than what is inside them', () => {
-    render({ trash: [entry, { ...entry, id: 'bbbb' }] })
-
-    expect(rowFor(TRASH_PATH).querySelector(EMPTY_TRASH_SELECTOR)?.getAttribute('aria-label')).toBe(
-      'Empty the trash of 2 entries',
-    )
-  })
-
-  it('hides its entries until opened', () => {
-    render({ trash: [entry] })
-
-    expect(tree.querySelectorAll('[role="treeitem"][data-trash-id]')).toHaveLength(0)
-  })
+    return list.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')
+  }
 
   it('lists deleted entries by where they came from', () => {
-    render({ trash: [entry], open: new Set([TRASH_PATH]) })
+    expect(deleted(entry)?.textContent).toContain('journal/gone.md')
+  })
 
-    expect(tree.querySelector('[role="treeitem"][data-trash-id]')?.textContent).toContain('journal/gone.md')
+  it('lists them flat, with no folder to open first', () => {
+    renderTrashPanel(list, { trash: [entry, { ...entry, id: 'bbbb' }], selected: null })
+
+    expect(list.querySelectorAll('[role="treeitem"]')).toHaveLength(2)
   })
 
   it('leaves a deleted entry unselected, because selection addresses the live tree', () => {
-    render({ trash: [entry], open: new Set([TRASH_PATH]) })
-
-    expect(tree.querySelector('[role="treeitem"][data-trash-id]')?.getAttribute('aria-selected')).toBe('false')
+    expect(deleted(entry)?.getAttribute('aria-selected')).toBe('false')
   })
 
   it('carries the entry id, which restore and purge address it by', () => {
-    render({ trash: [entry], open: new Set([TRASH_PATH]) })
-
-    expect(tree.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')?.dataset.trashId).toBe('aaaa')
+    expect(deleted(entry)?.dataset.trashId).toBe('aaaa')
   })
 
   it('tells a deleted entry from a live one, which is the point of showing it here', () => {
-    render({ trash: [entry], open: new Set([TRASH_PATH]) })
-    const deleted = tree.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')
-
-    expect(deleted?.title).toContain('2026-01-01')
+    expect(deleted(entry)?.title).toContain('2026-01-01')
   })
 
   it('opens the entry by its id, because its old path may name a live document again', () => {
-    render({ trash: [entry], open: new Set([TRASH_PATH]) })
-    const deleted = tree.querySelector<HTMLElement>('[role="treeitem"][data-trash-id]')
-
-    expect(deleted?.getAttribute('href')).toBe('/trash/aaaa')
+    expect(deleted(entry)?.getAttribute('href')).toBe('/trash/aaaa')
   })
 
   it('shows the kind of the deleted entry', () => {
-    render({ trash: [{ ...entry, kind: 'folder' }], open: new Set([TRASH_PATH]) })
+    renderTrashPanel(list, { trash: [{ ...entry, kind: 'folder' }], selected: null })
 
-    expect(tree.querySelector('[role="treeitem"][data-trash-id] .tree__icon')?.textContent).toBe('folder')
+    expect(list.querySelector('[role="treeitem"] .tree__icon')?.textContent).toBe('folder')
+  })
+
+  it('shows nothing at all when nothing has been deleted', () => {
+    renderTrashPanel(list, { trash: [], selected: null })
+
+    expect(list.querySelectorAll('[role="treeitem"]')).toHaveLength(0)
   })
 })
 
 describe('an empty store', () => {
-  it('renders nothing but the trash', () => {
+  it('renders no rows at all, since the trash is no longer in the tree', () => {
     const empty: readonly TreeNode[] = []
-    renderTree(tree, { nodes: empty, trash: [], open: new Set(), selected: null })
+    renderTree(tree, { nodes: empty, open: new Set(), selected: null })
 
-    expect(pathsShown()).toStrictEqual([TRASH_PATH])
+    expect(pathsShown()).toStrictEqual([])
   })
 })
 
@@ -402,16 +365,20 @@ describe('a trash entry row', () => {
     deletedAt: '2026-01-01T00:00:00.000Z',
   }
 
-  beforeEach(() => {
-    render({ trash: [entry], open: new Set([TRASH_PATH]) })
-  })
+  function deletedRow(): HTMLElement {
+    renderTrashPanel(list, { trash: [entry], selected: null })
+    const found = list.querySelector<HTMLElement>(`[data-path="${joinPath(TRASH_PATH, entry.id)}"]`)
+    if (found === null) throw new Error('no row for the deleted entry')
+
+    return found
+  }
 
   it('keeps the deletion time on the row, where it belongs', () => {
-    expect(rowFor(joinPath(TRASH_PATH, entry.id)).title).toContain('2026-01-01')
+    expect(deletedRow().title).toContain('2026-01-01')
   })
 
   it('carries no buttons of its own, since the entry page owns those', () => {
-    expect(rowFor(joinPath(TRASH_PATH, entry.id)).querySelector('button')).toBeNull()
+    expect(deletedRow().querySelector('button')).toBeNull()
   })
 })
 
@@ -454,7 +421,7 @@ describe('a redraw while the reader is part way through something', () => {
 
     render({ nodes: parseTree({ tree: [{ name: 'notes.md', path: 'notes.md', kind: 'document' }] }) })
 
-    expect(pathsShown()).toStrictEqual(['notes.md', TRASH_PATH])
+    expect(pathsShown()).toStrictEqual(['notes.md'])
   })
 })
 

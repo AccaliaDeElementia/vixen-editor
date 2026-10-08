@@ -11,7 +11,6 @@ test('the file browser lists what the store holds', async ({ page, request }) =>
 
   const row = page.locator(`.tree__row[data-path="${folder}"]`)
   await givenAsync(expect(row).toHaveAttribute('aria-expanded', 'false'))
-  await givenAsync(expect(page.locator('.tree__row[data-kind="trash-root"]')).toBeVisible())
 
   await expect(row).toBeVisible()
 

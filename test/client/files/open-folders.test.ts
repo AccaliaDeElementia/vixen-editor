@@ -20,7 +20,7 @@ describe('readOpenFolders', () => {
   })
 
   it('returns what was stored', () => {
-    writePreferences({ widthPx: null, open: true, openFolders: ['journal'] })
+    writePreferences({ widthPx: null, open: true, openFolders: ['journal'], panel: 'files' })
 
     expect([...readOpenFolders()]).toStrictEqual(['journal'])
   })
@@ -55,7 +55,7 @@ describe('setFolderOpen', () => {
   })
 
   it('leaves the explorer width and open state alone', () => {
-    writePreferences({ widthPx: 420, open: false, openFolders: [] })
+    writePreferences({ widthPx: 420, open: false, openFolders: [], panel: 'files' })
 
     setFolderOpen('journal', true)
 

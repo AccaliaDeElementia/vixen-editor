@@ -9,7 +9,7 @@ test('an open dialog keeps what the reader typed when another client changes the
   const typed = `half-written-${stamp}`
 
   await page.goto('/doc/')
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
   await page.locator('#new-document').click()
   await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
   await page.locator('#file-dialog-entry').fill(typed)

@@ -7,6 +7,8 @@ import { announceDocumentMoved } from '../document-moved.ts'
 import { createToast } from '../toast.ts'
 import { onRevealRequested } from '../reveal-request.ts'
 import { onStoreChanged } from '../store-changed.ts'
+import { announceTrashEmptied } from '../trash-emptied.ts'
+import { onPanelChanged } from '../panel-changed.ts'
 
 import { bindActions, updateArchiveLink, updateInsertAvailability, type ActionContext } from './actions.ts'
 import { createDialogs, type Dialogs } from './dialogs.ts'
@@ -23,15 +25,16 @@ import { docUrlFor } from '../doc-path.ts'
 import { focusRowAt } from '../tree-rows.ts'
 import { KEYS } from '../help.ts'
 import {
-  EMPTY_TRASH_SELECTOR,
-  isStoreRow,
+  renderTrashPanel,
   renderTree,
   rowIndexOf,
   ROW_SELECTOR,
+  TRASH_LIST_SELECTOR,
   TRASH_PATH,
   TREE_SELECTOR,
   type VisibleRow,
 } from './tree-view.ts'
+import { FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../panels.ts'
 
 interface FileTreeOptions {
   root?: ParentNode
@@ -41,6 +44,9 @@ interface FileTreeOptions {
   navigate?: (url: string) => void
 }
 
+const EMPTY_TRASH_SELECTOR = '#empty-trash'
+const TRASH_EMPTY_SELECTOR = '[data-part="trash-empty"]'
+const NOTHING_DELETED = 0
 const NEXT_ROW = 1
 const ONE_ENTRY = 1
 const PREVIOUS_ROW = -1
@@ -59,6 +65,7 @@ function assignLocation(url: string): void {
 }
 
 interface Mounted {
+  trashList: HTMLElement | null
   tree: HTMLElement
   root: ParentNode
   client: FilesClient
@@ -78,6 +85,7 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<FileT
   if (tree === null) return { settled: collectRuns().settled, teardownFileTree: () => undefined }
 
   return await runFileTree({
+    trashList: root.querySelector<HTMLElement>(TRASH_LIST_SELECTOR),
     tree,
     root,
     client: options.client ?? createFilesClient(),
@@ -87,7 +95,15 @@ export async function initFileTree(options: FileTreeOptions = {}): Promise<FileT
   })
 }
 
-async function runFileTree({ tree, root, client, dialogs, openDocument, navigate }: Mounted): Promise<FileTree> {
+async function runFileTree({
+  trashList,
+  tree,
+  root,
+  client,
+  dialogs,
+  openDocument,
+  navigate,
+}: Mounted): Promise<FileTree> {
   const toast = createToast(root)
   let nodes: readonly TreeNode[] = []
   let trash: readonly TrashNode[] = []
@@ -95,8 +111,18 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   let visible: VisibleRow[] = []
   let selected: string | null = openDocument.path()
 
+  function showingTheTrash(): boolean {
+    return trashList !== null && panelShowing(root) === TRASH_PANEL
+  }
+
+  function shownHost(): HTMLElement {
+    return showingTheTrash() && trashList !== null ? trashList : tree
+  }
+
+  const rowHosts = trashList === null ? [tree] : [tree, trashList]
+
   function rows(): HTMLElement[] {
-    return [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
+    return [...shownHost().querySelectorAll<HTMLElement>(ROW_SELECTOR)]
   }
 
   function reflectSelection(): void {
@@ -130,50 +156,50 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
       return
     }
 
-    visible = renderTree(tree, { nodes, trash, open, selected })
-    noticeTheTrashChanging()
-    bindEmptyTrash()
+    visible =
+      showingTheTrash() && trashList !== null
+        ? renderTrashPanel(trashList, { trash, selected })
+        : renderTree(tree, { nodes, open, selected })
+    paintEmptyTrash()
     reflectSelection()
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
   }
 
-  let armed = false
-  let trashWas: string | null = null
-
-  function whatIsInTheTrash(): string {
-    return trash.map((entry) => entry.id).join(',')
+  function emptyTrashControl(): HTMLElement | null {
+    return root.querySelector<HTMLElement>(EMPTY_TRASH_SELECTOR)
   }
 
-  function noticeTheTrashChanging(): void {
-    const holds = whatIsInTheTrash()
-    if (trashWas !== null && trashWas !== holds) armed = false
-    trashWas = holds
+  function paintEmptyTrash(): void {
+    const nothing = trash.length === NOTHING_DELETED
+    const placeholder = root.querySelector<HTMLElement>(TRASH_EMPTY_SELECTOR)
+    if (placeholder !== null) placeholder.hidden = !nothing
+
+    const button = emptyTrashControl()
+    if (button === null) return
+
+    button.hidden = nothing
+    button.setAttribute('aria-label', `Empty the trash of ${entriesIn(trash.length)}`)
+  }
+
+  async function emptyTrashOnceAsked(): Promise<void> {
+    const held = entriesIn(trash.length)
+    const confirmed = await dialogs.confirm({
+      title: 'Empty the trash',
+      message: `${held} will be deleted for good, and cannot be restored afterwards.`,
+      confirmLabel: 'Delete for good',
+    })
+    if (!confirmed) return
+
+    await emptyTrash()
   }
 
   function bindEmptyTrash(): void {
-    const button = tree.querySelector<HTMLElement>(EMPTY_TRASH_SELECTOR)
-    if (button === null) return
-
-    function askOnce(): void {
-      armed = true
-      button?.replaceChildren(`Delete ${entriesIn(trash.length)} for good`)
-    }
-
-    if (armed) askOnce()
-
-    button.addEventListener('click', (event) => {
+    emptyTrashControl()?.addEventListener('click', (event) => {
       event.preventDefault()
       event.stopPropagation()
 
-      if (!armed) {
-        askOnce()
-
-        return
-      }
-
-      armed = false
       runs.track(
-        emptyTrash().catch((error: unknown) => {
+        emptyTrashOnceAsked().catch((error: unknown) => {
           toast.error(errorMessage(error))
         }),
       )
@@ -241,8 +267,6 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   }
 
   function openFolderIndex(current: VisibleRow): void {
-    if (!isStoreRow(current)) return
-
     navigate(`${docUrlFor(current.path)}/`)
   }
 
@@ -282,11 +306,19 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
 
   async function emptyTrash(): Promise<void> {
     toast.show(`Deleted ${entriesIn(await client.emptyTrash())} for good`)
+    announceTrashEmptied(root)
     await load()
   }
 
-  tree.addEventListener('click', (event) => {
-    const index = rowIndexOf(tree, event.target)
+  function listenOnRows<Name extends keyof HTMLElementEventMap>(
+    type: Name,
+    handle: (event: HTMLElementEventMap[Name]) => void,
+  ): void {
+    for (const host of rowHosts) host.addEventListener(type, handle)
+  }
+
+  listenOnRows('click', (event) => {
+    const index = rowIndexOf(shownHost(), event.target)
     const current = index === null ? undefined : visible[index]
     if (current === undefined) return
 
@@ -307,8 +339,8 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     toggle(path)
   })
 
-  tree.addEventListener('dblclick', (event) => {
-    const index = rowIndexOf(tree, event.target)
+  listenOnRows('dblclick', (event) => {
+    const index = rowIndexOf(shownHost(), event.target)
     const current = index === null ? undefined : visible[index]
     if (current === undefined) return
 
@@ -325,8 +357,8 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     return event.key === KEYS.insert && (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey
   }
 
-  tree.addEventListener('keydown', (event) => {
-    const index = rowIndexOf(tree, event.target)
+  listenOnRows('keydown', (event) => {
+    const index = rowIndexOf(shownHost(), event.target)
     const current = index === null ? undefined : visible[index]
     if (current === undefined) return
 
@@ -341,6 +373,8 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
   })
 
   function showPath(entryPath: string): void {
+    showPanel(root, isAtOrUnder(TRASH_PATH, entryPath) ? TRASH_PANEL : FILES_PANEL)
+
     openFolders(ancestorsOf(entryPath))
     selected = entryPath
     draw(readOpenFolders())
@@ -398,6 +432,10 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     },
   }
   bindActions(context)
+  bindEmptyTrash()
+  const panels = onPanelChanged(root, () => {
+    draw(open)
+  })
   bindDragAndDrop(
     {
       client,
@@ -455,6 +493,7 @@ async function runFileTree({ tree, root, client, dialogs, openDocument, navigate
     teardownFileTree: () => {
       offStoreChanged()
       offRevealRequested()
+      panels.offPanelChanged()
       for (const release of RELEASES) releasedOn.removeEventListener(release, theDragIsOver)
       toast.dismissRaised()
     },

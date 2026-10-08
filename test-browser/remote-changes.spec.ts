@@ -6,7 +6,7 @@ import { expect, test } from './store-server.ts'
 test('the file browser shows what another client created, without a reload', async ({ page, request }) => {
   const name = `remote-${String(Date.now())}.md`
   await page.goto('/doc/')
-  await givenAsync(expect(page.locator('[role="tree"]')).toBeVisible())
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
 
   await request.post('/api/files/documents', { data: { path: name, content: '# from elsewhere' } })
 

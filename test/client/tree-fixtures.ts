@@ -3,8 +3,11 @@
 import { vi } from 'vitest'
 
 import { initFileTree } from '../../src/client/files/index.ts'
-import { ROW_SELECTOR } from '../../src/client/files/tree-view.ts'
+import { ROW_SELECTOR, TRASH_LIST_SELECTOR } from '../../src/client/files/tree-view.ts'
 import type { TrashNode } from '../../src/client/files/tree-model.ts'
+
+import { showPanel, TRASH_PANEL } from '../../src/client/panels.ts'
+import { announcePanelChanged } from '../../src/client/panel-changed.ts'
 
 import { renderPage } from './templates.ts'
 
@@ -66,8 +69,17 @@ export function treePage({ withToolbar = false, withOpenSelected = false } = {})
   return host
 }
 
+export function showTrash(host: ParentNode): void {
+  showPanel(host, TRASH_PANEL)
+  announcePanelChanged(host)
+}
+
 export function rows(): HTMLElement[] {
   return [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
+}
+
+export function trashRows(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>(`${TRASH_LIST_SELECTOR} ${ROW_SELECTOR}`)]
 }
 
 export function rowFor(entryPath: string): HTMLElement {
