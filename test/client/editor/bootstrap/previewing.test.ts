@@ -18,7 +18,7 @@ const { PREVIEW_SETTLES_MS } = previewTiming
 
 import type { EditorView } from '@codemirror/view'
 
-import { givenAsync } from '../../../conditions.ts'
+import { given, givenAsync } from '../../../conditions.ts'
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import {
   dialogsDismissing,
@@ -464,6 +464,36 @@ describe('closing a tab whose unsaved work does save', () => {
     await editor.settled()
 
     expect(root.querySelector('[data-tab="editor:notes.md"]')).toBeNull()
+  })
+})
+
+describe('clicking a block in a preview of a document no editor holds', () => {
+  it('leaves the caret where it was, rather than moving it in whatever is in front', async () => {
+    writeKeptTabs('secondary', [{ path: 'elsewhere.md', view: 'markup' }], null)
+    const started = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: sessionRecording(record, {
+          load: () => Promise.resolve({ content: '# one\n\n# two', stored: true }),
+        }),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (started === null) throw new Error('the editor did not start')
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
+    await givenAsync(started.settled())
+    root.querySelector<HTMLElement>('[data-tab="markup:elsewhere.md"]')?.click()
+    await givenAsync(started.settled())
+    const [, block] = root.querySelectorAll<HTMLElement>('[data-part="markup-body"] h1')
+    given(() => {
+      expect(block?.textContent).toBe('two')
+    })
+
+    block?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(started.view.state.selection.main.head).toBe(0)
   })
 })
 

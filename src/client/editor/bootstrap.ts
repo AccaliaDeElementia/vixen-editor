@@ -110,8 +110,8 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const pane = paneIn(root)
   const dialogs = options.dialogs ?? createDialogs(root)
 
-  const previews = createPreviews((offset: number) => {
-    tab.putCaretAt(offset)
+  const previews = createPreviews((entryPath: string, offset: number) => {
+    panes.caretInto(entryPath, offset)
   })
 
   function paneWorkspaceWith(settings: PaneSettings): PaneWorkspace {

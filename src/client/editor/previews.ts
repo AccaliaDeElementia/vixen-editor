@@ -25,7 +25,7 @@ export interface Previews {
   stop: () => void
 }
 
-export function createPreviews(putCaretAt: (offset: number) => void): Previews {
+export function createPreviews(putCaretAt: (entryPath: string, offset: number) => void): Previews {
   let showing: PreviewBody | null = null
   let rendered: Showing | null = null
   let settling: ReturnType<typeof setTimeout> | null = null
@@ -39,7 +39,10 @@ export function createPreviews(putCaretAt: (offset: number) => void): Previews {
     render(host: ParentNode, at: TabAt, content: string): void {
       rendered = { host, at }
 
-      const view = at.view === 'source' ? createSourceView(host) : createMarkupView(host, putCaretAt)
+      const intoTheDocument = (offset: number): void => {
+        putCaretAt(at.path, offset)
+      }
+      const view = at.view === 'source' ? createSourceView(host) : createMarkupView(host, intoTheDocument)
       view.show(content)
       showing = view
     },

@@ -174,3 +174,19 @@ describe('writing a preview into a pane', () => {
     expect(sectionFor('view-markup')?.hidden).toBe(true)
   })
 })
+
+describe('clicking a block in a preview', () => {
+  it('names the document the preview is of, rather than leaving the caller to guess', () => {
+    const asked: Array<[string, number]> = []
+    const previews = createPreviews((entryPath: string, offset: number) => {
+      asked.push([entryPath, offset])
+    })
+    const { stop: release } = previews
+    stop = release
+    previews.render(host, { path: 'elsewhere.md', view: 'markup' }, '# one\n\n# two')
+
+    host.querySelectorAll<HTMLElement>('[data-part="markup-body"] h1')[1]?.click()
+
+    expect(asked).toStrictEqual([['elsewhere.md', 7]])
+  })
+})

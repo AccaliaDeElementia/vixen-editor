@@ -2,9 +2,21 @@
 
 import { givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
-import type { APIRequestContext, Page } from '@playwright/test'
+import type { APIRequestContext, Locator, Page } from '@playwright/test'
 
 import { previewControl, storedDocument, storedImage } from './fixtures.ts'
+
+const HEADINGS = 12
+
+function aDocumentOfManyHeadings(): string {
+  return Array.from({ length: HEADINGS }, (_unused, at) => `## Heading ${String(at)}\n\nprose ${String(at)}`).join(
+    '\n\n',
+  )
+}
+
+const LINES_PER_BLOCK = 4
+const FIRST_LINE = '1'
+const LAST_HEADING_LINE = String((HEADINGS - 1) * LINES_PER_BLOCK + 1)
 
 const PRIMARY = 0
 const ASIDE = 1
@@ -91,4 +103,37 @@ test('typing after leaving a preview tab does not bring that preview back over t
   await givenAsync(expect(aside.locator('[data-part="markup-body"]')).toContainText('typed'))
 
   await expect(aside.locator('[data-part="view-markup"]')).toBeHidden()
+})
+
+async function previewingTheAsideDocumentInThePrimary(page: Page, request: APIRequestContext): Promise<void> {
+  const stamp = String(Date.now())
+  const held = `blk-held-${stamp}.md`
+  const other = `blk-oth-${stamp}.md`
+  await storedDocument(request, other, aDocumentOfManyHeadings())
+  await page.goto(await storedDocument(request, held, '# HELD\n\nheld prose\n'))
+  await givenAsync(expect(page.locator('.cm-content')).toContainText('HELD'))
+  await page.locator(`.tree__row[data-path="${other}"]`).click({ modifiers: ['ControlOrMeta'] })
+  await givenAsync(expect(page.locator('.pane').nth(ASIDE).locator('.cm-content')).toContainText('Heading 0'))
+  await givenAsync(previewControl(page, 'markup', ASIDE).click())
+  await givenAsync(expect(page.locator('.pane').nth(PRIMARY).locator('.markup h2').last()).toBeVisible())
+  await page.locator('.pane').nth(PRIMARY).locator('.markup h2').last().click()
+}
+
+function activeLineIn(page: Page, pane: number): Locator {
+  return page.locator('.pane').nth(pane).locator('.cm-activeLineGutter').first()
+}
+
+test('clicking a block in a preview moves the caret in the document the preview is of', async ({ page, request }) => {
+  await previewingTheAsideDocumentInThePrimary(page, request)
+
+  await expect(activeLineIn(page, ASIDE)).toHaveText(LAST_HEADING_LINE)
+})
+
+test('clicking a block in a preview leaves the caret in the other pane where the reader left it', async ({
+  page,
+  request,
+}) => {
+  await previewingTheAsideDocumentInThePrimary(page, request)
+
+  await expect(activeLineIn(page, PRIMARY)).toHaveText(FIRST_LINE)
 })
