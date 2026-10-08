@@ -126,6 +126,25 @@ function asTable({ heading, column, entries }: Section): string {
   return `## ${heading}\n\n| What | ${column} |\n| --- | --- |\n${rows}\n`
 }
 
+function paragraph(...sentences: readonly string[]): string {
+  return sentences.join(' ')
+}
+
+const PREAMBLE = [
+  paragraph(
+    'Your documents live in the file browser on the left.',
+    'Opening one gives it a tab; a tab in italics is one you are only looking at,',
+    'and opening something else takes its place.',
+  ),
+  '',
+  paragraph(
+    'The workspace can be split in two, side by side or one above the other,',
+    'so two documents are open at once.',
+    'A preview opens in the pane its document is not in, and follows the caret as you type.',
+  ),
+  '',
+].join('\n')
+
 export function cheatsheet(): string {
-  return HELP_SECTIONS.map(asTable).join('\n')
+  return [PREAMBLE, ...HELP_SECTIONS.map(asTable)].join('\n')
 }

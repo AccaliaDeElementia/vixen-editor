@@ -39,6 +39,35 @@ describe('the cheatsheet a new workspace starts with', () => {
   )
 })
 
+describe('what the first document says before the tables start', () => {
+  function opening(): string {
+    const lines = cheatsheet().split('\n')
+
+    return lines
+      .slice(
+        0,
+        lines.findIndex((line) => line.startsWith('## ')),
+      )
+      .join('\n')
+  }
+
+  it('says documents open as tabs, which is the thing a first reader is looking at', () => {
+    expect(opening()).toContain('tab')
+  })
+
+  it('says the workspace can be split, which no row of chords implies on its own', () => {
+    expect(opening()).toContain('split')
+  })
+
+  it('says where a preview appears, since the reader has to look at the other pane for it', () => {
+    expect(opening()).toContain('preview')
+  })
+
+  it('says what an italic tab is, before the table that says how to keep one', () => {
+    expect(opening()).toContain('italic')
+  })
+})
+
 describe('the keys the help list claims, against the keys the app binds', () => {
   function listed(): Set<string> {
     return new Set(HELP_SECTIONS.flatMap((section) => section.entries).flatMap((entry) => entry.keys ?? []))

@@ -58,6 +58,10 @@ describe('the first document of an empty workspace', () => {
     return view.state.doc.toString()
   }
 
+  it('says what the editor is before listing what it does, so the tables have a reason to be read', async () => {
+    expect(await contentOf(emptyStore(), '/doc/')).toContain('The workspace can be split in two')
+  })
+
   it.each(['# index', '## Keyboard', 'Ctrl/Cmd + S'])(
     'starts with a cheatsheet holding %s, so the gestures are discoverable at all',
     async (fragment) => {
