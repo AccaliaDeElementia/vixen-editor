@@ -139,6 +139,10 @@ describe('block structure', () => {
   it('renders a horizontal rule', () => {
     expect(tagsIn('---')).toStrictEqual(['hr'])
   })
+
+  it('writes none of the rule’s own characters into the page, because a break is not a word', () => {
+    expect(render('before\n\n---\n\nafter').textContent).toBe('beforeafter')
+  })
 })
 
 describe('task lists', () => {

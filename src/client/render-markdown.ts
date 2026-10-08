@@ -191,14 +191,17 @@ function appendChildren(into: ParentNode, node: SyntaxNode, walk: Walk): void {
   if (gapsAreContent && end > at) open.append(textFrom(walk.source, at, end))
 }
 
-function elementFor(tag: string, node: SyntaxNode, walk: Walk): HTMLElement {
+function positioned(tag: string, node: SyntaxNode): HTMLElement {
   const element = document.createElement(tag)
-  appendChildren(element, node, walk)
+  element.dataset.from = String(node.from)
+  element.dataset.to = String(node.to)
 
-  if (POSITIONED.has(node.name)) {
-    element.dataset.from = String(node.from)
-    element.dataset.to = String(node.to)
-  }
+  return element
+}
+
+function elementFor(tag: string, node: SyntaxNode, walk: Walk): HTMLElement {
+  const element = POSITIONED.has(node.name) ? positioned(tag, node) : document.createElement(tag)
+  appendChildren(element, node, walk)
 
   return element
 }
@@ -233,10 +236,8 @@ function codeElement(code: string, info: string): HTMLElement {
 }
 
 function preformatted(code: string, info: string, node: SyntaxNode): HTMLElement {
-  const block = document.createElement('pre')
+  const block = positioned('pre', node)
   block.append(codeElement(code, info))
-  block.dataset.from = String(node.from)
-  block.dataset.to = String(node.to)
 
   return block
 }
@@ -305,7 +306,7 @@ function renderTask(node: SyntaxNode, walk: Walk): Node {
 }
 
 function renderTable(node: SyntaxNode, walk: Walk): HTMLElement {
-  const table = document.createElement('table')
+  const table = positioned('table', node)
   const body = document.createElement('tbody')
 
   for (const row of childrenOf(node)) {
@@ -317,8 +318,6 @@ function renderTable(node: SyntaxNode, walk: Walk): HTMLElement {
   }
 
   if (body.hasChildNodes()) table.append(body)
-  table.dataset.from = String(node.from)
-  table.dataset.to = String(node.to)
 
   return table
 }
@@ -328,10 +327,8 @@ function renderCell(node: SyntaxNode, walk: Walk): HTMLElement {
 }
 
 function renderRawBlock(node: SyntaxNode, walk: Walk): Node {
-  const holder = document.createElement('div')
+  const holder = positioned('div', node)
   holder.className = RAW_HTML_CLASS
-  holder.dataset.from = String(node.from)
-  holder.dataset.to = String(node.to)
   holder.append(walk.sanitise(walk.source.slice(node.from, node.to)))
 
   return holder
@@ -341,8 +338,8 @@ function renderRawInline(node: SyntaxNode, walk: Walk): Node {
   return codeElement(walk.source.slice(node.from, node.to), HTML_INFO)
 }
 
-function renderRule(node: SyntaxNode, walk: Walk): Node {
-  return elementFor('hr', node, walk)
+function renderRule(node: SyntaxNode): Node {
+  return positioned('hr', node)
 }
 
 function renderBreak(): Node {
