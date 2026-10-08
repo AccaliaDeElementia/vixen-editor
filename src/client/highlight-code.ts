@@ -7,6 +7,8 @@ import { htmlLanguage } from '@codemirror/lang-html'
 import { javascriptLanguage, jsxLanguage, typescriptLanguage, tsxLanguage } from '@codemirror/lang-javascript'
 import { markdownLanguage } from '@codemirror/lang-markdown'
 
+import { vixenHighlightStyle } from './highlight.ts'
+
 import { c, cpp, java } from '@codemirror/legacy-modes/mode/clike'
 import { commonLisp } from '@codemirror/legacy-modes/mode/commonlisp'
 import { diff } from '@codemirror/legacy-modes/mode/diff'
@@ -97,7 +99,7 @@ export function highlightCode(code: string, language: Language | null): Document
   }
 
   let at = 0
-  highlightTree(language.parser.parse(code), classHighlighter, (from, to, classes) => {
+  highlightTree(language.parser.parse(code), [vixenHighlightStyle, classHighlighter], (from, to, classes) => {
     if (from > at) fragment.append(token(code.slice(at, from), ''))
     fragment.append(token(code.slice(from, to), classes))
     at = to

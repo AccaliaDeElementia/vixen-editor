@@ -292,7 +292,7 @@ describe('navigating to a URL that names a view', () => {
 
     await stub.go('/doc/b.md?view=source')
 
-    expect(sourceBody()?.textContent).toBe('# b.md')
+    expect(sourceBody()?.textContent).toBe('<h1>b.md</h1>')
   })
 })
 

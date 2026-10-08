@@ -9,6 +9,7 @@ import { storedDocument } from './fixtures.ts'
 const ASIDE = 1
 const BLOCKS = 40
 const NOT_SCROLLED = 0
+const UNCOLOURED = 0
 
 function aLongDocument(): string {
   return Array.from(
@@ -65,4 +66,18 @@ test('following the caret scrolls the preview, leaving the pane around it where 
     expect.poll(async () => await body.evaluate((element) => element.scrollTop)).toBeGreaterThan(NOT_SCROLLED),
   )
   expect(await aside.evaluate((element) => element.scrollTop)).toBe(NOT_SCROLLED)
+})
+
+test('a source preview colours the html, rather than printing it as flat monospace', async ({ page, request }) => {
+  const aside = await previewing(page, request, 'source')
+  const body = aside.locator('[data-part="source-body"]')
+  await givenAsync(expect(body).toContainText('Heading 0'))
+
+  const coloured = await body.evaluate((element) => {
+    const { color: flat } = getComputedStyle(element)
+
+    return [...element.querySelectorAll('span')].filter((span) => getComputedStyle(span).color !== flat).length
+  })
+
+  expect(coloured).toBeGreaterThan(UNCOLOURED)
 })

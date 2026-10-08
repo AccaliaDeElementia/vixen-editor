@@ -73,10 +73,10 @@ describe('showing what is open', () => {
     expect(tabs().at(0)?.querySelector('.tabs__name')?.textContent).toBe('a.md')
   })
 
-  it('announces a source preview as source, so it is not heard as the editor', () => {
+  it('announces a source preview as html, so it is not heard as the editor', () => {
     strip().show([{ ...SOURCING }], SOURCING)
 
-    expect(tabs().at(0)?.getAttribute('aria-label')).toBe('a.md, source')
+    expect(tabs().at(0)?.getAttribute('aria-label')).toBe('a.md, HTML')
   })
 
   it('announces a markup preview as a preview', () => {

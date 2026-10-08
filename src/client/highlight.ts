@@ -13,7 +13,7 @@ const SUCCESS = '#00bc8c'
 const WARNING = '#f39c12'
 const DANGER = '#e74c3c'
 
-const vixenHighlightStyle = HighlightStyle.define([
+export const vixenHighlightStyle = HighlightStyle.define([
   { tag: tags.heading, color: WHITE, fontWeight: '700' },
   { tag: tags.processingInstruction, color: MUTED },
   { tag: tags.emphasis, fontStyle: 'italic' },
@@ -26,11 +26,15 @@ const vixenHighlightStyle = HighlightStyle.define([
   { tag: tags.list, color: INFO },
   { tag: tags.contentSeparator, color: PRIMARY },
   { tag: tags.keyword, color: WARNING },
+  { tag: tags.tagName, color: INFO },
+  { tag: tags.attributeName, color: WARNING },
+  { tag: tags.string, color: SUCCESS },
+  { tag: tags.comment, color: MUTED, fontStyle: 'italic' },
+  { tag: tags.punctuation, color: MUTED },
+  { tag: tags.operator, color: MUTED },
   { tag: tags.invalid, color: DANGER },
 ])
 
 export const vixenHighlighting: Extension = syntaxHighlighting(vixenHighlightStyle)
 
 export const vixenDarkSurface: Extension = EditorView.theme({}, { dark: true })
-
-export const TestOnly = { vixenHighlightStyle }

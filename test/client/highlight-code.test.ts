@@ -3,7 +3,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Language } from '@codemirror/language'
 
+import { tags } from '@lezer/highlight'
+
 import { highlightCode, resolveLanguage } from '../../src/client/highlight-code.ts'
+import { vixenHighlightStyle } from '../../src/client/highlight.ts'
 
 function languageFor(info: string): Language | null {
   return resolveLanguage(info)?.language ?? null
@@ -17,7 +20,11 @@ function rendered(code: string, info: string): HTMLElement {
 }
 
 function classesIn(code: string, info: string): string[] {
-  return [...rendered(code, info).querySelectorAll('span')].map((span) => span.className)
+  return [...rendered(code, info).querySelectorAll('span')].flatMap((span) => span.className.split(' '))
+}
+
+function editorClassFor(tag: (typeof tags)['heading']): string {
+  return vixenHighlightStyle.style([tag]) ?? ''
 }
 
 describe('choosing a language by its info string', () => {
@@ -102,5 +109,15 @@ describe('what highlighting must never do', () => {
 
   it('renders nothing for empty code rather than failing', () => {
     expect(rendered('', 'javascript').textContent).toBe('')
+  })
+})
+
+describe('agreeing with the editor about how markdown looks', () => {
+  it('marks a heading with the class the editor gives a heading, rather than an unstyled name', () => {
+    expect(classesIn('# A heading', 'markdown')).toContain(editorClassFor(tags.heading))
+  })
+
+  it('marks a link the same way, so a preview and the editor beside it cannot disagree', () => {
+    expect(classesIn('[a link](x.md)', 'markdown')).toContain(editorClassFor(tags.link))
   })
 })

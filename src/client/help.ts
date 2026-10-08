@@ -49,7 +49,7 @@ const SHORTCUTS: readonly Entry[] = [
   },
   { does: 'Open the row the focus is on', how: 'Enter', keys: [KEYS.openRow] },
   { does: 'Insert a link to the selected file', how: 'Ctrl/Cmd + I in the file browser', keys: [KEYS.insert] },
-  { does: 'Show the document as highlighted source', how: 'Alt + Shift + P', keys: [KEYS.previewSource] },
+  { does: 'Show the HTML the preview renders', how: 'Alt + Shift + P', keys: [KEYS.previewSource] },
   { does: 'Show the document rendered', how: 'Alt + P', keys: [KEYS.previewMarkup] },
   { does: 'Close the tab in front of you', how: 'Alt + W', keys: [KEYS.closeTab] },
   { does: 'Move to the next or previous tab', how: 'Alt + ] and Alt + [', keys: [KEYS.nextTab, KEYS.previousTab] },

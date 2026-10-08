@@ -25,23 +25,23 @@ beforeEach(() => {
   host = page()
 })
 
-describe('showing a document as its own source', () => {
-  it('shows the text the document holds', () => {
+describe('showing the html the preview renders', () => {
+  it('shows the tags the document is converted into', () => {
     createSourceView(host).show('# A heading\n\nprose')
 
-    expect(body()?.textContent).toBe('# A heading\n\nprose')
+    expect(body()?.textContent).toBe('<h1>A heading</h1>\n<p>prose</p>')
   })
 
-  it('highlights it as markdown, so it reads as deliberate rather than raw', () => {
+  it('highlights it as html, so it reads as deliberate rather than raw', () => {
     createSourceView(host).show('# A heading')
 
     expect(body()?.querySelectorAll('span').length).toBeGreaterThan(0)
   })
 
-  it('shows the markup a reader wrote rather than rendering it', () => {
+  it('shows what the markup became rather than the markup a reader wrote', () => {
     createSourceView(host).show('A **bold** word')
 
-    expect(body()?.textContent).toContain('**bold**')
+    expect(body()?.textContent).toContain('<strong>bold</strong>')
   })
 
   it('replaces what it showed before, rather than appending to it', () => {
@@ -50,7 +50,7 @@ describe('showing a document as its own source', () => {
 
     source.show('second')
 
-    expect(body()?.textContent).toBe('second')
+    expect(body()?.textContent).toBe('<p>second</p>')
   })
 
   it('shows an empty document as nothing at all', () => {

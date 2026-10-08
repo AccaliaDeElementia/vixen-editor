@@ -8,7 +8,7 @@ import type { PreviewView } from '../doc-path.ts'
 const PREVIEW_SETTLES_MS = 200
 
 export const PREVIEW_ANNOUNCEMENTS: Readonly<Record<PreviewView, string>> = {
-  source: 'Showing the source of',
+  source: 'Showing the HTML of',
   markup: 'Showing a preview of',
 }
 

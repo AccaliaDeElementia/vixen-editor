@@ -89,14 +89,14 @@ describe('showing the document as source', () => {
     expect(panes()?.dataset.split).toBe('beside')
   })
 
-  it('writes the document into the second pane, not over the editor', async () => {
+  it('writes the html of the document into the second pane, not over the editor', async () => {
     const started = await editing('# stored\n\nprose')
 
     ribbonButton()?.click()
 
     await givenAsync(started.settled())
 
-    expect(previewBody()?.textContent).toBe('# stored\n\nprose')
+    expect(previewBody()?.textContent).toBe('<h1>stored</h1>\n<p>prose</p>')
   })
 
   it('reveals the preview, which the new pane keeps hidden until something shows in it', async () => {
@@ -116,7 +116,7 @@ describe('showing the document as source', () => {
 
     await givenAsync(started.settled())
 
-    expect(root.querySelector('#status')?.textContent).toContain('Showing the source of notes.md')
+    expect(root.querySelector('#status')?.textContent).toContain('Showing the HTML of notes.md')
   })
 })
 
@@ -851,7 +851,7 @@ describe('a preview of a document that changed on disk', () => {
     await afterTheCheck()
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
-    expect(previewBody()?.textContent).toBe('# after')
+    expect(previewBody()?.textContent).toBe('<h1>after</h1>')
     vi.useRealTimers()
   })
 })
@@ -868,6 +868,6 @@ describe('the URL naming which view is in front', () => {
   it('opens the preview the URL names, rather than silently showing the editor', async () => {
     await openEditor({ root, pathname: '/doc/notes.md', search: '?view=source', session: fakeSession('# stored') })
 
-    expect(previewBody()?.textContent).toBe('# stored')
+    expect(previewBody()?.textContent).toBe('<h1>stored</h1>')
   })
 })

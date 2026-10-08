@@ -103,7 +103,7 @@ describe('a preview following the document it is of', () => {
     previews.refreshWith(MARKUP.path, '# after')
     await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
 
-    expect(shown('source-body')).toBe('# after')
+    expect(shown('source-body')).toBe('<h1>after</h1>')
   })
 
   it('does nothing while no preview is showing', async () => {

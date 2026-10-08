@@ -1,16 +1,14 @@
 'use sanity'
 
-import { given } from '../../conditions.ts'
+import { given } from '../conditions.ts'
 import { highlightingFor, language } from '@codemirror/language'
 import { EditorState } from '@codemirror/state'
 import { tags, type Tag } from '@lezer/highlight'
 import { EditorView } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
 
-import { vixenHighlighting, TestOnly } from '../../../src/client/editor/highlight.ts'
-import { createEditorState } from '../../../src/client/editor/markdown-setup.ts'
-
-const { vixenHighlightStyle } = TestOnly
+import { vixenHighlighting, vixenHighlightStyle } from '../../src/client/highlight.ts'
+import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
 
 function classesFor(tag: Tag): string | null {
   const state = EditorState.create({ extensions: [vixenHighlighting] })
@@ -52,6 +50,12 @@ describe('vixenHighlightStyle', () => {
     ['inline code', tags.monospace, '#00bc8c'],
     ['quotes', tags.quote, '#adb5bd'],
     ['invalid syntax', tags.invalid, '#e74c3c'],
+    ['html tag names', tags.tagName, '#3498db'],
+    ['html attribute names', tags.attributeName, '#f39c12'],
+    ['strings and attribute values', tags.string, '#00bc8c'],
+    ['comments', tags.comment, '#adb5bd'],
+    ['punctuation', tags.punctuation, '#adb5bd'],
+    ['operators', tags.operator, '#adb5bd'],
   ])('colours %s from the Darkly ramp', (_label, tag, expected) => {
     expect(styleFor(tag)).toContain(expected)
   })

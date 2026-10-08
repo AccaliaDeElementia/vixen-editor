@@ -1,8 +1,9 @@
 'use sanity'
 
-import { markdownLanguage } from '@codemirror/lang-markdown'
+import { htmlLanguage } from '@codemirror/lang-html'
 
 import { highlightCode } from '../highlight-code.ts'
+import { htmlSourceOf } from '../html-source.ts'
 
 const BODY_SELECTOR = '[data-part="source-body"]'
 
@@ -18,7 +19,7 @@ export function createSourceView(host: ParentNode): SourceView {
 
   return {
     show: (content: string) => {
-      body.replaceChildren(highlightCode(content, markdownLanguage))
+      body.replaceChildren(highlightCode(htmlSourceOf(content), htmlLanguage))
     },
   }
 }

@@ -20,7 +20,7 @@ const NAME_CLASS = 'tabs__name'
 const NOTHING_DRAGGED = ''
 const CLOSE_GLYPH = 'close'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
-const VIEW_DESCRIPTIONS: Readonly<Record<string, string>> = { source: 'source', markup: 'preview' }
+const VIEW_DESCRIPTIONS: Readonly<Record<string, string>> = { source: 'HTML', markup: 'preview' }
 const REACHABLE = 0
 const PASSED_OVER = -1
 

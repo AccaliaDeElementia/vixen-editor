@@ -9,7 +9,7 @@ const PANE = '.pane'
 const OUTLASTS_THE_SETTLE_BY = 3
 const PAST_THE_PREVIEW_SETTLE_MS = previewTiming.PREVIEW_SETTLES_MS * OUTLASTS_THE_SETTLE_BY
 
-test('the source preview opens beside the editor and shows the markup', async ({ page, request }) => {
+test('the source preview opens beside the editor and shows the html it renders', async ({ page, request }) => {
   const name = `source-${String(Date.now())}.md`
   await request.post('/api/files/documents', { data: { path: name, content: '# A heading\n\nA **bold** word' } })
   await page.goto(`/doc/${name}`)
@@ -18,12 +18,12 @@ test('the source preview opens beside the editor and shows the markup', async ({
   await page.locator('#preview-source').click()
 
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
-  await expect(page.locator('[data-part="source-body"]').last()).toContainText('A **bold** word')
+  await expect(page.locator('[data-part="source-body"]').last()).toContainText('<p>A <strong>bold</strong> word</p>')
 
   await request.delete(`/api/files/entries/${name}`)
 })
 
-test('the source preview highlights the markup rather than rendering it', async ({ page, request }) => {
+test('the source preview highlights the html it shows', async ({ page, request }) => {
   const name = `highlit-${String(Date.now())}.md`
   await request.post('/api/files/documents', { data: { path: name, content: '# A heading' } })
   await page.goto(`/doc/${name}`)
