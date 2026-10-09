@@ -1,28 +1,23 @@
 'use sanity'
 
+import { createSignal } from './channel.ts'
+
 const SPLIT_CHANGED = 'vixen:split-changed'
 const SPLIT_DISMISS_REQUESTED = 'vixen:split-dismiss-requested'
+
+const splits = createSignal(SPLIT_CHANGED)
+const dismissals = createSignal(SPLIT_DISMISS_REQUESTED)
 
 interface SplitChangedListener {
   offSplitChanged: () => void
 }
 
 export function announceSplitChanged(root: ParentNode): void {
-  root.dispatchEvent(new Event(SPLIT_CHANGED, { bubbles: true }))
+  splits.raiseFrom(root)
 }
 
 export function onSplitChanged(root: ParentNode, handle: () => void): SplitChangedListener {
-  const hear = (): void => {
-    handle()
-  }
-
-  root.addEventListener(SPLIT_CHANGED, hear)
-
-  return {
-    offSplitChanged: () => {
-      root.removeEventListener(SPLIT_CHANGED, hear)
-    },
-  }
+  return { offSplitChanged: splits.listen(root, handle) }
 }
 
 interface DismissListener {
@@ -30,21 +25,11 @@ interface DismissListener {
 }
 
 export function requestSplitDismissed(root: ParentNode): void {
-  root.dispatchEvent(new Event(SPLIT_DISMISS_REQUESTED, { bubbles: true }))
+  dismissals.raiseFrom(root)
 }
 
 export function onSplitDismissRequested(root: ParentNode, handle: () => void): DismissListener {
-  const hear = (): void => {
-    handle()
-  }
-
-  root.addEventListener(SPLIT_DISMISS_REQUESTED, hear)
-
-  return {
-    offSplitDismissRequested: () => {
-      root.removeEventListener(SPLIT_DISMISS_REQUESTED, hear)
-    },
-  }
+  return { offSplitDismissRequested: dismissals.listen(root, handle) }
 }
 
 export const TestOnly = { SPLIT_CHANGED, SPLIT_DISMISS_REQUESTED }

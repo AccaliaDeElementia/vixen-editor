@@ -1,5 +1,7 @@
 'use sanity'
 
+import { createChannel } from './channel.ts'
+
 const ENTRY_TRASHED = 'vixen:entry-trashed'
 
 export interface TrashedEntry {
@@ -7,35 +9,18 @@ export interface TrashedEntry {
   trashId: string
 }
 
-class EntryTrashedEvent extends Event {
-  readonly trashed: TrashedEntry
-
-  constructor(trashed: TrashedEntry) {
-    super(ENTRY_TRASHED)
-    this.trashed = trashed
-  }
-}
-
-export function announceEntryTrashed(root: ParentNode, trashed: TrashedEntry): void {
-  root.dispatchEvent(new EntryTrashedEvent(trashed))
-}
+const trashings = createChannel<TrashedEntry>(ENTRY_TRASHED)
 
 interface TrashedListener {
   offEntryTrashed: () => void
 }
 
+export function announceEntryTrashed(root: ParentNode, trashed: TrashedEntry): void {
+  trashings.announceAt(root, trashed)
+}
+
 export function onEntryTrashed(root: ParentNode, handle: (trashed: TrashedEntry) => void): TrashedListener {
-  const hear = (event: Event): void => {
-    if (event instanceof EntryTrashedEvent) handle(event.trashed)
-  }
-
-  root.addEventListener(ENTRY_TRASHED, hear)
-
-  return {
-    offEntryTrashed: () => {
-      root.removeEventListener(ENTRY_TRASHED, hear)
-    },
-  }
+  return { offEntryTrashed: trashings.listen(root, handle) }
 }
 
 export const TestOnly = { ENTRY_TRASHED }

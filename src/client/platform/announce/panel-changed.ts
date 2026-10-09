@@ -1,27 +1,20 @@
 'use sanity'
 
+import { createSignal } from './channel.ts'
+
 const PANEL_CHANGED = 'vixen:panel-changed'
+const panels = createSignal(PANEL_CHANGED)
 
 interface PanelChangedListener {
   offPanelChanged: () => void
 }
 
 export function announcePanelChanged(root: ParentNode): void {
-  root.dispatchEvent(new Event(PANEL_CHANGED, { bubbles: true }))
+  panels.raiseFrom(root)
 }
 
 export function onPanelChanged(root: ParentNode, handle: () => void): PanelChangedListener {
-  const hear = (): void => {
-    handle()
-  }
-
-  root.addEventListener(PANEL_CHANGED, hear)
-
-  return {
-    offPanelChanged: () => {
-      root.removeEventListener(PANEL_CHANGED, hear)
-    },
-  }
+  return { offPanelChanged: panels.listen(root, handle) }
 }
 
 export const TestOnly = { PANEL_CHANGED }

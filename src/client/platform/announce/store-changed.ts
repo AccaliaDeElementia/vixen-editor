@@ -1,21 +1,18 @@
 'use sanity'
 
-const STORE_CHANGED = 'vixen:store-changed'
+import { createSignal } from './channel.ts'
 
-export function announceStoreChanged(root: ParentNode): void {
-  root.dispatchEvent(new Event(STORE_CHANGED))
-}
+const STORE_CHANGED = 'vixen:store-changed'
+const changes = createSignal(STORE_CHANGED)
 
 interface StoreListener {
   offStoreChanged: () => void
 }
 
-export function onStoreChanged(root: ParentNode, handle: () => void): StoreListener {
-  root.addEventListener(STORE_CHANGED, handle)
+export function announceStoreChanged(root: ParentNode): void {
+  changes.announceAt(root)
+}
 
-  return {
-    offStoreChanged: () => {
-      root.removeEventListener(STORE_CHANGED, handle)
-    },
-  }
+export function onStoreChanged(root: ParentNode, handle: () => void): StoreListener {
+  return { offStoreChanged: changes.listen(root, handle) }
 }

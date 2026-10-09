@@ -1,34 +1,18 @@
 'use sanity'
 
+import { createChannel } from './channel.ts'
+
 const INSERT_REQUESTED = 'vixen:insert-entry'
-
-class InsertRequestedEvent extends Event {
-  readonly entryPath: string
-
-  constructor(entryPath: string) {
-    super(INSERT_REQUESTED, { bubbles: true })
-    this.entryPath = entryPath
-  }
-}
-
-export function requestInsert(target: EventTarget, entryPath: string): void {
-  target.dispatchEvent(new InsertRequestedEvent(entryPath))
-}
+const insertions = createChannel<string>(INSERT_REQUESTED)
 
 interface InsertListener {
   offInsertRequested: () => void
 }
 
+export function requestInsert(target: EventTarget, entryPath: string): void {
+  insertions.raiseFrom(target, entryPath)
+}
+
 export function onInsertRequested(root: ParentNode, handle: (entryPath: string) => void): InsertListener {
-  const hear = (event: Event): void => {
-    if (event instanceof InsertRequestedEvent) handle(event.entryPath)
-  }
-
-  root.addEventListener(INSERT_REQUESTED, hear)
-
-  return {
-    offInsertRequested: () => {
-      root.removeEventListener(INSERT_REQUESTED, hear)
-    },
-  }
+  return { offInsertRequested: insertions.listen(root, handle) }
 }

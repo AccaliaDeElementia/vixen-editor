@@ -1,27 +1,20 @@
 'use sanity'
 
+import { createSignal } from './channel.ts'
+
 const TRASH_EMPTIED = 'vixen:trash-emptied'
+const emptied = createSignal(TRASH_EMPTIED)
 
 interface TrashEmptiedListener {
   offTrashEmptied: () => void
 }
 
 export function announceTrashEmptied(root: ParentNode): void {
-  root.dispatchEvent(new Event(TRASH_EMPTIED, { bubbles: true }))
+  emptied.raiseFrom(root)
 }
 
 export function onTrashEmptied(root: ParentNode, handle: () => void): TrashEmptiedListener {
-  const hear = (): void => {
-    handle()
-  }
-
-  root.addEventListener(TRASH_EMPTIED, hear)
-
-  return {
-    offTrashEmptied: () => {
-      root.removeEventListener(TRASH_EMPTIED, hear)
-    },
-  }
+  return { offTrashEmptied: emptied.listen(root, handle) }
 }
 
 export const TestOnly = { TRASH_EMPTIED }
