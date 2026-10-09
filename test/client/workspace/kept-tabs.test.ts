@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { readKeptTabs, writeKeptTabs, TestOnly } from '../../../src/client/layout/kept-tabs.ts'
+import { readKeptTabs, writeKeptTabs, TestOnly } from '../../../src/client/workspace/kept-tabs.ts'
 
 const { keyFor } = TestOnly
 const PANE = 'primary'

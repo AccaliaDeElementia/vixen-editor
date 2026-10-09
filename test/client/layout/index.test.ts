@@ -11,7 +11,7 @@ import {
   TestOnly as explorerTestOnly,
 } from '../../../src/client/layout/explorer.ts'
 import { onSplitDismissRequested } from '../../../src/client/platform/split-changed.ts'
-import { readSplit } from '../../../src/client/layout/split.ts'
+import { readSplit } from '../../../src/client/workspace/split.ts'
 
 const BOTH_PANES = 2
 import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/layout/index.ts'

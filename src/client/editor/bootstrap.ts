@@ -17,19 +17,19 @@ import { caretsFollowMove } from '../document/carets.ts'
 import { followDeletion } from '../document/follow-deletion.ts'
 import { createToast } from '../platform/toast.ts'
 import type { FilesClient } from '../browser/files-client.ts'
-import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
+import { tabIdentity, type TabAt } from '../workspace/open-tabs.ts'
 import { createPreviews } from '../preview/previews.ts'
 import { createPreviewing } from '../preview/previewing.ts'
 
 import { STORE_ROOT } from '../../shared/store-path.ts'
-import { carryTab } from '../layout/pane.ts'
-import { bindTabKeys } from './tab-keys.ts'
-import { createClosingTabs, type ClosingSurface } from './closing-tabs.ts'
-import { createPaneMoves } from './pane-moves.ts'
-import { createAside } from './aside.ts'
-import { createAcrossPanes } from './across-panes.ts'
+import { carryTab } from '../workspace/pane.ts'
+import { bindTabKeys } from '../workspace/tab-keys.ts'
+import { createClosingTabs, type ClosingSurface } from '../workspace/closing-tabs.ts'
+import { createPaneMoves } from '../workspace/pane-moves.ts'
+import { createAside } from '../workspace/aside.ts'
+import { createAcrossPanes } from '../workspace/across-panes.ts'
 import { createCaretMemory } from '../document/caret-memory.ts'
-import { createTabNavigation } from './tab-navigation.ts'
+import { createTabNavigation } from '../workspace/tab-navigation.ts'
 
 import type { EditorView } from '@codemirror/view'
 
@@ -39,7 +39,7 @@ import {
   MissingMountError,
   type PaneWorkspace,
   type PaneWorkspaceOptions,
-} from './pane-workspace.ts'
+} from '../workspace/pane-workspace.ts'
 import { createStaleBuild } from './stale-build.ts'
 import { watchBuild } from '../build-watch.ts'
 import type { Session } from '../document/session.ts'

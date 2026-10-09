@@ -2,8 +2,8 @@
 
 import type { Dialogs } from '../platform/dialogs.ts'
 import type { FilesClient } from '../browser/files-client.ts'
-import type { Pane } from '../layout/pane.ts'
-import type { StatusBar } from '../layout/status-bar.ts'
+import type { Pane } from './pane.ts'
+import type { StatusBar } from './status-bar.ts'
 import type { Toast } from '../platform/toast.ts'
 import { createDocumentTab, type DocumentTab, type FocusListener } from '../document/document-tab.ts'
 import type { Previews } from '../preview/previews.ts'

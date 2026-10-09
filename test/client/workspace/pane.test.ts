@@ -3,9 +3,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../../cast.ts'
-import { createPane, type Pane } from '../../../src/client/layout/pane.ts'
-import { readKeptTabs, writeKeptTabs, type PaneId } from '../../../src/client/layout/kept-tabs.ts'
-import type { TabAt } from '../../../src/client/layout/open-tabs.ts'
+import { createPane, type Pane } from '../../../src/client/workspace/pane.ts'
+import { readKeptTabs, writeKeptTabs, type PaneId } from '../../../src/client/workspace/kept-tabs.ts'
+import type { TabAt } from '../../../src/client/workspace/open-tabs.ts'
 
 import { renderPane } from '../templates.ts'
 

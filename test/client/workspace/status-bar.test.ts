@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createStatusBar, TestOnly, type StatusBar } from '../../../src/client/layout/status-bar.ts'
+import { createStatusBar, TestOnly, type StatusBar } from '../../../src/client/workspace/status-bar.ts'
 
 import { renderSection } from '../templates.ts'
 

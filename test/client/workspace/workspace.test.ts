@@ -2,7 +2,12 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createWorkspace, TestOnly, type Workspace, type WorkspaceView } from '../../../src/client/layout/workspace.ts'
+import {
+  createWorkspace,
+  TestOnly,
+  type Workspace,
+  type WorkspaceView,
+} from '../../../src/client/workspace/workspace.ts'
 
 import { given } from '../../conditions.ts'
 import { renderPane, renderSection } from '../templates.ts'

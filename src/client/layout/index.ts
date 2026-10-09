@@ -19,7 +19,7 @@ import {
   toggleSplit,
   readSplit,
   type SplitOrientation,
-} from './split.ts'
+} from '../workspace/split.ts'
 import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../platform/split-changed.ts'
 import { announcePanelChanged } from '../platform/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'

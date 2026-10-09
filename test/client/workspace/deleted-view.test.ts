@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createDeletedView, type DeletedView } from '../../../src/client/layout/deleted-view.ts'
+import { createDeletedView, type DeletedView } from '../../../src/client/workspace/deleted-view.ts'
 import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
 import type { FilesClient } from '../../../src/client/browser/files-client.ts'
 import type { TrashNode, TreeNode } from '../../../src/client/browser/tree-model.ts'

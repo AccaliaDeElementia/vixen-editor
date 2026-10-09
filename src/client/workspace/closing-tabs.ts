@@ -1,8 +1,8 @@
 'use sanity'
 
 import { PREVIEW_VIEWS } from '../platform/doc-path.ts'
-import type { Pane } from '../layout/pane.ts'
-import type { TabAt } from '../layout/open-tabs.ts'
+import type { Pane } from './pane.ts'
+import type { TabAt } from './open-tabs.ts'
 
 const OLDEST = 0
 const NOTHING_CLOSED = 0

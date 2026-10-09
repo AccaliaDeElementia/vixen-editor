@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createPaneMoves } from '../../../src/client/editor/pane-moves.ts'
-import type { PaneWorkspace } from '../../../src/client/editor/pane-workspace.ts'
-import type { TabAt } from '../../../src/client/layout/open-tabs.ts'
+import { createPaneMoves } from '../../../src/client/workspace/pane-moves.ts'
+import type { PaneWorkspace } from '../../../src/client/workspace/pane-workspace.ts'
+import type { TabAt } from '../../../src/client/workspace/open-tabs.ts'
 import { cast } from '../../cast.ts'
 
 let root: HTMLElement = document.createElement('div')

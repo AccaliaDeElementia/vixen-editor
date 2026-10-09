@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createTabNavigation } from '../../../src/client/editor/tab-navigation.ts'
-import { createPane, type Pane } from '../../../src/client/layout/pane.ts'
-import type { TabAt } from '../../../src/client/layout/open-tabs.ts'
+import { createTabNavigation } from '../../../src/client/workspace/tab-navigation.ts'
+import { createPane, type Pane } from '../../../src/client/workspace/pane.ts'
+import type { TabAt } from '../../../src/client/workspace/open-tabs.ts'
 
 import { renderPane } from '../templates.ts'
 

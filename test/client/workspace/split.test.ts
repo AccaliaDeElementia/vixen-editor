@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { applySplit, readSplit, setSplitFraction, toggleSplit, TestOnly } from '../../../src/client/layout/split.ts'
+import { applySplit, readSplit, setSplitFraction, toggleSplit, TestOnly } from '../../../src/client/workspace/split.ts'
 
 const { EVEN_SPLIT, MIN_PANE_WIDTH_PX, MIN_PANE_HEIGHT_PX } = TestOnly
 

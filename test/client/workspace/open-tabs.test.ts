@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { createOpenTabs, tabFromIdentity, tabIdentity } from '../../../src/client/layout/open-tabs.ts'
+import { createOpenTabs, tabFromIdentity, tabIdentity } from '../../../src/client/workspace/open-tabs.ts'
 
 const EDITING = { path: 'journal/a.md', view: 'editor' } as const
 const PREVIEWING = { path: 'journal/a.md', view: 'markup' } as const

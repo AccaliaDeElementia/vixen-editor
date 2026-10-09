@@ -1,7 +1,7 @@
 'use sanity'
 
-import type { Pane } from '../layout/pane.ts'
-import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
+import type { Pane } from './pane.ts'
+import { tabIdentity, type TabAt } from './open-tabs.ts'
 
 const NOT_SHOWING = -1
 const FIRST_POSITION = 0

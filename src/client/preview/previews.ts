@@ -3,7 +3,7 @@
 import { createMarkupView } from './markup-view.ts'
 import { createSourceView } from './source-view.ts'
 import type { PreviewBody } from './preview-body.ts'
-import type { TabAt } from '../layout/open-tabs.ts'
+import type { TabAt } from '../workspace/open-tabs.ts'
 import type { PreviewView } from '../platform/doc-path.ts'
 
 const PREVIEW_SETTLES_MS = 200

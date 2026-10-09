@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bindTabKeys } from '../../../src/client/editor/tab-keys.ts'
+import { bindTabKeys } from '../../../src/client/workspace/tab-keys.ts'
 
 let root: HTMLElement = document.createElement('div')
 let answered: string[] = []

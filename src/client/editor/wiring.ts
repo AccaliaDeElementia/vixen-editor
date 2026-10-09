@@ -4,7 +4,7 @@ import { buildThePageWasServed } from '../build-watch.ts'
 import { createDocumentClient } from '../document/document-client.ts'
 import { createFilesClient, type FilesClient } from '../browser/files-client.ts'
 import { createSession, type Session } from '../document/session.ts'
-import { MissingMountError } from './pane-workspace.ts'
+import { MissingMountError } from '../workspace/pane-workspace.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
 

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { openSplit, secondPaneIn, type SplitOrientation } from '../layout/split.ts'
+import { openSplit, secondPaneIn, type SplitOrientation } from './split.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
 
 interface AsideOptions {

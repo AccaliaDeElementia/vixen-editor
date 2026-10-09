@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createImageView, type ImageView } from '../../../src/client/layout/image-view.ts'
+import { createImageView, type ImageView } from '../../../src/client/workspace/image-view.ts'
 
 import { renderSection } from '../templates.ts'
 

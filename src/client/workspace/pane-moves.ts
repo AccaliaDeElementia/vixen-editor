@@ -1,10 +1,10 @@
 'use sanity'
 
-import { carryTab } from '../layout/pane.ts'
-import { forgetKeptTabs } from '../layout/kept-tabs.ts'
+import { carryTab } from './pane.ts'
+import { forgetKeptTabs } from './kept-tabs.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
-import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
-import { closeSplit, type SplitOrientation } from '../layout/split.ts'
+import { tabIdentity, type TabAt } from './open-tabs.ts'
+import { closeSplit, type SplitOrientation } from './split.ts'
 
 const PANE_SELECTOR = '[data-part="pane"]'
 const PANES_SELECTOR = '[data-part="panes"]'
