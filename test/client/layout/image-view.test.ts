@@ -144,6 +144,15 @@ describe('a second image opened after the first', () => {
 })
 
 describe('markup that does not match', () => {
+  it('declines when only one part is missing, not just when every part is', () => {
+    const root = page()
+    root.querySelector('[data-part="image-path"]')?.remove()
+
+    expect(() => {
+      view(root).offer('photo.png')
+    }).not.toThrow()
+  })
+
   it('declines rather than throwing, the way the dialog does', () => {
     const bare = document.createElement('div')
     document.body.append(bare)

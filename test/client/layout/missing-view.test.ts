@@ -374,6 +374,17 @@ describe('markup that does not match', () => {
     }).not.toThrow()
   })
 
+  it('declines when only the create button is missing, which is a different line of the same guard', () => {
+    const partial = document.createElement('div')
+    partial.innerHTML = renderSection('[data-part="view-missing"]')
+    partial.querySelector('[data-part="missing-create"]')?.remove()
+    document.body.append(partial)
+
+    expect(() => {
+      view(partial).offer('journal/a.md')
+    }).not.toThrow()
+  })
+
   it('declines rather than throwing, the way the dialog does', () => {
     const bare = document.createElement('div')
     document.body.append(bare)

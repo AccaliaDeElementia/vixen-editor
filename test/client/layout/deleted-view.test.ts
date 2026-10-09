@@ -383,6 +383,15 @@ describe('markup that does not match', () => {
 
     expect(client.trash).not.toHaveBeenCalled()
   })
+
+  it('declines when only the description is missing, which is a different line of the same guard', async () => {
+    const root = page()
+    root.querySelector('[data-part="deleted-what"]')?.remove()
+
+    await view(root).offer(ENTRY_ID)
+
+    expect(client.trash).not.toHaveBeenCalled()
+  })
 })
 
 describe('deleting an entry for good', () => {

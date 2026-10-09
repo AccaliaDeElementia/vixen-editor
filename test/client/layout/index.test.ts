@@ -156,6 +156,16 @@ describe('dragging the resizer', () => {
     expect(app().style.getPropertyValue('--explorer-width')).toBe('300px')
   })
 
+  it('binds nothing when the explorer is missing but the handle is not, so one absent part is enough', () => {
+    root.querySelector('#explorer')?.remove()
+    initLayout({ root, view: fakeView() })
+
+    resizer().dispatchEvent(pointer('pointerdown', EXPLORER_LEFT + 300))
+    resizer().dispatchEvent(pointer('pointermove', EXPLORER_LEFT + 450))
+
+    expect(app().style.getPropertyValue('--explorer-width')).toBe('')
+  })
+
   it('ignores movement when no drag is in progress', () => {
     initLayout({ root, view: fakeView() })
 
@@ -483,6 +493,14 @@ describe('splitting the workspace', () => {
     splitResizer().dispatchEvent(pointer('pointermove', PANES_WIDTH * 0.3))
 
     expect(panes().style.getPropertyValue('--split')).toBe('0.7')
+  })
+
+  it('binds nothing when the divider is missing but the panes are not, so one absent part is enough', () => {
+    root.querySelector('[data-part="split-resizer"]')?.remove()
+
+    expect(() => {
+      initLayout({ root, view: fakeView() })
+    }).not.toThrow()
   })
 
   it('paints nothing when the divider is dragged with no split to divide', () => {

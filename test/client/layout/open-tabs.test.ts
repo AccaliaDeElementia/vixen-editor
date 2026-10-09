@@ -434,3 +434,15 @@ describe('reading a tab back from how it is named', () => {
     expect(tabFromIdentity('editor')).toBeNull()
   })
 })
+
+describe('closing a tab while no tab is active', () => {
+  it('leaves nothing active, rather than reaching into a tab that is not there', () => {
+    const tabs = createOpenTabs()
+    tabs.open({ path: 'notes.md', view: 'editor' })
+    tabs.leave()
+
+    tabs.close({ path: 'notes.md', view: 'editor' })
+
+    expect(tabs.active()).toBeNull()
+  })
+})
