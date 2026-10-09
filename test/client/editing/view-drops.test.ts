@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bindViewDrops } from '../../../src/client/editor/view-drops.ts'
+import { bindViewDrops } from '../../../src/client/editing/view-drops.ts'
 import { DRAG_KIND_MIME, DRAG_MIME } from '../../../src/client/platform/drag-payload.ts'
 import { cast } from '../../cast.ts'
 

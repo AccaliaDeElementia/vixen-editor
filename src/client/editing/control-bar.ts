@@ -4,7 +4,7 @@ import type { EditorState, TransactionSpec } from '@codemirror/state'
 import type { EditorView, KeyBinding } from '@codemirror/view'
 
 import { KEYS } from '../platform/help.ts'
-import type { DocumentTab } from './document-tab.ts'
+import type { DocumentTab } from '../editor/document-tab.ts'
 
 import { linkedAround, markedWith, prefixedWith } from './formatting.ts'
 

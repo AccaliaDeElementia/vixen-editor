@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { EditorState } from '@codemirror/state'
 
-import { linkedAround, markedWith, prefixedWith } from '../../../src/client/editor/formatting.ts'
+import { linkedAround, markedWith, prefixedWith } from '../../../src/client/editing/formatting.ts'
 
 function at(doc: string): EditorState {
   const anchor = doc.indexOf('[')

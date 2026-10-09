@@ -4,9 +4,9 @@ import type { TransactionSpec } from '@codemirror/state'
 import { closeHoverTooltips, EditorView, hasHoverTooltips } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createHolderControl } from '../../../src/client/editor/holder.ts'
-import { createEditorState } from '../../../src/client/editor/markdown-setup.ts'
-import { TestOnly } from '../../../src/client/editor/link-tooltip.ts'
+import { createHolderControl } from '../../../src/client/editing/holder.ts'
+import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
+import { TestOnly } from '../../../src/client/editing/link-tooltip.ts'
 import { cast } from '../../cast.ts'
 
 import { trackView } from '../editor-fixtures.ts'

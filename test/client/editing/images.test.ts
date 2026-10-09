@@ -4,9 +4,9 @@ import { EditorSelection, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createHolderControl } from '../../../src/client/editor/holder.ts'
-import { createEditorState } from '../../../src/client/editor/markdown-setup.ts'
-import { TestOnly } from '../../../src/client/editor/images.ts'
+import { createHolderControl } from '../../../src/client/editing/holder.ts'
+import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
+import { TestOnly } from '../../../src/client/editing/images.ts'
 
 import { trackView } from '../editor-fixtures.ts'
 

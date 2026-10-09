@@ -8,9 +8,9 @@ import { describe, expect, it } from 'vitest'
 
 import { isRecord } from '../../../src/shared/guards.ts'
 
-import { vixenDecorations, TestOnly } from '../../../src/client/editor/decorations.ts'
-import { createEditorState } from '../../../src/client/editor/markdown-setup.ts'
-import { createHolderControl } from '../../../src/client/editor/holder.ts'
+import { vixenDecorations, TestOnly } from '../../../src/client/editing/decorations.ts'
+import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
+import { createHolderControl } from '../../../src/client/editing/holder.ts'
 import { EditorView } from '@codemirror/view'
 
 const { computeDecorations, vixenDecorationField } = TestOnly

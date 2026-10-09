@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { EditorView } from '@codemirror/view'
 
-import { createEditorState } from '../../../src/client/editor/markdown-setup.ts'
+import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import { trackView } from '../editor-fixtures.ts'
 
 function contentOf(doc = ''): HTMLElement {

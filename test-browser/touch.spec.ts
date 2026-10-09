@@ -8,7 +8,7 @@ import { documentWithLink } from './fixtures.ts'
 
 test.use({ ...devices['Pixel 7'] })
 
-import { TestOnly } from '../src/client/editor/link-tooltip.ts'
+import { TestOnly } from '../src/client/editing/link-tooltip.ts'
 
 const { HOVER_DELAY_MS } = TestOnly
 const OUTLASTS_THE_HOVER_DELAY_BY = 3

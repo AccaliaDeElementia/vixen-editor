@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test'
 
 import { documentWithLink } from './fixtures.ts'
 
-import { TestOnly } from '../src/client/editor/link-tooltip.ts'
+import { TestOnly } from '../src/client/editing/link-tooltip.ts'
 
 const { HOVER_DELAY_MS } = TestOnly
 const OUTLASTS_THE_HOVER_DELAY_BY = 3

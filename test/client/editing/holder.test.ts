@@ -4,8 +4,8 @@ import { EditorView } from '@codemirror/view'
 import { trackView } from '../editor-fixtures.ts'
 import { describe, expect, it } from 'vitest'
 
-import { createHolderControl, holderOf } from '../../../src/client/editor/holder.ts'
-import { createEditorState } from '../../../src/client/editor/markdown-setup.ts'
+import { createHolderControl, holderOf } from '../../../src/client/editing/holder.ts'
+import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 
 function editor(extension: ReturnType<typeof createHolderControl>['unset']): EditorView {
   const parent = document.createElement('div')

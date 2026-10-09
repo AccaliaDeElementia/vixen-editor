@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bindLinkClicks } from '../../../src/client/editor/link-clicks.ts'
+import { bindLinkClicks } from '../../../src/client/editing/link-clicks.ts'
 
 let opened: string[] = []
 

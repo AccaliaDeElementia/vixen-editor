@@ -1,14 +1,14 @@
 'use sanity'
 
-import { given } from '../conditions.ts'
+import { given } from '../../conditions.ts'
 import { highlightingFor, language } from '@codemirror/language'
 import { EditorState } from '@codemirror/state'
 import { tags, type Tag } from '@lezer/highlight'
 import { EditorView } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
 
-import { vixenHighlighting, vixenHighlightStyle } from '../../src/client/highlight.ts'
-import { createEditorState } from '../../src/client/editor/markdown-setup.ts'
+import { vixenHighlighting, vixenHighlightStyle } from '../../../src/client/editing/highlight.ts'
+import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 
 function classesFor(tag: Tag): string | null {
   const state = EditorState.create({ extensions: [vixenHighlighting] })
