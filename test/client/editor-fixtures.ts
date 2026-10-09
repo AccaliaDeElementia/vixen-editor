@@ -6,7 +6,7 @@ import { TestOnly } from '../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../src/client/editor/session.ts'
 import { cast } from '../cast.ts'
 import type { Dialogs } from '../../src/client/platform/dialogs.ts'
-import type { FilesClient } from '../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../src/client/browser/files-client.ts'
 import { renderPage } from './templates.ts'
 
 const { bootstrap } = TestOnly

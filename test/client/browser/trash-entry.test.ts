@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { parseTrashEntry, pathsUnder } from '../../../src/client/files/trash-entry.ts'
+import { parseTrashEntry, pathsUnder } from '../../../src/client/browser/trash-entry.ts'
 
 const ENTRY = {
   entry: {

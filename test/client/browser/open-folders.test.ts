@@ -7,7 +7,7 @@ import {
   pruneOpenFolders,
   readOpenFolders,
   setFolderOpen,
-} from '../../../src/client/files/open-folders.ts'
+} from '../../../src/client/browser/open-folders.ts'
 import { readPreferences, writePreferences } from '../../../src/client/platform/preferences.ts'
 
 beforeEach(() => {

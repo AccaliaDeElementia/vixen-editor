@@ -3,12 +3,12 @@
 import { given } from '../../../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TestOnly } from '../../../../src/client/files/drag.ts'
-import { FilesRequestError } from '../../../../src/client/files/files-client.ts'
-import { parseTree } from '../../../../src/client/files/tree-model.ts'
-import { ROW_SELECTOR, TREE_SELECTOR } from '../../../../src/client/files/tree-view.ts'
+import { TestOnly } from '../../../../src/client/browser/drag.ts'
+import { FilesRequestError } from '../../../../src/client/browser/files-client.ts'
+import { parseTree } from '../../../../src/client/browser/tree-model.ts'
+import { ROW_SELECTOR, TREE_SELECTOR } from '../../../../src/client/browser/tree-view.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
-import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { cast } from '../../../cast.ts'
 import {
   TRASHED,

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../../cast.ts'
 import { createTabStrip, type TabStrip } from '../../../src/client/layout/tab-strip.ts'
-import { ENTRY_GLYPHS } from '../../../src/client/tree-rows.ts'
+import { ENTRY_GLYPHS } from '../../../src/client/browser/tree-rows.ts'
 
 import { renderPane } from '../templates.ts'
 

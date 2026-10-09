@@ -7,7 +7,7 @@ import { createPreviews } from '../../../src/client/editor/previews.ts'
 import { createCaretMemory } from '../../../src/client/editor/caret-memory.ts'
 import { createToast, type Toast } from '../../../src/client/platform/toast.ts'
 import type { Session } from '../../../src/client/editor/session.ts'
-import type { FilesClient } from '../../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../../src/client/browser/files-client.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,

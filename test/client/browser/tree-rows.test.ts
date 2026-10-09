@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { given } from '../conditions.ts'
+import { given } from '../../conditions.ts'
 import {
   treeRow,
   decorativeIcon,
@@ -11,7 +11,7 @@ import {
   makeReachable,
   treeGroup,
   treeItem,
-} from '../../src/client/tree-rows.ts'
+} from '../../../src/client/browser/tree-rows.ts'
 
 beforeEach(() => {
   document.body.innerHTML = ''

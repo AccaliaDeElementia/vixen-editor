@@ -9,7 +9,7 @@ import { errorMessage } from '../platform/error-message.ts'
 import { isBlank } from '../../shared/content.ts'
 import { KEYS } from '../platform/help.ts'
 import type { Dialogs } from '../platform/dialogs.ts'
-import type { FilesClient } from '../files/files-client.ts'
+import type { FilesClient } from '../browser/files-client.ts'
 import type { StatusBar } from '../layout/status-bar.ts'
 import type { Toast } from '../platform/toast.ts'
 

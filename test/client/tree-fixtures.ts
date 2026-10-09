@@ -2,9 +2,9 @@
 
 import { vi } from 'vitest'
 
-import { initFileTree } from '../../src/client/files/index.ts'
-import { ROW_SELECTOR, TRASH_LIST_SELECTOR } from '../../src/client/files/tree-view.ts'
-import type { TrashNode } from '../../src/client/files/tree-model.ts'
+import { initFileTree } from '../../src/client/browser/index.ts'
+import { ROW_SELECTOR, TRASH_LIST_SELECTOR } from '../../src/client/browser/tree-view.ts'
+import type { TrashNode } from '../../src/client/browser/tree-model.ts'
 
 import { showPanel, TRASH_PANEL } from '../../src/client/platform/panels.ts'
 import { announcePanelChanged } from '../../src/client/platform/panel-changed.ts'

@@ -2,7 +2,7 @@
 
 import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
 
-import { decorativeIcon, ENTRY_GLYPHS, makeReachable, treeGroup, treeItem, treeRow } from '../tree-rows.ts'
+import { decorativeIcon, ENTRY_GLYPHS, makeReachable, treeGroup, treeItem, treeRow } from './tree-rows.ts'
 
 import { docUrlFor } from '../platform/doc-path.ts'
 import { trashUrlFor } from '../../shared/page-urls.ts'

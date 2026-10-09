@@ -6,7 +6,7 @@ import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
 
 import { cast } from '../../../cast.ts'
-import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 
 import {
   openEditor,

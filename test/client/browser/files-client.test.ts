@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../../cast.ts'
 
-import { createFilesClient, FilesRequestError } from '../../../src/client/files/files-client.ts'
+import { createFilesClient, FilesRequestError } from '../../../src/client/browser/files-client.ts'
 import { isRecord } from '../../../src/shared/guards.ts'
 
 let fetchMock: ReturnType<typeof vi.fn> = vi.fn()

@@ -11,7 +11,7 @@ import {
   parseTrash,
   parseTree,
   type TreeNode,
-} from '../../../src/client/files/tree-model.ts'
+} from '../../../src/client/browser/tree-model.ts'
 
 describe('parseTree', () => {
   it('reads a flat document', () => {

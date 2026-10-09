@@ -3,8 +3,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { given } from '../../conditions.ts'
-import { parseTrashEntry, type TrashEntryNode } from '../../../src/client/files/trash-entry.ts'
-import { renderRestoreTree, TestOnly } from '../../../src/client/layout/restore-tree.ts'
+import { parseTrashEntry, type TrashEntryNode } from '../../../src/client/browser/trash-entry.ts'
+import { renderRestoreTree, TestOnly } from '../../../src/client/browser/restore-tree.ts'
 
 function entryOf(children: unknown[]): TrashEntryNode {
   const parsed = parseTrashEntry({

@@ -2,15 +2,15 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { FilesRequestError } from '../../../src/client/files/files-client.ts'
+import { FilesRequestError } from '../../../src/client/browser/files-client.ts'
 import { onDeletionPending, onEntryTrashed, type TrashedEntry } from '../../../src/client/platform/entry-deletion.ts'
 import { onInsertRequested } from '../../../src/client/platform/insert-entry.ts'
 import { openDocumentIn } from '../../../src/client/platform/navigation.ts'
-import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/files/tree-model.ts'
-import { ROW_SELECTOR, TRASH_PATH } from '../../../src/client/files/tree-view.ts'
+import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/browser/tree-model.ts'
+import { ROW_SELECTOR, TRASH_PATH } from '../../../src/client/browser/tree-view.ts'
 import { joinPath } from '../../../src/shared/store-path.ts'
 import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
-import type { FilesClient } from '../../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../../src/client/browser/files-client.ts'
 import { cast } from '../../cast.ts'
 import { given } from '../../conditions.ts'
 import {

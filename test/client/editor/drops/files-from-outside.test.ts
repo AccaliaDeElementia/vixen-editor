@@ -4,7 +4,7 @@ import { givenAsync } from '../../../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindFileDrops, TestOnly } from '../../../../src/client/editor/drops.ts'
-import { FilesRequestError, type FilesClient } from '../../../../src/client/files/files-client.ts'
+import { FilesRequestError, type FilesClient } from '../../../../src/client/browser/files-client.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import type { Toast } from '../../../../src/client/platform/toast.ts'
 

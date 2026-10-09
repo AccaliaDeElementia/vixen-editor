@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bindEntryDrops, linkTo, TestOnly as DropTestOnly } from '../../../../src/client/editor/drops.ts'
-import { TestOnly } from '../../../../src/client/files/drag.ts'
+import { TestOnly } from '../../../../src/client/browser/drag.ts'
 
 import { cast } from '../../../cast.ts'
 

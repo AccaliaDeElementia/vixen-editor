@@ -4,15 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDeletedView, type DeletedView } from '../../../src/client/layout/deleted-view.ts'
 import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
-import type { FilesClient } from '../../../src/client/files/files-client.ts'
-import type { TrashNode, TreeNode } from '../../../src/client/files/tree-model.ts'
+import type { FilesClient } from '../../../src/client/browser/files-client.ts'
+import type { TrashNode, TreeNode } from '../../../src/client/browser/tree-model.ts'
 import type { Toast } from '../../../src/client/platform/toast.ts'
 
 import { cast } from '../../cast.ts'
 import { given, givenAsync } from '../../conditions.ts'
 
 import { onRevealRequested } from '../../../src/client/platform/reveal-request.ts'
-import { parseTrashEntry } from '../../../src/client/files/trash-entry.ts'
+import { parseTrashEntry } from '../../../src/client/browser/trash-entry.ts'
 import { onStoreChanged } from '../../../src/client/platform/store-changed.ts'
 
 import { renderSection } from '../templates.ts'

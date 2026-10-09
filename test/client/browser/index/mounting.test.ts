@@ -2,13 +2,13 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { initFileTree } from '../../../../src/client/files/index.ts'
-import { readOpenFolders } from '../../../../src/client/files/open-folders.ts'
+import { initFileTree } from '../../../../src/client/browser/index.ts'
+import { readOpenFolders } from '../../../../src/client/browser/open-folders.ts'
 import { requestReveal } from '../../../../src/client/platform/reveal-request.ts'
 import { announceStoreChanged } from '../../../../src/client/platform/store-changed.ts'
-import { parseTree } from '../../../../src/client/files/tree-model.ts'
-import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
-import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { parseTree } from '../../../../src/client/browser/tree-model.ts'
+import { TRASH_PATH } from '../../../../src/client/browser/tree-view.ts'
+import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'

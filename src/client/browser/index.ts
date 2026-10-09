@@ -22,7 +22,7 @@ import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
 import { requestInsert } from '../platform/insert-entry.ts'
 import { requestKeep } from '../platform/keep-request.ts'
 import { docUrlFor } from '../platform/doc-path.ts'
-import { focusRowAt } from '../tree-rows.ts'
+import { focusRowAt } from './tree-rows.ts'
 import { KEYS } from '../platform/help.ts'
 import {
   renderTrashPanel,

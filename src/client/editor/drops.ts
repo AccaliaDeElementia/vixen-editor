@@ -9,7 +9,7 @@ import { classifyFile, type EntryKind } from '../../shared/documents.ts'
 import { joinPath } from '../../shared/store-path.ts'
 import { serially } from '../../shared/serially.ts'
 import { errorMessage } from '../platform/error-message.ts'
-import { FilesRequestError, type FilesClient } from '../files/files-client.ts'
+import { FilesRequestError, type FilesClient } from '../browser/files-client.ts'
 import type { Dialogs } from '../platform/dialogs.ts'
 import type { Toast } from '../platform/toast.ts'
 

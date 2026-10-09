@@ -3,8 +3,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMissingView, type MissingView } from '../../../src/client/layout/missing-view.ts'
-import type { FilesClient } from '../../../src/client/files/files-client.ts'
-import type { TrashNode, TreeNode } from '../../../src/client/files/tree-model.ts'
+import type { FilesClient } from '../../../src/client/browser/files-client.ts'
+import type { TrashNode, TreeNode } from '../../../src/client/browser/tree-model.ts'
 import type { Toast } from '../../../src/client/platform/toast.ts'
 
 import { cast } from '../../cast.ts'

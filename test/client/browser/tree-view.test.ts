@@ -3,7 +3,7 @@
 import { given } from '../../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/files/tree-model.ts'
+import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/browser/tree-model.ts'
 import { joinPath } from '../../../src/shared/store-path.ts'
 import {
   renderTrashPanel,
@@ -12,7 +12,7 @@ import {
   ROW_SELECTOR,
   TRASH_PATH,
   type TreeViewModel,
-} from '../../../src/client/files/tree-view.ts'
+} from '../../../src/client/browser/tree-view.ts'
 
 const SAMPLE = parseTree({
   tree: [

@@ -4,9 +4,9 @@ import { classifyFile, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, type FileKind } fr
 import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
 import { EMPTY } from '../../shared/sequences.ts'
 import { errorMessage } from '../platform/error-message.ts'
-import type { FilesClient } from '../files/files-client.ts'
-import { restoreCandidatesFor, type RestoreCandidate } from '../files/restore-candidates.ts'
-import { folderPathsIn, type TreeNode } from '../files/tree-model.ts'
+import type { FilesClient } from '../browser/files-client.ts'
+import { restoreCandidatesFor, type RestoreCandidate } from '../browser/restore-candidates.ts'
+import { folderPathsIn, type TreeNode } from '../browser/tree-model.ts'
 import type { Toast } from '../platform/toast.ts'
 
 const CREATE_SELECTOR = '[data-part="missing-create"]'

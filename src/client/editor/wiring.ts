@@ -2,7 +2,7 @@
 
 import { buildThePageWasServed } from '../build-watch.ts'
 import { createDocumentClient } from './document-client.ts'
-import { createFilesClient, type FilesClient } from '../files/files-client.ts'
+import { createFilesClient, type FilesClient } from '../browser/files-client.ts'
 import { createSession, type Session } from './session.ts'
 import { MissingMountError } from './pane-workspace.ts'
 

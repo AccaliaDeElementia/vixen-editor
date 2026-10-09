@@ -1,7 +1,7 @@
 'use sanity'
 
 import type { Dialogs } from '../platform/dialogs.ts'
-import type { FilesClient } from '../files/files-client.ts'
+import type { FilesClient } from '../browser/files-client.ts'
 import type { Pane } from '../layout/pane.ts'
 import type { StatusBar } from '../layout/status-bar.ts'
 import type { Toast } from '../platform/toast.ts'

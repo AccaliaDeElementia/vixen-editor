@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { documentNameFor } from '../../../src/client/files/document-name.ts'
+import { documentNameFor } from '../../../src/client/browser/document-name.ts'
 
 describe('the name a new document gets', () => {
   it.each([

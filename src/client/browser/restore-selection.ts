@@ -1,6 +1,6 @@
 'use sanity'
 
-import { pathsUnder, type TrashEntryNode } from '../files/trash-entry.ts'
+import { pathsUnder, type TrashEntryNode } from './trash-entry.ts'
 
 export type TickState = 'on' | 'off' | 'mixed'
 

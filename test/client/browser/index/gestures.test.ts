@@ -6,8 +6,8 @@ import { onInsertRequested } from '../../../../src/client/platform/insert-entry.
 import { onKeepRequested } from '../../../../src/client/platform/keep-request.ts'
 import { onOpenAsideRequested } from '../../../../src/client/platform/open-aside.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
-import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
-import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { TRASH_PATH } from '../../../../src/client/browser/tree-view.ts'
+import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 
 import { cast } from '../../../cast.ts'
 import { TRASHED, fakeClient, mountTree, rowFor, showTrash, statusText, treePage } from '../../tree-fixtures.ts'

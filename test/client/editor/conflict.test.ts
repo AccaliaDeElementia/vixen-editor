@@ -6,7 +6,7 @@ import { DocumentRequestError } from '../../../src/client/editor/document-client
 import { isConflict, offerResolution, TestOnly } from '../../../src/client/editor/conflict.ts'
 import type { ConflictOptions } from '../../../src/client/editor/conflict.ts'
 import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
-import type { FilesClient } from '../../../src/client/files/files-client.ts'
+import type { FilesClient } from '../../../src/client/browser/files-client.ts'
 import { cast } from '../../cast.ts'
 
 const { KEEP_BOTH, KEEP_MINE, MERGE, TAKE_THEIRS, copyNameFor } = TestOnly

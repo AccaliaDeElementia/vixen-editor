@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../../../src/client/files/drag.ts'
-import { parseTree } from '../../../../src/client/files/tree-model.ts'
-import type { FilesClient } from '../../../../src/client/files/files-client.ts'
+import { TestOnly } from '../../../../src/client/browser/drag.ts'
+import { parseTree } from '../../../../src/client/browser/tree-model.ts'
+import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { cast } from '../../../cast.ts'
 import { fakeClient, mountTree, rowFor, treePage } from '../../tree-fixtures.ts'
 
