@@ -7,7 +7,7 @@ import type { Session } from '../../../../src/client/document/session.ts'
 import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
 import { requestKeep } from '../../../../src/client/platform/announce/keep-request.ts'
 import { requestSplitDismissed } from '../../../../src/client/platform/announce/split-changed.ts'
-import { readKeptTabs } from '../../../../src/client/workspace/kept-tabs.ts'
+import { readKeptTabs } from '../../../../src/client/workspace/tabs/kept-tabs.ts'
 import { givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,

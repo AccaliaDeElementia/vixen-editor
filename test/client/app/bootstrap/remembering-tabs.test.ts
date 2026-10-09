@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { announceDocumentMoved } from '../../../../src/client/platform/announce/document-moved.ts'
 import { requestKeep } from '../../../../src/client/platform/announce/keep-request.ts'
-import { readKeptTabs, writeKeptTabs } from '../../../../src/client/workspace/kept-tabs.ts'
+import { readKeptTabs, writeKeptTabs } from '../../../../src/client/workspace/tabs/kept-tabs.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 
 import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'

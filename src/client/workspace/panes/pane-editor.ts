@@ -1,0 +1,61 @@
+'use sanity'
+
+import type { Dialogs } from '../../platform/dialogs.ts'
+import type { FilesClient } from '../../browser/files-client.ts'
+import type { Pane } from './pane.ts'
+import type { StatusBar } from './status-bar.ts'
+import type { Toast } from '../../platform/toast.ts'
+import { createDocumentTab, type DocumentTab, type FocusListener } from '../../document/document-tab.ts'
+import type { Previews } from '../../preview/previews.ts'
+import type { CaretMemory } from '../../document/caret-memory.ts'
+import type { Session } from '../../document/session.ts'
+
+interface PaneEditorOptions {
+  pane: Pane
+  mount: Element
+  session: Session
+  files: FilesClient
+  dialogs: Dialogs
+  toast: Toast
+  statusBar: StatusBar
+  previews: Previews
+  documentId: () => string | null
+  openUrl: (url: string) => void
+  announce: (text: string) => void
+  onStored: () => void
+  caretMemory: CaretMemory
+  showingDocument: () => boolean
+  listenForFocus?: FocusListener | undefined
+}
+
+export function createPaneEditor(options: PaneEditorOptions): DocumentTab {
+  const { pane, previews, documentId } = options
+
+  return createDocumentTab({
+    mount: options.mount,
+    session: options.session,
+    files: options.files,
+    dialogs: options.dialogs,
+    toast: options.toast,
+    statusBar: options.statusBar,
+    documentId,
+    openUrl: options.openUrl,
+    announce: options.announce,
+    onStored: options.onStored,
+    caretMemory: options.caretMemory,
+    showingDocument: options.showingDocument,
+    listenForFocus: options.listenForFocus,
+
+    onEdited: (content: string) => {
+      const holder = documentId()
+      if (holder !== null) pane.keepWhenOpened({ path: holder, view: 'editor' })
+      previews.refreshWith(holder, content)
+    },
+    onReloaded: (content: string) => {
+      previews.refreshWith(documentId(), content)
+    },
+    onCaretMoved: (offset: number) => {
+      previews.revealOffset(documentId(), offset)
+    },
+  })
+}

@@ -1,8 +1,8 @@
 'use sanity'
 
 import { docUrlFor, isPreviewView, type PreviewView, type TabView } from '../platform/doc-path.ts'
-import type { TabAt } from '../workspace/open-tabs.ts'
-import type { PaneWorkspace } from '../workspace/pane-workspace.ts'
+import type { TabAt } from '../workspace/tabs/open-tabs.ts'
+import type { PaneWorkspace } from '../workspace/panes/pane-workspace.ts'
 
 interface PreviewingOptions {
   holdsPermanently: (at: TabAt) => boolean

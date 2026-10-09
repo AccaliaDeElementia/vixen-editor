@@ -17,17 +17,17 @@ import { caretsFollowMove } from '../document/carets.ts'
 import { followDeletion } from '../document/follow-deletion.ts'
 import { createToast } from '../platform/toast.ts'
 import type { FilesClient } from '../browser/files-client.ts'
-import type { TabAt } from '../workspace/open-tabs.ts'
+import type { TabAt } from '../workspace/tabs/open-tabs.ts'
 import { createPreviews } from '../preview/previews.ts'
 import { createPreviewing } from '../preview/previewing.ts'
 
 import { STORE_ROOT } from '../../shared/store-path.ts'
-import { bindTabKeys } from '../workspace/tab-keys.ts'
-import { createPaneMoves } from '../workspace/pane-moves.ts'
-import { createAside } from '../workspace/aside.ts'
-import { createAcrossPanes } from '../workspace/across-panes.ts'
+import { bindTabKeys } from '../workspace/tabs/tab-keys.ts'
+import { createPaneMoves } from '../workspace/panes/pane-moves.ts'
+import { createAside } from '../workspace/panes/aside.ts'
+import { createAcrossPanes } from '../workspace/panes/across-panes.ts'
 import { createCaretMemory } from '../document/caret-memory.ts'
-import { createTabNavigation } from '../workspace/tab-navigation.ts'
+import { createTabNavigation } from '../workspace/tabs/tab-navigation.ts'
 import { createSurfaces } from './surfaces.ts'
 
 import type { EditorView } from '@codemirror/view'
@@ -38,7 +38,7 @@ import {
   MissingMountError,
   type PaneWorkspace,
   type PaneWorkspaceOptions,
-} from '../workspace/pane-workspace.ts'
+} from '../workspace/panes/pane-workspace.ts'
 import { createStaleBuild } from '../chrome/stale-build.ts'
 import { watchBuild } from '../chrome/build-watch.ts'
 import type { Session } from '../document/session.ts'

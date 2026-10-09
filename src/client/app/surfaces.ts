@@ -1,9 +1,9 @@
 'use sanity'
 
-import { carryTab } from '../workspace/pane.ts'
-import { createClosingTabs, type ClosingSurface } from '../workspace/closing-tabs.ts'
-import { tabIdentity, type TabAt } from '../workspace/open-tabs.ts'
-import type { PaneWorkspace } from '../workspace/pane-workspace.ts'
+import { carryTab } from '../workspace/panes/pane.ts'
+import { createClosingTabs, type ClosingSurface } from '../workspace/tabs/closing-tabs.ts'
+import { tabIdentity, type TabAt } from '../workspace/tabs/open-tabs.ts'
+import type { PaneWorkspace } from '../workspace/panes/pane-workspace.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 
 interface Surfacing {

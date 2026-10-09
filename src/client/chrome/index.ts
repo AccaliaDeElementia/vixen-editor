@@ -13,7 +13,7 @@ import {
 } from './explorer.ts'
 import { PANEL_NAMES } from '../platform/panels.ts'
 import { bindDragging } from '../platform/dragging.ts'
-import { bindSplitControls } from '../workspace/split-controls.ts'
+import { bindSplitControls } from '../workspace/split/split-controls.ts'
 import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../platform/help.ts'

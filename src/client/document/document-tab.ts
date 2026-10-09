@@ -10,7 +10,7 @@ import { isBlank } from '../../shared/content.ts'
 import { KEYS } from '../platform/help.ts'
 import type { Dialogs } from '../platform/dialogs.ts'
 import type { FilesClient } from '../browser/files-client.ts'
-import type { StatusBar } from '../workspace/status-bar.ts'
+import type { StatusBar } from '../workspace/panes/status-bar.ts'
 import type { Toast } from '../platform/toast.ts'
 
 import { createAutosave, type SaveState } from './autosave.ts'
