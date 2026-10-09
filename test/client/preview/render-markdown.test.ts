@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { renderMarkdown } from '../../src/client/render-markdown.ts'
-import { SCRIPT_URL } from './hostile-urls.ts'
+import { renderMarkdown } from '../../../src/client/preview/render-markdown.ts'
+import { SCRIPT_URL } from '../hostile-urls.ts'
 
 function sanitiserAllowing(): DocumentFragment {
   const fragment = document.createDocumentFragment()

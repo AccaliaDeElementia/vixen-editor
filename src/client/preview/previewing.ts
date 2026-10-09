@@ -2,7 +2,7 @@
 
 import { docUrlFor, isPreviewView, type PreviewView, type TabView } from '../platform/doc-path.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
-import type { PaneWorkspace } from './pane-workspace.ts'
+import type { PaneWorkspace } from '../editor/pane-workspace.ts'
 
 interface PreviewingOptions {
   holdsPermanently: (at: TabAt) => boolean

@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createPreviews, TestOnly } from '../../../src/client/editor/previews.ts'
+import { createPreviews, TestOnly } from '../../../src/client/preview/previews.ts'
 
 import { given } from '../../conditions.ts'
 import { renderPane } from '../templates.ts'

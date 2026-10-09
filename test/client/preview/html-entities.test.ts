@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { decodeEntity } from '../../src/client/html-entities.ts'
+import { decodeEntity } from '../../../src/client/preview/html-entities.ts'
 
 describe('an entity with a name', () => {
   it('decodes one the renderer knows', () => {

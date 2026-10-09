@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { htmlSourceBlocks } from '../../src/client/html-source.ts'
+import { htmlSourceBlocks } from '../../../src/client/preview/html-source.ts'
 
 function htmlSourceOf(markdown: string): string {
   return htmlSourceBlocks(markdown)

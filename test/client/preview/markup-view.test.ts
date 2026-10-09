@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createMarkupView } from '../../../src/client/layout/markup-view.ts'
+import { createMarkupView } from '../../../src/client/preview/markup-view.ts'
 
 import { renderPane } from '../templates.ts'
 

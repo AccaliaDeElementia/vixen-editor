@@ -6,7 +6,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const REPO_ROOT = path.join(import.meta.dirname, '..', '..')
-const HIGHLIGHTER = 'src/client/highlight-code.ts'
+const HIGHLIGHTER = 'src/client/preview/highlight-code.ts'
 const MAP_BLOCK = /const LANGUAGES[\s\S]*?\n\]\)/v
 const MAP_KEY = /^\s*\['(?<name>[^']+)',/gmv
 const DOCUMENTED_SET = /The\s+named\s+set\s+is(?<list>[\s\S]*?)—/v

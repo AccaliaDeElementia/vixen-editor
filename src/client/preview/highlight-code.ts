@@ -7,7 +7,7 @@ import { htmlLanguage } from '@codemirror/lang-html'
 import { javascriptLanguage, jsxLanguage, typescriptLanguage, tsxLanguage } from '@codemirror/lang-javascript'
 import { markdownLanguage } from '@codemirror/lang-markdown'
 
-import { vixenHighlightStyle } from './editing/highlight.ts'
+import { vixenHighlightStyle } from '../editing/highlight.ts'
 
 import { c, cpp, java } from '@codemirror/legacy-modes/mode/clike'
 import { commonLisp } from '@codemirror/legacy-modes/mode/commonlisp'

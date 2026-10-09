@@ -5,8 +5,8 @@ import type { Language } from '@codemirror/language'
 
 import { tags } from '@lezer/highlight'
 
-import { highlightCode, resolveLanguage } from '../../src/client/highlight-code.ts'
-import { vixenHighlightStyle } from '../../src/client/editing/highlight.ts'
+import { highlightCode, resolveLanguage } from '../../../src/client/preview/highlight-code.ts'
+import { vixenHighlightStyle } from '../../../src/client/editing/highlight.ts'
 
 function languageFor(info: string): Language | null {
   return resolveLanguage(info)?.language ?? null

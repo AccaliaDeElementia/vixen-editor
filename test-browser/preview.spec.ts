@@ -2,7 +2,7 @@
 
 import { given, givenAsync } from '../test/conditions.ts'
 import { expect, test } from './store-server.ts'
-import { TestOnly as previewTiming } from '../src/client/editor/previews.ts'
+import { TestOnly as previewTiming } from '../src/client/preview/previews.ts'
 import type { Page } from '@playwright/test'
 
 import { previewControl } from './fixtures.ts'

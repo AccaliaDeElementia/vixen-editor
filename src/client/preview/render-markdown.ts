@@ -3,13 +3,13 @@
 import { parser } from '@lezer/markdown'
 import type { SyntaxNode } from '@lezer/common'
 
-import { VIXEN_MARKDOWN_EXTENSIONS } from '../shared/markdown-tree.ts'
-import { decodeDestination } from '../shared/link-syntax.ts'
+import { VIXEN_MARKDOWN_EXTENSIONS } from '../../shared/markdown-tree.ts'
+import { decodeDestination } from '../../shared/link-syntax.ts'
 import { highlightCode, resolveLanguage } from './highlight-code.ts'
 import { sanitiseHtml, type SanitiseHtml } from './sanitise-html.ts'
 import { closesATag, holdsNothing, openedBy } from './inline-html.ts'
 import { decodeEntity } from './html-entities.ts'
-import { safeDestination } from './platform/safe-destination.ts'
+import { safeDestination } from '../platform/safe-destination.ts'
 
 const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 

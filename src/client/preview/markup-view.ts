@@ -1,6 +1,6 @@
 'use sanity'
 
-import { renderMarkdown } from '../render-markdown.ts'
+import { renderMarkdown } from './render-markdown.ts'
 import { blockAt, positionedBlocksIn, type PreviewBody } from './preview-body.ts'
 
 const BODY_SELECTOR = '[data-part="markup-body"]'

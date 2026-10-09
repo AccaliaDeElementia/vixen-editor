@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Session } from '../../../../src/client/document/session.ts'
 import { cast } from '../../../cast.ts'
-import { TestOnly as previewTiming } from '../../../../src/client/editor/previews.ts'
+import { TestOnly as previewTiming } from '../../../../src/client/preview/previews.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
 import { requestKeep } from '../../../../src/client/platform/keep-request.ts'

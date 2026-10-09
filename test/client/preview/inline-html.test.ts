@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { closesATag, holdsNothing, openedBy } from '../../src/client/inline-html.ts'
-import { sanitiseHtml } from '../../src/client/sanitise-html.ts'
+import { closesATag, holdsNothing, openedBy } from '../../../src/client/preview/inline-html.ts'
+import { sanitiseHtml } from '../../../src/client/preview/sanitise-html.ts'
 
 function allowingSpans(source: string): DocumentFragment {
   const fragment = document.createDocumentFragment()

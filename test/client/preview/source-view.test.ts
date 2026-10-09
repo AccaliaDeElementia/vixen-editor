@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createSourceView } from '../../../src/client/layout/source-view.ts'
+import { createSourceView } from '../../../src/client/preview/source-view.ts'
 
 import { renderPane } from '../templates.ts'
 

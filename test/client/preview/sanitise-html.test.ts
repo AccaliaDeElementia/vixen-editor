@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { sanitiseHtml, TestOnly } from '../../src/client/sanitise-html.ts'
+import { sanitiseHtml, TestOnly } from '../../../src/client/preview/sanitise-html.ts'
 
 const { ALLOWED_ATTR, ALLOWED_TAGS } = TestOnly
 

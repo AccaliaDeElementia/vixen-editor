@@ -1,8 +1,8 @@
 'use sanity'
 
-import { createMarkupView } from '../layout/markup-view.ts'
-import { createSourceView } from '../layout/source-view.ts'
-import type { PreviewBody } from '../layout/preview-body.ts'
+import { createMarkupView } from './markup-view.ts'
+import { createSourceView } from './source-view.ts'
+import type { PreviewBody } from './preview-body.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { PreviewView } from '../platform/doc-path.ts'
 

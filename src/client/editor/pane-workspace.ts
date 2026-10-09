@@ -34,7 +34,7 @@ import type { CaretMemory } from '../document/caret-memory.ts'
 import { bindViewDrops } from '../editing/view-drops.ts'
 import { uploadInto } from '../editing/drops.ts'
 import { announceStoreChanged } from '../platform/store-changed.ts'
-import { PREVIEW_ANNOUNCEMENTS, type Previews } from './previews.ts'
+import { PREVIEW_ANNOUNCEMENTS, type Previews } from '../preview/previews.ts'
 import type { Session } from '../document/session.ts'
 import { errorMessage } from '../platform/error-message.ts'
 
