@@ -42,6 +42,10 @@ describe('putting a mark around the selection', () => {
     expect(marked('a __[word]__ here', '_')).toBe('a ___word___ here')
   })
 
+  it('adds when the run extends on one side only, because that is not a mark around the selection', () => {
+    expect(marked('a __[word]_ here', '_')).toBe('a ___word__ here')
+  })
+
   it('reads the same marker on both sides, rather than one being enough', () => {
     expect(marked('a **[word] here', '**')).toBe('a ****word** here')
   })
