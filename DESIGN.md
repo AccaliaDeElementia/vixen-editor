@@ -739,35 +739,44 @@ breaks the order described next.
 
 <a id="design-535790"></a>
 
-### Sibling areas are read in one order
+### Areas are read in one order, and the order is declared
 
-The areas on each side form a DAG, and `test/conventions/` fails the gate on a
-pair that imports each other at runtime:
+Every directory under `src/` that holds a module is an **area**.
+`test/conventions/` declares the areas and every runtime edge between them, and
+fails the gate four ways: on an import the list does not have, on a listed edge
+nothing imports any more, on a directory that holds modules and is not a
+declared area, and on a pair of areas importing each other that is not named as
+such.
 
-```
-client:  editor → layout → files
-server:  routes → storage → markdown
-```
+The list is not copied here. It is the architecture written down, and a prose
+copy of twenty areas would go false the first time one moved — which is the
+failure this document has already paid for.
 
-That is the order to read them in, and the reason the check exists. A cycle
-means there is no such order, so a newcomer has to hold a whole side in mind at
-once rather than one directory at a time. `toast` and `preferences` sat in
-`layout/` while `files/` imported them, which is precisely how the client lost
-its order — and nothing said so until the graph was measured.
+**Why a declared list rather than "no two areas import each other".** The
+weaker rule is what the gate held until the sub-folders landed. It forbids a
+cycle and permits everything else, so an edge from `preview` into `browser`
+could appear in any commit and nothing would ask whether it should. A declared
+list makes a new edge a reviewed decision, and makes a _stale_ edge visible
+too, which the old rule could never do. An order still exists and is still the
+point: a cycle means a newcomer has to hold a whole side in mind at once rather
+than one directory at a time.
 
-**The check covers sibling areas, not every directory.** Each side's root both
-reaches down into the areas and is reached up to by them, so root-against-area
-is mutual by construction and says nothing about whether the tree is readable.
-Treating that as a cycle would mean splitting composition from shared
-vocabulary on both sides, which buys nothing.
+**Two pairs do import each other, and both are the server root.** `src/server/`
+holds `logging`, `node-errors`, `config` and `changes`, which `routes/` and
+`storage/` all reach up for, and it also holds `app.ts` and `main.ts`, which
+compose them — so one directory is carrying two tiers. The old check could not
+see this, because it skipped any file sitting directly in an area root. Naming
+the two pairs is what makes the untidiness a decision rather than an accident;
+moving the four services out of the root would retire both.
 
-**A type-only import is excluded, because the compiler erases it.** It creates
-no load order and cannot produce a runtime cycle. `layout/status-bar.ts` reaches
-into `editor/autosave.ts` for `SaveState`, and there is no cheap home for that
-type: the autosave machine owns the vocabulary, the status bar renders it, and
-[rule 2](CLAUDE.md#claude-424991) forbids a module that declares nothing but a type. **Prefer to avoid a
-type-only backlink where extracting the type or the common code is cheap and
-logical. Do not forbid one.**
+**A type-only import is outside the check, because the compiler erases it.** It
+creates no load order and cannot produce a runtime cycle.
+`document/document-tab.ts` reaches into `workspace/panes/status-bar.ts` for
+`StatusBar` while the runtime edge runs the other way, and there is no cheap
+home for that type: the status bar owns what it renders, and
+[rule 2](CLAUDE.md#claude-424991) forbids a module that declares nothing but a
+type. **Prefer to avoid a type-only backlink where extracting the type or the
+common code is cheap and logical. Do not forbid one.**
 
 <a id="design-17dbc3"></a>
 

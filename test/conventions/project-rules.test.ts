@@ -319,7 +319,6 @@ function runtimeExportsIn(contents: string): string[] {
 const IMPORT_CLAUSE =
   /^import\s+(?:type\s+)?(?<first>\{[^\}]*\}|\*\s+as\s+\w+|\w+)?\s*(?:,\s*(?<second>\{[^\}]*\}))?\s*from\s*'(?<from>[^']*)'/gmv
 const RUNTIME_IMPORT = /^import\s+(?!type\s)(?:\{[^\}]*\}|\*\s+as\s+\w+|\w+)[^']*from\s*'(?<from>[^']*)'/gmv
-const AREA_DEPTH = 3
 
 const REEXPORT_FROM = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}\s*from\s*'(?<from>[^']*)'/gmv
 
@@ -857,59 +856,143 @@ describe('every unit test is run by exactly one vitest project', () => {
   })
 })
 
-function areaOf(relativePath: string): string | null {
-  const segments = relativePath.split('/')
+const SOURCE_AREAS = [
+  'src/client',
+  'src/client/app',
+  'src/client/browser',
+  'src/client/browser/trash',
+  'src/client/browser/tree',
+  'src/client/chrome',
+  'src/client/document',
+  'src/client/editing',
+  'src/client/platform',
+  'src/client/platform/announce',
+  'src/client/preview',
+  'src/client/workspace/panes',
+  'src/client/workspace/split',
+  'src/client/workspace/tabs',
+  'src/client/workspace/views',
+  'src/server',
+  'src/server/markdown',
+  'src/server/routes',
+  'src/server/storage',
+  'src/shared',
+]
 
-  return segments.length > AREA_DEPTH ? segments.slice(0, AREA_DEPTH).join('/') : null
+const IMPORTED_BY_EVERY_AREA = 'src/shared'
+
+const AREA_EDGES: Readonly<Record<string, readonly string[]>> = {
+  'src/client': ['src/client/app', 'src/client/browser', 'src/client/chrome'],
+  'src/client/app': [
+    'src/client/browser',
+    'src/client/chrome',
+    'src/client/document',
+    'src/client/platform',
+    'src/client/platform/announce',
+    'src/client/preview',
+    'src/client/workspace/panes',
+    'src/client/workspace/tabs',
+  ],
+  'src/client/browser': [
+    'src/client/browser/trash',
+    'src/client/browser/tree',
+    'src/client/platform',
+    'src/client/platform/announce',
+  ],
+  'src/client/browser/trash': ['src/client/browser/tree', 'src/client/platform', 'src/client/platform/announce'],
+  'src/client/browser/tree': ['src/client/platform'],
+  'src/client/chrome': ['src/client/platform', 'src/client/platform/announce', 'src/client/workspace/split'],
+  'src/client/document': ['src/client/editing', 'src/client/platform', 'src/client/platform/announce'],
+  'src/client/editing': ['src/client/browser', 'src/client/platform'],
+  'src/client/platform': [],
+  'src/client/platform/announce': [],
+  'src/client/preview': ['src/client/editing', 'src/client/platform'],
+  'src/client/workspace/panes': [
+    'src/client/browser',
+    'src/client/document',
+    'src/client/editing',
+    'src/client/platform',
+    'src/client/platform/announce',
+    'src/client/preview',
+    'src/client/workspace/split',
+    'src/client/workspace/tabs',
+    'src/client/workspace/views',
+  ],
+  'src/client/workspace/split': ['src/client/platform', 'src/client/platform/announce'],
+  'src/client/workspace/tabs': ['src/client/browser/tree', 'src/client/platform'],
+  'src/client/workspace/views': [
+    'src/client/browser/trash',
+    'src/client/browser/tree',
+    'src/client/platform',
+    'src/client/platform/announce',
+  ],
+  'src/server': ['src/server/routes', 'src/server/storage'],
+  'src/server/markdown': [],
+  'src/server/routes': ['src/server', 'src/server/storage'],
+  'src/server/storage': ['src/server', 'src/server/markdown'],
+  'src/shared': [],
 }
 
-function areaEdges(): Map<string, Set<string>> {
-  const edges = new Map<string, Set<string>>()
+const AREAS_IMPORTING_EACH_OTHER = ['src/server <-> src/server/routes', 'src/server <-> src/server/storage']
 
-  for (const source of sources) {
-    const from = areaOf(source.relativePath)
-    if (from === null) continue
+function folderOf(relativePath: string): string {
+  return relativePath.split('/').slice(0, -1).join('/')
+}
 
+function modulesUnderSource(): SourceFile[] {
+  return scannable().filter((source) => source.relativePath.startsWith('src/'))
+}
+
+function areasHoldingModules(): string[] {
+  return [...new Set(modulesUnderSource().map((source) => folderOf(source.relativePath)))].sort()
+}
+
+function measuredAreaEdges(): Record<string, string[]> {
+  const measured = Object.fromEntries(SOURCE_AREAS.map((area) => [area, new Set<string>()]))
+
+  for (const source of modulesUnderSource()) {
+    const from = folderOf(source.relativePath)
     for (const match of source.contents.matchAll(RUNTIME_IMPORT)) {
       const target = resolveSpecifier(source.relativePath, match.groups?.from ?? '')
       if (target === null) continue
-      const to = areaOf(target)
-      if (to === null || to === from) continue
-      edges.set(from, (edges.get(from) ?? new Set<string>()).add(to))
+      const to = folderOf(target)
+      if (to === from || to === IMPORTED_BY_EVERY_AREA) continue
+      measured[from]?.add(to)
     }
   }
 
-  return edges
+  return Object.fromEntries(Object.entries(measured).map(([area, targets]) => [area, [...targets].sort()]))
 }
 
-function mutualAreas(edges: ReadonlyMap<string, ReadonlySet<string>>): string[] {
+function areasImportingEachOther(edges: Readonly<Record<string, readonly string[]>>): string[] {
   const pairs = new Set<string>()
 
-  for (const [from, targets] of edges) {
+  for (const [from, targets] of Object.entries(edges)) {
     for (const to of targets) {
-      if (edges.get(to)?.has(from) === true) pairs.add([from, to].sort().join(' <-> '))
+      if (edges[to]?.includes(from) === true) pairs.add([from, to].sort().join(' <-> '))
     }
   }
 
   return [...pairs].sort()
 }
 
-describe('the directories under src are read in one order', () => {
-  it('leaves no two areas that import each other at runtime', () => {
-    expect(mutualAreas(areaEdges())).toStrictEqual([])
+describe('the areas under src import along declared edges', () => {
+  it('declares every directory that holds a module, and none that does not', () => {
+    expect(areasHoldingModules()).toStrictEqual(SOURCE_AREAS)
   })
 
-  it('resolves imports between areas at all, so that scan is not passing vacuously', () => {
-    expect(areaEdges().get('src/server/routes')?.has('src/server/storage')).toBe(true)
+  it('imports only what the edge list declares, and declares nothing it no longer imports', () => {
+    expect(measuredAreaEdges()).toStrictEqual(AREA_EDGES)
   })
 
-  it('reports a pair that imports both ways, so the check is not blind to one', () => {
-    const circular = new Map([
-      ['src/client/a', new Set(['src/client/b'])],
-      ['src/client/b', new Set(['src/client/a'])],
-    ])
+  it('names every pair of areas that import each other, so a new cycle cannot appear quietly', () => {
+    expect(areasImportingEachOther(AREA_EDGES)).toStrictEqual(AREAS_IMPORTING_EACH_OTHER)
+  })
 
-    expect(mutualAreas(circular)).toStrictEqual(['src/client/a <-> src/client/b'])
+  it('reports a pair that imports both ways, so that scan is not blind to one', () => {
+    const circular = { 'src/client/a': ['src/client/b'], 'src/client/b': ['src/client/a'] }
+
+    expect(areasImportingEachOther(circular)).toStrictEqual(['src/client/a <-> src/client/b'])
   })
 })
 

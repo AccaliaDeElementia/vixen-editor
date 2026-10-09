@@ -493,9 +493,10 @@ that**: some are only enforceable by review.
 - **`server/` and `client/` may not import each other, and `shared/` may not
   import either.** A module reaches `shared/` only when both sides import it.
   → [DESIGN](DESIGN.md#design-17dbc3)
-- **Two sibling areas under `src/` may not import each other at runtime.** A
-  type-only backlink is tolerated where extracting the type is not cheap and
-  logical; prefer to avoid it. → [DESIGN](DESIGN.md#design-535790)
+- **Every runtime import between two areas under `src/` is declared** in
+  `test/conventions/`, and so is every pair of areas that import each other.
+  Adding an edge means editing that list. A type-only backlink is outside the
+  check; prefer to avoid one anyway. → [DESIGN](DESIGN.md#design-535790)
 - **Nothing in `src/` calls `writeFile` on a store path.** Writes go through
   `replaceFileAtomic` or `createFileAtomic`. → [DESIGN](DESIGN.md#design-0d781c)
 - **The API never rewrites stored content.** The single exception is a move
