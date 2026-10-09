@@ -31,6 +31,7 @@ const VECTORS: ReadonlyArray<readonly [string, string]> = [
   ['a style element that fetches', `<style>body { background: url(${BEACON}) }</style>`],
   ['an embed', '<embed src="https://evil.test/x">'],
   ['markup dressed as the application', '<div data-part="pane"><div data-part="tabs">impostor</div></div>'],
+  ['markup lying to a screen reader', '<div aria-label="Save" role="button" aria-live="assertive">impostor</div>'],
 ]
 
 const CORPUS = VECTORS.map(([, html]) => html).join('\n\n')
@@ -116,6 +117,22 @@ test.describe('a document full of hostile markup', () => {
     const preview = page.locator('[data-part="markup-body"]').last()
 
     await expect(preview.locator('script, iframe, object, embed, form, base, meta, style')).toHaveCount(0)
+
+    await request.delete(`/api/files/entries/${name}`)
+  })
+
+  test('lets no document speak to a screen reader in the application\u2019s voice', async ({ page, request }) => {
+    const name = `aria-${String(Date.now())}.md`
+    await request.post('/api/files/documents', { data: { path: name, content: CORPUS } })
+
+    await page.goto(`/doc/${name}`)
+    await givenAsync(expect(page.locator('.cm-content')).toContainText('script'))
+    await previewControl(page, 'markup').click()
+    await givenAsync(expect(page.locator('[data-part="view-markup"]').last()).toBeVisible())
+
+    await expect(
+      page.locator('[data-part="markup-body"] [aria-label], [data-part="markup-body"] [aria-live]'),
+    ).toHaveCount(0)
 
     await request.delete(`/api/files/entries/${name}`)
   })

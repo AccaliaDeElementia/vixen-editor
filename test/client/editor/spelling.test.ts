@@ -31,3 +31,17 @@ describe('what the editor tells the browser about its own text', () => {
     expect(contentOf().getAttribute('autocapitalize')).toBe('off')
   })
 })
+
+describe('what the editor tells the browser about its markup', () => {
+  function markup(doc: string): HTMLElement | null {
+    return contentOf(doc).querySelector('[spellcheck]')
+  }
+
+  it('turns the checker off over a code span, which is the whole point of scoping it', () => {
+    expect(markup('some `codeSpan` here')?.getAttribute('spellcheck')).toBe('false')
+  })
+
+  it('leaves prose alone, so the scoping is narrower than the whole document', () => {
+    expect(markup('just ordinary prose here')).toBeNull()
+  })
+})
