@@ -23,16 +23,9 @@ import { isAtOrUnder } from '../../shared/store-path.ts'
 import { requestInsert } from '../platform/announce/insert-entry.ts'
 import { requestKeep } from '../platform/announce/keep-request.ts'
 import { KEYS } from '../platform/help.ts'
-import {
-  renderTrashPanel,
-  renderTree,
-  rowIndexOf,
-  ROW_SELECTOR,
-  TRASH_LIST_SELECTOR,
-  TRASH_PATH,
-  TREE_SELECTOR,
-  type VisibleRow,
-} from './tree/tree-view.ts'
+import { renderTree, TREE_SELECTOR } from './tree/tree-view.ts'
+import { renderTrashPanel, TRASH_LIST_SELECTOR, TRASH_PATH } from './trash/trash-view.ts'
+import { rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree/drawing.ts'
 import { FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../platform/panels.ts'
 
 interface FileTreeOptions {

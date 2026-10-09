@@ -1,110 +1,20 @@
 'use sanity'
 
-import { NOT_FOUND, SEQUENCE_START } from '../../../shared/sequences.ts'
-
-import { decorativeIcon, ENTRY_GLYPHS, makeReachable, treeGroup, treeItem, treeRow } from './tree-rows.ts'
+import { treeGroup } from './tree-rows.ts'
+import { applyRovingTabindex, drawnIn, itemFor, ROOT_DEPTH, row, syncChildren, type VisibleRow } from './drawing.ts'
 
 import { docUrlFor } from '../../platform/doc-path.ts'
-import { trashUrlFor } from '../../../shared/page-urls.ts'
-import { joinPath } from '../../../shared/store-path.ts'
 
-import type { TrashNode, TreeNode } from './tree-model.ts'
-import type { EntryKind } from '../../../shared/documents.ts'
+import type { TreeNode } from './tree-model.ts'
 
 export const TREE_SELECTOR = '#file-tree'
-export const ROW_SELECTOR = '[role="treeitem"]'
-export const TRASH_PATH = '.trash'
-export const TRASH_LIST_SELECTOR = '#trash-list'
 
-export interface VisibleRow {
-  path: string
-  expandable: boolean
-  kind: RowKind
-  opens: string | null
-}
-
-type RowKind = EntryKind | 'trash-entry'
-
-interface StoreRow extends VisibleRow {
-  kind: EntryKind
-}
-
-export function isStoreRow(row: VisibleRow | undefined): row is StoreRow {
-  return row !== undefined && row.kind !== 'trash-entry'
-}
+const ONE_LEVEL_DEEPER = 1
 
 export interface TreeViewModel {
   nodes: readonly TreeNode[]
   open: ReadonlySet<string>
   selected: string | null
-}
-
-interface TrashViewModel {
-  trash: readonly TrashNode[]
-  selected: string | null
-}
-
-function icon(name: string, tone: string): HTMLElement {
-  return decorativeIcon(name, `icon tree__icon icon--${tone}`)
-}
-
-function twisty(expanded: boolean | null): HTMLElement {
-  return decorativeIcon(expanded === null ? '' : expanded ? 'expand_more' : 'chevron_right', 'icon tree__twisty')
-}
-
-function label(text: string): HTMLElement {
-  const element = document.createElement('span')
-  element.className = 'tree__name'
-  element.textContent = text
-
-  return element
-}
-
-interface RowOptions {
-  path: string
-  kind: EntryKind
-  draggable?: boolean
-  name: string
-  depth: number
-  expanded: boolean | null
-  selected: boolean
-  href?: string
-}
-
-const DRAWN = new WeakMap<Element, Map<string, HTMLElement>>()
-
-function drawnIn(tree: Element): Map<string, HTMLElement> {
-  const existing = DRAWN.get(tree)
-  if (existing !== undefined) return existing
-
-  const started = new Map<string, HTMLElement>()
-  DRAWN.set(tree, started)
-
-  return started
-}
-
-function rowIdentity(path: string, kind: EntryKind): string {
-  return `${kind}:${path}`
-}
-
-function row(options: RowOptions, drawn: Map<string, HTMLElement>): HTMLElement {
-  const { path, kind, draggable, name, depth, expanded, selected, href } = options
-  const identity = rowIdentity(path, kind)
-  const element = drawn.get(identity) ?? treeRow({ path, kind, depth }, href)
-  drawn.set(identity, element)
-
-  element.className = 'tree__row'
-  element.title = name
-  element.style.setProperty('--depth', String(depth))
-  element.setAttribute('aria-selected', String(selected))
-  if (draggable === true) element.draggable = true
-
-  if (expanded === null) element.removeAttribute('aria-expanded')
-  else element.setAttribute('aria-expanded', String(expanded))
-
-  element.replaceChildren(twisty(expanded), icon(ENTRY_GLYPHS[kind], kind), label(name))
-
-  return element
 }
 
 function group(): HTMLElement {
@@ -116,25 +26,8 @@ interface Rendered {
   visible: VisibleRow[]
 }
 
-function itemFor(shown: HTMLElement): HTMLElement {
-  const { parentElement: held } = shown
-
-  return held !== null && held.tagName === 'LI' ? held : treeItem(shown)
-}
-
 function groupIn(item: HTMLElement): HTMLElement {
   return item.querySelector<HTMLElement>(':scope > ul') ?? group()
-}
-
-function syncChildren(parent: Element, wanted: readonly Element[]): void {
-  const { children } = parent
-  const keeping = new Set<Element>(wanted)
-  for (const child of [...children]) if (!keeping.has(child)) child.remove()
-
-  for (const [at, node] of wanted.entries()) {
-    const { [at]: inPlace } = children
-    if (inPlace !== node) parent.insertBefore(node, inPlace ?? null)
-  }
 }
 
 function renderNodes(
@@ -184,62 +77,6 @@ function renderNodes(
   return { items, visible }
 }
 
-const ROOT_DEPTH = 0
-const ONE_LEVEL_DEEPER = 1
-
-function trashRowFor(entry: TrashNode, model: TrashViewModel, drawn: Map<string, HTMLElement>): HTMLElement {
-  const { id, originalPath, kind, deletedAt } = entry
-  const entryKey = joinPath(TRASH_PATH, id)
-  const deleted = row(
-    {
-      path: entryKey,
-      kind,
-      name: originalPath,
-      depth: ROOT_DEPTH,
-      expanded: null,
-      selected: model.selected === entryKey,
-      href: trashUrlFor(id),
-    },
-    drawn,
-  )
-
-  deleted.dataset.trashId = id
-  deleted.title = `${originalPath} — deleted ${deletedAt}`
-
-  return deleted
-}
-
-export function renderTrashPanel(list: Element, model: TrashViewModel): VisibleRow[] {
-  const drawn = drawnIn(list)
-  const items: HTMLElement[] = []
-  const visible: VisibleRow[] = []
-
-  for (const entry of model.trash) {
-    const deleted = trashRowFor(entry, model, drawn)
-    const item = itemFor(deleted)
-    syncChildren(item, [deleted])
-    items.push(item)
-    visible.push({
-      path: joinPath(TRASH_PATH, entry.id),
-      expandable: false,
-      kind: 'trash-entry',
-      opens: trashUrlFor(entry.id),
-    })
-  }
-
-  syncChildren(list, items)
-  applyRovingTabindex(list)
-
-  return visible
-}
-
-function applyRovingTabindex(tree: Element): void {
-  const rows = [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)]
-  const selected = rows.findIndex((candidate) => candidate.getAttribute('aria-selected') === 'true')
-
-  makeReachable(rows, selected === NOT_FOUND ? SEQUENCE_START : selected)
-}
-
 export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {
   const drawn = drawnIn(tree)
   const main = renderNodes(model.nodes, model, ROOT_DEPTH, drawn)
@@ -248,13 +85,4 @@ export function renderTree(tree: Element, model: TreeViewModel): VisibleRow[] {
   applyRovingTabindex(tree)
 
   return main.visible
-}
-
-export function rowIndexOf(tree: Element, target: EventTarget | null): number | null {
-  const element = target instanceof Element ? target.closest<HTMLElement>(ROW_SELECTOR) : null
-  if (element === null) return null
-
-  const index = [...tree.querySelectorAll<HTMLElement>(ROW_SELECTOR)].indexOf(element)
-
-  return index === NOT_FOUND ? null : index
 }

@@ -7,7 +7,7 @@ import { readOpenFolders } from '../../../../src/client/browser/tree/open-folder
 import { requestReveal } from '../../../../src/client/platform/announce/reveal-request.ts'
 import { announceStoreChanged } from '../../../../src/client/platform/announce/store-changed.ts'
 import { parseTree } from '../../../../src/client/browser/tree/tree-model.ts'
-import { TRASH_PATH } from '../../../../src/client/browser/tree/tree-view.ts'
+import { TRASH_PATH } from '../../../../src/client/browser/trash/trash-view.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
 import { cast } from '../../../cast.ts'

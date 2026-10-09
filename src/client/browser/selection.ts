@@ -3,7 +3,8 @@
 import { updateArchiveLink, updateInsertAvailability } from './actions.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
-import { TRASH_PATH, type VisibleRow } from './tree/tree-view.ts'
+import { TRASH_PATH } from './trash/trash-view.ts'
+import type { VisibleRow } from './tree/drawing.ts'
 
 interface Selecting {
   root: ParentNode

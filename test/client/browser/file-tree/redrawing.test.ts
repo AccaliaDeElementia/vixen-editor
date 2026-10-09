@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { announceStoreChanged } from '../../../../src/client/platform/announce/store-changed.ts'
 import { parseTree } from '../../../../src/client/browser/tree/tree-model.ts'
-import { ROW_SELECTOR } from '../../../../src/client/browser/tree/tree-view.ts'
+import { ROW_SELECTOR } from '../../../../src/client/browser/tree/drawing.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'

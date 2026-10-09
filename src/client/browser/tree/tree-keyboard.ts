@@ -5,7 +5,7 @@ import { docUrlFor } from '../../platform/doc-path.ts'
 
 import { ancestorsOf } from './tree-model.ts'
 import { focusRowAt } from './tree-rows.ts'
-import type { VisibleRow } from './tree-view.ts'
+import type { VisibleRow } from './drawing.ts'
 
 const NEXT_ROW = 1
 const PREVIOUS_ROW = -1
