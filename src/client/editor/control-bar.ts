@@ -65,7 +65,6 @@ function applying(format: Formatting): (view: EditorView) => boolean {
 
 export const formattingKeys: readonly KeyBinding[] = CHORDED.map(({ key, format }) => ({
   key,
-  preventDefault: true,
   run: applying(format),
 }))
 

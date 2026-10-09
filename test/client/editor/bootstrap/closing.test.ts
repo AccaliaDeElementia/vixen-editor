@@ -98,3 +98,21 @@ describe('closing the last tab in the only pane', () => {
     expect(window.location.pathname).toBe('/doc/')
   })
 })
+
+describe('Ctrl/Cmd + S once every tab is closed', () => {
+  it('is still reported handled, so the browser does not offer to save the page', async () => {
+    const view = await openEditor({ root, pathname: '/doc/notes.md', session: fakeSession('# stored') })
+    closerFor('editor:notes.md')?.click()
+    const pressed = new KeyboardEvent('keydown', {
+      key: 's',
+      code: 'KeyS',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+
+    view.contentDOM.dispatchEvent(pressed)
+
+    expect(pressed.defaultPrevented).toBe(true)
+  })
+})

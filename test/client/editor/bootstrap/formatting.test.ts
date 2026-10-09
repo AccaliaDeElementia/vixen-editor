@@ -194,6 +194,15 @@ describe('the chords a reader already knows from other editors', () => {
     expect(view.state.doc.toString()).toBe('a []()line')
   })
 
+  it('reports the chord as handled, which is what keeps the browser out of Ctrl/Cmd + K', async () => {
+    const { view } = await editing('a line')
+    const pressed = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true })
+
+    view.contentDOM.dispatchEvent(pressed)
+
+    expect(pressed.defaultPrevented).toBe(true)
+  })
+
   it('leaves a control with no chord of its own to the pointer', async () => {
     const { view } = await editing('a line')
     given(() => {

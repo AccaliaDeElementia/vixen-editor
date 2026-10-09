@@ -339,6 +339,24 @@ describe('bootstrap follows a document that moves underneath it', () => {
     expect(opened).toStrictEqual(['/doc/journal/other.md'])
   })
 
+  it('reports Mod-Enter on a link as handled, so CodeMirror does not also split the line', async () => {
+    const view = await openEditor({
+      root,
+      pathname: '/doc/journal/notes.md',
+      session: sessionRecording(record, {
+        load: () => Promise.resolve({ content: 'see [the doc](other.md) here', stored: true }),
+      }),
+      openUrl: () => undefined,
+    })
+    view.dispatch({ selection: { anchor: 8 } })
+
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }),
+    )
+
+    expect(view.state.doc.toString()).toBe('see [the doc](other.md) here')
+  })
+
   it('leaves Mod-Enter alone when the caret is not in a link', async () => {
     const opened: string[] = []
     const view = await openEditor({

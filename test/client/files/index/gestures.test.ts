@@ -360,3 +360,50 @@ describe('moving through the tree with the keyboard', () => {
     expect(opened).toStrictEqual([])
   })
 })
+
+describe('a key the tree acts on', () => {
+  function press(entryPath: string, key: string): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+    rowFor(entryPath).dispatchEvent(event)
+
+    return event
+  }
+
+  it('reports moving down the tree as handled, so the page does not scroll as well', async () => {
+    await start()
+
+    expect(press('journal', 'ArrowDown').defaultPrevented).toBe(true)
+  })
+
+  it('leaves the last row to the browser, because there is nowhere further to go', async () => {
+    await start()
+    showTrash(host)
+
+    expect(press(joinPath(TRASH_PATH, TRASHED.id), 'ArrowDown').defaultPrevented).toBe(false)
+  })
+
+  it('leaves the right arrow to the browser on a row that cannot expand', async () => {
+    await start()
+
+    expect(press('notes.md', 'ArrowRight').defaultPrevented).toBe(false)
+  })
+
+  it('reports opening a folder with the right arrow as handled', async () => {
+    await start()
+
+    expect(press('journal', 'ArrowRight').defaultPrevented).toBe(true)
+  })
+
+  it('reports closing a folder with the left arrow as handled', async () => {
+    await start()
+    press('journal', 'ArrowRight')
+
+    expect(press('journal', 'ArrowLeft').defaultPrevented).toBe(true)
+  })
+
+  it('reports Enter on a folder as handled, rather than letting the row behave as a link', async () => {
+    await start()
+
+    expect(press('journal', 'Enter').defaultPrevented).toBe(true)
+  })
+})
