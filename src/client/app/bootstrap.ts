@@ -17,19 +17,18 @@ import { caretsFollowMove } from '../document/carets.ts'
 import { followDeletion } from '../document/follow-deletion.ts'
 import { createToast } from '../platform/toast.ts'
 import type { FilesClient } from '../browser/files-client.ts'
-import { tabIdentity, type TabAt } from '../workspace/open-tabs.ts'
+import type { TabAt } from '../workspace/open-tabs.ts'
 import { createPreviews } from '../preview/previews.ts'
 import { createPreviewing } from '../preview/previewing.ts'
 
 import { STORE_ROOT } from '../../shared/store-path.ts'
-import { carryTab } from '../workspace/pane.ts'
 import { bindTabKeys } from '../workspace/tab-keys.ts'
-import { createClosingTabs, type ClosingSurface } from '../workspace/closing-tabs.ts'
 import { createPaneMoves } from '../workspace/pane-moves.ts'
 import { createAside } from '../workspace/aside.ts'
 import { createAcrossPanes } from '../workspace/across-panes.ts'
 import { createCaretMemory } from '../document/caret-memory.ts'
 import { createTabNavigation } from '../workspace/tab-navigation.ts'
+import { createSurfaces } from './surfaces.ts'
 
 import type { EditorView } from '@codemirror/view'
 
@@ -143,14 +142,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       activate(at)
     },
     onCloseRequested: (at: TabAt) => {
-      closingTabs.requestClose(closingPrimary, at)
+      surfaces.requestClose(primaryWorkspace, at)
     },
     onTabArrived: (identity: string, toIndex: number) => {
       const elsewhere = aside.current()
-      if (elsewhere !== null) tabArrived(identity, primaryWorkspace, elsewhere, toIndex)
+      if (elsewhere !== null) surfaces.tabArrived(identity, primaryWorkspace, elsewhere, toIndex)
     },
     releaseElsewhere: async (at: TabAt) => {
-      await releaseFrom(aside.current(), at)
+      await surfaces.releaseFrom(aside.current(), at)
     },
   })
 
@@ -207,52 +206,19 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
           activate(at)
         },
         onCloseRequested: (at: TabAt) => {
-          closingTabs.requestClose(closingAside(built), at)
+          surfaces.requestClose(built, at)
         },
         onTabArrived: (identity: string, toIndex: number) => {
-          tabArrived(identity, built, primaryWorkspace, toIndex)
+          surfaces.tabArrived(identity, built, primaryWorkspace, toIndex)
         },
         releaseElsewhere: async (at: TabAt) => {
-          await releaseFrom(primaryWorkspace, at)
+          await surfaces.releaseFrom(primaryWorkspace, at)
         },
       })
 
       return built
     },
   })
-
-  function closingSurfaceFor(surface: PaneWorkspace, reveal: () => void): ClosingSurface {
-    return {
-      pane: surface.pane,
-      saveState: () => surface.editor().saveState(),
-      settleBeforeLeaving: async () => await surface.editor().settleBeforeLeaving(),
-      showNothing: () => {
-        surface.release()
-        reveal()
-      },
-      showActive: () => {
-        const at = surface.pane.showing()
-        if (at !== null) pending.push(surface.showTab(at))
-      },
-    }
-  }
-
-  const closingPrimary = closingSurfaceFor(primaryWorkspace, () => {
-    const elsewhere = aside.current()
-    if (elsewhere !== null && !elsewhere.pane.isEmpty()) {
-      paneMoves.collapseOntoPrimary(elsewhere)
-
-      return
-    }
-
-    workspace.show('empty', STORE_ROOT)
-  })
-
-  function closingAside(surface: PaneWorkspace): ClosingSurface {
-    return closingSurfaceFor(surface, () => {
-      paneMoves.dismissAside()
-    })
-  }
 
   const panes = createAcrossPanes({
     primary: primaryWorkspace,
@@ -262,21 +228,24 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  const closingTabs = createClosingTabs({
-    inFront: () => (touched === primaryWorkspace ? closingPrimary : closingAside(touched)),
-    everySurface: () => panes.open().map(surfaceFor),
+  const surfaces = createSurfaces({
+    primarySurface: primaryWorkspace,
+    elsewhere: aside.current,
+    open: () => panes.open(),
+    inFront: () => touched,
+    track: (work: Promise<void>) => {
+      pending.push(work)
+    },
+    collapseOntoPrimary: (surface: PaneWorkspace) => {
+      paneMoves.collapseOntoPrimary(surface)
+    },
+    dismissAside: () => {
+      paneMoves.dismissAside()
+    },
     showNothingAtAll: () => {
       navigator.replaceQuietly(docUrlFor(STORE_ROOT))
     },
   })
-
-  function surfaceFor(surface: PaneWorkspace): ClosingSurface {
-    return surface === primaryWorkspace ? closingPrimary : closingAside(surface)
-  }
-
-  function settlePane(surface: PaneWorkspace): void {
-    closingTabs.settle(surfaceFor(surface))
-  }
 
   function activate(at: TabAt): void {
     if (!isPreviewView(at.view)) {
@@ -295,7 +264,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       panes.showingTheDocument(documentId()) === primaryWorkspace ? aside.summon(BESIDE) : primaryWorkspace,
     showWhereItIs: panes.showWhereItIs,
     releaseElsewhere: (at: TabAt) => {
-      pending.push(releaseFrom(primaryWorkspace, at))
+      pending.push(surfaces.releaseFrom(primaryWorkspace, at))
     },
     documentId,
     showingDocument: () => touched.workspace.showing() === 'document',
@@ -309,46 +278,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const pending: Array<Promise<void>> = []
 
-  async function releaseFrom(surface: PaneWorkspace | null, at: TabAt): Promise<void> {
-    if (surface === null) return
-    if (!surface.pane.held().some((candidate) => tabIdentity(candidate) === tabIdentity(at))) return
-
-    if (at.view === 'editor') await surface.flush()
-
-    surface.pane.close(at)
-    closingTabs.settle(surfaceFor(surface))
-  }
-
-  function handOverTo(arriving: PaneWorkspace, at: TabAt, leaving: PaneWorkspace): void {
-    const handed = leaving.handOver()
-    if (handed === null) pending.push(arriving.showDocument(at.path))
-    else arriving.adopt(at.path, handed)
-  }
-
-  async function carryDocument(at: TabAt, arriving: PaneWorkspace, leaving: PaneWorkspace): Promise<void> {
-    await leaving.flush()
-    handOverTo(arriving, at, leaving)
-    settlePane(leaving)
-  }
-
-  function settleCarry(moved: TabAt | null, arriving: PaneWorkspace, leaving: PaneWorkspace): void {
-    if (moved?.view === 'editor') {
-      pending.push(carryDocument(moved, arriving, leaving))
-
-      return
-    }
-
-    settlePane(leaving)
-    if (panes.open().includes(arriving)) settlePane(arriving)
-  }
-
-  function tabArrived(identity: string, arriving: PaneWorkspace, leaving: PaneWorkspace, toIndex: number): void {
-    settleCarry(carryTab(identity, arriving.pane, leaving.pane, toIndex), arriving, leaving)
-  }
-
   const paneMoves = createPaneMoves({
     root,
-    onCarried: settleCarry,
+    onCarried: surfaces.settleCarry,
     primary: primaryWorkspace,
     summon: aside.summon,
     inFront: () => touched,
@@ -364,7 +296,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         return
       }
 
-      handOverTo(primaryWorkspace, at, carryingFrom)
+      surfaces.handOverTo(primaryWorkspace, at, carryingFrom)
     },
   })
 
@@ -375,7 +307,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     move: navigation.move,
     jumpTo: navigation.jumpTo,
     toPane: paneMoves.toPane,
-    close: closingTabs.closeTheTabInFront,
+    close: surfaces.closeTheTabInFront,
     showSource: previewing.showSource,
     showMarkup: previewing.showMarkup,
   })
@@ -425,7 +357,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     aside.reconcile()
   })
 
-  const emptied = onTrashEmptied(root, closingTabs.closeTrashTabs)
+  const emptied = onTrashEmptied(root, surfaces.closeTrashTabs)
 
   const restored = aside.reconcile()
   if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
@@ -434,7 +366,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   for (const surface of panes.open()) {
     if (surface === touched) continue
     if (surface.pane.isEmpty()) surface.workspace.show('empty', STORE_ROOT)
-    else settlePane(surface)
+    else surfaces.settlePane(surface)
   }
 
   await openPath(pathname, viewFromSearch(search))
@@ -500,7 +432,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     teardownApplication,
     settled: async () => {
       await Promise.all(pending.splice(EVERYTHING_PENDING))
-      await closingTabs.settled()
+      await surfaces.settled()
     },
     teardownEditor: () => {
       teardownDocument()
