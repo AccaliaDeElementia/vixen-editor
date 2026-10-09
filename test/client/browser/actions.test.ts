@@ -3,7 +3,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FilesRequestError } from '../../../src/client/browser/files-client.ts'
-import { onDeletionPending, onEntryTrashed, type TrashedEntry } from '../../../src/client/platform/entry-deletion.ts'
+import { onDeletionPending } from '../../../src/client/platform/deletion-pending.ts'
+import { onEntryTrashed, type TrashedEntry } from '../../../src/client/platform/entry-trashed.ts'
 import { onInsertRequested } from '../../../src/client/platform/insert-entry.ts'
 import { openDocumentIn } from '../../../src/client/platform/navigation.ts'
 import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/browser/tree-model.ts'

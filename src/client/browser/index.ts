@@ -7,7 +7,6 @@ import { announceDocumentMoved } from '../platform/document-moved.ts'
 import { createToast } from '../platform/toast.ts'
 import { onRevealRequested } from '../platform/reveal-request.ts'
 import { onStoreChanged } from '../platform/store-changed.ts'
-import { announceTrashEmptied } from '../platform/trash-emptied.ts'
 import { onPanelChanged } from '../platform/panel-changed.ts'
 
 import { bindActions, updateArchiveLink, updateInsertAvailability, type ActionContext } from './actions.ts'
@@ -15,6 +14,7 @@ import { createDialogs, type Dialogs } from '../platform/dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { collectRuns } from './rebuild.ts'
+import { createTrashPanel } from './trash-panel.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
@@ -44,11 +44,7 @@ interface FileTreeOptions {
   navigate?: (url: string) => void
 }
 
-const EMPTY_TRASH_SELECTOR = '#empty-trash'
-const TRASH_EMPTY_SELECTOR = '[data-part="trash-empty"]'
-const NOTHING_DELETED = 0
 const NEXT_ROW = 1
-const ONE_ENTRY = 1
 const PREVIOUS_ROW = -1
 const LAST_ANCESTOR = -1
 
@@ -111,6 +107,20 @@ async function runFileTree({
   let visible: VisibleRow[] = []
   let selected: string | null = openDocument.path()
 
+  const trashPanel = createTrashPanel({
+    root,
+    client,
+    dialogs,
+    toast,
+    held: () => trash.length,
+    reload: async () => {
+      await load()
+    },
+    track: (work: Promise<void>) => {
+      runs.track(work)
+    },
+  })
+
   function showingTheTrash(): boolean {
     return trashList !== null && panelShowing(root) === TRASH_PANEL
   }
@@ -160,50 +170,9 @@ async function runFileTree({
       showingTheTrash() && trashList !== null
         ? renderTrashPanel(trashList, { trash, selected })
         : renderTree(tree, { nodes, open, selected })
-    paintEmptyTrash()
+    trashPanel.paint()
     reflectSelection()
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
-  }
-
-  function emptyTrashControl(): HTMLElement | null {
-    return root.querySelector<HTMLElement>(EMPTY_TRASH_SELECTOR)
-  }
-
-  function paintEmptyTrash(): void {
-    const nothing = trash.length === NOTHING_DELETED
-    const placeholder = root.querySelector<HTMLElement>(TRASH_EMPTY_SELECTOR)
-    if (placeholder !== null) placeholder.hidden = !nothing
-
-    const button = emptyTrashControl()
-    if (button === null) return
-
-    button.hidden = nothing
-    button.setAttribute('aria-label', `Empty the trash of ${entriesIn(trash.length)}`)
-  }
-
-  async function emptyTrashOnceAsked(): Promise<void> {
-    const held = entriesIn(trash.length)
-    const confirmed = await dialogs.confirm({
-      title: 'Empty the trash',
-      message: `${held} will be deleted for good, and cannot be restored afterwards.`,
-      confirmLabel: 'Delete for good',
-    })
-    if (!confirmed) return
-
-    await emptyTrash()
-  }
-
-  function bindEmptyTrash(): void {
-    emptyTrashControl()?.addEventListener('click', (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-
-      runs.track(
-        emptyTrashOnceAsked().catch((error: unknown) => {
-          toast.error(errorMessage(error))
-        }),
-      )
-    })
   }
 
   function visibleSelection(): string | null {
@@ -298,16 +267,6 @@ async function runFileTree({
     }
 
     requestInsert(tree, entryPath)
-  }
-
-  function entriesIn(count: number): string {
-    return `${String(count)} ${count === ONE_ENTRY ? 'entry' : 'entries'}`
-  }
-
-  async function emptyTrash(): Promise<void> {
-    toast.show(`Deleted ${entriesIn(await client.emptyTrash())} for good`)
-    announceTrashEmptied(root)
-    await load()
   }
 
   function listenOnRows<Name extends keyof HTMLElementEventMap>(
@@ -432,7 +391,7 @@ async function runFileTree({
     },
   }
   bindActions(context)
-  bindEmptyTrash()
+  trashPanel.bind()
   const panels = onPanelChanged(root, () => {
     draw(open)
   })
