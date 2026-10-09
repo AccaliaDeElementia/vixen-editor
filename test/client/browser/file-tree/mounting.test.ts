@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { initFileTree } from '../../../../src/client/browser/index.ts'
+import { initFileTree } from '../../../../src/client/browser/file-tree.ts'
 import { readOpenFolders } from '../../../../src/client/browser/tree/open-folders.ts'
 import { requestReveal } from '../../../../src/client/platform/announce/reveal-request.ts'
 import { announceStoreChanged } from '../../../../src/client/platform/announce/store-changed.ts'

@@ -2,7 +2,7 @@
 
 import { vi } from 'vitest'
 
-import { initFileTree } from '../../src/client/browser/index.ts'
+import { initFileTree } from '../../src/client/browser/file-tree.ts'
 import { ROW_SELECTOR, TRASH_LIST_SELECTOR } from '../../src/client/browser/tree/tree-view.ts'
 import type { TrashNode } from '../../src/client/browser/tree/tree-model.ts'
 

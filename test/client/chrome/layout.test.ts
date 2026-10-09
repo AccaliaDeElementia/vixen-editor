@@ -11,7 +11,7 @@ import {
   TestOnly as explorerTestOnly,
 } from '../../../src/client/chrome/explorer.ts'
 
-import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/chrome/index.ts'
+import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/chrome/layout.ts'
 import { requestInsert } from '../../../src/client/platform/announce/insert-entry.ts'
 
 import { renderPage } from '../templates.ts'
