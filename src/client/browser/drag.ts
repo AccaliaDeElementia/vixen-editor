@@ -9,7 +9,7 @@ import { errorMessage } from '../platform/error-message.ts'
 import type { Toast } from '../platform/toast.ts'
 
 import type { FilesClient } from './files-client.ts'
-import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'
+import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree/tree-view.ts'
 import { rebuildingRunner } from './rebuild.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath, STORE_ROOT } from '../../shared/store-path.ts'

@@ -1,7 +1,7 @@
 'use sanity'
 
-import { isEntryKind, type EntryKind } from '../../shared/documents.ts'
-import { isRecord } from '../../shared/guards.ts'
+import { isEntryKind, type EntryKind } from '../../../shared/documents.ts'
+import { isRecord } from '../../../shared/guards.ts'
 
 export interface TrashEntryNode {
   name: string

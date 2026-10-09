@@ -7,8 +7,8 @@ import {
   pruneOpenFolders,
   readOpenFolders,
   setFolderOpen,
-} from '../../../src/client/browser/open-folders.ts'
-import { readPreferences, writePreferences } from '../../../src/client/platform/preferences.ts'
+} from '../../../../src/client/browser/tree/open-folders.ts'
+import { readPreferences, writePreferences } from '../../../../src/client/platform/preferences.ts'
 
 beforeEach(() => {
   localStorage.clear()

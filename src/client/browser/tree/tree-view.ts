@@ -1,15 +1,15 @@
 'use sanity'
 
-import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
+import { NOT_FOUND, SEQUENCE_START } from '../../../shared/sequences.ts'
 
 import { decorativeIcon, ENTRY_GLYPHS, makeReachable, treeGroup, treeItem, treeRow } from './tree-rows.ts'
 
-import { docUrlFor } from '../platform/doc-path.ts'
-import { trashUrlFor } from '../../shared/page-urls.ts'
-import { joinPath } from '../../shared/store-path.ts'
+import { docUrlFor } from '../../platform/doc-path.ts'
+import { trashUrlFor } from '../../../shared/page-urls.ts'
+import { joinPath } from '../../../shared/store-path.ts'
 
 import type { TrashNode, TreeNode } from './tree-model.ts'
-import type { EntryKind } from '../../shared/documents.ts'
+import type { EntryKind } from '../../../shared/documents.ts'
 
 export const TREE_SELECTOR = '#file-tree'
 export const ROW_SELECTOR = '[role="treeitem"]'

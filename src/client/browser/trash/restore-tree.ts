@@ -2,8 +2,16 @@
 
 import { createRestoreSelection, type RestoreSelection, type TickState } from './restore-selection.ts'
 import type { TrashEntryNode } from './trash-entry.ts'
-import { KEYS } from '../platform/help.ts'
-import { decorativeIcon, ENTRY_GLYPHS, focusRowAt, makeReachable, treeGroup, treeItem, treeRow } from './tree-rows.ts'
+import { KEYS } from '../../platform/help.ts'
+import {
+  decorativeIcon,
+  ENTRY_GLYPHS,
+  focusRowAt,
+  makeReachable,
+  treeGroup,
+  treeItem,
+  treeRow,
+} from '../tree/tree-rows.ts'
 
 const ROW_CLASS = 'restore-tree__row'
 const ROOT_DEPTH = 0

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { directoryOf } from '../../../src/shared/link-paths.ts'
+import { directoryOf } from '../../../../src/shared/link-paths.ts'
 
 import {
   ancestorsOf,
@@ -11,7 +11,7 @@ import {
   parseTrash,
   parseTree,
   type TreeNode,
-} from '../../../src/client/browser/tree-model.ts'
+} from '../../../../src/client/browser/tree/tree-model.ts'
 
 describe('parseTree', () => {
   it('reads a flat document', () => {

@@ -6,7 +6,7 @@ import { onInsertRequested } from '../../../../src/client/platform/announce/inse
 import { onKeepRequested } from '../../../../src/client/platform/announce/keep-request.ts'
 import { onOpenAsideRequested } from '../../../../src/client/platform/announce/open-aside.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
-import { TRASH_PATH } from '../../../../src/client/browser/tree-view.ts'
+import { TRASH_PATH } from '../../../../src/client/browser/tree/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 
 import { cast } from '../../../cast.ts'

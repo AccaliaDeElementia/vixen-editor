@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { createRestoreSelection } from '../../../src/client/browser/restore-selection.ts'
-import type { TrashEntryNode } from '../../../src/client/browser/trash-entry.ts'
+import { createRestoreSelection } from '../../../../src/client/browser/trash/restore-selection.ts'
+import type { TrashEntryNode } from '../../../../src/client/browser/trash/trash-entry.ts'
 
 interface Shape {
   name: string

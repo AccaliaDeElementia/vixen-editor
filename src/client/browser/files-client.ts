@@ -1,7 +1,7 @@
 'use sanity'
 
-import { parseTrash, parseTree, type TrashNode, type TreeNode } from './tree-model.ts'
-import { parseTrashEntry, type TrashEntryNode } from './trash-entry.ts'
+import { parseTrash, parseTree, type TrashNode, type TreeNode } from './tree/tree-model.ts'
+import { parseTrashEntry, type TrashEntryNode } from './trash/trash-entry.ts'
 import { API_PREFIX } from '../../shared/api.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { stringsIn } from '../platform/json.ts'

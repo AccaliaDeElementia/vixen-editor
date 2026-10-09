@@ -1,9 +1,9 @@
 'use sanity'
 
-import { SEQUENCE_START } from '../../shared/sequences.ts'
+import { SEQUENCE_START } from '../../../shared/sequences.ts'
 
-import { isRecord } from '../../shared/guards.ts'
-import { isEntryKind, type EntryKind, type FileKind } from '../../shared/documents.ts'
+import { isRecord } from '../../../shared/guards.ts'
+import { isEntryKind, type EntryKind, type FileKind } from '../../../shared/documents.ts'
 
 type FolderPath = string
 

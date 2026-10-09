@@ -1,7 +1,7 @@
 'use sanity'
 
-import { KEYS } from '../platform/help.ts'
-import { docUrlFor } from '../platform/doc-path.ts'
+import { KEYS } from '../../platform/help.ts'
+import { docUrlFor } from '../../platform/doc-path.ts'
 
 import { ancestorsOf } from './tree-model.ts'
 import { focusRowAt } from './tree-rows.ts'

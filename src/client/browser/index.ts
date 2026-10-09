@@ -13,12 +13,12 @@ import { bindActions, type ActionContext } from './actions.ts'
 import { createDialogs, type Dialogs } from '../platform/dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { collectRuns } from './rebuild.ts'
-import { createTrashPanel } from './trash-panel.ts'
+import { createTrashPanel } from './trash/trash-panel.ts'
 import { createSelection } from './selection.ts'
-import { createTreeKeyboard } from './tree-keyboard.ts'
+import { createTreeKeyboard } from './tree/tree-keyboard.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
-import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
-import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
+import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './tree/open-folders.ts'
+import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree/tree-model.ts'
 import { isAtOrUnder } from '../../shared/store-path.ts'
 import { requestInsert } from '../platform/announce/insert-entry.ts'
 import { requestKeep } from '../platform/announce/keep-request.ts'
@@ -32,7 +32,7 @@ import {
   TRASH_PATH,
   TREE_SELECTOR,
   type VisibleRow,
-} from './tree-view.ts'
+} from './tree/tree-view.ts'
 import { FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../platform/panels.ts'
 
 interface FileTreeOptions {

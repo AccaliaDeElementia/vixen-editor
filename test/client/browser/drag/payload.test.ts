@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../../../src/client/browser/drag.ts'
-import { parseTree } from '../../../../src/client/browser/tree-model.ts'
+import { parseTree } from '../../../../src/client/browser/tree/tree-model.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { cast } from '../../../cast.ts'
 import { fakeClient, mountTree, rowFor, treePage } from '../../tree-fixtures.ts'

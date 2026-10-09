@@ -1,11 +1,11 @@
 'use sanity'
 
-import { announceTrashEmptied } from '../platform/announce/trash-emptied.ts'
-import { errorMessage } from '../platform/error-message.ts'
-import type { Dialogs } from '../platform/dialogs.ts'
-import type { Toast } from '../platform/toast.ts'
+import { announceTrashEmptied } from '../../platform/announce/trash-emptied.ts'
+import { errorMessage } from '../../platform/error-message.ts'
+import type { Dialogs } from '../../platform/dialogs.ts'
+import type { Toast } from '../../platform/toast.ts'
 
-import type { FilesClient } from './files-client.ts'
+import type { FilesClient } from '../files-client.ts'
 
 const EMPTY_TRASH_SELECTOR = '#empty-trash'
 const TRASH_EMPTY_SELECTOR = '[data-part="trash-empty"]'

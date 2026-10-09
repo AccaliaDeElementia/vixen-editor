@@ -1,8 +1,8 @@
 'use sanity'
 
-import type { EntryKind } from '../../shared/documents.ts'
+import type { EntryKind } from '../../../shared/documents.ts'
 
-import type { TrashNode } from './tree-model.ts'
+import type { TrashNode } from '../tree/tree-model.ts'
 
 const DIRECT_FIRST = -1
 const ANCESTOR_LAST = 1

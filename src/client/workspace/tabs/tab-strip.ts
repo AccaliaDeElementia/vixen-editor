@@ -2,7 +2,7 @@
 
 import { basenameOf } from '../../../shared/link-paths.ts'
 import { DRAG_MIME, DRAG_TAB_MIME } from '../../platform/drag-payload.ts'
-import { decorativeIcon, ENTRY_GLYPHS } from '../../browser/tree-rows.ts'
+import { decorativeIcon, ENTRY_GLYPHS } from '../../browser/tree/tree-rows.ts'
 import type { TabView } from '../../platform/doc-path.ts'
 import { tabIdentity, type TabAt } from './open-tabs.ts'
 

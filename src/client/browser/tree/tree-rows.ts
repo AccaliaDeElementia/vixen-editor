@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { EntryKind } from '../../shared/documents.ts'
+import type { EntryKind } from '../../../shared/documents.ts'
 
 const REACHABLE = '0'
 const PASSED_OVER = '-1'

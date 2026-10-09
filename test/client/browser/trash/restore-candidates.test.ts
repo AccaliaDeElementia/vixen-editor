@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { restoreCandidatesFor } from '../../../src/client/browser/restore-candidates.ts'
-import type { TrashNode } from '../../../src/client/browser/tree-model.ts'
+import { restoreCandidatesFor } from '../../../../src/client/browser/trash/restore-candidates.ts'
+import type { TrashNode } from '../../../../src/client/browser/tree/tree-model.ts'
 
 function trashed(originalPath: string, kind: TrashNode['kind'], deletedAt: string, id = originalPath): TrashNode {
   return { id, originalPath, kind, deletedAt }
