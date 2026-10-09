@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import type { Session } from '../../../../src/client/document/session.ts'
 import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
-import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import { openEditor, page, recorded, sessionRecording, trackEditor, type Recorded } from '../../editor-fixtures.ts'
 import { givenAsync } from '../../../conditions.ts'
 import { dialogsDismissing, filesAnsweringEmpty } from '../../editor-fixtures.ts'

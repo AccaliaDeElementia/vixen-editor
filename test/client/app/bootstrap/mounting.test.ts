@@ -8,8 +8,8 @@ import { announceDocumentMoved } from '../../../../src/client/platform/document-
 import { requestInsert } from '../../../../src/client/platform/insert-entry.ts'
 import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
 import { recallCaret, rememberCaret } from '../../../../src/client/document/carets.ts'
-import { bootstrapOrReport, TestOnly } from '../../../../src/client/editor/bootstrap.ts'
-import { TestOnly as pageWiring } from '../../../../src/client/editor/wiring.ts'
+import { bootstrapOrReport, TestOnly } from '../../../../src/client/app/bootstrap.ts'
+import { TestOnly as pageWiring } from '../../../../src/client/app/wiring.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 
 import { cast } from '../../../cast.ts'

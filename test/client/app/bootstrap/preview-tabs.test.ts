@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { EditorView } from '@codemirror/view'
 
-import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 import { toggleSplit } from '../../../../src/client/workspace/split.ts'
 import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'

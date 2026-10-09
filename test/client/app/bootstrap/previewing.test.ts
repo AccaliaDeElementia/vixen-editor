@@ -19,7 +19,7 @@ const { PREVIEW_SETTLES_MS } = previewTiming
 import type { EditorView } from '@codemirror/view'
 
 import { given, givenAsync } from '../../../conditions.ts'
-import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,

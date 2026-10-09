@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 import { writeKeptTabs } from '../../../../src/client/workspace/kept-tabs.ts'
 import { toggleSplit } from '../../../../src/client/workspace/split.ts'

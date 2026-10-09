@@ -8,7 +8,7 @@ import type { Session } from '../../../../src/client/document/session.ts'
 
 import { cast } from '../../../cast.ts'
 
-import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,

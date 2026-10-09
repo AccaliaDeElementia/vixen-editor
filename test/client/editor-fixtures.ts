@@ -2,7 +2,7 @@
 
 import type { EditorView } from '@codemirror/view'
 
-import { TestOnly } from '../../src/client/editor/bootstrap.ts'
+import { TestOnly } from '../../src/client/app/bootstrap.ts'
 import type { Session } from '../../src/client/document/session.ts'
 import { cast } from '../cast.ts'
 import type { Dialogs } from '../../src/client/platform/dialogs.ts'

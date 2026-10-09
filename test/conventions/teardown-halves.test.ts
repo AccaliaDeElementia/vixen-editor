@@ -6,7 +6,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const REPO_ROOT = path.join(import.meta.dirname, '..', '..')
-const BOOTSTRAP = 'src/client/editor/bootstrap.ts'
+const BOOTSTRAP = 'src/client/app/bootstrap.ts'
 const HALF = /function teardown(?<half>Document|Application)\(\): void \{(?<body>[\s\S]*?)\n {2}\}/gv
 const CALLED = /^\s*(?<name>[A-Za-z][\w.]*)\(\)/gmv
 const BOTH_HALVES = 2

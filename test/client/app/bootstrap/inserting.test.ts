@@ -8,7 +8,7 @@ import { EditorState } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 
-import { TestOnly } from '../../../../src/client/editor/bootstrap.ts'
+import { TestOnly } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 
 import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'

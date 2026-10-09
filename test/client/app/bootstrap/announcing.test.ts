@@ -10,7 +10,7 @@ import type { Session } from '../../../../src/client/document/session.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 
 import { cast } from '../../../cast.ts'
-import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import { givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,

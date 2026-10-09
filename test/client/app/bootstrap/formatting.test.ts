@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { undoDepth } from '@codemirror/commands'
 import type { EditorView } from '@codemirror/view'
 
-import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
+import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import { given, givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,
