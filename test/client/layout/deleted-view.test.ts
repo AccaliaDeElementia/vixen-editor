@@ -9,7 +9,7 @@ import type { TrashNode, TreeNode } from '../../../src/client/files/tree-model.t
 import type { Toast } from '../../../src/client/toast.ts'
 
 import { cast } from '../../cast.ts'
-import { givenAsync } from '../../conditions.ts'
+import { given, givenAsync } from '../../conditions.ts'
 
 import { onRevealRequested } from '../../../src/client/reveal-request.ts'
 import { parseTrashEntry } from '../../../src/client/files/trash-entry.ts'
@@ -391,6 +391,69 @@ describe('markup that does not match', () => {
     await view(root).offer(ENTRY_ID)
 
     expect(client.trash).not.toHaveBeenCalled()
+  })
+})
+
+describe('an entry that is replaced in the same view', () => {
+  async function showingABlockedEntry(root: HTMLElement, shown: ReturnType<typeof view>): Promise<void> {
+    client.trash.mockResolvedValue([trashed('journal/a.md', 'document')])
+    client.tree.mockResolvedValue([fileNode('journal/a.md')])
+    await shown.offer(ENTRY_ID)
+    await afterLoad()
+    given(() => {
+      expect(root.querySelector<HTMLElement>('[data-part="deleted-blocked"]')?.hidden).toBe(false)
+    })
+  }
+
+  it('takes the in-the-way message away when the next id is not in the trash at all', async () => {
+    const root = page()
+    const shown = view(root)
+    await showingABlockedEntry(root, shown)
+    client.trash.mockResolvedValue([])
+
+    await shown.offer('missing-entry')
+
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-blocked"]')?.hidden).toBe(true)
+  })
+
+  it('takes the in-the-way message away once the entry is deleted for good', async () => {
+    const root = page()
+    const shown = view(root)
+    await showingABlockedEntry(root, shown)
+    const changed: PromiseWithResolvers<void> = Promise.withResolvers()
+    onStoreChanged(root, () => {
+      changed.resolve()
+    })
+
+    root.querySelector<HTMLButtonElement>('[data-part="deleted-purge"]')?.click()
+    await changed.promise
+
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-blocked"]')?.hidden).toBe(true)
+  })
+
+  it('takes the actions away when the trash cannot be read, rather than offering a restore for nothing', async () => {
+    const root = page()
+    const shown = view(root)
+    await showingABlockedEntry(root, shown)
+    given(() => {
+      expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(false)
+    })
+    client.trash.mockRejectedValue(new Error('offline'))
+
+    await shown.offer(ENTRY_ID)
+
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-actions"]')?.hidden).toBe(true)
+  })
+
+  it('takes the in-the-way message away when the trash cannot be read either', async () => {
+    const root = page()
+    const shown = view(root)
+    await showingABlockedEntry(root, shown)
+    client.trash.mockRejectedValue(new Error('offline'))
+
+    await shown.offer(ENTRY_ID)
+
+    expect(root.querySelector<HTMLElement>('[data-part="deleted-blocked"]')?.hidden).toBe(true)
   })
 })
 
