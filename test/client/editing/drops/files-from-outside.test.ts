@@ -10,7 +10,7 @@ import type { Toast } from '../../../../src/client/platform/toast.ts'
 
 import { cast } from '../../../cast.ts'
 
-const { insertionFor, receive, suggestedName } = TestOnly
+const { insertionFor, receive } = TestOnly
 
 interface Prompted {
   title: string
@@ -332,17 +332,6 @@ describe('a drag that is not carrying files', () => {
     element.dispatchEvent(event)
 
     expect({ prevented: event.defaultPrevented, inserted }).toStrictEqual({ prevented: false, inserted: [] })
-  })
-})
-
-describe('the name suggested on a collision', () => {
-  it.each([
-    ['photo.png', 'photo-1.png'],
-    ['notes.md', 'notes-1.md'],
-    ['archive.tar.gz', 'archive.tar-1.gz'],
-    ['README', 'README-1'],
-  ])('suggests %s as %s', (name, expected) => {
-    expect(suggestedName(name)).toBe(expected)
   })
 })
 

@@ -2,45 +2,13 @@
 
 import { DRAG_KIND_MIME, DRAG_MIME } from '../platform/drag-payload.ts'
 
-import { encodeDestination } from '../../shared/link-syntax.ts'
-import { basenameOf, directoryOf, relativeDestination } from '../../shared/link-paths.ts'
-import { SEQUENCE_START } from '../../shared/sequences.ts'
-import { classifyFile, type EntryKind } from '../../shared/documents.ts'
-import { joinPath } from '../../shared/store-path.ts'
-import { serially } from '../../shared/serially.ts'
-import { errorMessage } from '../platform/error-message.ts'
-import { FilesRequestError, type FilesClient } from '../browser/files-client.ts'
-import type { Dialogs } from '../platform/dialogs.ts'
-import type { Toast } from '../platform/toast.ts'
+import { directoryOf } from '../../shared/link-paths.ts'
+import { entryFor, linkFor, type DroppedEntry } from '../platform/entry-links.ts'
+import { uploadInto, type Uploading } from '../browser/uploads.ts'
 
-const NOT_BRACKETED = false
 const ONE_FILE = 1
-const ALREADY_EXISTS = 'ALREADY_EXISTS'
-const SUGGESTED_SUFFIX = '-1'
 const NO_LINKS = 0
 const BEFORE_THE_EDITOR = true
-
-interface DroppedEntry {
-  path: string
-  kind: EntryKind
-}
-
-function destinationFor(entry: DroppedEntry, holder: string): string {
-  const relative = relativeDestination(directoryOf(holder), entry.path)
-
-  return entry.kind === 'folder' ? `${relative}/` : relative
-}
-
-function linkFor(entry: DroppedEntry, holder: string): string {
-  const destination = encodeDestination(destinationFor(entry, holder), NOT_BRACKETED)
-  const label = basenameOf(entry.path)
-
-  return entry.kind === 'image' ? `![${label}](${destination})` : `[${label}](${destination})`
-}
-
-export function linkTo(entryPath: string, holder: string): string {
-  return linkFor({ path: entryPath, kind: classifyFile(entryPath) ?? 'folder' }, holder)
-}
 
 function draggedEntry(transfer: DataTransfer | null): DroppedEntry | null {
   if (transfer === null) return null
@@ -89,7 +57,7 @@ export function bindEntryDrops(
   )
 }
 
-export const TestOnly = { draggedEntry, insertionFor, linkFor, receive, suggestedName }
+export const TestOnly = { draggedEntry, insertionFor, receive }
 
 function droppedFiles(transfer: DataTransfer | null): File[] | null {
   if (transfer === null || ![...transfer.types].includes('Files')) return null
@@ -97,68 +65,9 @@ function droppedFiles(transfer: DataTransfer | null): File[] | null {
   return [...transfer.files]
 }
 
-function entryFor(storedPath: string): DroppedEntry {
-  return { path: storedPath, kind: classifyFile(storedPath) === 'image' ? 'image' : 'document' }
-}
-
-function suggestedName(filename: string): string {
-  const dot = filename.lastIndexOf('.')
-
-  return dot <= SEQUENCE_START
-    ? `${filename}${SUGGESTED_SUFFIX}`
-    : `${filename.slice(SEQUENCE_START, dot)}${SUGGESTED_SUFFIX}${filename.slice(dot)}`
-}
-
-function collided(error: unknown): boolean {
-  return error instanceof FilesRequestError && error.code === ALREADY_EXISTS
-}
-
-interface Uploading {
-  client: FilesClient
-  dialogs: Dialogs
-  toast: Toast
-  announce: () => void
-}
-
 interface FileDropOptions extends Uploading {
   holder: () => string | null
   insert: (text: string, at: number | null) => void
-}
-
-async function storeOne(file: File, directory: string, options: Uploading): Promise<string | null> {
-  try {
-    return await options.client.upload(directory, file)
-  } catch (error) {
-    if (!collided(error)) {
-      options.toast.error(`${file.name}: ${errorMessage(error)}`)
-
-      return null
-    }
-  }
-
-  return await resolveCollision(file, directory, options)
-}
-
-async function resolveCollision(file: File, directory: string, options: Uploading): Promise<string | null> {
-  let stored: string | null = joinPath(directory, file.name)
-
-  const renamed = await options.dialogs.prompt({
-    title: `${file.name} is already there`,
-    label: 'New name',
-    value: suggestedName(file.name),
-    confirmLabel: 'Upload under this name',
-    submit: async (name: string) => {
-      try {
-        stored = await options.client.upload(directory, file, name)
-
-        return null
-      } catch (error) {
-        return errorMessage(error)
-      }
-    },
-  })
-
-  return renamed ? stored : joinPath(directory, file.name)
 }
 
 function insertionFor(links: readonly string[], atLineStart: boolean): string {
@@ -181,19 +90,6 @@ async function receive(
   const links = stored.map((entryPath) => linkFor(entryFor(entryPath), holder))
 
   if (links.length > NO_LINKS) options.insert(insertionFor(links, atLineStart(at)), at)
-}
-
-export async function uploadInto(files: readonly File[], directory: string, options: Uploading): Promise<string[]> {
-  const stored: string[] = []
-
-  await serially(files, async (file) => {
-    const landed = await storeOne(file, directory, options)
-    if (landed !== null) stored.push(landed)
-  })
-
-  if (stored.length > NO_LINKS) options.announce()
-
-  return stored
 }
 
 export function bindFileDrops(
