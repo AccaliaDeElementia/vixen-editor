@@ -12,7 +12,7 @@ import {
 } from '../../../src/client/chrome/explorer.ts'
 
 import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/chrome/index.ts'
-import { requestInsert } from '../../../src/client/platform/insert-entry.ts'
+import { requestInsert } from '../../../src/client/platform/announce/insert-entry.ts'
 
 import { renderPage } from '../templates.ts'
 import { given } from '../../conditions.ts'

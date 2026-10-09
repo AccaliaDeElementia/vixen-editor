@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { onSplitDismissRequested } from '../../../src/client/platform/split-changed.ts'
+import { onSplitDismissRequested } from '../../../src/client/platform/announce/split-changed.ts'
 import { readSplit } from '../../../src/client/workspace/split.ts'
 
 import { bindSplitControls } from '../../../src/client/workspace/split-controls.ts'

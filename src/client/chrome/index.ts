@@ -14,10 +14,10 @@ import {
 import { PANEL_NAMES } from '../platform/panels.ts'
 import { bindDragging } from '../platform/dragging.ts'
 import { bindSplitControls } from '../workspace/split-controls.ts'
-import { announcePanelChanged } from '../platform/panel-changed.ts'
+import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../platform/help.ts'
-import { onInsertRequested } from '../platform/insert-entry.ts'
+import { onInsertRequested } from '../platform/announce/insert-entry.ts'
 
 const HELP_SELECTOR = '#show-help'
 

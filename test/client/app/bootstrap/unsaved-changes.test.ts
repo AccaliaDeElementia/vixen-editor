@@ -12,7 +12,7 @@ import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import { DocumentRequestError } from '../../../../src/client/document/document-client.ts'
 
 import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
-import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
+import { requestKeep } from '../../../../src/client/platform/announce/keep-request.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,

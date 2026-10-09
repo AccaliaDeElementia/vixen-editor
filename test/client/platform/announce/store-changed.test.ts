@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 
-import { announceStoreChanged, onStoreChanged } from '../../../src/client/platform/store-changed.ts'
+import { announceStoreChanged, onStoreChanged } from '../../../../src/client/platform/announce/store-changed.ts'
 
 function host(): HTMLElement {
   const element = document.createElement('div')

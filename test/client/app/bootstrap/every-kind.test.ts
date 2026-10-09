@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
-import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
+import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
 import { applySplit } from '../../../../src/client/workspace/split.ts'
 import { givenAsync } from '../../../conditions.ts'
 import {

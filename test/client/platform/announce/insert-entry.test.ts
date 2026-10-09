@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { onInsertRequested, requestInsert } from '../../../src/client/platform/insert-entry.ts'
+import { onInsertRequested, requestInsert } from '../../../../src/client/platform/announce/insert-entry.ts'
 
 function listening(): { root: HTMLElement; heard: string[] } {
   const root = document.createElement('div')

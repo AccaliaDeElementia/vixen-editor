@@ -1,7 +1,7 @@
 'use sanity'
 
 import { KEYS } from '../platform/help.ts'
-import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../platform/split-changed.ts'
+import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../platform/announce/split-changed.ts'
 import { bindDragging } from '../platform/dragging.ts'
 
 import {

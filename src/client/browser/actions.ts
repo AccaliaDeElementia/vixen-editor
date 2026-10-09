@@ -1,7 +1,7 @@
 'use sanity'
 
-import { settleBeforeDeleting } from '../platform/deletion-pending.ts'
-import { announceEntryTrashed } from '../platform/entry-trashed.ts'
+import { settleBeforeDeleting } from '../platform/announce/deletion-pending.ts'
+import { announceEntryTrashed } from '../platform/announce/entry-trashed.ts'
 import { errorMessage } from '../platform/error-message.ts'
 import type { Toast } from '../platform/toast.ts'
 

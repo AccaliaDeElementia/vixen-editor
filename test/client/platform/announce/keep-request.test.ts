@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { onKeepRequested, requestKeep, TestOnly } from '../../../src/client/platform/keep-request.ts'
+import { onKeepRequested, requestKeep, TestOnly } from '../../../../src/client/platform/announce/keep-request.ts'
 
 const { KEEP_REQUESTED } = TestOnly
 

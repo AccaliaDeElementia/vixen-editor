@@ -7,7 +7,7 @@ import {
   onEntryTrashed,
   TestOnly,
   type TrashedEntry,
-} from '../../../src/client/platform/entry-trashed.ts'
+} from '../../../../src/client/platform/announce/entry-trashed.ts'
 
 const { ENTRY_TRASHED } = TestOnly
 

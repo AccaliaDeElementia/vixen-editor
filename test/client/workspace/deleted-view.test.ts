@@ -11,9 +11,9 @@ import type { Toast } from '../../../src/client/platform/toast.ts'
 import { cast } from '../../cast.ts'
 import { given, givenAsync } from '../../conditions.ts'
 
-import { onRevealRequested } from '../../../src/client/platform/reveal-request.ts'
+import { onRevealRequested } from '../../../src/client/platform/announce/reveal-request.ts'
 import { parseTrashEntry } from '../../../src/client/browser/trash-entry.ts'
-import { onStoreChanged } from '../../../src/client/platform/store-changed.ts'
+import { onStoreChanged } from '../../../src/client/platform/announce/store-changed.ts'
 
 import { renderSection } from '../templates.ts'
 

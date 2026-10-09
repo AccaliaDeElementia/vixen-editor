@@ -2,8 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { announceStoreChanged } from '../../../../src/client/platform/store-changed.ts'
-import { onTrashEmptied } from '../../../../src/client/platform/trash-emptied.ts'
+import { announceStoreChanged } from '../../../../src/client/platform/announce/store-changed.ts'
+import { onTrashEmptied } from '../../../../src/client/platform/announce/trash-emptied.ts'
 import { parseTree } from '../../../../src/client/browser/tree-model.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'

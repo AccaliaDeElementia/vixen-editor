@@ -7,7 +7,7 @@ import { ROW_SELECTOR, TRASH_LIST_SELECTOR } from '../../src/client/browser/tree
 import type { TrashNode } from '../../src/client/browser/tree-model.ts'
 
 import { showPanel, TRASH_PANEL } from '../../src/client/platform/panels.ts'
-import { announcePanelChanged } from '../../src/client/platform/panel-changed.ts'
+import { announcePanelChanged } from '../../src/client/platform/announce/panel-changed.ts'
 
 import { renderPage } from './templates.ts'
 

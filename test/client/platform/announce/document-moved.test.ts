@@ -7,7 +7,7 @@ import {
   onDocumentMoved,
   type DocumentMoved,
   TestOnly,
-} from '../../../src/client/platform/document-moved.ts'
+} from '../../../../src/client/platform/announce/document-moved.ts'
 
 const { DOCUMENT_MOVED } = TestOnly
 

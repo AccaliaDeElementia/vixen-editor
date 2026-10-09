@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { Autosave, SaveState } from '../../../src/client/document/autosave.ts'
 import { followDeletion } from '../../../src/client/document/follow-deletion.ts'
-import { settleBeforeDeleting } from '../../../src/client/platform/deletion-pending.ts'
-import { announceEntryTrashed } from '../../../src/client/platform/entry-trashed.ts'
+import { settleBeforeDeleting } from '../../../src/client/platform/announce/deletion-pending.ts'
+import { announceEntryTrashed } from '../../../src/client/platform/announce/entry-trashed.ts'
 import { cast } from '../../cast.ts'
 
 const OPEN = 'journal/a.md'

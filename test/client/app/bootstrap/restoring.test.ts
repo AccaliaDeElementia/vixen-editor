@@ -6,8 +6,8 @@ import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 import { writeKeptTabs } from '../../../../src/client/workspace/kept-tabs.ts'
 import { toggleSplit } from '../../../../src/client/workspace/split.ts'
-import { announceSplitChanged } from '../../../../src/client/platform/split-changed.ts'
-import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
+import { announceSplitChanged } from '../../../../src/client/platform/announce/split-changed.ts'
+import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
 import { givenAsync } from '../../../conditions.ts'
 import {
   dialogsDismissing,

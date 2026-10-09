@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { EntryMove } from './doc-path.ts'
+import type { EntryMove } from '../doc-path.ts'
 
 const DOCUMENT_MOVED = 'vixen:document-moved'
 

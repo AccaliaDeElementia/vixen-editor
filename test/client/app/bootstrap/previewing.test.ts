@@ -7,7 +7,7 @@ import { cast } from '../../../cast.ts'
 import { TestOnly as previewTiming } from '../../../../src/client/preview/previews.ts'
 import { toggleSplit } from '../../../../src/client/workspace/split.ts'
 import { writeKeptTabs } from '../../../../src/client/workspace/kept-tabs.ts'
-import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
+import { requestKeep } from '../../../../src/client/platform/announce/keep-request.ts'
 import { DRAG_TAB_MIME } from '../../../../src/client/platform/drag-payload.ts'
 
 const WIDE_ENOUGH = 1200

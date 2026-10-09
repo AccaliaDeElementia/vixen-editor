@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 
-import { onRevealRequested, requestReveal, TestOnly } from '../../../src/client/platform/reveal-request.ts'
+import { onRevealRequested, requestReveal, TestOnly } from '../../../../src/client/platform/announce/reveal-request.ts'
 
 const { REVEAL_REQUESTED } = TestOnly
 

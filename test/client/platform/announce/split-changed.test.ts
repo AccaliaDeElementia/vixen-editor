@@ -2,7 +2,11 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { announceSplitChanged, onSplitChanged, TestOnly } from '../../../src/client/platform/split-changed.ts'
+import {
+  announceSplitChanged,
+  onSplitChanged,
+  TestOnly,
+} from '../../../../src/client/platform/announce/split-changed.ts'
 
 const ONCE = 1
 

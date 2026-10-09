@@ -8,7 +8,7 @@ import type { EditorView } from '@codemirror/view'
 import { cast } from '../../../cast.ts'
 
 import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
-import { onStoreChanged } from '../../../../src/client/platform/store-changed.ts'
+import { onStoreChanged } from '../../../../src/client/platform/announce/store-changed.ts'
 import { TestOnly as staleBuild } from '../../../../src/client/chrome/stale-build.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import {

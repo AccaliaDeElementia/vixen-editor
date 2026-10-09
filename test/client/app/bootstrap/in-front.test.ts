@@ -8,7 +8,7 @@ import { cast } from '../../../cast.ts'
 import { page, recorded, sessionRecording, trackEditor, type Recorded } from '../../editor-fixtures.ts'
 import { dialogsDismissing, filesAnsweringEmpty } from '../../editor-fixtures.ts'
 import { givenAsync } from '../../../conditions.ts'
-import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
+import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()

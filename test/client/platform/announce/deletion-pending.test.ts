@@ -2,7 +2,11 @@
 
 import { describe, expect, it, vi } from 'vitest'
 
-import { onDeletionPending, settleBeforeDeleting, TestOnly } from '../../../src/client/platform/deletion-pending.ts'
+import {
+  onDeletionPending,
+  settleBeforeDeleting,
+  TestOnly,
+} from '../../../../src/client/platform/announce/deletion-pending.ts'
 
 const { DELETION_PENDING } = TestOnly
 

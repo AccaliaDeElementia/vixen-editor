@@ -1,6 +1,6 @@
 'use sanity'
 
-import { announceTrashEmptied } from '../platform/trash-emptied.ts'
+import { announceTrashEmptied } from '../platform/announce/trash-emptied.ts'
 import { errorMessage } from '../platform/error-message.ts'
 import type { Dialogs } from '../platform/dialogs.ts'
 import type { Toast } from '../platform/toast.ts'
