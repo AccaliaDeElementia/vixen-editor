@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { caretsFollowMove, recallCaret, rememberCaret, TestOnly } from '../../../src/client/editor/carets.ts'
+import { caretsFollowMove, recallCaret, rememberCaret, TestOnly } from '../../../src/client/document/carets.ts'
 import { stringsIn } from '../../../src/client/platform/json.ts'
 import { readJson } from '../../../src/client/platform/local-storage.ts'
 import { isRecord } from '../../../src/shared/guards.ts'

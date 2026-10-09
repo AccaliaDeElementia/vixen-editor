@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { watchFreshness } from '../../../src/client/editor/freshness.ts'
+import { watchFreshness } from '../../../src/client/document/freshness.ts'
 
 let checks = 0
 

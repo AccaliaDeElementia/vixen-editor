@@ -5,7 +5,7 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createMergeControl, type MergeControl } from '../../../src/client/editor/merging.ts'
+import { createMergeControl, type MergeControl } from '../../../src/client/document/merging.ts'
 
 import { trackView } from '../editor-fixtures.ts'
 

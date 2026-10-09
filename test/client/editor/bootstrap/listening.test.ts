@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import type { LoadedDocument, Session } from '../../../../src/client/editor/session.ts'
+import type { LoadedDocument, Session } from '../../../../src/client/document/session.ts'
 import type { EditorView } from '@codemirror/view'
 
 import { cast } from '../../../cast.ts'

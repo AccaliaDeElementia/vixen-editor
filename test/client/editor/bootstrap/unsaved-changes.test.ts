@@ -4,12 +4,12 @@ const ONE_EDITOR = 1
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 
 import { cast } from '../../../cast.ts'
 import type { EditorView } from '@codemirror/view'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
-import { DocumentRequestError } from '../../../../src/client/editor/document-client.ts'
+import { DocumentRequestError } from '../../../../src/client/document/document-client.ts'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import { requestKeep } from '../../../../src/client/platform/keep-request.ts'

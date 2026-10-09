@@ -5,7 +5,7 @@ import { undoDepth } from '@codemirror/commands'
 import { EditorView } from '@codemirror/view'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
 import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
 import { readKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'

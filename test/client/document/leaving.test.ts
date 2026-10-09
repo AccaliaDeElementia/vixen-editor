@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { describeRefusal } from '../../../src/client/editor/leaving.ts'
-import { DocumentRequestError } from '../../../src/client/editor/document-client.ts'
+import { describeRefusal } from '../../../src/client/document/leaving.ts'
+import { DocumentRequestError } from '../../../src/client/document/document-client.ts'
 
 describe('what stopped the save', () => {
   it('says nothing when there was nothing to save', () => {

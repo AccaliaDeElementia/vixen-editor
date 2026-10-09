@@ -9,7 +9,7 @@ import {
   createDocumentClient,
   DocumentRequestError,
   WHILE_LEAVING,
-} from '../../../src/client/editor/document-client.ts'
+} from '../../../src/client/document/document-client.ts'
 
 let fetchMock: ReturnType<typeof vi.fn> = vi.fn()
 

@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { resolveIndex } from '../../../src/client/editor/folder-index.ts'
-import type { Session } from '../../../src/client/editor/session.ts'
+import { resolveIndex } from '../../../src/client/document/folder-index.ts'
+import type { Session } from '../../../src/client/document/session.ts'
 import { cast } from '../../cast.ts'
 
 const PREFERRED = 'journal/index.md'

@@ -7,10 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { announceDocumentMoved } from '../../../../src/client/platform/document-moved.ts'
 import { requestInsert } from '../../../../src/client/platform/insert-entry.ts'
 import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
-import { recallCaret, rememberCaret } from '../../../../src/client/editor/carets.ts'
+import { recallCaret, rememberCaret } from '../../../../src/client/document/carets.ts'
 import { bootstrapOrReport, TestOnly } from '../../../../src/client/editor/bootstrap.ts'
 import { TestOnly as pageWiring } from '../../../../src/client/editor/wiring.ts'
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 
 import { cast } from '../../../cast.ts'
 import {

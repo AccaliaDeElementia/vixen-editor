@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { undo } from '@codemirror/commands'
 import type { EditorView } from '@codemirror/view'
 
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 import { cast } from '../../../cast.ts'
 
 import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'

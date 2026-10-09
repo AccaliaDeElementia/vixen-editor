@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { announceSplitChanged } from '../../../../src/client/platform/split-changed.ts'

@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
 import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
 import { requestSplitDismissed } from '../../../../src/client/platform/split-changed.ts'

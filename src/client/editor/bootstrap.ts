@@ -13,8 +13,8 @@ import { connectToChanges } from '../platform/store-events.ts'
 import { changeTouches } from '../../shared/store-change.ts'
 import { interceptNavigation, openDocumentIn } from '../platform/navigation.ts'
 
-import { caretsFollowMove } from './carets.ts'
-import { followDeletion } from './follow-deletion.ts'
+import { caretsFollowMove } from '../document/carets.ts'
+import { followDeletion } from '../document/follow-deletion.ts'
 import { createToast } from '../platform/toast.ts'
 import type { FilesClient } from '../browser/files-client.ts'
 import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
@@ -28,12 +28,12 @@ import { createClosingTabs, type ClosingSurface } from './closing-tabs.ts'
 import { createPaneMoves } from './pane-moves.ts'
 import { createAside } from './aside.ts'
 import { createAcrossPanes } from './across-panes.ts'
-import { createCaretMemory } from './caret-memory.ts'
+import { createCaretMemory } from '../document/caret-memory.ts'
 import { createTabNavigation } from './tab-navigation.ts'
 
 import type { EditorView } from '@codemirror/view'
 
-import { startsALine } from './document-tab.ts'
+import { startsALine } from '../document/document-tab.ts'
 import {
   createPaneWorkspace,
   MissingMountError,
@@ -42,8 +42,8 @@ import {
 } from './pane-workspace.ts'
 import { createStaleBuild } from './stale-build.ts'
 import { watchBuild } from '../build-watch.ts'
-import type { Session } from './session.ts'
-import { guardUnload } from './unload.ts'
+import type { Session } from '../document/session.ts'
+import { guardUnload } from '../document/unload.ts'
 import { linkTo } from '../editing/drops.ts'
 import { onInsertRequested } from '../platform/insert-entry.ts'
 import { onKeepRequested } from '../platform/keep-request.ts'

@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { EditorState } from '@codemirror/state'
 
-import { createMaterialised, TestOnly } from '../../../src/client/editor/materialised.ts'
+import { createMaterialised, TestOnly } from '../../../src/client/document/materialised.ts'
 
 const { LOADED_EDITORS } = TestOnly
 

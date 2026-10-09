@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createPaneWorkspace } from '../../../src/client/editor/pane-workspace.ts'
 import { createPreviews } from '../../../src/client/editor/previews.ts'
-import { createCaretMemory } from '../../../src/client/editor/caret-memory.ts'
+import { createCaretMemory } from '../../../src/client/document/caret-memory.ts'
 import { createToast, type Toast } from '../../../src/client/platform/toast.ts'
-import type { Session } from '../../../src/client/editor/session.ts'
+import type { Session } from '../../../src/client/document/session.ts'
 import type { FilesClient } from '../../../src/client/browser/files-client.ts'
 import {
   dialogsDismissing,

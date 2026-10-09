@@ -3,7 +3,7 @@
 import { given } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createAutosave, TestOnly, type Autosave, type SaveState } from '../../../src/client/editor/autosave.ts'
+import { createAutosave, TestOnly, type Autosave, type SaveState } from '../../../src/client/document/autosave.ts'
 import { serially } from '../../../src/shared/serially.ts'
 
 const { CEILING_MS, IDLE_MS } = TestOnly

@@ -2,8 +2,8 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createCaretMemory } from '../../../src/client/editor/caret-memory.ts'
-import { TestOnly } from '../../../src/client/editor/carets.ts'
+import { createCaretMemory } from '../../../src/client/document/caret-memory.ts'
+import { TestOnly } from '../../../src/client/document/carets.ts'
 
 const A_SECOND = 1000
 const MIDWAY = 400

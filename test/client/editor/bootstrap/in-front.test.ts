@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 import { cast } from '../../../cast.ts'
 import { page, recorded, sessionRecording, trackEditor, type Recorded } from '../../editor-fixtures.ts'
 import { dialogsDismissing, filesAnsweringEmpty } from '../../editor-fixtures.ts'

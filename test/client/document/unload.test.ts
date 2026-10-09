@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../../cast.ts'
 
-import { guardUnload } from '../../../src/client/editor/unload.ts'
+import { guardUnload } from '../../../src/client/document/unload.ts'
 
 interface Guarded {
   leave: () => BeforeUnloadEvent

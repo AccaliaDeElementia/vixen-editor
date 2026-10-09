@@ -4,7 +4,7 @@ import { given } from '../../../conditions.ts'
 import { undoDepth } from '@codemirror/commands'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 
 import { cast } from '../../../cast.ts'
 

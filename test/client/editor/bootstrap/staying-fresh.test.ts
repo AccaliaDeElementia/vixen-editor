@@ -3,11 +3,11 @@
 import { given } from '../../../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { LoadedDocument, Session } from '../../../../src/client/editor/session.ts'
+import type { LoadedDocument, Session } from '../../../../src/client/document/session.ts'
 
 import type { EditorView } from '@codemirror/view'
 
-import { DocumentRequestError } from '../../../../src/client/editor/document-client.ts'
+import { DocumentRequestError } from '../../../../src/client/document/document-client.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { cast } from '../../../cast.ts'

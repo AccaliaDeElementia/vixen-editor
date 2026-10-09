@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { SaveState } from '../editor/autosave.ts'
+import type { SaveState } from '../document/autosave.ts'
 
 const SAVE_LABEL_SELECTOR = '[data-part="save-label"]'
 const COUNTDOWN_SELECTOR = '[data-part="save-countdown"]'

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { EditorView } from '@codemirror/view'
 
 import { announceEntryTrashed, settleBeforeDeleting } from '../../../../src/client/platform/entry-deletion.ts'
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 

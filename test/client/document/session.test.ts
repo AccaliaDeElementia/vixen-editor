@@ -6,9 +6,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../../cast.ts'
 
-import { DocumentRequestError } from '../../../src/client/editor/document-client.ts'
-import type { DocumentClient } from '../../../src/client/editor/document-client.ts'
-import { createSession, TestOnly } from '../../../src/client/editor/session.ts'
+import { DocumentRequestError } from '../../../src/client/document/document-client.ts'
+import type { DocumentClient } from '../../../src/client/document/document-client.ts'
+import { createSession, TestOnly } from '../../../src/client/document/session.ts'
 
 const { defaultTemplate } = TestOnly
 

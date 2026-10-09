@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Session } from '../../../../src/client/editor/session.ts'
+import type { Session } from '../../../../src/client/document/session.ts'
 import { cast } from '../../../cast.ts'
 import { TestOnly as previewTiming } from '../../../../src/client/editor/previews.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
