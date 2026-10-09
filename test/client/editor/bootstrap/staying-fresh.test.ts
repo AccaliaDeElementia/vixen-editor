@@ -8,7 +8,7 @@ import type { LoadedDocument, Session } from '../../../../src/client/editor/sess
 import type { EditorView } from '@codemirror/view'
 
 import { DocumentRequestError } from '../../../../src/client/editor/document-client.ts'
-import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
+import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 import { cast } from '../../../cast.ts'
 

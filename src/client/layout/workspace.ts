@@ -1,6 +1,6 @@
 'use sanity'
 
-import { titleFor } from '../doc-path.ts'
+import { titleFor } from '../platform/doc-path.ts'
 
 export type WorkspaceView =
   'pending' | 'empty' | 'document' | 'source' | 'markup' | 'image' | 'missing' | 'deleted' | 'unreachable'

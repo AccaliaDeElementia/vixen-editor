@@ -1,6 +1,6 @@
 'use sanity'
 
-import { DRAG_KIND_MIME, DRAG_MIME } from '../drag-payload.ts'
+import { DRAG_KIND_MIME, DRAG_MIME } from '../platform/drag-payload.ts'
 
 import { encodeDestination } from '../../shared/link-syntax.ts'
 import { basenameOf, directoryOf, relativeDestination } from '../../shared/link-paths.ts'
@@ -8,10 +8,10 @@ import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { classifyFile, type EntryKind } from '../../shared/documents.ts'
 import { joinPath } from '../../shared/store-path.ts'
 import { serially } from '../../shared/serially.ts'
-import { errorMessage } from '../error-message.ts'
+import { errorMessage } from '../platform/error-message.ts'
 import { FilesRequestError, type FilesClient } from '../files/files-client.ts'
-import type { Dialogs } from '../files/dialogs.ts'
-import type { Toast } from '../toast.ts'
+import type { Dialogs } from '../platform/dialogs.ts'
+import type { Toast } from '../platform/toast.ts'
 
 const NOT_BRACKETED = false
 const ONE_FILE = 1

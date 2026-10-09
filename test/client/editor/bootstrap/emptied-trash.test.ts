@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
-import { announceTrashEmptied } from '../../../../src/client/trash-emptied.ts'
+import { announceTrashEmptied } from '../../../../src/client/platform/trash-emptied.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { givenAsync } from '../../../conditions.ts'
 import {

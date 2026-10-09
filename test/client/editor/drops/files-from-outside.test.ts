@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindFileDrops, TestOnly } from '../../../../src/client/editor/drops.ts'
 import { FilesRequestError, type FilesClient } from '../../../../src/client/files/files-client.ts'
-import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
-import type { Toast } from '../../../../src/client/toast.ts'
+import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
+import type { Toast } from '../../../../src/client/platform/toast.ts'
 
 import { cast } from '../../../cast.ts'
 

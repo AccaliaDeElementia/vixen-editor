@@ -6,8 +6,8 @@ import { initFileTree } from '../../src/client/files/index.ts'
 import { ROW_SELECTOR, TRASH_LIST_SELECTOR } from '../../src/client/files/tree-view.ts'
 import type { TrashNode } from '../../src/client/files/tree-model.ts'
 
-import { showPanel, TRASH_PANEL } from '../../src/client/panels.ts'
-import { announcePanelChanged } from '../../src/client/panel-changed.ts'
+import { showPanel, TRASH_PANEL } from '../../src/client/platform/panels.ts'
+import { announcePanelChanged } from '../../src/client/platform/panel-changed.ts'
 
 import { renderPage } from './templates.ts'
 

@@ -7,7 +7,7 @@ import { TestOnly } from '../../../../src/client/files/drag.ts'
 import { FilesRequestError } from '../../../../src/client/files/files-client.ts'
 import { parseTree } from '../../../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR, TREE_SELECTOR } from '../../../../src/client/files/tree-view.ts'
-import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
+import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
 import { cast } from '../../../cast.ts'
 import {

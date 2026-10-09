@@ -1,7 +1,7 @@
 'use sanity'
 
-import { errorMessage } from '../error-message.ts'
-import type { Toast } from '../toast.ts'
+import { errorMessage } from '../platform/error-message.ts'
+import type { Toast } from '../platform/toast.ts'
 
 type OnceRebuilt = () => void
 

@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { announceTrashEmptied, onTrashEmptied, TestOnly } from '../../src/client/trash-emptied.ts'
+import { announceTrashEmptied, onTrashEmptied, TestOnly } from '../../../src/client/platform/trash-emptied.ts'
 
 const ONCE = 1
 const NEVER = 0

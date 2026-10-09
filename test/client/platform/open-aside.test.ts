@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { onOpenAsideRequested, requestOpenAside, TestOnly } from '../../src/client/open-aside.ts'
+import { onOpenAsideRequested, requestOpenAside, TestOnly } from '../../../src/client/platform/open-aside.ts'
 
 const { OPEN_ASIDE_REQUESTED } = TestOnly
 

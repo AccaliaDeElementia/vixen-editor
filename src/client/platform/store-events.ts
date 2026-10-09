@@ -1,7 +1,7 @@
 'use sanity'
 
-import { API_PREFIX } from '../shared/api.ts'
-import { isStoreChange, type StoreChange } from '../shared/store-change.ts'
+import { API_PREFIX } from '../../shared/api.ts'
+import { isStoreChange, type StoreChange } from '../../shared/store-change.ts'
 
 const CHANGES_URL = `${API_PREFIX}/events`
 const CHANGE_EVENT = 'change'

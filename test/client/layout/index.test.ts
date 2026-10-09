@@ -10,12 +10,12 @@ import {
   setExplorerWidth,
   TestOnly as explorerTestOnly,
 } from '../../../src/client/layout/explorer.ts'
-import { onSplitDismissRequested } from '../../../src/client/split-changed.ts'
+import { onSplitDismissRequested } from '../../../src/client/platform/split-changed.ts'
 import { readSplit } from '../../../src/client/layout/split.ts'
 
 const BOTH_PANES = 2
 import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/layout/index.ts'
-import { requestInsert } from '../../../src/client/insert-entry.ts'
+import { requestInsert } from '../../../src/client/platform/insert-entry.ts'
 
 import { renderPage } from '../templates.ts'
 import { given } from '../../conditions.ts'

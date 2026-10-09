@@ -9,7 +9,7 @@ import { highlightCode, resolveLanguage } from './highlight-code.ts'
 import { sanitiseHtml, type SanitiseHtml } from './sanitise-html.ts'
 import { closesATag, holdsNothing, openedBy } from './inline-html.ts'
 import { decodeEntity } from './html-entities.ts'
-import { safeDestination } from './safe-destination.ts'
+import { safeDestination } from './platform/safe-destination.ts'
 
 const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 

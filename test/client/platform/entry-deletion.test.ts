@@ -9,7 +9,7 @@ import {
   settleBeforeDeleting,
   TestOnly,
   type TrashedEntry,
-} from '../../src/client/entry-deletion.ts'
+} from '../../../src/client/platform/entry-deletion.ts'
 
 const { DELETION_PENDING, ENTRY_TRASHED } = TestOnly
 

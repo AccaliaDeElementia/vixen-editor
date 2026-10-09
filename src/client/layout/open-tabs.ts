@@ -1,6 +1,6 @@
 'use sanity'
 
-import { pathAfterMove, TAB_VIEWS, type EntryMove, type TabView } from '../doc-path.ts'
+import { pathAfterMove, TAB_VIEWS, type EntryMove, type TabView } from '../platform/doc-path.ts'
 
 export interface TabAt {
   path: string

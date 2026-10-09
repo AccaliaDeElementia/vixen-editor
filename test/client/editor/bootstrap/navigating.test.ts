@@ -19,7 +19,7 @@ import {
   trackEditor,
   type Recorded,
 } from '../../editor-fixtures.ts'
-import { requestOpenAside } from '../../../../src/client/open-aside.ts'
+import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()

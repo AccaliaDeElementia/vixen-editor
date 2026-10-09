@@ -1,6 +1,6 @@
 'use sanity'
 
-import { docUrlFor, isPreviewView, type PreviewView, type TabView } from '../doc-path.ts'
+import { docUrlFor, isPreviewView, type PreviewView, type TabView } from '../platform/doc-path.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
 

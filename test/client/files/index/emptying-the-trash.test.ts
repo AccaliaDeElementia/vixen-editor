@@ -2,11 +2,11 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { announceStoreChanged } from '../../../../src/client/store-changed.ts'
-import { onTrashEmptied } from '../../../../src/client/trash-emptied.ts'
+import { announceStoreChanged } from '../../../../src/client/platform/store-changed.ts'
+import { onTrashEmptied } from '../../../../src/client/platform/trash-emptied.ts'
 import { parseTree } from '../../../../src/client/files/tree-model.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'
-import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
+import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import { cast } from '../../../cast.ts'
 import { TRASHED, fakeClient, mountTree, showTrash, statusText, trashRows, treePage } from '../../tree-fixtures.ts'
 

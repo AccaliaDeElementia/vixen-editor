@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const CLIENT = 'src/client'
-const HELP_REGISTRY = 'src/client/help.ts'
+const HELP_REGISTRY = 'src/client/platform/help.ts'
 const SOURCE_EXTENSION = '.ts'
 
 const KEY_BINDING = /\bkey\s*(?::|===)\s*(?<bound>'[^']*'|"[^"]*"|\w+)/gv

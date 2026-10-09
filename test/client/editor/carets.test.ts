@@ -3,8 +3,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { caretsFollowMove, recallCaret, rememberCaret, TestOnly } from '../../../src/client/editor/carets.ts'
-import { stringsIn } from '../../../src/client/json.ts'
-import { readJson } from '../../../src/client/local-storage.ts'
+import { stringsIn } from '../../../src/client/platform/json.ts'
+import { readJson } from '../../../src/client/platform/local-storage.ts'
 import { isRecord } from '../../../src/shared/guards.ts'
 
 const { CARETS_KEY, REMEMBERED_DOCUMENTS } = TestOnly

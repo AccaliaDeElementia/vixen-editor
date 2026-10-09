@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bindViewDrops } from '../../../src/client/editor/view-drops.ts'
-import { DRAG_KIND_MIME, DRAG_MIME } from '../../../src/client/drag-payload.ts'
+import { DRAG_KIND_MIME, DRAG_MIME } from '../../../src/client/platform/drag-payload.ts'
 import { cast } from '../../cast.ts'
 
 const VIEWS = ['view-markup', 'view-source', 'view-image']

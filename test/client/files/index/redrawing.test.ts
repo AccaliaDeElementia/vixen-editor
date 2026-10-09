@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { announceStoreChanged } from '../../../../src/client/store-changed.ts'
+import { announceStoreChanged } from '../../../../src/client/platform/store-changed.ts'
 import { parseTree } from '../../../../src/client/files/tree-model.ts'
 import { ROW_SELECTOR } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'

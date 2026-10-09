@@ -4,7 +4,7 @@ import { parseTrash, parseTree, type TrashNode, type TreeNode } from './tree-mod
 import { parseTrashEntry, type TrashEntryNode } from './trash-entry.ts'
 import { API_PREFIX } from '../../shared/api.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
-import { stringsIn } from '../json.ts'
+import { stringsIn } from '../platform/json.ts'
 import { isRecord } from '../../shared/guards.ts'
 
 export interface FilesClient {

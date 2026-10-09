@@ -1,10 +1,10 @@
 'use sanity'
 
-import { announceEntryTrashed, settleBeforeDeleting } from '../entry-deletion.ts'
-import { errorMessage } from '../error-message.ts'
-import type { Toast } from '../toast.ts'
+import { announceEntryTrashed, settleBeforeDeleting } from '../platform/entry-deletion.ts'
+import { errorMessage } from '../platform/error-message.ts'
+import type { Toast } from '../platform/toast.ts'
 
-import type { Dialogs, NameResolver } from './dialogs.ts'
+import type { Dialogs, NameResolver } from '../platform/dialogs.ts'
 import { documentNameFor } from './document-name.ts'
 import { rebuildingRunner } from './rebuild.ts'
 import { FilesRequestError, type FilesClient } from './files-client.ts'

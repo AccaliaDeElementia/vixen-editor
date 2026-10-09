@@ -1,12 +1,12 @@
 'use sanity'
 
-import { DRAG_KIND_MIME, DRAG_MIME } from '../drag-payload.ts'
+import { DRAG_KIND_MIME, DRAG_MIME } from '../platform/drag-payload.ts'
 
-import type { DocumentMoved } from '../document-moved.ts'
+import type { DocumentMoved } from '../platform/document-moved.ts'
 import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
 import { EMPTY } from '../../shared/sequences.ts'
-import { errorMessage } from '../error-message.ts'
-import type { Toast } from '../toast.ts'
+import { errorMessage } from '../platform/error-message.ts'
+import type { Toast } from '../platform/toast.ts'
 
 import type { FilesClient } from './files-client.ts'
 import { isStoreRow, rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree-view.ts'

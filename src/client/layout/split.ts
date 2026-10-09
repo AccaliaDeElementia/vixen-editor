@@ -1,7 +1,7 @@
 'use sanity'
 
 import { isRecord } from '../../shared/guards.ts'
-import { readJson, writeJson } from '../local-storage.ts'
+import { readJson, writeJson } from '../platform/local-storage.ts'
 
 export type SplitOrientation = 'beside' | 'below'
 

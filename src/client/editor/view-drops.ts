@@ -1,6 +1,6 @@
 'use sanity'
 
-import { DRAG_KIND_MIME, DRAG_MIME } from '../drag-payload.ts'
+import { DRAG_KIND_MIME, DRAG_MIME } from '../platform/drag-payload.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 
 const VIEW_SELECTOR = '[data-part="view-markup"], [data-part="view-source"], [data-part="view-image"]'

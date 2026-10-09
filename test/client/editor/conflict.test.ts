@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { DocumentRequestError } from '../../../src/client/editor/document-client.ts'
 import { isConflict, offerResolution, TestOnly } from '../../../src/client/editor/conflict.ts'
 import type { ConflictOptions } from '../../../src/client/editor/conflict.ts'
-import type { Dialogs } from '../../../src/client/files/dialogs.ts'
+import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import { cast } from '../../cast.ts'
 

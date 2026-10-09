@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { cast } from '../cast.ts'
+import { cast } from '../../cast.ts'
 
-import { readJson, writeJson } from '../../src/client/local-storage.ts'
+import { readJson, writeJson } from '../../../src/client/platform/local-storage.ts'
 
 const KEY = 'vixen-editor:probe'
 

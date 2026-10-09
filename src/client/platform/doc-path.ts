@@ -1,8 +1,8 @@
 'use sanity'
 
-import { SEQUENCE_START } from '../shared/sequences.ts'
-import { FOLDER_INDEX_ALTERNATE, FOLDER_INDEX_NAME } from '../shared/documents.ts'
-import { DOC_PREFIX } from '../shared/page-urls.ts'
+import { SEQUENCE_START } from '../../shared/sequences.ts'
+import { FOLDER_INDEX_ALTERNATE, FOLDER_INDEX_NAME } from '../../shared/documents.ts'
+import { DOC_PREFIX } from '../../shared/page-urls.ts'
 
 export const TAB_VIEWS = ['editor', 'source', 'markup', 'image', 'missing', 'deleted', 'unreachable'] as const
 

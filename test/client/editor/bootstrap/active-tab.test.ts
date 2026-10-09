@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
-import { DRAG_TAB_MIME } from '../../../../src/client/drag-payload.ts'
-import { requestKeep } from '../../../../src/client/keep-request.ts'
-import { requestOpenAside } from '../../../../src/client/open-aside.ts'
+import { DRAG_TAB_MIME } from '../../../../src/client/platform/drag-payload.ts'
+import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
+import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
 import { cast } from '../../../cast.ts'
 import { givenAsync } from '../../../conditions.ts'
 import {

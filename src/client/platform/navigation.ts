@@ -1,7 +1,7 @@
 'use sanity'
 
 import { documentIdFromPath } from './doc-path.ts'
-import { DOC_PREFIX, TRASH_PREFIX } from '../shared/page-urls.ts'
+import { DOC_PREFIX, TRASH_PREFIX } from '../../shared/page-urls.ts'
 
 export interface OpenDocument {
   path: () => string

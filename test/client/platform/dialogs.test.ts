@@ -3,7 +3,7 @@
 import { given, givenAsync } from '../../conditions.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createDialogs } from '../../../src/client/files/dialogs.ts'
+import { createDialogs } from '../../../src/client/platform/dialogs.ts'
 import { renderDialog } from '../templates.ts'
 
 function page(): void {

@@ -1,9 +1,9 @@
 'use sanity'
 
 import { basenameOf } from '../../shared/link-paths.ts'
-import { DRAG_MIME, DRAG_TAB_MIME } from '../drag-payload.ts'
+import { DRAG_MIME, DRAG_TAB_MIME } from '../platform/drag-payload.ts'
 import { decorativeIcon, ENTRY_GLYPHS } from '../tree-rows.ts'
-import type { TabView } from '../doc-path.ts'
+import type { TabView } from '../platform/doc-path.ts'
 import { tabIdentity, type TabAt } from './open-tabs.ts'
 
 const SCROLLER_SELECTOR = '[data-part="tabs-scroller"]'

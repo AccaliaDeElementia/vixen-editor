@@ -1,6 +1,6 @@
 'use sanity'
 
-import { onDeletionPending, onEntryTrashed } from '../entry-deletion.ts'
+import { onDeletionPending, onEntryTrashed } from '../platform/entry-deletion.ts'
 import { trashUrlFor } from '../../shared/page-urls.ts'
 import { isAtOrUnder } from '../../shared/store-path.ts'
 

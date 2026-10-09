@@ -11,7 +11,7 @@ import {
   setExplorerWidth,
   askForPanel,
 } from './explorer.ts'
-import { PANEL_NAMES } from '../panels.ts'
+import { PANEL_NAMES } from '../platform/panels.ts'
 import {
   applySplit,
   setSplitFraction,
@@ -20,11 +20,11 @@ import {
   readSplit,
   type SplitOrientation,
 } from './split.ts'
-import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../split-changed.ts'
-import { announcePanelChanged } from '../panel-changed.ts'
-import { createDialogs } from '../files/dialogs.ts'
-import { HELP_SECTIONS, KEYS } from '../help.ts'
-import { onInsertRequested } from '../insert-entry.ts'
+import { announceSplitChanged, onSplitChanged, requestSplitDismissed } from '../platform/split-changed.ts'
+import { announcePanelChanged } from '../platform/panel-changed.ts'
+import { createDialogs } from '../platform/dialogs.ts'
+import { HELP_SECTIONS, KEYS } from '../platform/help.ts'
+import { onInsertRequested } from '../platform/insert-entry.ts'
 
 const HELP_SELECTOR = '#show-help'
 const PANES_SELECTOR = '[data-part="panes"]'

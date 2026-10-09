@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { connectToChanges } from '../../src/client/store-events.ts'
-import type { StoreChange } from '../../src/shared/store-change.ts'
-import { cast } from '../cast.ts'
+import { connectToChanges } from '../../../src/client/platform/store-events.ts'
+import type { StoreChange } from '../../../src/shared/store-change.ts'
+import { cast } from '../../cast.ts'
 
 const WRITTEN = { kind: 'written', path: 'journal/a.md' } as const
 const ONE_RESYNC = 1

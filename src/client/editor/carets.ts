@@ -1,8 +1,8 @@
 'use sanity'
 
 import { isRecord } from '../../shared/guards.ts'
-import { pathAfterMove, type EntryMove } from '../doc-path.ts'
-import { readJson, writeJson } from '../local-storage.ts'
+import { pathAfterMove, type EntryMove } from '../platform/doc-path.ts'
+import { readJson, writeJson } from '../platform/local-storage.ts'
 
 const CARETS_KEY = 'vixen-editor:carets'
 const REMEMBERED_DOCUMENTS = 20

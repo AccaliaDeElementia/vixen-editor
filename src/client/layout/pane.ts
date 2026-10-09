@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { EntryMove } from '../doc-path.ts'
+import type { EntryMove } from '../platform/doc-path.ts'
 import { readKeptTabs, writeKeptTabs, type PaneId } from './kept-tabs.ts'
 import { createOpenTabs, tabFromIdentity, tabIdentity, type TabAt } from './open-tabs.ts'
 import { createTabStrip } from './tab-strip.ts'

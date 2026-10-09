@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { safeDestination } from '../../src/client/safe-destination.ts'
-import { SCRIPT_URL, SCRIPT_URL_IN_CAPITALS } from './hostile-urls.ts'
+import { safeDestination } from '../../../src/client/platform/safe-destination.ts'
+import { SCRIPT_URL, SCRIPT_URL_IN_CAPITALS } from '../hostile-urls.ts'
 
 describe('a destination the preview may hand to the browser', () => {
   it('allows a relative path, which is what documents in the store use', () => {

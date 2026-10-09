@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { Dialogs } from '../files/dialogs.ts'
+import type { Dialogs } from '../platform/dialogs.ts'
 
 const STALE_SELECTOR = '#stale-build'
 

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { cheatsheet, HELP_SECTIONS, KEYS } from '../../src/client/help.ts'
+import { cheatsheet, HELP_SECTIONS, KEYS } from '../../../src/client/platform/help.ts'
 
 describe('the cheatsheet a new workspace starts with', () => {
   it('has a section for every section the help dialog shows', () => {

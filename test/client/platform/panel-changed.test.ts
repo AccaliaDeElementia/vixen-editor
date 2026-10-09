@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { announcePanelChanged, onPanelChanged, TestOnly } from '../../src/client/panel-changed.ts'
+import { announcePanelChanged, onPanelChanged, TestOnly } from '../../../src/client/platform/panel-changed.ts'
 
 const ONCE = 1
 const NEVER = 0

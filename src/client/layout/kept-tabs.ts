@@ -1,8 +1,8 @@
 'use sanity'
 
 import { isRecord } from '../../shared/guards.ts'
-import { readJson, writeJson } from '../local-storage.ts'
-import { TAB_VIEWS } from '../doc-path.ts'
+import { readJson, writeJson } from '../platform/local-storage.ts'
+import { TAB_VIEWS } from '../platform/doc-path.ts'
 import type { TabAt } from './open-tabs.ts'
 
 export type PaneId = 'primary' | 'secondary'

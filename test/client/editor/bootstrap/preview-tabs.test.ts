@@ -7,7 +7,7 @@ import { EditorView } from '@codemirror/view'
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import type { Session } from '../../../../src/client/editor/session.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
-import { requestOpenAside } from '../../../../src/client/open-aside.ts'
+import { requestOpenAside } from '../../../../src/client/platform/open-aside.ts'
 import { readKeptTabs, writeKeptTabs, type PaneId } from '../../../../src/client/layout/kept-tabs.ts'
 import { given, givenAsync } from '../../../conditions.ts'
 import {

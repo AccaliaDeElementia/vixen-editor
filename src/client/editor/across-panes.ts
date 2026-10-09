@@ -3,7 +3,7 @@
 import { tabIdentity, type TabAt } from '../layout/open-tabs.ts'
 import type { DocumentTab } from './document-tab.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
-import { isPreviewView } from '../doc-path.ts'
+import { isPreviewView } from '../platform/doc-path.ts'
 
 interface AcrossPanesOptions {
   primary: PaneWorkspace

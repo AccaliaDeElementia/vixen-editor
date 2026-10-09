@@ -4,7 +4,7 @@ import { createMarkupView } from '../layout/markup-view.ts'
 import { createSourceView } from '../layout/source-view.ts'
 import type { PreviewBody } from '../layout/preview-body.ts'
 import type { TabAt } from '../layout/open-tabs.ts'
-import type { PreviewView } from '../doc-path.ts'
+import type { PreviewView } from '../platform/doc-path.ts'
 
 const PREVIEW_SETTLES_MS = 200
 

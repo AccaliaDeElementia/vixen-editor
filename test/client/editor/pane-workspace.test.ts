@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createPaneWorkspace } from '../../../src/client/editor/pane-workspace.ts'
 import { createPreviews } from '../../../src/client/editor/previews.ts'
 import { createCaretMemory } from '../../../src/client/editor/caret-memory.ts'
-import { createToast, type Toast } from '../../../src/client/toast.ts'
+import { createToast, type Toast } from '../../../src/client/platform/toast.ts'
 import type { Session } from '../../../src/client/editor/session.ts'
 import type { FilesClient } from '../../../src/client/files/files-client.ts'
 import {
@@ -17,7 +17,7 @@ import {
 } from '../editor-fixtures.ts'
 import { renderPane } from '../templates.ts'
 import { cast } from '../../cast.ts'
-import { DRAG_MIME } from '../../../src/client/drag-payload.ts'
+import { DRAG_MIME } from '../../../src/client/platform/drag-payload.ts'
 
 const SOMETHING_STORED = '# stored'
 const WHENEVER = '2026-01-01T00:00:00.000Z'

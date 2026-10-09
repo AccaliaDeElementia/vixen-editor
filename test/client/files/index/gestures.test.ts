@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { onInsertRequested } from '../../../../src/client/insert-entry.ts'
-import { onKeepRequested } from '../../../../src/client/keep-request.ts'
-import { onOpenAsideRequested } from '../../../../src/client/open-aside.ts'
+import { onInsertRequested } from '../../../../src/client/platform/insert-entry.ts'
+import { onKeepRequested } from '../../../../src/client/platform/keep-request.ts'
+import { onOpenAsideRequested } from '../../../../src/client/platform/open-aside.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
 import { TRASH_PATH } from '../../../../src/client/files/tree-view.ts'
 import type { FilesClient } from '../../../../src/client/files/files-client.ts'

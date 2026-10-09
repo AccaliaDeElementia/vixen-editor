@@ -10,7 +10,7 @@ import {
   TestOnly as docPathTestOnly,
   pathAfterMove,
   titleFor,
-} from '../../src/client/doc-path.ts'
+} from '../../../src/client/platform/doc-path.ts'
 
 describe('documentIdFromPath', () => {
   it('reads the document from the path', () => {

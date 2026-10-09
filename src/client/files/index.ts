@@ -1,17 +1,17 @@
 'use sanity'
 
-import { openDocumentIn, type OpenDocument } from '../navigation.ts'
-import { requestOpenAside } from '../open-aside.ts'
-import { errorMessage } from '../error-message.ts'
-import { announceDocumentMoved } from '../document-moved.ts'
-import { createToast } from '../toast.ts'
-import { onRevealRequested } from '../reveal-request.ts'
-import { onStoreChanged } from '../store-changed.ts'
-import { announceTrashEmptied } from '../trash-emptied.ts'
-import { onPanelChanged } from '../panel-changed.ts'
+import { openDocumentIn, type OpenDocument } from '../platform/navigation.ts'
+import { requestOpenAside } from '../platform/open-aside.ts'
+import { errorMessage } from '../platform/error-message.ts'
+import { announceDocumentMoved } from '../platform/document-moved.ts'
+import { createToast } from '../platform/toast.ts'
+import { onRevealRequested } from '../platform/reveal-request.ts'
+import { onStoreChanged } from '../platform/store-changed.ts'
+import { announceTrashEmptied } from '../platform/trash-emptied.ts'
+import { onPanelChanged } from '../platform/panel-changed.ts'
 
 import { bindActions, updateArchiveLink, updateInsertAvailability, type ActionContext } from './actions.ts'
-import { createDialogs, type Dialogs } from './dialogs.ts'
+import { createDialogs, type Dialogs } from '../platform/dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { collectRuns } from './rebuild.ts'
@@ -19,11 +19,11 @@ import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
 import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
-import { requestInsert } from '../insert-entry.ts'
-import { requestKeep } from '../keep-request.ts'
-import { docUrlFor } from '../doc-path.ts'
+import { requestInsert } from '../platform/insert-entry.ts'
+import { requestKeep } from '../platform/keep-request.ts'
+import { docUrlFor } from '../platform/doc-path.ts'
 import { focusRowAt } from '../tree-rows.ts'
-import { KEYS } from '../help.ts'
+import { KEYS } from '../platform/help.ts'
 import {
   renderTrashPanel,
   renderTree,
@@ -34,7 +34,7 @@ import {
   TREE_SELECTOR,
   type VisibleRow,
 } from './tree-view.ts'
-import { FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../panels.ts'
+import { FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../platform/panels.ts'
 
 interface FileTreeOptions {
   root?: ParentNode

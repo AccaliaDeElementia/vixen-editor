@@ -1,7 +1,7 @@
 'use sanity'
 
-import { readPreferences, writePreferences, type ExplorerPreferences } from '../preferences.ts'
-import { choosePanel, PANEL_CONTROL_SELECTOR, panelShowing, showPanel } from '../panels.ts'
+import { readPreferences, writePreferences, type ExplorerPreferences } from '../platform/preferences.ts'
+import { choosePanel, PANEL_CONTROL_SELECTOR, panelShowing, showPanel } from '../platform/panels.ts'
 
 export const MIN_EXPLORER_PX = 160
 const MIN_EDITOR_PX = 672

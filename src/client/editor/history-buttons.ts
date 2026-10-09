@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { Navigator } from '../navigation.ts'
+import type { Navigator } from '../platform/navigation.ts'
 
 const BACK_SELECTOR = '#nav-back'
 const FORWARD_SELECTOR = '#nav-forward'

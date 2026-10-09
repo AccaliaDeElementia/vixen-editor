@@ -8,11 +8,11 @@ import type { Session } from '../../../../src/client/editor/session.ts'
 
 import { cast } from '../../../cast.ts'
 import type { EditorView } from '@codemirror/view'
-import type { Dialogs } from '../../../../src/client/files/dialogs.ts'
+import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import { DocumentRequestError } from '../../../../src/client/editor/document-client.ts'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
-import { requestKeep } from '../../../../src/client/keep-request.ts'
+import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
 import {
   dialogsDismissing,
   filesAnsweringEmpty,

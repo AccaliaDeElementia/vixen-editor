@@ -7,8 +7,8 @@ import { cast } from '../../../cast.ts'
 import { TestOnly as previewTiming } from '../../../../src/client/editor/previews.ts'
 import { toggleSplit } from '../../../../src/client/layout/split.ts'
 import { writeKeptTabs } from '../../../../src/client/layout/kept-tabs.ts'
-import { requestKeep } from '../../../../src/client/keep-request.ts'
-import { DRAG_TAB_MIME } from '../../../../src/client/drag-payload.ts'
+import { requestKeep } from '../../../../src/client/platform/keep-request.ts'
+import { DRAG_TAB_MIME } from '../../../../src/client/platform/drag-payload.ts'
 
 const WIDE_ENOUGH = 1200
 const ONE_TAB = 1

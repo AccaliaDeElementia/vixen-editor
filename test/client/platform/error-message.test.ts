@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { errorMessage } from '../../src/client/error-message.ts'
+import { errorMessage } from '../../../src/client/platform/error-message.ts'
 
 describe('errorMessage', () => {
   it('uses the message of a real error', () => {

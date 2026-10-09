@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { choosePanel, FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../../src/client/panels.ts'
+import { choosePanel, FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../../../src/client/platform/panels.ts'
 
 const A_THIRD_PANEL = 'tabs'
 

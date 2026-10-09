@@ -1,6 +1,6 @@
 'use sanity'
 
-import { KEYS } from '../help.ts'
+import { KEYS } from '../platform/help.ts'
 
 const LATER = 1
 const EARLIER = -1

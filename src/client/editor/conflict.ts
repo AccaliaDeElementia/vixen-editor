@@ -1,9 +1,9 @@
 'use sanity'
 
 import { DocumentRequestError } from './document-client.ts'
-import type { Dialogs } from '../files/dialogs.ts'
+import type { Dialogs } from '../platform/dialogs.ts'
 import type { FilesClient } from '../files/files-client.ts'
-import { errorMessage } from '../error-message.ts'
+import { errorMessage } from '../platform/error-message.ts'
 
 const HTTP_CONFLICT = 412
 

@@ -4,8 +4,8 @@ import type { Extension, Transaction } from '@codemirror/state'
 import { activateHover, closeHoverTooltips, EditorView, hoverTooltip, keymap } from '@codemirror/view'
 import type { Tooltip } from '@codemirror/view'
 
-import { docUrlFor } from '../doc-path.ts'
-import { KEYS } from '../help.ts'
+import { docUrlFor } from '../platform/doc-path.ts'
+import { KEYS } from '../platform/help.ts'
 
 import { linkTargetAt } from './link-targets.ts'
 

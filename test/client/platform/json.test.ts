@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { stringsIn } from '../../src/client/json.ts'
+import { stringsIn } from '../../../src/client/platform/json.ts'
 
 describe('stringsIn', () => {
   it('keeps the strings of an array', () => {

@@ -1,10 +1,10 @@
 'use sanity'
 
-import type { Dialogs } from '../files/dialogs.ts'
+import type { Dialogs } from '../platform/dialogs.ts'
 import type { FilesClient } from '../files/files-client.ts'
 import type { Pane } from '../layout/pane.ts'
 import type { StatusBar } from '../layout/status-bar.ts'
-import type { Toast } from '../toast.ts'
+import type { Toast } from '../platform/toast.ts'
 import { createDocumentTab, type DocumentTab, type FocusListener } from './document-tab.ts'
 import type { Previews } from './previews.ts'
 import type { CaretMemory } from './caret-memory.ts'
