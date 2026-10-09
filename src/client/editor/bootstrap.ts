@@ -40,8 +40,8 @@ import {
   type PaneWorkspace,
   type PaneWorkspaceOptions,
 } from '../workspace/pane-workspace.ts'
-import { createStaleBuild } from './stale-build.ts'
-import { watchBuild } from '../build-watch.ts'
+import { createStaleBuild } from '../chrome/stale-build.ts'
+import { watchBuild } from '../chrome/build-watch.ts'
 import type { Session } from '../document/session.ts'
 import { guardUnload } from '../document/unload.ts'
 import { linkTo } from '../editing/drops.ts'
@@ -52,7 +52,7 @@ import { onSplitChanged, onSplitDismissRequested } from '../platform/split-chang
 import { onTrashEmptied } from '../platform/trash-emptied.ts'
 import { announceStoreChanged } from '../platform/store-changed.ts'
 import { createDialogs, type Dialogs } from '../platform/dialogs.ts'
-import { bindHistoryButtons, refreshHistoryButtons } from './history-buttons.ts'
+import { bindHistoryButtons, refreshHistoryButtons } from '../chrome/history-buttons.ts'
 import { paneIn, wiringFor } from './wiring.ts'
 
 const BESIDE = 'beside'

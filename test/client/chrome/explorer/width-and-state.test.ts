@@ -10,7 +10,7 @@ import {
   setExplorerWidth,
   askForPanel,
   TestOnly,
-} from '../../../../src/client/layout/explorer.ts'
+} from '../../../../src/client/chrome/explorer.ts'
 import { writePreferences } from '../../../../src/client/platform/preferences.ts'
 
 import { renderSection } from '../../templates.ts'

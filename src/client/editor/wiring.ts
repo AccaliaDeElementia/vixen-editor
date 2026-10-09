@@ -1,6 +1,6 @@
 'use sanity'
 
-import { buildThePageWasServed } from '../build-watch.ts'
+import { buildThePageWasServed } from '../chrome/build-watch.ts'
 import { createDocumentClient } from '../document/document-client.ts'
 import { createFilesClient, type FilesClient } from '../browser/files-client.ts'
 import { createSession, type Session } from '../document/session.ts'

@@ -9,7 +9,7 @@ import { cast } from '../../../cast.ts'
 
 import { bootstrapOrReport } from '../../../../src/client/editor/bootstrap.ts'
 import { onStoreChanged } from '../../../../src/client/platform/store-changed.ts'
-import { TestOnly as staleBuild } from '../../../../src/client/editor/stale-build.ts'
+import { TestOnly as staleBuild } from '../../../../src/client/chrome/stale-build.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import {
   dialogsDismissing,

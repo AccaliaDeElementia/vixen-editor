@@ -3,7 +3,7 @@
 import { given } from '../../../conditions.ts'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../../../src/client/layout/explorer.ts'
+import { TestOnly } from '../../../../src/client/chrome/explorer.ts'
 
 const { decideOpen } = TestOnly
 

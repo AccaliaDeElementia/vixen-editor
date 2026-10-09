@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { buildThePageWasServed, watchBuild } from '../../src/client/build-watch.ts'
+import { buildThePageWasServed, watchBuild } from '../../../src/client/chrome/build-watch.ts'
 
 const SERVED = 'build-one'
 const SERVING = 'build-two'

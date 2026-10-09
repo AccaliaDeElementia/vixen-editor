@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { given } from '../../conditions.ts'
 
 import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
-import { createStaleBuild, TestOnly } from '../../../src/client/editor/stale-build.ts'
+import { createStaleBuild, TestOnly } from '../../../src/client/chrome/stale-build.ts'
 import { cast } from '../../cast.ts'
 import { page } from '../editor-fixtures.ts'
 
