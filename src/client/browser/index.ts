@@ -9,17 +9,17 @@ import { onRevealRequested } from '../platform/reveal-request.ts'
 import { onStoreChanged } from '../platform/store-changed.ts'
 import { onPanelChanged } from '../platform/panel-changed.ts'
 
-import { bindActions, updateArchiveLink, updateInsertAvailability, type ActionContext } from './actions.ts'
+import { bindActions, type ActionContext } from './actions.ts'
 import { createDialogs, type Dialogs } from '../platform/dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
-import { directoryOf } from '../../shared/link-paths.ts'
 import { collectRuns } from './rebuild.ts'
 import { createTrashPanel } from './trash-panel.ts'
+import { createSelection } from './selection.ts'
 import { createTreeKeyboard } from './tree-keyboard.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
-import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
+import { isAtOrUnder } from '../../shared/store-path.ts'
 import { requestInsert } from '../platform/insert-entry.ts'
 import { requestKeep } from '../platform/keep-request.ts'
 import { KEYS } from '../platform/help.ts'
@@ -100,7 +100,14 @@ async function runFileTree({
   let trash: readonly TrashNode[] = []
   let open: ReadonlySet<string> = new Set()
   let visible: VisibleRow[] = []
-  let selected: string | null = openDocument.path()
+
+  const { insertableSelection, markSelected, reflect, select, selectedPath, targetDirectory, visibleSelection } =
+    createSelection({
+      root,
+      shown: () => visible,
+      elements: rows,
+      startingAt: openDocument.path(),
+    })
 
   const keyboard = createTreeKeyboard({
     shown: () => visible,
@@ -144,18 +151,6 @@ async function runFileTree({
     return [...shownHost().querySelectorAll<HTMLElement>(ROW_SELECTOR)]
   }
 
-  function reflectSelection(): void {
-    updateArchiveLink(root, targetDirectory())
-    updateInsertAvailability(root, insertableSelection())
-  }
-
-  function markSelected(entryPath: string): void {
-    selected = entryPath
-    for (const element of rows()) element.setAttribute('aria-selected', String(element.dataset.path === entryPath))
-
-    reflectSelection()
-  }
-
   let draggingFromTheTree = false
   let heldBackADraw = false
 
@@ -169,31 +164,11 @@ async function runFileTree({
 
     visible =
       showingTheTrash() && trashList !== null
-        ? renderTrashPanel(trashList, { trash, selected })
-        : renderTree(tree, { nodes, open, selected })
+        ? renderTrashPanel(trashList, { trash, selected: selectedPath() })
+        : renderTree(tree, { nodes, open, selected: selectedPath() })
     trashPanel.paint()
-    reflectSelection()
+    reflect()
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
-  }
-
-  function visibleSelection(): string | null {
-    return visible.some((row) => row.path === selected) ? selected : null
-  }
-
-  function insertableSelection(): string | null {
-    const entryPath = visibleSelection()
-    if (entryPath === null || isAtOrUnder(TRASH_PATH, entryPath)) return null
-
-    return entryPath
-  }
-
-  function targetDirectory(): string {
-    if (selected === null || isAtOrUnder(TRASH_PATH, selected)) return STORE_ROOT
-
-    const row = visible.find((candidate) => candidate.path === selected)
-    if (row === undefined) return STORE_ROOT
-
-    return row.expandable ? selected : directoryOf(selected)
   }
 
   function toggle(entryPath: string): void {
@@ -237,7 +212,7 @@ async function runFileTree({
 
     const { path } = current
     event.preventDefault()
-    selected = path
+    select(path)
     toggle(path)
   })
 
@@ -278,7 +253,7 @@ async function runFileTree({
     showPanel(root, isAtOrUnder(TRASH_PATH, entryPath) ? TRASH_PANEL : FILES_PANEL)
 
     openFolders(ancestorsOf(entryPath))
-    selected = entryPath
+    select(entryPath)
     draw(readOpenFolders())
     rows()[indexOfPath(entryPath)]?.scrollIntoView({ block: 'nearest' })
   }
@@ -297,7 +272,7 @@ async function runFileTree({
     const isFolder = folderPathsIn(nodes).includes(entryPath)
 
     openFolders(isFolder ? [...ancestorsOf(entryPath), entryPath] : ancestorsOf(entryPath))
-    selected = entryPath
+    select(entryPath)
     draw(readOpenFolders())
     focusAt(indexOfPath(entryPath))
 
@@ -330,7 +305,7 @@ async function runFileTree({
     insertSelected,
     openCreated,
     openSelected: () => {
-      openPath(selected)
+      openPath(selectedPath())
     },
   }
   bindActions(context)
