@@ -86,3 +86,33 @@ describe('a tab showing something that was in the trash', () => {
     expect(tabs()).not.toContain('deleted:gone.md')
   })
 })
+
+describe('emptying the trash when no pane was showing any of it', () => {
+  it('leaves the pane alone, rather than reloading what it was already showing', async () => {
+    writeKeptTabs('primary', [EDITING], EDITING)
+    let loads = 0
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: sessionRecording(record, {
+          load: (id: string) => {
+            loads += 1
+
+            return Promise.resolve({ content: `# ${id}`, stored: true })
+          },
+        }),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    await givenAsync(editor.settled())
+    const settled = loads
+
+    announceTrashEmptied(root)
+    await editor.settled()
+
+    expect(loads).toBe(settled)
+  })
+})

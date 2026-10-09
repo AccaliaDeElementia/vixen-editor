@@ -346,6 +346,26 @@ describe('POST /api/files/uploads', () => {
     expect(res.status).toBe(413)
   })
 
+  it('stores an upload of exactly the limit, because the limit is what is allowed', async () => {
+    const exact = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: PNG_BYTES.length } })
+
+    const res = await upload('photo.png', PNG_BYTES, '', exact)
+
+    expect(res.status).toBe(201)
+  })
+
+  it('reads the body of a declared content-length of exactly the limit, rather than refusing it', async () => {
+    const exact = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 5 } })
+
+    const res = await exact.request('/api/files/uploads', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '5' },
+      body: '--x--',
+    })
+
+    expect(res.status).toBe(400)
+  })
+
   it('rejects a body carrying no file at all', async () => {
     const form = new FormData()
     form.append('path', 'journal')

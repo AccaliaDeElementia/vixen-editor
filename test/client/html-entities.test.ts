@@ -27,6 +27,10 @@ describe('an entity naming a code point', () => {
     expect(decodeEntity('&#X41;')).toBe('A')
   })
 
+  it('decodes the highest code point there is, which is inside the range rather than past it', () => {
+    expect(decodeEntity('&#x10FFFF;')).toBe(String.fromCodePoint(0x10ffff))
+  })
+
   it('leaves a code point above the highest one as written, rather than throwing', () => {
     expect(decodeEntity('&#9999999;')).toBe('&#9999999;')
   })
