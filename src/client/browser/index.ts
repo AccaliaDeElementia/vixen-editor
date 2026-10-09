@@ -15,14 +15,13 @@ import { bindDragAndDrop } from './drag.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { collectRuns } from './rebuild.ts'
 import { createTrashPanel } from './trash-panel.ts'
+import { createTreeKeyboard } from './tree-keyboard.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './open-folders.ts'
 import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree-model.ts'
 import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
 import { requestInsert } from '../platform/insert-entry.ts'
 import { requestKeep } from '../platform/keep-request.ts'
-import { docUrlFor } from '../platform/doc-path.ts'
-import { focusRowAt } from './tree-rows.ts'
 import { KEYS } from '../platform/help.ts'
 import {
   renderTrashPanel,
@@ -43,10 +42,6 @@ interface FileTreeOptions {
   dialogs?: Dialogs
   navigate?: (url: string) => void
 }
-
-const NEXT_ROW = 1
-const PREVIOUS_ROW = -1
-const LAST_ANCESTOR = -1
 
 function opensAside(event: MouseEvent): boolean {
   return event.ctrlKey || event.metaKey
@@ -107,6 +102,20 @@ async function runFileTree({
   let visible: VisibleRow[] = []
   let selected: string | null = openDocument.path()
 
+  const keyboard = createTreeKeyboard({
+    shown: () => visible,
+    elements: rows,
+    isOpen: (entryPath: string) => open.has(entryPath),
+    toggle: (entryPath: string) => {
+      toggle(entryPath)
+    },
+    select: (entryPath: string) => {
+      markSelected(entryPath)
+    },
+    navigate,
+  })
+  const { focusAt, handleKey, indexOfPath, openFolderIndex, openRow } = keyboard
+
   const trashPanel = createTrashPanel({
     root,
     client,
@@ -145,14 +154,6 @@ async function runFileTree({
     for (const element of rows()) element.setAttribute('aria-selected', String(element.dataset.path === entryPath))
 
     reflectSelection()
-  }
-
-  function openRow(current: VisibleRow): boolean {
-    if (current.opens === null) return false
-
-    navigate(current.opens)
-
-    return true
   }
 
   let draggingFromTheTree = false
@@ -195,67 +196,9 @@ async function runFileTree({
     return row.expandable ? selected : directoryOf(selected)
   }
 
-  function indexOfPath(entryPath: string): number {
-    return visible.findIndex((candidate) => candidate.path === entryPath)
-  }
-
-  function focusAt(index: number): boolean {
-    const { [index]: row } = visible
-    if (row === undefined) return false
-
-    focusRowAt(rows(), index)
-    markSelected(row.path)
-
-    return true
-  }
-
   function toggle(entryPath: string): void {
     setFolderOpen(entryPath, !open.has(entryPath))
     draw(readOpenFolders(), entryPath)
-  }
-
-  function expandOrDescend(current: VisibleRow, index: number): boolean {
-    if (!current.expandable) return false
-    if (!open.has(current.path)) {
-      toggle(current.path)
-      return true
-    }
-
-    return focusAt(index + NEXT_ROW)
-  }
-
-  function collapseOrAscend(current: VisibleRow, index: number): boolean {
-    if (current.expandable && open.has(current.path)) {
-      toggle(current.path)
-      return true
-    }
-
-    const parent = ancestorsOf(current.path).at(LAST_ANCESTOR)
-
-    return parent !== undefined && focusAt(indexOfPath(parent))
-  }
-
-  function openFolderIndex(current: VisibleRow): void {
-    navigate(`${docUrlFor(current.path)}/`)
-  }
-
-  function activate(current: VisibleRow): boolean {
-    if (!current.expandable) return openRow(current)
-
-    toggle(current.path)
-    return true
-  }
-
-  function handleKey(key: string, current: VisibleRow): boolean {
-    const index = visible.indexOf(current)
-
-    if (key === KEYS.nextRow) return focusAt(index + NEXT_ROW)
-    if (key === KEYS.previousRow) return focusAt(index + PREVIOUS_ROW)
-    if (key === KEYS.expandRow) return expandOrDescend(current, index)
-    if (key === KEYS.collapseRow) return collapseOrAscend(current, index)
-    if (key === KEYS.openRow) return activate(current)
-
-    return false
   }
 
   function insertSelected(): void {
