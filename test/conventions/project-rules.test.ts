@@ -23,6 +23,7 @@ const SOURCE_EXTENSION = /\.(?:ts|js)$/v
 
 const DIRECTIVE = "'use sanity'"
 const DEFAULT_EXPORT_ALLOWLIST = ['eslint.config.js', 'test-browser/playwright.config.ts', 'vitest.config.ts']
+const INDEX_FILENAME_ALLOWLIST = ['src/server/index.ts']
 
 const SCANNER = 'test/conventions/project-rules.test.ts'
 
@@ -143,6 +144,16 @@ describe('rule 3: default exports are confined to tooling configuration', () => 
       .map((source) => source.relativePath)
 
     expect(offenders).toStrictEqual(DEFAULT_EXPORT_ALLOWLIST)
+  })
+})
+
+describe('rule 8: index.ts is confined to the name external tooling demands', () => {
+  it('names only the allowlisted files', () => {
+    const offenders = sources
+      .filter((source) => path.basename(source.relativePath) === 'index.ts')
+      .map((source) => source.relativePath)
+
+    expect(offenders).toStrictEqual(INDEX_FILENAME_ALLOWLIST)
   })
 })
 

@@ -372,6 +372,24 @@ that is what separates it from `defaultRuntime`. A static-only class would say
 the same thing, but `@typescript-eslint/no-extraneous-class` rejects one, and
 the object literal is what that rule asks for.
 
+<a id="claude-1bbcc7"></a>
+
+### 8. `index.ts` is a name external tooling demands, never a barrel
+
+The only file here that may be called `index.ts` is the one whose name a tool
+outside this repo chooses — today `src/server/index.ts`, because
+`node dist/index.js` is the contract. A module called `index.ts` for any other
+reason is renamed for what it holds, or decomposed until each part can be.
+
+No barrels, no re-export surfaces, no directory façades. This is the same shape
+as rule 3, and it exists because a barrel makes the re-export the consumer, so
+rule 6 stops meaning anything — a dead export kept alive by a dead re-export
+already takes two runs to find. `from '../browser'` also says nothing about
+where a symbol lives, where `from '../browser/panels.ts'` is the documentation.
+
+**What would reopen it**: a folder that needs to restrict _which_ of its symbols
+may leave, which the area edge list cannot express. No such folder exists here.
+
 ## Running the gate
 
 **`npm test` is the gate.** It is what CI and the Docker build run, and it must
