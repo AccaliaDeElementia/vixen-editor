@@ -4,11 +4,11 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { given, givenAsync } from '../../conditions.ts'
+import { givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
-import type { RelinkOutcome } from '../../../src/server/storage/relink-store.ts'
+import { assertKindSurvives, moveEntry } from '../../../src/server/storage/move.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import { DocumentNotFoundError, EntryExistsError, InvalidMoveError } from '../../../src/server/storage/store-errors.ts'
 
@@ -27,12 +27,8 @@ afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
-async function move(from: string, to: string): Promise<RelinkOutcome> {
-  return await store.move({ from, to })
-}
-
-async function rewrittenBy(from: string, to: string): Promise<string[]> {
-  return (await move(from, to)).rewritten
+async function move(from: string, to: string): Promise<void> {
+  await moveEntry(root, { from, to })
 }
 
 async function exists(...parts: string[]): Promise<boolean> {
@@ -41,42 +37,6 @@ async function exists(...parts: string[]): Promise<boolean> {
     .then(() => true)
     .catch(() => false)
 }
-
-describe('repairing links', () => {
-  it('re-bases the links inside a document that itself moved', async () => {
-    await store.createDocument('img/p.png', 'x').catch(() => undefined)
-    await fs.mkdir(path.join(root, 'img'), { recursive: true })
-    await fs.writeFile(path.join(root, 'img', 'p.png'), 'x')
-    await store.createDocument('journal/a.md', '![p](../img/p.png)')
-
-    const rewritten = await rewrittenBy('journal', 'deep/journal')
-
-    given(() => {
-      expect(rewritten).toStrictEqual(['deep/journal/a.md'])
-    })
-
-    await expect(store.read('deep/journal/a.md')).resolves.toBe('![p](../../img/p.png)')
-  })
-
-  it('repairs a link held by a document that did not move', async () => {
-    await store.createDocument('journal/a.md', '# a')
-    await store.createDocument('notes.md', 'see [it](journal/a.md)')
-
-    const rewritten = await rewrittenBy('journal/a.md', 'archive/a.md')
-
-    given(() => {
-      expect(rewritten).toStrictEqual(['notes.md'])
-    })
-
-    await expect(store.read('notes.md')).resolves.toBe('see [it](archive/a.md)')
-  })
-
-  it('reports nothing when a move breaks no links', async () => {
-    await store.createDocument('notes.md', '# hello')
-
-    await expect(rewrittenBy('notes.md', 'renamed.md')).resolves.toStrictEqual([])
-  })
-})
 
 describe('renaming', () => {
   it('moves a document to a new name in the same folder', async () => {
@@ -273,5 +233,37 @@ describe('an occupied destination', () => {
     await move('notes.md', 'archive/notes.md').catch(() => undefined)
 
     await expect(store.listTrash()).resolves.toStrictEqual([])
+  })
+})
+
+describe('a rename that would change what a file claims to be', () => {
+  it('lets a folder be called anything, since a folder has no extension to contradict', () => {
+    expect(() => {
+      assertKindSurvives('journal', 'archive', 'folder')
+    }).not.toThrow()
+  })
+
+  it('lets a document become a plain text file, because the two are one family here', () => {
+    expect(() => {
+      assertKindSurvives('notes.md', 'notes.txt', 'document')
+    }).not.toThrow()
+  })
+
+  it('refuses to turn a document into an image, which the raw route would then serve as one', () => {
+    expect(() => {
+      assertKindSurvives('notes.md', 'notes.png', 'document')
+    }).toThrow(InvalidPathError)
+  })
+
+  it('refuses a name with no extension this store recognises at all', () => {
+    expect(() => {
+      assertKindSurvives('notes.md', 'notes.zip', 'document')
+    }).toThrow(InvalidPathError)
+  })
+
+  it('names the file it is being compared against, so the refusal says why', () => {
+    expect(() => {
+      assertKindSurvives('notes.md', 'notes.png', 'document')
+    }).toThrow('must keep the same kind of extension as notes.md')
   })
 })

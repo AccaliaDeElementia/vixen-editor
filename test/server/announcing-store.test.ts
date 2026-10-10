@@ -4,92 +4,89 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { buildApp } from '../../src/server/app.ts'
+import { givenAsync } from '../conditions.ts'
+
+import { announcingStore } from '../../src/server/announcing-store.ts'
 import { createChanges, type StoreChange } from '../../src/server/changes.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
-import { fieldOf } from './refusals.ts'
+import { STORE_ROOT } from '../../src/shared/store-path.ts'
+
+const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
-let app: Hono = buildApp({ store })
+let plain: DocumentStore = createFsDocumentStore('')
+let announcing: DocumentStore = plain
 let heard: StoreChange[] = []
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-announce-'))
-  store = createFsDocumentStore(root)
+  plain = createFsDocumentStore(root)
   const changes = createChanges()
   heard = []
   changes.listen((change) => {
     heard.push(change)
   })
-  app = buildApp({ store, changes })
+  announcing = announcingStore(plain, changes)
 })
 
 afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
-async function send(url: string, init: RequestInit): Promise<Response> {
-  return await app.request(url, init)
-}
-
-const JSON_POST = { method: 'POST', headers: { 'content-type': 'application/json' } }
-
-const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
-
 describe('what the store announces', () => {
   it('says a new document was written', async () => {
-    await send('/api/files/documents', { ...JSON_POST, body: JSON.stringify({ path: 'a.md', content: '# a' }) })
+    await announcing.createDocument('a.md', '# a')
 
     expect(heard).toStrictEqual([{ path: 'a.md', kind: 'written' }])
   })
 
   it('says a new folder was written', async () => {
-    await send('/api/files/folders', { ...JSON_POST, body: JSON.stringify({ path: 'journal' }) })
+    await announcing.createFolder('journal', '# journal')
 
     expect(heard).toStrictEqual([{ path: 'journal', kind: 'written' }])
   })
 
-  it('says an uploaded file was written, which nothing but the upload route reached before', async () => {
-    const form = new FormData()
-    form.append('file', new File([PNG_BYTES], 'photo.png'))
-
-    await send('/api/files/uploads', { method: 'POST', body: form })
+  it('says an uploaded file was written', async () => {
+    await announcing.createUpload(STORE_ROOT, 'photo.png', PNG_BYTES)
 
     expect(heard).toStrictEqual([{ path: 'photo.png', kind: 'written' }])
   })
 
-  it('says a saved document was written', async () => {
-    const etag = await store.createDocument('a.md', '# a')
+  it('names where the upload actually landed, not where it was aimed', async () => {
+    await announcing.createFolder('journal', '# journal')
     heard = []
 
-    await send('/api/documents/a.md', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'if-match': etag },
-      body: JSON.stringify({ content: '# edited' }),
-    })
+    await announcing.createUpload('journal', 'photo.png', PNG_BYTES)
+
+    expect(heard).toStrictEqual([{ path: 'journal/photo.png', kind: 'written' }])
+  })
+
+  it('says a saved document was written', async () => {
+    const etag = await plain.createDocument('a.md', '# a')
+    heard = []
+
+    await announcing.updateDocument('a.md', '# edited', etag)
 
     expect(heard).toStrictEqual([{ path: 'a.md', kind: 'written' }])
   })
 
   it('says a move is one event, so the two ends cannot be mistaken for unrelated edits', async () => {
-    await store.createDocument('a.md', '# a')
+    await plain.createDocument('a.md', '# a')
     heard = []
 
-    await send('/api/files/moves', { ...JSON_POST, body: JSON.stringify({ from: 'a.md', to: 'b.md' }) })
+    await announcing.move({ from: 'a.md', to: 'b.md' })
 
     expect(heard).toStrictEqual([{ kind: 'moved', from: 'a.md', to: 'b.md' }])
   })
 
   it('writes a document a move rewrote, so listening for writes alone is not wrong', async () => {
-    await store.createDocument('linker.md', '[to a](a.md)\n')
-    await store.createDocument('a.md', '# a')
+    await plain.createDocument('linker.md', '[to a](a.md)\n')
+    await plain.createDocument('a.md', '# a')
     heard = []
 
-    await send('/api/files/moves', { ...JSON_POST, body: JSON.stringify({ from: 'a.md', to: 'b.md' }) })
+    await announcing.move({ from: 'a.md', to: 'b.md' })
 
     expect(heard).toStrictEqual([
       { kind: 'moved', from: 'a.md', to: 'b.md' },
@@ -98,39 +95,64 @@ describe('what the store announces', () => {
   })
 
   it('says a trashed entry was removed', async () => {
-    await store.createDocument('a.md', '# a')
+    await plain.createDocument('a.md', '# a')
     heard = []
 
-    await send('/api/files/entries/a.md', { method: 'DELETE' })
+    await announcing.trash('a.md')
 
     expect(heard).toStrictEqual([{ path: 'a.md', kind: 'removed' }])
   })
 
   it('says where a restored entry came back to', async () => {
-    await store.createDocument('a.md', '# a')
-    const trashId = await fieldOf(await send('/api/files/entries/a.md', { method: 'DELETE' }), 'trashId')
+    await plain.createDocument('a.md', '# a')
+    const entryId = await plain.trash('a.md')
     heard = []
 
-    await send(`/api/trash/${String(trashId)}/restores`, { ...JSON_POST, body: JSON.stringify({ paths: [''] }) })
+    await announcing.restore({ entryId, paths: [STORE_ROOT] })
 
     expect(heard).toStrictEqual([{ path: 'a.md', kind: 'written' }])
   })
 
-  it('says the store changed when the trash is emptied, since the listing did', async () => {
-    await store.createDocument('a.md', '# a')
-    await send('/api/files/entries/a.md', { method: 'DELETE' })
+  it('says the store changed when an entry is purged, because the trash listing did', async () => {
+    await plain.createDocument('a.md', '# a')
+    const entryId = await plain.trash('a.md')
     heard = []
 
-    await send('/api/trash', { method: 'DELETE' })
+    await announcing.purge(entryId)
 
-    expect(heard).toStrictEqual([{ path: '', kind: 'removed' }])
+    expect(heard).toStrictEqual([{ path: STORE_ROOT, kind: 'removed' }])
+  })
+
+  it('says the store changed when the trash is emptied, since the listing did', async () => {
+    await plain.createDocument('a.md', '# a')
+    await plain.trash('a.md')
+    heard = []
+
+    await announcing.emptyTrash()
+
+    expect(heard).toStrictEqual([{ path: STORE_ROOT, kind: 'removed' }])
+  })
+
+  it('says so even when the trash was already empty, because a listener cannot tell in advance', async () => {
+    await announcing.emptyTrash()
+
+    expect(heard).toStrictEqual([{ path: STORE_ROOT, kind: 'removed' }])
   })
 
   it('says nothing when the write was refused', async () => {
-    await store.createDocument('a.md', '# a')
+    await plain.createDocument('a.md', '# a')
     heard = []
 
-    await send('/api/files/documents', { ...JSON_POST, body: JSON.stringify({ path: 'a.md', content: '# again' }) })
+    await givenAsync(expect(announcing.createDocument('a.md', '# again')).rejects.toThrow())
+
+    expect(heard).toStrictEqual([])
+  })
+
+  it('reads without announcing, since nothing changed', async () => {
+    await plain.createDocument('a.md', '# a')
+    heard = []
+
+    await announcing.read('a.md')
 
     expect(heard).toStrictEqual([])
   })
