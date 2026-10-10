@@ -976,6 +976,97 @@ function areasImportingEachOther(edges: Readonly<Record<string, readonly string[
   return [...pairs].sort()
 }
 
+const STILL_WITHOUT_A_MIRROR = [
+  'src/client/app/surfaces.ts',
+  'src/client/app/wiring.ts',
+  'src/client/browser/rebuild.ts',
+  'src/client/browser/selection.ts',
+  'src/client/browser/trash/trash-panel.ts',
+  'src/client/browser/tree/tree-keyboard.ts',
+  'src/client/chrome/history-buttons.ts',
+  'src/client/document/document-tab.ts',
+  'src/client/editing/control-bar.ts',
+  'src/client/editing/recompute.ts',
+  'src/client/platform/drag-payload.ts',
+  'src/client/platform/dragging.ts',
+  'src/client/preview/preview-body.ts',
+  'src/client/preview/previewing.ts',
+  'src/client/workspace/panes/across-panes.ts',
+  'src/client/workspace/panes/aside.ts',
+  'src/client/workspace/panes/pane-editor.ts',
+  'src/client/workspace/tabs/closing-tabs.ts',
+  'src/server/routes/conditional.ts',
+  'src/server/storage/absence.ts',
+  'src/server/storage/document-ids.ts',
+]
+
+const MIRROR_DOES_NOT_DRIVE = [
+  'src/client/browser/actions.ts',
+  'src/client/editing/labelling.ts',
+  'src/client/editing/spelling.ts',
+  'src/server/announcing-store.ts',
+  'src/server/routes/documents.ts',
+  'src/server/routes/error-response.ts',
+  'src/server/routes/events.ts',
+  'src/server/routes/files.ts',
+  'src/server/routes/trash.ts',
+  'src/server/storage/move.ts',
+]
+
+const NO_TEST_AT_ALL = ['src/client/main.ts']
+
+const DYNAMIC_IMPORT = /\bimport\s*\(\s*'(?<from>[^']*)'/gv
+
+function mirrorsOf(module: string): SourceFile[] {
+  const rest = module.slice('src/'.length, -'.ts'.length)
+
+  return sources.filter(
+    (source) =>
+      source.relativePath === `test/${rest}.test.ts` ||
+      (source.relativePath.startsWith(`test/${rest}/`) && source.relativePath.endsWith('.test.ts')),
+  )
+}
+
+function importsAnywhereIn(source: SourceFile, module: string): boolean {
+  const specifiers = [...source.contents.matchAll(RUNTIME_IMPORT), ...source.contents.matchAll(DYNAMIC_IMPORT)]
+
+  return specifiers.some((match) => resolveSpecifier(source.relativePath, match.groups?.from ?? '') === module)
+}
+
+function withoutAMirror(): string[] {
+  return modulesUnderSource()
+    .map((source) => source.relativePath)
+    .filter((module) => mirrorsOf(module).length === 0)
+    .sort()
+}
+
+function whoseMirrorNeverDrivesThem(): string[] {
+  return modulesUnderSource()
+    .map((source) => source.relativePath)
+    .filter((module) => {
+      const mirrors = mirrorsOf(module)
+
+      return mirrors.length > 0 && !mirrors.some((mirror) => importsAnywhereIn(mirror, module))
+    })
+    .sort()
+}
+
+describe('every module under src is driven by the test named for it', () => {
+  it('has a test named for it, unless it is still on the list of those that do not', () => {
+    expect(withoutAMirror()).toStrictEqual([...STILL_WITHOUT_A_MIRROR, ...NO_TEST_AT_ALL].sort())
+  })
+
+  it('is imported by that test, unless it is still on the list of those that are not', () => {
+    expect(whoseMirrorNeverDrivesThem()).toStrictEqual([...MIRROR_DOES_NOT_DRIVE].sort())
+  })
+
+  it('counts a dynamic import as driving a module, which is how the server entry point is tested', () => {
+    const mirrors = mirrorsOf('src/server/index.ts')
+
+    expect(mirrors.map((mirror) => importsAnywhereIn(mirror, 'src/server/index.ts'))).toStrictEqual([true])
+  })
+})
+
 describe('the areas under src import along declared edges', () => {
   it('declares every directory that holds a module, and none that does not', () => {
     expect(areasHoldingModules()).toStrictEqual(SOURCE_AREAS)

@@ -532,6 +532,10 @@ that**: some are only enforceable by review.
   directory that does not mirror. → [TESTING](TESTING.md#testing-4c6769)
 - **A spec under `test-browser/` is named for one cohesive behaviour**, not for
   a module. → [TESTING](TESTING.md#testing-4c6769)
+- **Every module under `src/` has a test named for it, and that test drives
+  it.** Two lists in `test/conventions/` hold the modules that do not yet.
+  Both are debt: they may shrink, and nothing may be added to either.
+  → [TESTING](TESTING.md#testing-4c6769)
 - **Resilience to another client's changes is tested deliberately**, in a chaos
   spec under `test-browser/`, never left to the browser suite's own cross-talk
   to find. → [TESTING](TESTING.md#testing-3b7e1c)

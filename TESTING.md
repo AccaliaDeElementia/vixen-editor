@@ -109,10 +109,10 @@ Tests are written first. Two suites, deliberately separate:
 ### A unit test shadows the module it tests
 
 `test/` mirrors `src/`, so the relative path from `test/` names the source: the
-test for `src/client/editor/autosave.ts` is
-`test/client/editor/autosave.test.ts`. Where one module needs several test
+test for `src/client/document/autosave.ts` is
+`test/client/document/autosave.test.ts`. Where one module needs several test
 files they go in a folder named for the module, which is what
-`test/client/editor/bootstrap/` is. A test utility is tested beside itself, so
+`test/client/app/bootstrap/` is. A test utility is tested beside itself, so
 `test/client/listeners.ts` has `test/client/listeners.test.ts`.
 
 **`test/conventions/` is the one directory that does not mirror**, because its
@@ -128,14 +128,26 @@ does not fail — it silently does not run. A basename collision once destroyed
 three test files here while the suite still reported a pass, and only counting
 files against `git ls-tree` found it.
 
-**`test-browser/` is organised the other way round**, and deliberately so. It
-drives the built application rather than any one module, so a spec named for a
-module would name something it only reaches through five others. Its specs are
-named for the behaviour they exercise — `saving`, `navigation`, `trash`,
-`document-links` — and each holds one cohesive behaviour. That is a looser rule
-with real room for judgement about where one behaviour ends and the next
-begins, and that is accepted rather than worked around. Shared setup lives in
-`test-browser/fixtures.ts` so a spec does not carry its own copy.
+**Two further checks run the other way, and they are what was missing.** The
+mirror check asks _does this test name a module?_. Nothing asked _does this
+module have a test_, and nothing asked _does that test drive it_ — which is how
+an extraction could leave its tests behind in the module it was cut from, and
+how a test file could carry the right name while exercising something else.
+
+So: every module under `src/` has a test named for it, and that test imports it.
+A dynamic `import()` counts, which is how the server entry point is driven.
+
+**The two lists of modules that do not yet satisfy this are debt, not design.**
+They may shrink; nothing may be added to either. A module on a list is not
+untested — the coverage gate would not allow that — it is tested somewhere a
+reader has to search for, which is the thing the mirror exists to prevent.
+`src/client/main.ts` is the one module with no test at all, and is also the one
+coverage exclusion.
+
+**Where a direct call cannot be a valid test**, because the behaviour only
+exists across a library boundary, the closest call point that produces a valid
+test is used instead. That is a lever to be resisted rather than reached for,
+and it is raised with the human before it is pulled.
 
 <a id="testing-3b7e1c"></a>
 
@@ -436,7 +448,7 @@ formatting that nothing verified.
 The resolution is a composition root plus a guard:
 
 - **All wiring lives in a tested module** — `src/server/main.ts` (`createApp`,
-  `startServer`) and `src/client/editor/bootstrap.ts` (`bootstrap`). Effects are
+  `startServer`) and `src/client/app/bootstrap.ts` (`bootstrap`). Effects are
   injected: `startServer` takes a `Runtime` carrying `serve`, `loadEnvFile`,
   `env` and `publicDir`, so a test asserts what `serve` was handed without
   binding a socket. `bootstrap` takes `root`, `search` and `session`, so a test
