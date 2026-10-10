@@ -3,8 +3,10 @@
 import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { EditorState, type Extension } from '@codemirror/state'
+
 import { createHolderControl } from '../../../src/client/editing/holder.ts'
-import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
+import { vixenEditorLabel } from '../../../src/client/editing/labelling.ts'
 
 import { trackView } from '../editor-fixtures.ts'
 
@@ -13,10 +15,14 @@ function editing(entryPath: string | null): EditorView {
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  const view = trackView(new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [holder.unset] }) }))
+  const view = trackView(new EditorView({ parent, state: labelling(holder.unset) }))
   if (entryPath !== null) holder.follow(view, entryPath)
 
   return view
+}
+
+function labelling(held: Extension): EditorState {
+  return EditorState.create({ doc: 'x', extensions: [held, vixenEditorLabel] })
 }
 
 function labelOf(view: EditorView): string | null {
@@ -40,17 +46,11 @@ describe('the name a screen reader reads for the editor', () => {
     const holder = createHolderControl()
     const parent = document.createElement('div')
     document.body.append(parent)
-    const view = trackView(
-      new EditorView({ parent, state: createEditorState({ doc: 'x', extensions: [holder.unset] }) }),
-    )
+    const view = trackView(new EditorView({ parent, state: labelling(holder.unset) }))
 
     holder.follow(view, 'journal/notes.md')
     holder.follow(view, 'archive/notes.md')
 
     expect(labelOf(view)).toBe('archive/notes.md')
-  })
-
-  it('leaves the role alone, since CodeMirror owns it', () => {
-    expect(editing('a.md').contentDOM.getAttribute('role')).toBe('textbox')
   })
 })

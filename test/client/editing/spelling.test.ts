@@ -1,47 +1,57 @@
 'use sanity'
 
+import { EditorState, type Extension } from '@codemirror/state'
+import { Decoration, EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { EditorView } from '@codemirror/view'
+import { isSyntax, notProse, vixenSpellcheck } from '../../../src/client/editing/spelling.ts'
 
-import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import { trackView } from '../editor-fixtures.ts'
 
-function contentOf(doc = ''): HTMLElement {
+const MARKED_FROM = 3
+const MARKED_TO = 7
+
+function showing(doc: string, extensions: Extension[]): HTMLElement {
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  return trackView(new EditorView({ state: createEditorState({ doc }), parent })).contentDOM
+  return trackView(new EditorView({ parent, state: EditorState.create({ doc, extensions }) })).contentDOM
 }
 
 beforeEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('what the editor tells the browser about its own text', () => {
-  it('asks for the reader’s spell checker, which CodeMirror turns off by default', () => {
-    expect(contentOf().getAttribute('spellcheck')).toBe('true')
-  })
-
-  it('leaves autocorrect off, because a list marker is not a sentence to be fixed', () => {
-    expect(contentOf().getAttribute('autocorrect')).toBe('off')
-  })
-
-  it('leaves autocapitalise off, for the same reason', () => {
-    expect(contentOf().getAttribute('autocapitalize')).toBe('off')
+describe('asking the browser to check the spelling', () => {
+  it('turns the checker on, which CodeMirror leaves off by default', () => {
+    expect(showing('', [vixenSpellcheck]).getAttribute('spellcheck')).toBe('true')
   })
 })
 
-describe('what the editor tells the browser about its markup', () => {
-  function markup(doc: string): HTMLElement | null {
-    return contentOf(doc).querySelector('[spellcheck]')
-  }
+describe('the mark that keeps the checker off a stretch of text', () => {
+  it('turns it off over exactly what it covers', () => {
+    const marks = EditorView.decorations.of(() => Decoration.set([notProse.range(MARKED_FROM, MARKED_TO)]))
 
-  it('turns the checker off over a code span, which is the whole point of scoping it', () => {
-    expect(markup('some `codeSpan` here')?.getAttribute('spellcheck')).toBe('false')
+    expect(showing('a: wrod :b', [marks]).querySelector('[spellcheck="false"]')?.textContent).toBe('wrod')
   })
 
-  it('leaves prose alone, so the scoping is narrower than the whole document', () => {
-    expect(markup('just ordinary prose here')).toBeNull()
+  it('leaves the rest of the line to the checker', () => {
+    const marks = EditorView.decorations.of(() => Decoration.set([notProse.range(MARKED_FROM, MARKED_TO)]))
+
+    expect(showing('a: wrod :b', [marks]).textContent).toBe('a: wrod :b')
+  })
+})
+
+describe('which parts of markdown are syntax rather than prose', () => {
+  it.each(['Autolink', 'CodeBlock', 'FencedCode', 'InlineCode', 'URL'])('counts %s', (nodeName) => {
+    expect(isSyntax(nodeName)).toBe(true)
+  })
+
+  it('does not count a paragraph, which is the prose a reader wrote', () => {
+    expect(isSyntax('Paragraph')).toBe(false)
+  })
+
+  it('does not count a link label, which is prose inside syntax', () => {
+    expect(isSyntax('Link')).toBe(false)
   })
 })

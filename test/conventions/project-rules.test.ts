@@ -984,8 +984,6 @@ const STILL_WITHOUT_A_MIRROR = [
 
 const MIRROR_DOES_NOT_DRIVE = [
   'src/client/browser/actions.ts',
-  'src/client/editing/labelling.ts',
-  'src/client/editing/spelling.ts',
   'src/server/announcing-store.ts',
   'src/server/storage/move.ts',
 ]

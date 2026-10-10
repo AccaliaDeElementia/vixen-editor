@@ -2,12 +2,26 @@
 
 import { language } from '@codemirror/language'
 import { EditorState, StateField } from '@codemirror/state'
-import { describe, expect, it } from 'vitest'
+import { EditorView } from '@codemirror/view'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../../src/client/editing/decorations.ts'
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 
+import { trackView } from '../editor-fixtures.ts'
+
 const { vixenDecorationField } = TestOnly
+
+function contentOf(doc = ''): HTMLElement {
+  const parent = document.createElement('div')
+  document.body.append(parent)
+
+  return trackView(new EditorView({ parent, state: createEditorState({ doc }) })).contentDOM
+}
+
+beforeEach(() => {
+  document.body.innerHTML = ''
+})
 
 describe('createEditorState', () => {
   it('seeds the document', () => {
@@ -58,5 +72,29 @@ describe('the initial selection', () => {
 
   it('opens at the caret it was handed, so a remembered position survives the reload', () => {
     expect(createEditorState({ doc: '# notes\n\nbody', selection: { anchor: 9 } }).selection.main.head).toBe(9)
+  })
+})
+
+describe('what a composed editor tells the browser about its own text', () => {
+  it('leaves autocorrect off, because a list marker is not a sentence to be fixed', () => {
+    expect(contentOf().getAttribute('autocorrect')).toBe('off')
+  })
+
+  it('leaves autocapitalise off, for the same reason', () => {
+    expect(contentOf().getAttribute('autocapitalize')).toBe('off')
+  })
+
+  it('leaves the role alone, since CodeMirror owns it', () => {
+    expect(contentOf().getAttribute('role')).toBe('textbox')
+  })
+})
+
+describe('the extensions a composed editor carries', () => {
+  it('names itself for a screen reader, so the labelling extension is wired up', () => {
+    expect(contentOf().getAttribute('aria-label')).toBe('Document')
+  })
+
+  it('asks for the spell checker, so the spelling extension is wired up', () => {
+    expect(contentOf().getAttribute('spellcheck')).toBe('true')
   })
 })
