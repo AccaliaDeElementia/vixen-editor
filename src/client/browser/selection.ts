@@ -14,7 +14,7 @@ interface Selecting {
 }
 
 interface Selection {
-  selectedPath: () => string | null
+  selectedPath: () => string
   select: (entryPath: string) => void
   markSelected: (entryPath: string) => void
   reflect: () => void
@@ -24,9 +24,9 @@ interface Selection {
 }
 
 export function createSelection({ elements, root, shown, startingAt }: Selecting): Selection {
-  let selected: string | null = startingAt
+  let selected = startingAt
 
-  function selectedPath(): string | null {
+  function selectedPath(): string {
     return selected
   }
 
@@ -42,7 +42,7 @@ export function createSelection({ elements, root, shown, startingAt }: Selecting
   }
 
   function targetDirectory(): string {
-    if (selected === null || isAtOrUnder(TRASH_PATH, selected)) return STORE_ROOT
+    if (isAtOrUnder(TRASH_PATH, selected)) return STORE_ROOT
 
     const row = shown().find((candidate) => candidate.path === selected)
     if (row === undefined) return STORE_ROOT
