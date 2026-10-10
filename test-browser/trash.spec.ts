@@ -206,6 +206,7 @@ async function cherryPicked(page: Page, request: APIRequestContext, folder: stri
   await givenAsync(expect(page.locator('[data-part="deleted-contents"] [role="tree"]')).toBeVisible())
   await page.locator('.restore-tree__row[data-path="left.md"]').click()
   await page.locator('[data-part="deleted-restore"]').click()
+  await givenAsync(expect(page.locator('.restore-tree__row[data-path="kept.md"]')).toHaveCount(0))
 
   return trashId
 }
@@ -225,7 +226,6 @@ test('a selection inside a trashed folder brings the rest of it back', async ({ 
 test('what was unticked stays in the trash, and the entry still shows it', async ({ page, request }) => {
   const folder = `leftover-${String(Date.now())}`
   const trashId = await cherryPicked(page, request, folder)
-  await givenAsync(expect(page.locator('.restore-tree__row')).toHaveCount(2))
 
   await expect(page.locator('.restore-tree__row[data-path="left.md"]')).toBeVisible()
 

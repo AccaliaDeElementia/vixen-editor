@@ -469,3 +469,13 @@ describe('the document list follows the language the client asked for', () => {
     await expect(res.json()).resolves.toStrictEqual({ documents: ['zebra.md', '\u00e4pple.md'] })
   })
 })
+
+describe('deleting a document', () => {
+  it('is not something these routes offer, so deletion goes through the trash and nowhere else', async () => {
+    await store.createDocument('notes.md', 'x')
+
+    const res = await app.request('/notes.md', { method: 'DELETE' })
+
+    expect({ status: res.status, stored: await store.read('notes.md') }).toStrictEqual({ status: 404, stored: 'x' })
+  })
+})

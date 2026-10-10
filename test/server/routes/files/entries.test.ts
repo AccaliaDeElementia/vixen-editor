@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
-import { refusalOf } from '../../refusals.ts'
+import { fieldOf, refusalOf } from '../../refusals.ts'
 import { buildApp } from '../../../../src/server/app.ts'
 import { DEFAULT_LIMITS } from '../../../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
@@ -634,5 +634,65 @@ describe('the listing follows the language the client asked for', () => {
     const res = await app.request('/api/files', { headers: { 'accept-language': 'sv' } })
 
     expect(res.headers.get('vary')).toBe('Accept-Language')
+  })
+})
+
+async function remove(entryPath: string): Promise<Response> {
+  return await app.request(`/api/files/entries/${entryPath}`, { method: 'DELETE' })
+}
+
+describe('DELETE /api/files/entries/:path', () => {
+  it('moves a document to the trash and reports the entry id', async () => {
+    await store.createDocument('notes.md', 'x')
+
+    const res = await remove('notes.md')
+
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
+    await expect(fieldOf(res, 'trashId')).resolves.toMatch(/^[0-9a-f\-]{36}$/v)
+  })
+
+  it('takes the document out of the listing', async () => {
+    await store.createDocument('notes.md', 'x')
+    await remove('notes.md')
+
+    await expect(store.list()).resolves.toStrictEqual([])
+  })
+
+  it('deletes a nested path', async () => {
+    await store.createDocument('journal/2026/notes.md', 'x')
+
+    expect((await remove('journal/2026/notes.md')).status).toBe(200)
+  })
+
+  it('deletes a folder', async () => {
+    await store.createFolder('journal', '# journal')
+
+    const res = await remove('journal')
+    given(() => {
+      expect(res.status).toBe(200)
+    })
+
+    await expect(store.tree()).resolves.toStrictEqual([])
+  })
+
+  it('returns 404 for a path that is not there', async () => {
+    const res = await remove('missing.md')
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
+  })
+
+  it('rejects an encoded traversal attempt', async () => {
+    const res = await remove('..%2F..%2Fescape.md')
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
+  })
+
+  it('refuses to reach into the trash directory', async () => {
+    const res = await remove('.trash')
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })

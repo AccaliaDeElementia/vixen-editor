@@ -999,7 +999,6 @@ const MIRROR_DOES_NOT_DRIVE = [
   'src/server/announcing-store.ts',
   'src/server/routes/events.ts',
   'src/server/routes/files.ts',
-  'src/server/routes/trash.ts',
   'src/server/storage/move.ts',
 ]
 
