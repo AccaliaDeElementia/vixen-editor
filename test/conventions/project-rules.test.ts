@@ -986,7 +986,6 @@ const STILL_WITHOUT_A_MIRROR = [
   'src/client/editing/control-bar.ts',
   'src/client/preview/previewing.ts',
   'src/client/workspace/panes/pane-editor.ts',
-  'src/client/workspace/tabs/closing-tabs.ts',
 ]
 
 const MIRROR_DOES_NOT_DRIVE = [
