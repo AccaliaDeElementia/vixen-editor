@@ -9,20 +9,22 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { given } from '../../conditions.ts'
 import { refusalOf } from '../refusals.ts'
-import { buildApp } from '../../../src/server/app.ts'
+import { documentRoutes } from '../../../src/server/routes/documents.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { createWriteLock } from '../../../src/server/storage/lock.ts'
 import { failingStore } from '../failing-store.ts'
 import { gate } from '../gate.ts'
 
+const HTTP_INTERNAL_ERROR = 500
+
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
-let app: Hono = buildApp({ store })
+let app: Hono = documentRoutes(store)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-routes-'))
   store = createFsDocumentStore(root)
-  app = buildApp({ store })
+  app = documentRoutes(store)
 })
 
 afterEach(async () => {
@@ -30,7 +32,7 @@ afterEach(async () => {
 })
 
 async function put(id: string, content: string, ifMatch = '"any"'): Promise<Response> {
-  return await app.request(`/api/documents/${id}`, {
+  return await app.request(`/${id}`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json', 'if-match': ifMatch },
     body: JSON.stringify({ content }),
@@ -41,21 +43,9 @@ async function seed(id: string, content: string): Promise<string> {
   return await store.createDocument(id, content)
 }
 
-describe('GET /api/health', () => {
-  it('reports ok', async () => {
-    const res = await app.request('/api/health')
-
-    given(() => {
-      expect(res.status).toBe(200)
-    })
-
-    await expect(res.json()).resolves.toStrictEqual({ status: 'ok' })
-  })
-})
-
-describe('GET /api/documents', () => {
+describe('listing the documents', () => {
   it('returns an empty list initially', async () => {
-    const res = await app.request('/api/documents')
+    const res = await app.request('/')
 
     given(() => {
       expect(res.status).toBe(200)
@@ -68,17 +58,17 @@ describe('GET /api/documents', () => {
     await store.createDocument('b.md', 'x')
     await store.createDocument('a.md', 'x')
 
-    const res = await app.request('/api/documents')
+    const res = await app.request('/')
 
     await expect(res.json()).resolves.toStrictEqual({ documents: ['a.md', 'b.md'] })
   })
 })
 
-describe('GET /api/documents/:id', () => {
+describe('reading a document', () => {
   it('returns the document content as markdown', async () => {
     await store.createDocument('notes.md', '# hello')
 
-    const res = await app.request('/api/documents/notes.md')
+    const res = await app.request('/notes.md')
 
     given(() => {
       expect(res.status).toBe(200)
@@ -93,7 +83,7 @@ describe('GET /api/documents/:id', () => {
   it('carries an etag the client can save against', async () => {
     const etag = await store.createDocument('notes.md', '# hello')
 
-    const res = await app.request('/api/documents/notes.md')
+    const res = await app.request('/notes.md')
 
     expect(res.headers.get('etag')).toBe(etag)
   })
@@ -102,7 +92,7 @@ describe('GET /api/documents/:id', () => {
     const etag = await store.createDocument('notes.md', '# hello')
     await store.updateDocument('notes.md', '# changed', etag)
 
-    const res = await app.request('/api/documents/notes.md')
+    const res = await app.request('/notes.md')
 
     expect(res.headers.get('etag')).not.toBe(etag)
   })
@@ -116,7 +106,7 @@ describe('GET /api/documents/:id', () => {
   ])('serves a document whose name has %s', async (_label, name) => {
     await fs.writeFile(path.join(root, name), '# hello')
 
-    const res = await app.request(`/api/documents/${encodeURIComponent(name)}`)
+    const res = await app.request(`/${encodeURIComponent(name)}`)
 
     given(() => {
       expect(res.status).toBe(200)
@@ -128,7 +118,7 @@ describe('GET /api/documents/:id', () => {
   it('returns a nested document', async () => {
     await store.createDocument('journal/2026/september.md', 'entry')
 
-    const res = await app.request('/api/documents/journal/2026/september.md')
+    const res = await app.request('/journal/2026/september.md')
 
     given(() => {
       expect(res.status).toBe(200)
@@ -138,7 +128,7 @@ describe('GET /api/documents/:id', () => {
   })
 
   it('returns 404 for a missing document', async () => {
-    const res = await app.request('/api/documents/missing.md')
+    const res = await app.request('/missing.md')
 
     given(() => {
       expect(res.status).toBe(404)
@@ -148,25 +138,25 @@ describe('GET /api/documents/:id', () => {
   })
 
   it('returns 400 for an invalid id', async () => {
-    const res = await app.request('/api/documents/notes.zip')
+    const res = await app.request('/notes.zip')
 
     expect(res.status).toBe(400)
   })
 
   it('returns 400 rather than 404 for a traversal attempt', async () => {
-    const res = await app.request('/api/documents/..%2F..%2Fetc%2Fpasswd.md')
+    const res = await app.request('/..%2F..%2Fetc%2Fpasswd.md')
 
     expect(res.status).toBe(400)
   })
 
   it('does not disclose the document root in an error response', async () => {
-    const res = await app.request('/api/documents/notes.zip')
+    const res = await app.request('/notes.zip')
 
     await expect(res.text()).resolves.not.toContain(root)
   })
 })
 
-describe('PUT /api/documents/:id', () => {
+describe('saving a document', () => {
   it('replaces the content and returns 204', async () => {
     const etag = await seed('notes.md', 'first')
 
@@ -182,7 +172,7 @@ describe('PUT /api/documents/:id', () => {
     const etag = await seed('notes.md', 'first')
     await put('notes.md', '# round trip', etag)
 
-    const res = await app.request('/api/documents/notes.md')
+    const res = await app.request('/notes.md')
 
     await expect(res.text()).resolves.toBe('# round trip')
   })
@@ -216,7 +206,7 @@ describe('PUT /api/documents/:id', () => {
   it('demands If-Match rather than silently overwriting, so a forgetful client fails loudly', async () => {
     await seed('notes.md', 'first')
 
-    const res = await app.request('/api/documents/notes.md', {
+    const res = await app.request('/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ content: 'mine' }),
@@ -256,14 +246,14 @@ describe('PUT /api/documents/:id', () => {
     expect((await put('..%2F..%2Fescape.md', 'x')).status).toBe(400)
   })
 
-  it('returns 404 for a literal traversal, which the URL parser normalises away', async () => {
-    // The WHATWG URL parser collapses `/api/documents/../escape.md` to
-    // `/api/escape.md` before routing, so it never reaches the handler.
-    expect((await put('../escape.md', 'x')).status).toBe(404)
+  it('never sees a literal traversal, because the URL parser normalises it to a plain id first', async () => {
+    const res = await put('../escape.md', 'x')
+
+    await expect(res.json()).resolves.toStrictEqual({ error: 'Document not found', code: 'NOT_FOUND' })
   })
 
   it('returns 400 when content is missing', async () => {
-    const res = await app.request('/api/documents/notes.md', {
+    const res = await app.request('/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({}),
@@ -273,7 +263,7 @@ describe('PUT /api/documents/:id', () => {
   })
 
   it('returns 400 when content is not a string', async () => {
-    const res = await app.request('/api/documents/notes.md', {
+    const res = await app.request('/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ content: 42 }),
@@ -283,7 +273,7 @@ describe('PUT /api/documents/:id', () => {
   })
 
   it('returns 400 for a malformed JSON body', async () => {
-    const res = await app.request('/api/documents/notes.md', {
+    const res = await app.request('/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: 'not json',
@@ -293,29 +283,37 @@ describe('PUT /api/documents/:id', () => {
   })
 })
 
-describe('unknown routes', () => {
-  it('returns 404 for an unknown api route', async () => {
-    const res = await app.request('/api/nope')
+describe('a storage fault the routes have no answer for', () => {
+  function capturing(store: DocumentStore): { routes: Hono; reached: () => unknown } {
+    const routes = documentRoutes(store)
+    let seen: unknown = null
+    routes.onError((error, c) => {
+      seen = error
 
-    expect(res.status).toBe(404)
+      return c.body(null, HTTP_INTERNAL_ERROR)
+    })
+
+    return { routes, reached: () => seen }
+  }
+
+  it('escapes a read rather than being dressed as a refusal the client could act on', async () => {
+    const { routes, reached } = capturing(failingStore())
+
+    await routes.request('/notes.md')
+
+    expect(reached()).toStrictEqual(new Error('disk on fire'))
   })
-})
 
-describe('unexpected storage faults', () => {
-  it('surfaces an unrecognised storage error as 500, not as 400 or 404', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
+  it('escapes a write just the same', async () => {
+    const { routes, reached } = capturing(failingStore())
 
-    expect(res.status).toBe(500)
-  })
-
-  it('propagates an unrecognised error from a write', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md', {
+    await routes.request('/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json', 'if-match': '"any"' },
       body: JSON.stringify({ content: 'x' }),
     })
 
-    expect(res.status).toBe(500)
+    expect(reached()).toStrictEqual(new Error('disk on fire'))
   })
 })
 
@@ -343,11 +341,11 @@ describe('write contention', () => {
 
   it('answers a save that cannot take the lock with 503 BUSY', async () => {
     const lock = createWriteLock(IMPATIENT_MS)
-    const busy = buildApp({ store: createFsDocumentStore(root, lock) })
+    const busy = documentRoutes(createFsDocumentStore(root, lock))
     const held = occupy(lock)
     await held.occupied
 
-    const res = await busy.request('/api/documents/notes.md', {
+    const res = await busy.request('/notes.md', {
       method: 'PUT',
       headers: { 'content-type': 'application/json', 'if-match': '"any"' },
       body: JSON.stringify({ content: 'mine' }),
@@ -363,11 +361,11 @@ describe('write contention', () => {
     const lock = createWriteLock(IMPATIENT_MS)
     const contended = createFsDocumentStore(root, lock)
     await contended.createDocument('notes.md', '# readable')
-    const busy = buildApp({ store: contended })
+    const busy = documentRoutes(contended)
     const held = occupy(lock)
     await held.occupied
 
-    const res = await busy.request('/api/documents/notes.md')
+    const res = await busy.request('/notes.md')
 
     given(() => {
       expect(res.status).toBe(200)
@@ -380,7 +378,7 @@ describe('write contention', () => {
 
 describe('a conditional GET', () => {
   async function conditionalGet(id: string, etag: string): Promise<Response> {
-    return await app.request(`/api/documents/${id}`, { headers: { 'if-none-match': etag } })
+    return await app.request(`/${id}`, { headers: { 'if-none-match': etag } })
   }
 
   it('answers 304 when the token still matches, so a check costs no body', async () => {
@@ -424,7 +422,7 @@ describe('a conditional GET', () => {
   it('answers in full when no token is offered at all', async () => {
     await store.createDocument('notes.md', '# hello')
 
-    const res = await app.request('/api/documents/notes.md')
+    const res = await app.request('/notes.md')
 
     expect(res.status).toBe(200)
   })
@@ -466,7 +464,7 @@ describe('the document list follows the language the client asked for', () => {
     await store.createDocument('zebra.md', 'z')
     await store.createDocument('\u00e4pple.md', 'a')
 
-    const res = await app.request('/api/documents', { headers: { 'accept-language': 'sv' } })
+    const res = await app.request('/', { headers: { 'accept-language': 'sv' } })
 
     await expect(res.json()).resolves.toStrictEqual({ documents: ['zebra.md', '\u00e4pple.md'] })
   })
