@@ -985,7 +985,6 @@ const STILL_WITHOUT_A_MIRROR = [
   'src/client/document/document-tab.ts',
   'src/client/editing/control-bar.ts',
   'src/client/preview/previewing.ts',
-  'src/client/workspace/panes/across-panes.ts',
   'src/client/workspace/panes/aside.ts',
   'src/client/workspace/panes/pane-editor.ts',
   'src/client/workspace/tabs/closing-tabs.ts',
