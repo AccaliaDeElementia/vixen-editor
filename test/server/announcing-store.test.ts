@@ -38,6 +38,8 @@ async function send(url: string, init: RequestInit): Promise<Response> {
 
 const JSON_POST = { method: 'POST', headers: { 'content-type': 'application/json' } }
 
+const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+
 describe('what the store announces', () => {
   it('says a new document was written', async () => {
     await send('/api/files/documents', { ...JSON_POST, body: JSON.stringify({ path: 'a.md', content: '# a' }) })
@@ -49,6 +51,15 @@ describe('what the store announces', () => {
     await send('/api/files/folders', { ...JSON_POST, body: JSON.stringify({ path: 'journal' }) })
 
     expect(heard).toStrictEqual([{ path: 'journal', kind: 'written' }])
+  })
+
+  it('says an uploaded file was written, which nothing but the upload route reached before', async () => {
+    const form = new FormData()
+    form.append('file', new File([PNG_BYTES], 'photo.png'))
+
+    await send('/api/files/uploads', { method: 'POST', body: form })
+
+    expect(heard).toStrictEqual([{ path: 'photo.png', kind: 'written' }])
   })
 
   it('says a saved document was written', async () => {

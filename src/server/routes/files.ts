@@ -190,3 +190,5 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
 
   return routes
 }
+
+export const TestOnly = { archiveName, contentDisposition, storedName, targetDirectory, uploadedFile }

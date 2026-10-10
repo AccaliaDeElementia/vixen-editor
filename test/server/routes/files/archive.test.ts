@@ -10,25 +10,25 @@ import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { refusalOf } from '../../refusals.ts'
-import { buildApp } from '../../../../src/server/app.ts'
+import { fileRoutes } from '../../../../src/server/routes/files.ts'
 import { DEFAULT_LIMITS } from '../../../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
-let app: Hono = buildApp({ store })
+let app: Hono = fileRoutes(store, DEFAULT_LIMITS)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-archive-routes-'))
   store = createFsDocumentStore(root)
-  app = buildApp({ store })
+  app = fileRoutes(store, DEFAULT_LIMITS)
 })
 
 afterEach(async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
-describe('GET /api/files/archive', () => {
+describe('downloading a subtree as a zip', () => {
   async function entriesIn(res: Response): Promise<string[]> {
     const bytes = Buffer.from(await res.arrayBuffer())
     const names: string[] = []
@@ -47,7 +47,7 @@ describe('GET /api/files/archive', () => {
     await store.createDocument('notes.md', '# hello')
     await store.createDocument('journal/entry.md', '# entry')
 
-    const res = await app.request('/api/files/archive')
+    const res = await app.request('/archive')
 
     given(() => {
       expect({ status: res.status, contentType: res.headers.get('content-type') }).toStrictEqual({
@@ -62,7 +62,7 @@ describe('GET /api/files/archive', () => {
   it('names the download after the subtree', async () => {
     await store.createDocument('journal/entry.md', '# entry')
 
-    const res = await app.request('/api/files/archive?path=journal')
+    const res = await app.request('/archive?path=journal')
 
     expect(res.headers.get('content-disposition')).toBe(
       'attachment; filename="vixen-journal.zip"; filename*=UTF-8\'\'vixen-journal.zip',
@@ -70,7 +70,7 @@ describe('GET /api/files/archive', () => {
   })
 
   it('names a whole-store download after the store', async () => {
-    const res = await app.request('/api/files/archive')
+    const res = await app.request('/archive')
 
     expect(res.headers.get('content-disposition')).toBe(
       'attachment; filename="vixen-documents.zip"; filename*=UTF-8\'\'vixen-documents.zip',
@@ -82,7 +82,7 @@ describe('GET /api/files/archive', () => {
   it('does not let a quote in the name break the quoted filename', async () => {
     await store.createDocument('say "hi"/entry.md', '# entry')
 
-    const res = await app.request(`/api/files/archive?path=${encodeURIComponent('say "hi"')}`)
+    const res = await app.request(`/archive?path=${encodeURIComponent('say "hi"')}`)
     const disposition = res.headers.get('content-disposition') ?? ''
 
     expect(disposition).toBe('attachment; filename="vixen-say_hi_.zip"; filename*=UTF-8\'\'vixen-say%20%22hi%22.zip')
@@ -91,7 +91,7 @@ describe('GET /api/files/archive', () => {
   it('carries a non-ASCII name through the encoded parameter', async () => {
     await store.createDocument('café/entry.md', '# entry')
 
-    const res = await app.request(`/api/files/archive?path=${encodeURIComponent('café')}`)
+    const res = await app.request(`/archive?path=${encodeURIComponent('café')}`)
 
     expect(res.headers.get('content-disposition')).toContain("filename*=UTF-8''vixen-caf%C3%A9.zip")
   })
@@ -103,7 +103,7 @@ describe('GET /api/files/archive', () => {
   ])('reduces %s to plain ASCII in the fallback', async (_label, folder, fallback) => {
     await store.createDocument(`${folder}/entry.md`, '# entry')
 
-    const res = await app.request(`/api/files/archive?path=${encodeURIComponent(folder)}`)
+    const res = await app.request(`/archive?path=${encodeURIComponent(folder)}`)
 
     expect(res.headers.get('content-disposition')).toContain(`filename="${fallback}"`)
   })
@@ -112,7 +112,7 @@ describe('GET /api/files/archive', () => {
     await store.createDocument('notes.md', '# outside')
     await store.createDocument('journal/entry.md', '# entry')
 
-    const res = await app.request('/api/files/archive?path=journal')
+    const res = await app.request('/archive?path=journal')
 
     await expect(entriesIn(res)).resolves.toStrictEqual(['entry.md'])
   })
@@ -122,16 +122,16 @@ describe('GET /api/files/archive', () => {
     await store.createDocument('gone.md', '# gone')
     await store.trash('gone.md')
 
-    const res = await app.request('/api/files/archive')
+    const res = await app.request('/archive')
 
     await expect(entriesIn(res)).resolves.toStrictEqual(['notes.md'])
   })
 
   it('returns 413 before streaming when the byte limit is exceeded', async () => {
     await store.createDocument('notes.md', '# a document longer than four bytes')
-    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, archiveMaxBytes: 4 } })
+    const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, archiveMaxBytes: 4 })
 
-    const res = await tiny.request('/api/files/archive')
+    const res = await tiny.request('/archive')
 
     given(() => {
       expect(res.headers.get('content-type')).toContain('application/json')
@@ -143,9 +143,9 @@ describe('GET /api/files/archive', () => {
   it('names the limit and the measured value, so the message can be specific', async () => {
     await store.createDocument('a.md', 'x')
     await store.createDocument('b.md', 'x')
-    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, archiveMaxEntries: 1 } })
+    const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, archiveMaxEntries: 1 })
 
-    const res = await tiny.request('/api/files/archive')
+    const res = await tiny.request('/archive')
     const body: unknown = await res.json()
 
     given(() => {
@@ -156,7 +156,7 @@ describe('GET /api/files/archive', () => {
   })
 
   it('returns 404 for a subtree that is not there', async () => {
-    const res = await app.request('/api/files/archive?path=missing')
+    const res = await app.request('/archive?path=missing')
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
@@ -164,11 +164,11 @@ describe('GET /api/files/archive', () => {
   it('returns 404 when the path names a file rather than a folder', async () => {
     await store.createDocument('notes.md', '# hello')
 
-    expect((await app.request('/api/files/archive?path=notes.md')).status).toBe(404)
+    expect((await app.request('/archive?path=notes.md')).status).toBe(404)
   })
 
   it('rejects a traversal attempt', async () => {
-    const res = await app.request('/api/files/archive?path=..%2F..%2Fetc')
+    const res = await app.request('/archive?path=..%2F..%2Fetc')
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })

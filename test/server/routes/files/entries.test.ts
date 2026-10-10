@@ -10,19 +10,21 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
 import { fieldOf, refusalOf } from '../../refusals.ts'
-import { buildApp } from '../../../../src/server/app.ts'
+import { fileRoutes } from '../../../../src/server/routes/files.ts'
 import { DEFAULT_LIMITS } from '../../../../src/server/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 import { FOLDER_INDEX_NAME } from '../../../../src/shared/documents.ts'
 
+const EDITED = '# edited'
+
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
-let app: Hono = buildApp({ store })
+let app: Hono = fileRoutes(store, DEFAULT_LIMITS)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-files-'))
   store = createFsDocumentStore(root)
-  app = buildApp({ store })
+  app = fileRoutes(store, DEFAULT_LIMITS)
 })
 
 afterEach(async () => {
@@ -30,16 +32,16 @@ afterEach(async () => {
 })
 
 async function post(route: string, body: unknown): Promise<Response> {
-  return await app.request(`/api/files/${route}`, {
+  return await app.request(`/${route}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   })
 }
 
-describe('GET /api/files', () => {
+describe('the tree the browser draws', () => {
   it('returns an empty tree initially', async () => {
-    const res = await app.request('/api/files')
+    const res = await app.request('/')
 
     const body: unknown = await res.json()
 
@@ -50,7 +52,7 @@ describe('GET /api/files', () => {
     await store.createDocument('journal/september.md', 'x')
     await fs.writeFile(path.join(root, 'photo.png'), '')
 
-    const res = await app.request('/api/files')
+    const res = await app.request('/')
 
     await expect(res.json()).resolves.toMatchObject({
       tree: [
@@ -61,7 +63,7 @@ describe('GET /api/files', () => {
   })
 })
 
-describe('POST /api/files/folders', () => {
+describe('creating a folder', () => {
   it('creates a folder and reports the seeded index', async () => {
     const res = await post('folders', { path: 'journal' })
 
@@ -77,13 +79,9 @@ describe('POST /api/files/folders', () => {
     const created: unknown = await res.json()
     const etag = typeof created === 'object' && created !== null && 'etag' in created ? created.etag : undefined
 
-    const saved = await app.request(`/api/documents/journal/${FOLDER_INDEX_NAME}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'if-match': String(etag) },
-      body: JSON.stringify({ content: '# edited' }),
-    })
+    await store.updateDocument(`journal/${FOLDER_INDEX_NAME}`, EDITED, String(etag))
 
-    expect(saved.status).toBe(204)
+    await expect(store.read(`journal/${FOLDER_INDEX_NAME}`)).resolves.toBe(EDITED)
   })
 
   it('seeds the index with a heading of the folder name', async () => {
@@ -135,7 +133,7 @@ describe('POST /api/files/folders', () => {
   })
 })
 
-describe('POST /api/files/documents', () => {
+describe('creating a document', () => {
   it('creates a document and reports its path', async () => {
     const res = await post('documents', { path: 'notes.md' })
 
@@ -151,13 +149,9 @@ describe('POST /api/files/documents', () => {
     const created: unknown = await res.json()
     const etag = typeof created === 'object' && created !== null && 'etag' in created ? created.etag : undefined
 
-    const saved = await app.request('/api/documents/notes.md', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'if-match': String(etag) },
-      body: JSON.stringify({ content: '# edited' }),
-    })
+    await store.updateDocument('notes.md', EDITED, String(etag))
 
-    expect(saved.status).toBe(204)
+    await expect(store.read('notes.md')).resolves.toBe(EDITED)
   })
 
   it('seeds a heading of the filename without its extension', async () => {
@@ -245,7 +239,7 @@ async function upload(
   form.append('file', new File([bytes], filename))
   if (directory !== undefined) form.append('path', directory)
 
-  return await target.request('/api/files/uploads', { method: 'POST', body: form })
+  return await target.request('/uploads', { method: 'POST', body: form })
 }
 
 async function uploadNamed(sentAs: string, storeAs: unknown, bytes: Uint8Array<ArrayBuffer>): Promise<Response> {
@@ -254,10 +248,10 @@ async function uploadNamed(sentAs: string, storeAs: unknown, bytes: Uint8Array<A
   if (storeAs instanceof Blob) form.append('filename', storeAs)
   else if (typeof storeAs === 'string') form.append('filename', storeAs)
 
-  return await app.request('/api/files/uploads', { method: 'POST', body: form })
+  return await app.request('/uploads', { method: 'POST', body: form })
 }
 
-describe('POST /api/files/uploads', () => {
+describe('uploading a file', () => {
   it('stores an upload and reports the path it landed at', async () => {
     const res = await upload('photo.png', PNG_BYTES, 'journal')
 
@@ -319,7 +313,7 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('rejects an upload larger than the configured limit', async () => {
-    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 4 } })
+    const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, uploadMaxBytes: 4 })
 
     const res = await upload('photo.png', PNG_BYTES, '', tiny)
 
@@ -327,7 +321,7 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('does not store an upload it rejected as too large', async () => {
-    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 4 } })
+    const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, uploadMaxBytes: 4 })
 
     await upload('photo.png', PNG_BYTES, '', tiny)
 
@@ -335,9 +329,9 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('rejects a declared content-length over the limit before reading the body', async () => {
-    const tiny = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 4 } })
+    const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, uploadMaxBytes: 4 })
 
-    const res = await tiny.request('/api/files/uploads', {
+    const res = await tiny.request('/uploads', {
       method: 'POST',
       headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '999999' },
       body: '--x--',
@@ -347,7 +341,7 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('stores an upload of exactly the limit, because the limit is what is allowed', async () => {
-    const exact = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: PNG_BYTES.length } })
+    const exact = fileRoutes(store, { ...DEFAULT_LIMITS, uploadMaxBytes: PNG_BYTES.length })
 
     const res = await upload('photo.png', PNG_BYTES, '', exact)
 
@@ -355,9 +349,9 @@ describe('POST /api/files/uploads', () => {
   })
 
   it('reads the body of a declared content-length of exactly the limit, rather than refusing it', async () => {
-    const exact = buildApp({ store, limits: { ...DEFAULT_LIMITS, uploadMaxBytes: 5 } })
+    const exact = fileRoutes(store, { ...DEFAULT_LIMITS, uploadMaxBytes: 5 })
 
-    const res = await exact.request('/api/files/uploads', {
+    const res = await exact.request('/uploads', {
       method: 'POST',
       headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '5' },
       body: '--x--',
@@ -370,7 +364,7 @@ describe('POST /api/files/uploads', () => {
     const form = new FormData()
     form.append('path', 'journal')
 
-    const res = await app.request('/api/files/uploads', { method: 'POST', body: form })
+    const res = await app.request('/uploads', { method: 'POST', body: form })
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
@@ -380,17 +374,17 @@ describe('POST /api/files/uploads', () => {
     form.append('file', new File([PNG_BYTES], 'photo.png'))
     form.append('path', new File([PNG_BYTES], 'not-a-path.png'))
 
-    const res = await app.request('/api/files/uploads', { method: 'POST', body: form })
+    const res = await app.request('/uploads', { method: 'POST', body: form })
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
   })
 })
 
-describe('GET /api/files/raw/:path', () => {
+describe('serving a stored file as it was uploaded', () => {
   it('serves an uploaded image byte for byte', async () => {
     await upload('photo.png', PNG_BYTES)
 
-    const res = await app.request('/api/files/raw/photo.png')
+    const res = await app.request('/raw/photo.png')
 
     expect({ status: res.status, body: await res.arrayBuffer().then((b) => new Uint8Array(b)) }).toStrictEqual({
       status: 200,
@@ -401,7 +395,7 @@ describe('GET /api/files/raw/:path', () => {
   it('serves a nested path, mirroring the store layout so relative links resolve', async () => {
     await upload('photo.png', PNG_BYTES, 'journal/2026')
 
-    const res = await app.request('/api/files/raw/journal/2026/photo.png')
+    const res = await app.request('/raw/journal/2026/photo.png')
 
     expect(res.status).toBe(200)
   })
@@ -412,7 +406,7 @@ describe('GET /api/files/raw/:path', () => {
   ])('types %s from its extension rather than from the upload', async (name, content, expected) => {
     await store.createUpload('', name, content)
 
-    const res = await app.request(`/api/files/raw/${name}`)
+    const res = await app.request(`/raw/${name}`)
 
     expect(res.headers.get('content-type')).toContain(expected)
   })
@@ -420,7 +414,7 @@ describe('GET /api/files/raw/:path', () => {
   it('forbids sniffing, so a mislabelled file cannot be reinterpreted', async () => {
     await upload('photo.png', PNG_BYTES)
 
-    const res = await app.request('/api/files/raw/photo.png')
+    const res = await app.request('/raw/photo.png')
 
     expect(res.headers.get('x-content-type-options')).toBe('nosniff')
   })
@@ -429,7 +423,7 @@ describe('GET /api/files/raw/:path', () => {
     const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')
     await upload('drawing.svg', svg)
 
-    const res = await app.request('/api/files/raw/drawing.svg')
+    const res = await app.request('/raw/drawing.svg')
 
     given(() => {
       expect(res.headers.get('content-type')).toBe('image/svg+xml')
@@ -439,25 +433,25 @@ describe('GET /api/files/raw/:path', () => {
   })
 
   it('returns 404 for a file that is not there', async () => {
-    const res = await app.request('/api/files/raw/missing.png')
+    const res = await app.request('/raw/missing.png')
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 404, code: 'NOT_FOUND' })
   })
 
   it('rejects an extension outside the allowlist', async () => {
-    const res = await app.request('/api/files/raw/payload.zip')
+    const res = await app.request('/raw/payload.zip')
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 
   it('rejects an encoded traversal attempt', async () => {
-    const res = await app.request('/api/files/raw/..%2F..%2Fetc%2Fpasswd.png')
+    const res = await app.request('/raw/..%2F..%2Fetc%2Fpasswd.png')
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })
 
-describe('POST /api/files/moves', () => {
+describe('moving an entry', () => {
   it('renames a document and reports what it rewrote', async () => {
     await store.createDocument('notes.md', '# hello')
 
@@ -553,7 +547,7 @@ describe('POST /api/files/moves', () => {
   })
 })
 
-describe('POST /api/files/uploads with a chosen name', () => {
+describe('uploading under a chosen name', () => {
   it('stores under the name the client asked for, not the one the file carried', async () => {
     const res = await uploadNamed('IMG_0042.png', 'header.png', PNG_BYTES)
 
@@ -607,7 +601,7 @@ describe('a rejected upload says what the bytes actually are', () => {
 
 describe('the listing follows the language the client asked for', () => {
   async function treeNamed(headers: Record<string, string>): Promise<string[]> {
-    const res = await app.request('/api/files', { headers })
+    const res = await app.request('/', { headers })
     const { tree } = cast<{ tree: Array<{ name: string }> }>(await res.json())
 
     return tree.map((entry) => entry.name)
@@ -631,17 +625,17 @@ describe('the listing follows the language the client asked for', () => {
   })
 
   it('says the listing varies by language, so nothing caches one reader answer for all', async () => {
-    const res = await app.request('/api/files', { headers: { 'accept-language': 'sv' } })
+    const res = await app.request('/', { headers: { 'accept-language': 'sv' } })
 
     expect(res.headers.get('vary')).toBe('Accept-Language')
   })
 })
 
 async function remove(entryPath: string): Promise<Response> {
-  return await app.request(`/api/files/entries/${entryPath}`, { method: 'DELETE' })
+  return await app.request(`/entries/${entryPath}`, { method: 'DELETE' })
 }
 
-describe('DELETE /api/files/entries/:path', () => {
+describe('moving an entry to the trash', () => {
   it('moves a document to the trash and reports the entry id', async () => {
     await store.createDocument('notes.md', 'x')
 
