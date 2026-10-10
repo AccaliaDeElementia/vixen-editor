@@ -2,15 +2,15 @@
 
 import { vi } from 'vitest'
 
-import { initFileTree } from '../../src/client/browser/file-tree.ts'
-import { ROW_SELECTOR } from '../../src/client/browser/tree/drawing.ts'
-import { TRASH_LIST_SELECTOR } from '../../src/client/browser/trash/trash-view.ts'
-import type { TrashNode } from '../../src/client/browser/tree/tree-model.ts'
+import { initFileTree } from '../../../src/client/browser/file-tree.ts'
+import { ROW_SELECTOR } from '../../../src/client/browser/tree/drawing.ts'
+import { TRASH_LIST_SELECTOR } from '../../../src/client/browser/trash/trash-view.ts'
+import type { TrashNode } from '../../../src/client/browser/tree/tree-model.ts'
 
-import { showPanel, TRASH_PANEL } from '../../src/client/platform/panels.ts'
-import { announcePanelChanged } from '../../src/client/platform/announce/panel-changed.ts'
+import { showPanel, TRASH_PANEL } from '../../../src/client/platform/panels.ts'
+import { announcePanelChanged } from '../../../src/client/platform/announce/panel-changed.ts'
 
-import { renderPage } from './templates.ts'
+import { renderPage } from '../templates.ts'
 
 export const TRASHED: TrashNode = {
   id: 'aaaa',

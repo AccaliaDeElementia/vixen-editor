@@ -8,7 +8,7 @@ import { ROW_SELECTOR } from '../../../../src/client/browser/tree/drawing.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
-import { fakeClient, mountTree, rowFor, treePage } from '../../tree-fixtures.ts'
+import { fakeClient, mountTree, rowFor, treePage } from '../fixtures.ts'
 
 const BEFORE = parseTree({ tree: [{ name: 'notes.md', path: 'notes.md', kind: 'document' }] })
 const AFTER = parseTree({

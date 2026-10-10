@@ -1,6 +1,6 @@
 'use sanity'
 
-import { isRecord } from '../../../src/shared/guards.ts'
+import { isRecord } from '../../src/shared/guards.ts'
 
 export interface Refusal {
   status: number

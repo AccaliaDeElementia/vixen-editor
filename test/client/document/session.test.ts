@@ -1,7 +1,7 @@
 'use sanity'
 
 import { givenAsync } from '../../conditions.ts'
-import { looseRejectionsDuring } from '../../rejections.ts'
+import { looseRejectionsDuring } from '../rejections.ts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cast } from '../../cast.ts'

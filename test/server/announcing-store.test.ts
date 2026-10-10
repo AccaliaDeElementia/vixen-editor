@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../src/server/app.ts'
 import { createChanges, type StoreChange } from '../../src/server/changes.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
-import { fieldOf } from './routes/refusals.ts'
+import { fieldOf } from './refusals.ts'
 
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')

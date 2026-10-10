@@ -10,7 +10,7 @@ import { TRASH_PATH } from '../../../../src/client/browser/trash/trash-view.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 
 import { cast } from '../../../cast.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, showTrash, statusText, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, showTrash, statusText, treePage } from '../fixtures.ts'
 
 const SAMPLE = [
   { name: 'journal', path: 'journal', kind: 'folder' as const, children: [] },

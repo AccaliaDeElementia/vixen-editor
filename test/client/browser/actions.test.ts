@@ -15,16 +15,7 @@ import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
 import type { FilesClient } from '../../../src/client/browser/files-client.ts'
 import { cast } from '../../cast.ts'
 import { given } from '../../conditions.ts'
-import {
-  TRASHED,
-  fakeClient,
-  mountTree,
-  rowFor,
-  showTrash,
-  statusText,
-  treePage,
-  type FakeClient,
-} from '../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, showTrash, statusText, treePage, type FakeClient } from './fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [

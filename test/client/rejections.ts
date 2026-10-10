@@ -1,6 +1,6 @@
 'use sanity'
 
-import { cast } from './cast.ts'
+import { cast } from '../cast.ts'
 
 type Reason = unknown
 type Listener = (reason: Reason) => void

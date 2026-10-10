@@ -12,7 +12,7 @@ import type { FilesClient } from '../../../../src/client/browser/files-client.ts
 import { joinPath } from '../../../../src/shared/store-path.ts'
 import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, rows, showTrash, trashRows, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, rows, showTrash, trashRows, treePage } from '../fixtures.ts'
 
 const SAMPLE = parseTree({
   tree: [

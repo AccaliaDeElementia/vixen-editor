@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { given } from '../../../conditions.ts'
-import { looseRejectionsDuring } from '../../../rejections.ts'
+import { looseRejectionsDuring } from '../../rejections.ts'
 
 import { interceptNavigation } from '../../../../src/client/platform/navigation.ts'
 

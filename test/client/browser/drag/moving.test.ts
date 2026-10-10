@@ -11,16 +11,7 @@ import { ROW_SELECTOR } from '../../../../src/client/browser/tree/drawing.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import { cast } from '../../../cast.ts'
-import {
-  TRASHED,
-  fakeClient,
-  mountTree,
-  rowFor,
-  rows,
-  showTrash,
-  treePage,
-  type FakeClient,
-} from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, rowFor, rows, showTrash, treePage, type FakeClient } from '../fixtures.ts'
 
 const { DRAG_MIME, DROP_TARGET_CLASS, canMoveInto, containerOf } = TestOnly
 

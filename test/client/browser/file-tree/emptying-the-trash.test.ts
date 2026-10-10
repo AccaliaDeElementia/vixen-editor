@@ -8,7 +8,7 @@ import { parseTree } from '../../../../src/client/browser/tree/tree-model.ts'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 import type { Dialogs } from '../../../../src/client/platform/dialogs.ts'
 import { cast } from '../../../cast.ts'
-import { TRASHED, fakeClient, mountTree, showTrash, statusText, trashRows, treePage } from '../../tree-fixtures.ts'
+import { TRASHED, fakeClient, mountTree, showTrash, statusText, trashRows, treePage } from '../fixtures.ts'
 
 const SAMPLE = parseTree({ tree: [{ name: 'notes.md', path: 'notes.md', kind: 'document' }] })
 

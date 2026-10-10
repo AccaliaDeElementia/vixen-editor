@@ -29,7 +29,7 @@ const SCANNER = 'test/conventions/project-rules.test.ts'
 
 const POLLED_WAIT = /\bvi\.waitFor\s*\(/v
 const HAND_ROLLED_TIMER = /\bset(?:Timeout|Interval)\s*\(/v
-const RUNTIME_DECIDES_THE_MOMENT = 'test/rejections.ts'
+const RUNTIME_DECIDES_THE_MOMENT = 'test/client/rejections.ts'
 const PROVES_THE_TIMER_GUARD = 'test/timers.test.ts'
 const MAY_SCHEDULE_A_TIMER = [RUNTIME_DECIDES_THE_MOMENT, PROVES_THE_TIMER_GUARD]
 const UNNAMED_TIMEOUT = /\{\s*timeout:\s*\d/v

@@ -8,7 +8,7 @@ import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { given } from '../../conditions.ts'
-import { refusalOf } from './refusals.ts'
+import { refusalOf } from '../refusals.ts'
 import { buildApp } from '../../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { createWriteLock } from '../../../src/server/storage/lock.ts'
