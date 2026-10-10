@@ -78,4 +78,4 @@ export function wiringFor(options: WiringOverrides): PageWiring {
   }
 }
 
-export const TestOnly = { openPage, replacePage, reloadPage }
+export const TestOnly = { openPage, replaceAddress, replacePage, reloadPage }
