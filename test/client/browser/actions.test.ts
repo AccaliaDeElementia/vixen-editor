@@ -1,562 +1,329 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
-import { FilesRequestError } from '../../../src/client/browser/files-client.ts'
+import { bindActions, updateArchiveLink, updateInsertAvailability } from '../../../src/client/browser/actions.ts'
+import { FilesRequestError, type FilesClient } from '../../../src/client/browser/files-client.ts'
 import { onDeletionPending } from '../../../src/client/platform/announce/deletion-pending.ts'
 import { onEntryTrashed, type TrashedEntry } from '../../../src/client/platform/announce/entry-trashed.ts'
-import { onInsertRequested } from '../../../src/client/platform/announce/insert-entry.ts'
-import { openDocumentIn } from '../../../src/client/platform/navigation.ts'
-import { parseTree, type TrashNode, type TreeNode } from '../../../src/client/browser/tree/tree-model.ts'
-import { ROW_SELECTOR } from '../../../src/client/browser/tree/drawing.ts'
-import { TRASH_PATH } from '../../../src/client/browser/trash/trash-view.ts'
-import { joinPath } from '../../../src/shared/store-path.ts'
-import type { Dialogs } from '../../../src/client/platform/dialogs.ts'
-import type { FilesClient } from '../../../src/client/browser/files-client.ts'
+import { archiveUrlFor } from '../../../src/shared/api.ts'
+import { STORE_ROOT } from '../../../src/shared/store-path.ts'
+import type { Dialogs, NameResolver } from '../../../src/client/platform/dialogs.ts'
+import type { Toast } from '../../../src/client/platform/toast.ts'
+
 import { cast } from '../../cast.ts'
 import { given } from '../../conditions.ts'
-import { TRASHED, fakeClient, mountTree, rowFor, showTrash, statusText, treePage, type FakeClient } from './fixtures.ts'
+import { renderPage } from '../templates.ts'
 
-const SAMPLE = parseTree({
-  tree: [
-    {
-      name: 'journal',
-      path: 'journal',
-      kind: 'folder',
-      children: [{ name: 'entry.md', path: 'journal/entry.md', kind: 'document' }],
-    },
-    { name: 'notes.md', path: 'notes.md', kind: 'document' },
-  ],
-})
-
-let host: HTMLElement = document.createElement('div')
-
-let typed = 'typed-name.md'
+const FOLDER = 'journal'
+const SELECTED = 'journal/notes.md'
+const TYPED = 'typed-name.md'
+const TRASH_ID = 'abc'
 
 interface PromptLike {
-  nameFor?: (value: string) => string
-  submit: (value: string) => Promise<string | null>
+  submit: (name: string) => Promise<string | null>
+  nameFor?: NameResolver | undefined
 }
 
-function fakeDialogs(): { prompt: ReturnType<typeof vi.fn>; confirm: ReturnType<typeof vi.fn> } {
+interface Bound {
+  selection?: string | null
+  directory?: string
+  confirmed?: boolean
+  dismissed?: boolean
+}
+
+let root: ParentNode = document
+interface StoreCalls {
+  createDocument: Mock<(entryPath: string) => Promise<void>>
+  createFolder: Mock<(folderPath: string) => Promise<void>>
+  upload: Mock<(directory: string, file: File) => Promise<string>>
+  remove: Mock<(entryPath: string) => Promise<string>>
+}
+
+let client: StoreCalls = freshClient()
+let prompt: Mock<(request: PromptLike) => Promise<boolean>> = vi.fn()
+let confirm: Mock<() => Promise<boolean>> = vi.fn()
+let refusals: string[] = []
+let notices: string[] = []
+let tracked: Array<Promise<void>> = []
+let refreshes = 0
+let steps: string[] = []
+let typed = TYPED
+
+function freshClient(): StoreCalls {
   return {
-    prompt: vi.fn(async (request: PromptLike) => {
-      await request.submit(request.nameFor === undefined ? typed : request.nameFor(typed))
-      return true
-    }),
-    confirm: vi.fn().mockResolvedValue(true),
+    createDocument: vi.fn().mockResolvedValue(undefined),
+    createFolder: vi.fn().mockResolvedValue(undefined),
+    upload: vi.fn().mockResolvedValue('journal/photo.png'),
+    remove: vi.fn().mockResolvedValue(TRASH_ID),
   }
 }
 
-let client: FakeClient = fakeClient(SAMPLE)
-let dialogs: ReturnType<typeof fakeDialogs> = fakeDialogs()
+function bound({ selection = SELECTED, directory = FOLDER, confirmed = true, dismissed = false }: Bound = {}): void {
+  prompt = vi.fn(async (request: PromptLike) => {
+    if (dismissed) return await Promise.resolve(false)
+    await request.submit(request.nameFor === undefined ? typed : request.nameFor(typed))
 
-let settled: () => Promise<void> = () => Promise.resolve()
-let opened: string[] = []
+    return true
+  })
+  confirm = vi.fn().mockResolvedValue(confirmed)
 
-async function start(pathname = '/doc/'): Promise<void> {
-  settled = await mountTree({
-    root: host,
-    pathname,
+  bindActions({
+    root,
     client: cast<FilesClient>(client),
-    dialogs: cast<Dialogs>(dialogs),
-    navigate: (url: string) => {
-      opened.push(url)
+    dialogs: cast<Dialogs>({ prompt, confirm }),
+    toast: cast<Toast>({
+      show: (message: string) => {
+        notices.push(message)
+      },
+      error: (message: string) => {
+        refusals.push(message)
+      },
+    }),
+    targetDirectory: () => directory,
+    selectionPath: () => selection,
+    refresh: async () => {
+      await Promise.resolve()
+      refreshes += 1
+    },
+    track: (work: Promise<void>) => {
+      tracked.push(work)
+    },
+    reveal: () => {
+      steps.push('revealed')
+    },
+    insertSelected: () => {
+      steps.push('inserted')
+    },
+    openCreated: (entryPath: string) => {
+      steps.push(`opened ${entryPath}`)
+    },
+    openSelected: () => {
+      steps.push('opened the selection')
     },
   })
 }
 
 function press(selector: string): void {
-  document.querySelector<HTMLElement>(selector)?.click()
+  root.querySelector<HTMLElement>(selector)?.click()
+}
+
+function uploadInput(): HTMLInputElement {
+  const element = root.querySelector<HTMLInputElement>('#upload-input')
+  if (element === null) throw new Error('missing the upload input')
+
+  return element
+}
+
+function sendFiles(files: readonly File[] | null): void {
+  const input = uploadInput()
+  Object.defineProperty(input, 'files', { value: files, configurable: true })
+  input.dispatchEvent(new Event('change'))
+}
+
+async function settled(): Promise<void> {
+  await Promise.all(tracked)
 }
 
 beforeEach(() => {
-  localStorage.clear()
-  host = treePage({ withToolbar: true })
-  client = fakeClient(SAMPLE)
-  dialogs = fakeDialogs()
-  opened = []
-  typed = 'typed-name.md'
+  document.body.innerHTML = renderPage()
+  ;({ body: root } = document)
+  client = freshClient()
+  refusals = []
+  notices = []
+  tracked = []
+  refreshes = 0
+  steps = []
+  typed = TYPED
 })
 
-describe('the Insert action', () => {
-  function button(): HTMLButtonElement {
-    const found = document.querySelector<HTMLButtonElement>('#insert-entry')
-    if (found === null) throw new Error('no insert button')
-
-    return found
-  }
-
-  it('is off until something insertable is selected', async () => {
-    await start()
-
-    expect(button().disabled).toBe(true)
-  })
-
-  it('comes on for a selected document', async () => {
-    await start()
-    rowFor('notes.md').click()
-
-    expect(button().disabled).toBe(false)
-  })
-
-  it('goes off again for a deleted entry, which is not a file in the store', async () => {
-    client = fakeClient(SAMPLE, [TRASHED])
-    await start()
-    rowFor('notes.md').click()
-    showTrash(host)
-    await settled()
-    rowFor(joinPath(TRASH_PATH, TRASHED.id)).click()
-
-    expect(button().disabled).toBe(true)
-  })
-
-  it('asks for a link to the selection, the same as the keyboard does', async () => {
-    await start()
-    const heard: string[] = []
-    onInsertRequested(host, (entryPath) => {
-      heard.push(entryPath)
+describe('the buttons that only pass the gesture on', () => {
+  it.each([
+    ['reveal-document', 'revealed'],
+    ['insert-entry', 'inserted'],
+    ['open-selected', 'opened the selection'],
+  ])('hands %s to whoever owns it', (part, expected) => {
+    bound()
+    updateInsertAvailability(root, SELECTED)
+    given(() => {
+      expect(root.querySelector<HTMLButtonElement>(`#${part}`)?.disabled).toBe(false)
     })
-    rowFor('notes.md').click()
 
-    press('#insert-entry')
+    press(`#${part}`)
 
-    expect(heard).toStrictEqual(['notes.md'])
+    expect(steps).toStrictEqual([expected])
   })
 })
 
-describe('where a new entry lands', () => {
-  it('goes to the store root when nothing is selected', async () => {
-    await start()
-    rowFor('notes.md').click()
-    rowFor('notes.md').click()
-    press('#new-document')
-    await settled()
-    given(() => {
-      expect(client.createDocument).toHaveBeenCalled()
-    })
-
-    expect(client.createDocument).toHaveBeenCalledWith('typed-name.md')
-  })
-
-  it('goes inside a selected folder', async () => {
-    await start()
-    rowFor('journal').click()
+describe('creating a document', () => {
+  it('asks the reader what to call it', async () => {
+    bound()
 
     press('#new-document')
     await settled()
-    given(() => {
-      expect(client.createDocument).toHaveBeenCalled()
-    })
 
-    expect(client.createDocument).toHaveBeenCalledWith('journal/typed-name.md')
+    expect(prompt).toHaveBeenCalledTimes(1)
   })
 
-  it('goes beside a selected file, not inside it', async () => {
-    await start()
-    rowFor('journal').click()
-    rowFor('journal/entry.md').click()
-
-    press('#new-folder')
-    await settled()
-    given(() => {
-      expect(client.createFolder).toHaveBeenCalled()
-    })
-
-    expect(client.createFolder).toHaveBeenCalledWith('journal/typed-name.md')
-  })
-
-  it('follows the open document when nothing has been clicked', async () => {
-    await start('/doc/journal/entry.md')
+  it('creates it inside the directory the selection points at', async () => {
+    bound({ directory: FOLDER })
 
     press('#new-document')
     await settled()
-    given(() => {
-      expect(client.createDocument).toHaveBeenCalled()
-    })
 
-    expect(client.createDocument).toHaveBeenCalledWith('journal/typed-name.md')
+    expect(client.createDocument).toHaveBeenCalledWith(`${FOLDER}/${TYPED}`)
+  })
+
+  it('redraws the browser, so the new entry appears', async () => {
+    bound()
+
+    press('#new-document')
+    await settled()
+
+    expect(refreshes).toBe(1)
+  })
+
+  it('opens what it made, so the reader lands in the thing they just created', async () => {
+    bound()
+
+    press('#new-document')
+    await settled()
+
+    expect(steps).toStrictEqual([`opened ${FOLDER}/${TYPED}`])
+  })
+
+  it('opens nothing when the dialog was dismissed, because nothing was made', async () => {
+    bound({ dismissed: true })
+
+    press('#new-document')
+    await settled()
+
+    expect(steps).toStrictEqual([])
   })
 })
 
-describe('creating', () => {
-  it('refreshes the tree afterwards, so the new entry appears', async () => {
-    await start()
+describe('creating a folder', () => {
+  it('creates it where the selection points', async () => {
+    bound()
 
     press('#new-folder')
     await settled()
 
-    expect(client.tree).toHaveBeenCalledTimes(2)
+    expect(client.createFolder).toHaveBeenCalledWith(`${FOLDER}/${TYPED}`)
   })
 
-  it('keeps a rejected name in the dialog rather than throwing it away', async () => {
+  it('creates it at the store root when nothing is selected', async () => {
+    bound({ directory: STORE_ROOT })
+
+    press('#new-folder')
+    await settled()
+
+    expect(client.createFolder).toHaveBeenCalledWith(TYPED)
+  })
+})
+
+describe('a name the store will not take', () => {
+  it('keeps the dialog open with the reason, rather than throwing what was typed away', async () => {
+    bound()
     client.createDocument.mockRejectedValue(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS', []))
-    await start()
+    let reported: string | null = 'not asked'
+    bindActionsWith(
+      vi.fn(async (request: PromptLike) => {
+        reported = await request.submit(TYPED)
+
+        return await Promise.resolve(false)
+      }),
+    )
 
     press('#new-document')
-
     await settled()
-    given(() => {
-      expect(dialogs.prompt).toHaveBeenCalled()
-    })
-    await expect(dialogs.prompt.mock.results[0]?.value).resolves.toBe(true)
+
+    expect(reported).toBe('Already exists')
   })
 
-  it('reports a failure the user cannot fix by retyping', async () => {
+  it('reports a refusal the reader cannot fix by retyping', async () => {
+    bound()
     client.createDocument.mockRejectedValue(new FilesRequestError(503, 'Busy, try again', 'BUSY', []))
-    await start()
 
     press('#new-document')
-
     await settled()
 
-    expect(statusText()).toContain('Busy, try again')
+    expect(refusals).toStrictEqual(['Busy, try again'])
   })
 })
 
-describe('deleting', () => {
-  it('asks before moving the selection to the trash', async () => {
-    await start()
-    rowFor('notes.md').click()
+function bindActionsWith(prompting: Mock<(request: PromptLike) => Promise<boolean>>): void {
+  document.body.innerHTML = renderPage()
+  ;({ body: root } = document)
+  bindActions({
+    root,
+    client: cast<FilesClient>(client),
+    dialogs: cast<Dialogs>({ prompt: prompting, confirm: vi.fn().mockResolvedValue(true) }),
+    toast: cast<Toast>({
+      show: () => undefined,
+      error: (message: string) => {
+        refusals.push(message)
+      },
+    }),
+    targetDirectory: () => FOLDER,
+    selectionPath: () => SELECTED,
+    refresh: async () => {
+      await Promise.resolve()
+    },
+    track: (work: Promise<void>) => {
+      tracked.push(work)
+    },
+    reveal: () => undefined,
+    insertSelected: () => undefined,
+    openCreated: () => undefined,
+    openSelected: () => undefined,
+  })
+}
+
+describe('deleting the selection', () => {
+  it('asks before anything moves to the trash', async () => {
+    bound()
 
     press('#delete-entry')
-
     await settled()
-    given(() => {
-      expect(client.remove).toHaveBeenCalledWith('notes.md')
-    })
-    expect(dialogs.confirm).toHaveBeenCalled()
+
+    expect(confirm).toHaveBeenCalledTimes(1)
   })
 
-  it('does nothing when the confirmation is declined', async () => {
-    dialogs.confirm.mockResolvedValue(false)
-    await start()
-    rowFor('notes.md').click()
+  it('moves the selection to the trash once that is confirmed', async () => {
+    bound()
 
     press('#delete-entry')
     await settled()
-    given(() => {
-      expect(client.tree).toHaveBeenCalledTimes(2)
-    })
+
+    expect(client.remove).toHaveBeenCalledWith(SELECTED)
+  })
+
+  it('removes nothing when the reader changes their mind', async () => {
+    bound({ confirmed: false })
+
+    press('#delete-entry')
+    await settled()
 
     expect(client.remove).not.toHaveBeenCalled()
   })
 
-  it('says so when the url names a document the tree does not hold', async () => {
-    await start('/doc/never-created.md')
+  it('says what to do when nothing is selected to delete', () => {
+    bound({ selection: null })
 
     press('#delete-entry')
 
-    given(() => {
-      expect(client.remove).not.toHaveBeenCalled()
-    })
-
-    expect(statusText()).toContain('Select something to delete first')
-  })
-})
-
-describe('uploading', () => {
-  it('sends each dropped file to the selected directory', async () => {
-    await start()
-    rowFor('journal').click()
-    const input = document.querySelector<HTMLInputElement>('#upload-input')
-    Object.defineProperty(input, 'files', { value: [new File(['x'], 'a.png'), new File(['y'], 'b.png')] })
-
-    input?.dispatchEvent(new Event('change'))
-
-    await settled()
-    given(() => {
-      expect(client.upload).toHaveBeenCalledTimes(2)
-    })
-    expect(client.upload).toHaveBeenCalledWith('journal', expect.objectContaining({ name: 'a.png' }))
+    expect(notices).toStrictEqual(['Select something to delete first'])
   })
 
-  it('reports one rejected file without discarding the rest', async () => {
-    await start()
-    client.upload.mockRejectedValueOnce(new Error('too large')).mockResolvedValueOnce('b.png')
-    const input = document.querySelector<HTMLInputElement>('#upload-input')
-    Object.defineProperty(input, 'files', { value: [new File(['x'], 'a.png'), new File(['y'], 'b.png')] })
-
-    input?.dispatchEvent(new Event('change'))
-
-    await settled()
-    given(() => {
-      expect(client.upload).toHaveBeenCalledTimes(2)
-    })
-    expect(statusText()).toContain('a.png')
-  })
-
-  it('opens the file picker when the toolbar button is pressed', async () => {
-    await start()
-    const input = document.querySelector<HTMLInputElement>('#upload-input')
-    const opened = vi.fn()
-    input?.addEventListener('click', () => {
-      opened()
-    })
-
-    press('#upload-file')
-
-    expect(opened).toHaveBeenCalled()
-  })
-})
-
-describe('the archive link', () => {
-  it('downloads the whole store when nothing is selected', async () => {
-    await start()
-
-    expect(document.querySelector('#download-archive')?.getAttribute('href')).toBe('/api/files/archive')
-  })
-
-  it('downloads the selected folder', async () => {
-    await start()
-
-    rowFor('journal').click()
-
-    expect(document.querySelector('#download-archive')?.getAttribute('href')).toBe('/api/files/archive?path=journal')
-  })
-})
-
-describe('revealing the open document', () => {
-  it('reopens the ancestors a deliberate collapse closed', async () => {
-    await start('/doc/journal/entry.md')
-    rowFor('journal').click()
-
-    press('#reveal-document')
-
-    expect([...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].map((row) => row.dataset.path)).toContain(
-      'journal/entry.md',
-    )
-  })
-
-  it('selects the open document again', async () => {
-    await start('/doc/journal/entry.md')
-    rowFor('notes.md').click()
-
-    press('#reveal-document')
-
-    expect(rowFor('journal/entry.md').getAttribute('aria-selected')).toBe('true')
-  })
-})
-
-describe('reporting odd failures', () => {
-  it('describes a rejection that is not an Error', async () => {
-    client.remove.mockRejectedValue('just a string')
-    await start()
-    rowFor('notes.md').click()
-
-    press('#delete-entry')
-
-    await settled()
-
-    expect(statusText()).toContain('unknown error')
-  })
-
-  it('uploads nothing when the picker was dismissed without choosing a file', async () => {
-    await start()
-    const input = document.querySelector<HTMLInputElement>('#upload-input')
-    Object.defineProperty(input, 'files', { value: null })
-
-    input?.dispatchEvent(new Event('change'))
-
-    await settled()
-    given(() => {
-      expect(client.tree).toHaveBeenCalledTimes(2)
-    })
-    expect(client.upload).not.toHaveBeenCalled()
-  })
-})
-
-describe('revealing a document that has moved since the page loaded', () => {
-  it('goes to where it is now, not to where it was when the tree mounted', async () => {
-    await start('/doc/journal/entry.md')
-    openDocumentIn(host).commit('notes.md')
-
-    press('#reveal-document')
-
-    expect(rowFor('notes.md').getAttribute('aria-selected')).toBe('true')
-  })
-
-  it('expands the ancestors of the new path rather than the old one', async () => {
-    await start('/doc/notes.md')
-    openDocumentIn(host).commit('journal/entry.md')
-    rowFor('journal').click()
-
-    press('#reveal-document')
-
-    expect([...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].map((row) => row.dataset.path)).toContain(
-      'journal/entry.md',
-    )
-  })
-})
-
-const CREATED_DOCUMENT: readonly TreeNode[] = [
-  ...SAMPLE,
-  ...parseTree({ tree: [{ name: 'typed-name.md', path: 'typed-name.md', kind: 'document' }] }),
-]
-
-const CREATED_FOLDER: readonly TreeNode[] = [
-  ...SAMPLE,
-  ...parseTree({
-    tree: [
-      {
-        name: 'typed-name.md',
-        path: 'typed-name.md',
-        kind: 'folder',
-        children: [{ name: 'index.md', path: 'typed-name.md/index.md', kind: 'document' }],
-      },
-    ],
-  }),
-]
-
-const CREATED_IN_JOURNAL: readonly TreeNode[] = parseTree({
-  tree: [
-    {
-      name: 'journal',
-      path: 'journal',
-      kind: 'folder',
-      children: [
-        { name: 'entry.md', path: 'journal/entry.md', kind: 'document' },
-        { name: 'typed-name.md', path: 'journal/typed-name.md', kind: 'document' },
-      ],
-    },
-    { name: 'notes.md', path: 'notes.md', kind: 'document' },
-  ],
-})
-
-describe('a new entry opens once it exists', () => {
-  function appearsAs(nodes: readonly TreeNode[]): void {
-    client.tree.mockResolvedValueOnce(SAMPLE).mockResolvedValue(nodes)
-  }
-
-  it('opens a new document, so the user lands in the thing they just made', async () => {
-    appearsAs(CREATED_DOCUMENT)
-    await start()
-
-    press('#new-document')
-    await settled()
-
-    expect(opened).toStrictEqual(['/doc/typed-name.md'])
-  })
-
-  it('selects a new document, so the next entry lands beside it', async () => {
-    appearsAs(CREATED_DOCUMENT)
-    await start()
-
-    press('#new-document')
-    await settled()
-
-    expect(rowFor('typed-name.md').getAttribute('aria-selected')).toBe('true')
-  })
-
-  it('expands a new folder, which is what opening a folder means here', async () => {
-    appearsAs(CREATED_FOLDER)
-    await start()
-
-    press('#new-folder')
-    await settled()
-
-    expect(rowFor('typed-name.md').getAttribute('aria-expanded')).toBe('true')
-  })
-
-  it('selects a new folder, so the next entry lands inside it', async () => {
-    appearsAs(CREATED_FOLDER)
-    await start()
-
-    press('#new-folder')
-    await settled()
-
-    expect(rowFor('typed-name.md').getAttribute('aria-selected')).toBe('true')
-  })
-
-  it('leaves the open document where it is when a folder is created', async () => {
-    appearsAs(CREATED_FOLDER)
-    await start()
-
-    press('#new-folder')
-    await settled()
-
-    expect(opened).toStrictEqual([])
-  })
-
-  it('opens nothing when the dialog is cancelled, because nothing was made', async () => {
-    appearsAs(CREATED_DOCUMENT)
-    dialogs.prompt.mockResolvedValue(false)
-    await start()
-
-    press('#new-document')
-    await settled()
-
-    expect(opened).toStrictEqual([])
-  })
-
-  it('expands a collapsed folder it was created inside, or nothing would show', async () => {
-    appearsAs(CREATED_IN_JOURNAL)
-    await start()
-    rowFor('journal').click()
-    rowFor('journal').click()
-    given(() => {
-      expect(rowFor('journal').getAttribute('aria-expanded')).toBe('false')
-    })
-
-    press('#new-document')
-    await settled()
-
-    expect(rowFor('journal').getAttribute('aria-expanded')).toBe('true')
-  })
-})
-
-describe('a new document is markdown unless it says otherwise', () => {
-  it('appends .md to a name that carries no extension', async () => {
-    typed = 'plain-name'
-    await start()
-
-    press('#new-document')
-    await settled()
-
-    expect(client.createDocument).toHaveBeenCalledWith('plain-name.md')
-  })
-
-  it('leaves a name that already ends in .md alone, so nothing doubles up', async () => {
-    typed = 'already.md'
-    await start()
-
-    press('#new-document')
-    await settled()
-
-    expect(client.createDocument).toHaveBeenCalledWith('already.md')
-  })
-
-  it('takes a doubled extension the user typed on purpose', async () => {
-    typed = 'deliberate.md.md'
-    await start()
-
-    press('#new-document')
-    await settled()
-
-    expect(client.createDocument).toHaveBeenCalledWith('deliberate.md.md')
-  })
-
-  it('leaves a folder name alone, because a folder has no extension', async () => {
-    typed = 'plain-name'
-    await start()
-
-    press('#new-folder')
-    await settled()
-
-    expect(client.createFolder).toHaveBeenCalledWith('plain-name')
-  })
-})
-
-describe('deleting tells the rest of the app', () => {
   it('asks whoever is editing to settle before the entry goes', async () => {
-    await start()
+    bound()
     let goneAlready = true
-    onDeletionPending(host, (): Promise<void> => {
+    onDeletionPending(root, () => {
       goneAlready = client.remove.mock.calls.length > 0
 
       return Promise.resolve()
     })
-    rowFor('notes.md').click()
 
     press('#delete-entry')
     await settled()
@@ -565,48 +332,43 @@ describe('deleting tells the rest of the app', () => {
   })
 
   it('waits for that settling rather than racing it', async () => {
-    await start()
+    bound()
     const saving = Promise.withResolvers<undefined>()
     let goneWhileSaving = true
-    onDeletionPending(host, async () => {
+    onDeletionPending(root, async () => {
       await saving.promise
       goneWhileSaving = client.remove.mock.calls.length > 0
     })
-    rowFor('notes.md').click()
 
     press('#delete-entry')
     saving.resolve(undefined)
     await settled()
     given(() => {
-      expect(client.remove).toHaveBeenCalledWith('notes.md')
+      expect(client.remove).toHaveBeenCalledWith(SELECTED)
     })
 
     expect(goneWhileSaving).toBe(false)
   })
 
-  it('announces the trash entry the delete created', async () => {
-    await start()
+  it('announces the trash entry the delete created, so an open tab can follow it', async () => {
+    bound()
     const heard: TrashedEntry[] = []
-    onEntryTrashed(host, (trashed) => {
+    onEntryTrashed(root, (trashed) => {
       heard.push(trashed)
     })
-    client.remove.mockResolvedValue('abc')
-    rowFor('notes.md').click()
 
     press('#delete-entry')
     await settled()
 
-    expect(heard).toStrictEqual([{ entryPath: 'notes.md', trashId: 'abc' }])
+    expect(heard).toStrictEqual([{ entryPath: SELECTED, trashId: TRASH_ID }])
   })
 
   it('announces nothing when the confirmation is declined', async () => {
-    await start()
+    bound({ confirmed: false })
     const heard: TrashedEntry[] = []
-    onEntryTrashed(host, (trashed) => {
+    onEntryTrashed(root, (trashed) => {
       heard.push(trashed)
     })
-    dialogs.confirm.mockResolvedValue(false)
-    rowFor('notes.md').click()
 
     press('#delete-entry')
     await settled()
@@ -615,34 +377,139 @@ describe('deleting tells the rest of the app', () => {
   })
 })
 
-describe('a trash entry is not a place in the store', () => {
-  const DELETED: TrashNode = {
-    id: 'bbbb',
-    originalPath: 'journal/gone.md',
-    kind: 'document',
-    deletedAt: '2026-01-01T00:00:00.000Z',
+describe('uploading files', () => {
+  function png(name: string): File {
+    return new File([new Uint8Array([1])], name)
   }
 
-  async function withTrashEntrySelected(): Promise<void> {
-    client = fakeClient(SAMPLE, [DELETED])
-    await start()
-    showTrash(host)
+  it('opens the picker when the toolbar button is pressed', () => {
+    bound()
+    const opened: string[] = []
+    uploadInput().click = (): void => {
+      opened.push('picker')
+    }
+
+    press('#upload-file')
+
+    expect(opened).toStrictEqual(['picker'])
+  })
+
+  it('sends each chosen file to the directory the selection points at', async () => {
+    bound()
+
+    sendFiles([png('a.png'), png('b.png')])
     await settled()
-    rowFor(joinPath(TRASH_PATH, DELETED.id)).click()
+
+    expect(client.upload.mock.calls.map(([directory, file]) => `${directory}/${file.name}`)).toStrictEqual([
+      `${FOLDER}/a.png`,
+      `${FOLDER}/b.png`,
+    ])
+  })
+
+  it('reports one refused file without discarding the rest', async () => {
+    bound()
+    client.upload.mockImplementation(async (_directory: string, file: File) => {
+      if (file.name === 'bad.png') throw new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH', [])
+
+      return await Promise.resolve('ok')
+    })
+
+    sendFiles([png('bad.png'), png('good.png')])
+    await settled()
+
+    expect(refusals).toStrictEqual(['bad.png: Content does not match'])
+  })
+
+  it('uploads nothing when the picker was dismissed without choosing a file', async () => {
+    bound()
+
+    sendFiles([])
+    await settled()
+
+    expect(client.upload).not.toHaveBeenCalled()
+  })
+
+  it('uploads nothing when the picker offers no list of files at all', async () => {
+    bound()
+
+    sendFiles(null)
+    await settled()
+
+    expect(client.upload).not.toHaveBeenCalled()
+  })
+
+  it('clears the picker, so choosing the same file twice still uploads it', async () => {
+    bound()
+    const input = uploadInput()
+    Object.defineProperty(input, 'value', { value: 'a.png', writable: true, configurable: true })
+    given(() => {
+      expect(input.value).toBe('a.png')
+    })
+
+    sendFiles([png('a.png')])
+    await settled()
+
+    expect(input.value).toBe('')
+  })
+})
+
+describe('what the toolbar says about the selection', () => {
+  function insertButton(): HTMLButtonElement {
+    const element = root.querySelector<HTMLButtonElement>('#insert-entry')
+    if (element === null) throw new Error('missing the insert button')
+
+    return element
   }
 
-  it('aims a new document at the store root, not the live folder it was deleted from', async () => {
-    await withTrashEntrySelected()
+  it('offers insert for something a document can link to', () => {
+    updateInsertAvailability(root, SELECTED)
+
+    expect(insertButton().disabled).toBe(false)
+  })
+
+  it('withholds insert when there is nothing to link to', () => {
+    updateInsertAvailability(root, null)
+
+    expect(insertButton().disabled).toBe(true)
+  })
+
+  it('leaves a page without the button alone rather than failing', () => {
+    insertButton().remove()
+
+    expect(() => {
+      updateInsertAvailability(root, SELECTED)
+    }).not.toThrow()
+  })
+
+  it('points the archive link at the folder a download would take', () => {
+    updateArchiveLink(root, FOLDER)
+
+    expect(root.querySelector('#download-archive')?.getAttribute('href')).toBe(archiveUrlFor(FOLDER))
+  })
+
+  it('points it at the whole store when that is the target', () => {
+    updateArchiveLink(root, STORE_ROOT)
+
+    expect(root.querySelector('#download-archive')?.getAttribute('href')).toBe(archiveUrlFor(STORE_ROOT))
+  })
+
+  it('leaves a page without the link alone rather than failing', () => {
+    root.querySelector('#download-archive')?.remove()
+
+    expect(() => {
+      updateArchiveLink(root, FOLDER)
+    }).not.toThrow()
+  })
+})
+
+describe('a failure that is not an Error at all', () => {
+  it('is still reported, even though there is no message to pass on', async () => {
+    bound()
+    client.createDocument.mockRejectedValue('a bare string')
 
     press('#new-document')
     await settled()
 
-    expect(client.createDocument).toHaveBeenCalledWith('typed-name.md')
-  })
-
-  it('offers nothing to insert, since the link would point at something deleted', async () => {
-    await withTrashEntrySelected()
-
-    expect(document.querySelector<HTMLButtonElement>('#insert-entry')?.disabled).toBe(true)
+    expect(refusals).toStrictEqual(['unknown error'])
   })
 })

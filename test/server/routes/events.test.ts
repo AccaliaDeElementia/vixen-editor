@@ -9,6 +9,9 @@ import { cast } from '../../cast.ts'
 import { givenAsync } from '../../conditions.ts'
 
 const BEATS_AT_ONCE = 1
+
+const STARTING_TICK = 0
+const ONE_TICK = 1
 const NONE_LEFT = 0
 
 let changes: Changes = createChanges()
@@ -25,6 +28,17 @@ beforeEach(() => {
 
 function beatingQuickly(): Hono {
   changes = createChanges()
+
+  return eventRoutes({ changes, buildId: null, heartbeatMs: BEATS_AT_ONCE })
+}
+
+function beatingQuicklyOnASteppingClock(): Hono {
+  let tick = STARTING_TICK
+  changes = createChanges(() => {
+    tick += ONE_TICK
+
+    return tick
+  })
 
   return eventRoutes({ changes, buildId: null, heartbeatMs: BEATS_AT_ONCE })
 }
@@ -185,7 +199,7 @@ describe('a stream nothing is happening on', () => {
   })
 
   it('moves that mark on when something is announced, so a gap is visible as a different one', async () => {
-    const reader = await listeningTo(beatingQuickly())
+    const reader = await listeningTo(beatingQuicklyOnASteppingClock())
     await nextText(reader)
     const before = await nextText(reader)
     changes.announce({ path: 'a.md', kind: 'written' })

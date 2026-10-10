@@ -978,11 +978,7 @@ function areasImportingEachOther(edges: Readonly<Record<string, readonly string[
 
 const STILL_WITHOUT_A_MIRROR: string[] = []
 
-const MIRROR_DOES_NOT_DRIVE = [
-  'src/client/browser/actions.ts',
-  'src/server/announcing-store.ts',
-  'src/server/storage/move.ts',
-]
+const MIRROR_DOES_NOT_DRIVE = ['src/server/announcing-store.ts', 'src/server/storage/move.ts']
 
 const NO_TEST_AT_ALL = ['src/client/main.ts']
 
