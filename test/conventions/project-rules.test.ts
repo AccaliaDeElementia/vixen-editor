@@ -983,7 +983,6 @@ const STILL_WITHOUT_A_MIRROR = [
   'src/client/browser/trash/trash-panel.ts',
   'src/client/browser/tree/tree-keyboard.ts',
   'src/client/document/document-tab.ts',
-  'src/client/editing/control-bar.ts',
   'src/client/preview/previewing.ts',
   'src/client/workspace/panes/pane-editor.ts',
 ]
