@@ -997,7 +997,6 @@ const MIRROR_DOES_NOT_DRIVE = [
   'src/client/editing/labelling.ts',
   'src/client/editing/spelling.ts',
   'src/server/announcing-store.ts',
-  'src/server/routes/events.ts',
   'src/server/routes/files.ts',
   'src/server/storage/move.ts',
 ]

@@ -3,22 +3,22 @@
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { buildApp } from '../../../src/server/app.ts'
+import { eventRoutes, TestOnly } from '../../../src/server/routes/events.ts'
 import { createChanges, type Changes } from '../../../src/server/changes.ts'
 import { cast } from '../../cast.ts'
-import type { DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { givenAsync } from '../../conditions.ts'
 
 const BEATS_AT_ONCE = 1
 const NONE_LEFT = 0
 
 let changes: Changes = createChanges()
-let app: Hono = buildApp({ store: cast<DocumentStore>({}), changes })
+let app: Hono = eventRoutes({ changes, buildId: null })
 let abort: AbortController = new AbortController()
 let reading: Array<ReadableStreamDefaultReader<Uint8Array>> = []
 
 beforeEach(() => {
   changes = createChanges()
-  app = buildApp({ store: cast<DocumentStore>({}), changes })
+  app = eventRoutes({ changes, buildId: null })
   abort = new AbortController()
   reading = []
 })
@@ -26,11 +26,11 @@ beforeEach(() => {
 function beatingQuickly(): Hono {
   changes = createChanges()
 
-  return buildApp({ store: cast<DocumentStore>({}), changes, heartbeatMs: BEATS_AT_ONCE })
+  return eventRoutes({ changes, buildId: null, heartbeatMs: BEATS_AT_ONCE })
 }
 
 async function listeningTo(built: Hono): Promise<ReadableStreamDefaultReader<Uint8Array>> {
-  const response = await built.request('/api/events', { signal: abort.signal })
+  const response = await built.request('/', { signal: abort.signal })
   const { body } = response
   if (body === null) throw new Error('the stream has no body')
 
@@ -66,9 +66,9 @@ async function nextText(reader: ReadableStreamDefaultReader<Uint8Array>): Promis
   return new TextDecoder().decode(value)
 }
 
-describe('GET /api/events', () => {
+describe('the stream a client listens on', () => {
   it('answers as a stream of events', async () => {
-    const response = await app.request('/api/events', { signal: abort.signal })
+    const response = await app.request('/', { signal: abort.signal })
     const { body } = response
     if (body === null) throw new Error('the stream has no body')
     reading.push(body.getReader())
@@ -127,8 +127,8 @@ describe('GET /api/events', () => {
         }
       },
     })
-    const app = buildApp({ store: cast<DocumentStore>({}), changes: spying })
-    const { body } = await app.request('/api/events', { signal: abort.signal })
+    const app = eventRoutes({ changes: spying, buildId: null })
+    const { body } = await app.request('/', { signal: abort.signal })
     if (body === null) throw new Error('the stream has no body')
 
     await body.cancel()
@@ -139,7 +139,7 @@ describe('GET /api/events', () => {
 
 describe('the build the server is serving', () => {
   it('is announced first, so a page can tell at once whether it is stale', async () => {
-    const serving = buildApp({ store: cast<DocumentStore>({}), changes, buildId: 'built-today' })
+    const serving = eventRoutes({ changes, buildId: 'built-today' })
 
     const reader = await listeningTo(serving)
 
@@ -198,12 +198,85 @@ describe('a stream nothing is happening on', () => {
 
 describe('a stream that is carrying changes', () => {
   it('does not beat as well, because the beat is only there to keep an idle channel open', async () => {
-    const reader = await listeningTo(buildApp({ store: cast<DocumentStore>({}), changes }))
+    const reader = await listeningTo(eventRoutes({ changes, buildId: null }))
     await nextText(reader)
     changes.announce({ path: 'a.md', kind: 'written' })
 
     const after = await nextText(reader)
 
     expect(after).toContain('event: change')
+  })
+})
+
+describe('the heartbeat that keeps an idle stream from being dropped', () => {
+  const { keepingAlive } = TestOnly
+  const AT_ONCE = 0
+  const ONE_BEAT = 1
+  const NO_BEATS = 0
+
+  interface Counted {
+    alive: ReturnType<typeof keepingAlive>
+    beats: () => number
+  }
+
+  function counting(): Counted {
+    let beats = NO_BEATS
+
+    return {
+      alive: keepingAlive(AT_ONCE, () => {
+        beats += ONE_BEAT
+      }),
+      beats: () => beats,
+    }
+  }
+
+  async function afterTheSlotPasses(): Promise<void> {
+    const { promise, resolve } = Promise.withResolvers<undefined>()
+    const reference = keepingAlive(AT_ONCE, () => {
+      resolve(undefined)
+    })
+    reference.reset()
+
+    await promise
+  }
+
+  it('beats once the interval has passed with nothing to say', async () => {
+    const counted = counting()
+    counted.alive.reset()
+
+    await afterTheSlotPasses()
+
+    expect(counted.beats()).toBe(ONE_BEAT)
+  })
+
+  it('beats again after it is armed afresh, so a quiet stream keeps being held open', async () => {
+    const counted = counting()
+    counted.alive.reset()
+    await givenAsync(afterTheSlotPasses())
+    counted.alive.reset()
+
+    await afterTheSlotPasses()
+
+    expect(counted.beats()).toBe(ONE_BEAT + ONE_BEAT)
+  })
+
+  it('replaces the pending beat rather than letting two of them run', async () => {
+    const counted = counting()
+    counted.alive.reset()
+    counted.alive.reset()
+
+    await afterTheSlotPasses()
+
+    expect(counted.beats()).toBe(ONE_BEAT)
+  })
+
+  it('stops beating once the stream is gone, so a closed tab schedules nothing more', async () => {
+    const counted = counting()
+    counted.alive.reset()
+    counted.alive.stop()
+
+    await afterTheSlotPasses()
+
+    expect(counted.beats()).toBe(NO_BEATS)
   })
 })

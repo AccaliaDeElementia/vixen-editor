@@ -81,3 +81,5 @@ export function eventRoutes(options: EventOptions): Hono {
 
   return routes
 }
+
+export const TestOnly = { keepingAlive }
