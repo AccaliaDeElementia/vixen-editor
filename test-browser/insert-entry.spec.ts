@@ -76,6 +76,7 @@ test('Mod-i with no file selected says why it did nothing', async ({ page, reque
   const deleted = page.locator('#trash-list [role="treeitem"]').filter({ hasText: gone })
   await givenAsync(expect(deleted).toBeVisible())
   await deleted.click()
+  await givenAsync(expect(page.locator('[data-part="view-deleted"]')).toBeVisible())
   await deleted.focus()
   await page.keyboard.press('ControlOrMeta+i')
 
