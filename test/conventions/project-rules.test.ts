@@ -979,7 +979,6 @@ function areasImportingEachOther(edges: Readonly<Record<string, readonly string[
 const STILL_WITHOUT_A_MIRROR = [
   'src/client/app/wiring.ts',
   'src/client/document/document-tab.ts',
-  'src/client/preview/previewing.ts',
   'src/client/workspace/panes/pane-editor.ts',
 ]
 
