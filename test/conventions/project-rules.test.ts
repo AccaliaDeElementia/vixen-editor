@@ -976,7 +976,7 @@ function areasImportingEachOther(edges: Readonly<Record<string, readonly string[
   return [...pairs].sort()
 }
 
-const STILL_WITHOUT_A_MIRROR = ['src/client/document/document-tab.ts']
+const STILL_WITHOUT_A_MIRROR: string[] = []
 
 const MIRROR_DOES_NOT_DRIVE = [
   'src/client/browser/actions.ts',

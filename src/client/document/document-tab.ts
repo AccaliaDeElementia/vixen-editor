@@ -81,7 +81,7 @@ function caretIn(state: EditorState): number {
   return state.selection.main.head
 }
 
-export function startsALine(state: EditorState, position: number | null): boolean {
+function startsALine(state: EditorState, position: number | null): boolean {
   return position === null || position === state.doc.lineAt(position).from
 }
 
@@ -230,8 +230,8 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   }
 
   function load(content: string): void {
-    const caret = Math.min(caretPosition, content.length)
-    view.setState(stateFor(content, caret))
+    caretPosition = Math.min(caretPosition, content.length)
+    view.setState(stateFor(content, caretPosition))
     autosave.reset(content)
     statusBar.showWordCount(content)
     options.onReloaded(content)
@@ -371,3 +371,5 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     },
   }
 }
+
+export const TestOnly = { startsALine }

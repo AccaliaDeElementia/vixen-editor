@@ -32,7 +32,6 @@ import { createSurfaces } from './surfaces.ts'
 
 import type { EditorView } from '@codemirror/view'
 
-import { startsALine } from '../document/document-tab.ts'
 import {
   createPaneWorkspace,
   MissingMountError,
@@ -445,4 +444,4 @@ export async function bootstrapOrReport(options: BootstrapOptions = {}): Promise
   return await bootstrap(options).catch(() => null)
 }
 
-export const TestOnly = { MissingMountError, bootstrap, startsALine }
+export const TestOnly = { MissingMountError, bootstrap }

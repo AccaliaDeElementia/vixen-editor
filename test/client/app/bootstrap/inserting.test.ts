@@ -4,16 +4,12 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../../../cast.ts'
 import { joinPath } from '../../../../src/shared/store-path.ts'
-import { EditorState } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
 import type { FilesClient } from '../../../../src/client/browser/files-client.ts'
 
-import { TestOnly } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 
 import { openEditor, page, recorded, sessionRecording, type Recorded } from '../../editor-fixtures.ts'
-
-const { startsALine } = TestOnly
 
 async function afterTheBufferChanges(view: EditorView): Promise<void> {
   const changed: PromiseWithResolvers<void> = Promise.withResolvers()
@@ -170,27 +166,5 @@ describe('dropping files from outside the browser', () => {
     await afterTheBufferChanges(view)
 
     expect(view.state.doc.toString()).toBe('![a.png](a.png)\n![b.png](b.png)')
-  })
-})
-
-describe('whether a drop position starts a line', () => {
-  function stateWith(doc: string): EditorState {
-    return EditorState.create({ doc })
-  }
-
-  it('says yes at the very beginning', () => {
-    expect(startsALine(stateWith('one\ntwo'), 0)).toBe(true)
-  })
-
-  it('says yes at the start of a later line', () => {
-    expect(startsALine(stateWith('one\ntwo'), 4)).toBe(true)
-  })
-
-  it('says no in the middle of a line, which is where the break is needed', () => {
-    expect(startsALine(stateWith('one\ntwo'), 2)).toBe(false)
-  })
-
-  it('says yes when there is no position, because the caret is where it will land', () => {
-    expect(startsALine(stateWith('one'), null)).toBe(true)
   })
 })
