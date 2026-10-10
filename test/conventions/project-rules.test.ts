@@ -995,9 +995,6 @@ const STILL_WITHOUT_A_MIRROR = [
   'src/client/workspace/panes/aside.ts',
   'src/client/workspace/panes/pane-editor.ts',
   'src/client/workspace/tabs/closing-tabs.ts',
-  'src/server/routes/conditional.ts',
-  'src/server/storage/absence.ts',
-  'src/server/storage/document-ids.ts',
 ]
 
 const MIRROR_DOES_NOT_DRIVE = [
