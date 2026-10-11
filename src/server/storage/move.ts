@@ -11,7 +11,7 @@ import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './pri
 import { mediaTypeOf } from './primitives/media-type.ts'
 import { EntryExistsError, InvalidMoveError } from './primitives/store-errors.ts'
 import { classifyFile } from '../../shared/documents.ts'
-import { entryKindOf } from './trash.ts'
+import { entryKindOf } from './trash/trash.ts'
 import type { EntryKind } from '../../shared/documents.ts'
 
 const logMove = createLogger('storage/move')

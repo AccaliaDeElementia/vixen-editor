@@ -35,9 +35,9 @@ import {
   EmptyContentError,
 } from './primitives/store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
-import { emptyTrash, moveToTrash, purgeFromTrash, readTrash, type TrashEntry } from './trash.ts'
-import { readTrashEntry, type TrashEntryNode } from './trash-entries.ts'
-import { restoreSelection, type RestoreOutcome, type RestoreSelection } from './trash-restore.ts'
+import { emptyTrash, moveToTrash, purgeFromTrash, readTrash, type TrashEntry } from './trash/trash.ts'
+import { readTrashEntry, type TrashEntryNode } from './trash/trash-entries.ts'
+import { restoreSelection, type RestoreOutcome, type RestoreSelection } from './restore.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 import { isBlank } from '../../shared/content.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'

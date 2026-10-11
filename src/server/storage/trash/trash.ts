@@ -4,15 +4,15 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { createLogger } from '../platform/logging.ts'
+import { createLogger } from '../../platform/logging.ts'
 
-import { createFileAtomic } from './primitives/atomic-write.ts'
-import { nullWhenAbsent } from './primitives/absence.ts'
-import { InvalidPathError, resolveFolderPath } from './primitives/safe-path.ts'
-import { DocumentNotFoundError } from './primitives/store-errors.ts'
-import { classifyFile } from '../../shared/documents.ts'
-import { isRecord } from '../../shared/guards.ts'
-import type { EntryKind } from '../../shared/documents.ts'
+import { createFileAtomic } from '../primitives/atomic-write.ts'
+import { nullWhenAbsent } from '../primitives/absence.ts'
+import { InvalidPathError, resolveFolderPath } from '../primitives/safe-path.ts'
+import { DocumentNotFoundError } from '../primitives/store-errors.ts'
+import { classifyFile } from '../../../shared/documents.ts'
+import { isRecord } from '../../../shared/guards.ts'
+import type { EntryKind } from '../../../shared/documents.ts'
 
 const logTrash = createLogger('storage/trash')
 const logDamaged = createLogger('storage/trash', 'damagedEntry')

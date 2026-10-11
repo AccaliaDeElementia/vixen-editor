@@ -7,7 +7,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
-import { restoreSelection } from '../../../src/server/storage/trash-restore.ts'
+import { restoreSelection } from '../../../src/server/storage/restore.ts'
 import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import { givenAsync } from '../../conditions.ts'

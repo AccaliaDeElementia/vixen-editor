@@ -4,7 +4,7 @@ import type { Changes } from './platform/changes.ts'
 import type { DocumentStore } from './storage/fs-store.ts'
 import type { MoveRequest } from './storage/move.ts'
 import type { RelinkOutcome } from './storage/relink-store.ts'
-import type { RestoreOutcome, RestoreSelection } from './storage/trash-restore.ts'
+import type { RestoreOutcome, RestoreSelection } from './storage/restore.ts'
 import { STORE_ROOT } from '../shared/store-path.ts'
 
 export function announcingStore(store: DocumentStore, changes: Changes): DocumentStore {

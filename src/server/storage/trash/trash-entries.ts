@@ -4,15 +4,15 @@ import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { nullWhenAbsent } from './primitives/absence.ts'
-import { isAtOrInside, realpathOrNull } from './primitives/containment.ts'
-import { compareNamesIn } from './primitives/name-order.ts'
-import { isAllowedName } from './primitives/safe-path.ts'
+import { nullWhenAbsent } from '../primitives/absence.ts'
+import { isAtOrInside, realpathOrNull } from '../primitives/containment.ts'
+import { compareNamesIn } from '../primitives/name-order.ts'
+import { isAllowedName } from '../primitives/safe-path.ts'
 import { readTrashMeta, trashPayloadPath } from './trash.ts'
-import { basenameOf } from '../../shared/link-paths.ts'
-import { classifyFile, type EntryKind, type FileKind } from '../../shared/documents.ts'
-import { serially } from '../../shared/serially.ts'
-import { joinPath, STORE_ROOT } from '../../shared/store-path.ts'
+import { basenameOf } from '../../../shared/link-paths.ts'
+import { classifyFile, type EntryKind, type FileKind } from '../../../shared/documents.ts'
+import { serially } from '../../../shared/serially.ts'
+import { joinPath, STORE_ROOT } from '../../../shared/store-path.ts'
 
 interface Placement {
   name: string

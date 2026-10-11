@@ -4,14 +4,14 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { given, givenAsync } from '../../conditions.ts'
+import { given, givenAsync } from '../../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
-import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
-import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
-import { TestOnly } from '../../../src/server/storage/trash.ts'
-import { isRecord } from '../../../src/shared/guards.ts'
+import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
+import { InvalidPathError } from '../../../../src/server/storage/primitives/safe-path.ts'
+import { BlockedRestoreError, DocumentNotFoundError } from '../../../../src/server/storage/primitives/store-errors.ts'
+import { TestOnly } from '../../../../src/server/storage/trash/trash.ts'
+import { isRecord } from '../../../../src/shared/guards.ts'
 
 const { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
 
