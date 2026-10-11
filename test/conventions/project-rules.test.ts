@@ -976,10 +976,6 @@ function areasImportingEachOther(edges: Readonly<Record<string, readonly string[
   return [...pairs].sort()
 }
 
-const STILL_WITHOUT_A_MIRROR: string[] = []
-
-const MIRROR_DOES_NOT_DRIVE: string[] = []
-
 const NO_TEST_AT_ALL = ['src/client/main.ts']
 
 const DYNAMIC_IMPORT = /\bimport\s*\(\s*'(?<from>[^']*)'/gv
@@ -1019,12 +1015,18 @@ function whoseMirrorNeverDrivesThem(): string[] {
 }
 
 describe('every module under src is driven by the test named for it', () => {
-  it('has a test named for it, unless it is still on the list of those that do not', () => {
-    expect(withoutAMirror()).toStrictEqual([...STILL_WITHOUT_A_MIRROR, ...NO_TEST_AT_ALL].sort())
+  it('has a test named for it, bar the browser entry point the coverage gate also excludes', () => {
+    expect(withoutAMirror()).toStrictEqual(NO_TEST_AT_ALL)
   })
 
-  it('is imported by that test, unless it is still on the list of those that are not', () => {
-    expect(whoseMirrorNeverDrivesThem()).toStrictEqual([...MIRROR_DOES_NOT_DRIVE].sort())
+  it('is imported by that test, so the file named for it is the file that drives it', () => {
+    expect(whoseMirrorNeverDrivesThem()).toStrictEqual([])
+  })
+
+  it('finds the mirror of a module, so neither scan above is looking at nothing', () => {
+    expect(mirrorsOf('src/server/storage/etag.ts').map((mirror) => mirror.relativePath)).toStrictEqual([
+      'test/server/storage/etag.test.ts',
+    ])
   })
 
   it('counts a dynamic import as driving a module, which is how the server entry point is tested', () => {

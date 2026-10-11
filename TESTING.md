@@ -137,12 +137,17 @@ how a test file could carry the right name while exercising something else.
 So: every module under `src/` has a test named for it, and that test imports it.
 A dynamic `import()` counts, which is how the server entry point is driven.
 
-**The two lists of modules that do not yet satisfy this are debt, not design.**
-They may shrink; nothing may be added to either. A module on a list is not
-untested — the coverage gate would not allow that — it is tested somewhere a
-reader has to search for, which is the thing the mirror exists to prevent.
-`src/client/main.ts` is the one module with no test at all, and is also the one
-coverage exclusion.
+**There is no exception list to consult.** `src/client/main.ts` is the one
+module with no test at all, and it is also the one coverage exclusion. The two
+lists that once held the modules not yet satisfying this were debt rather than
+design, and they are gone; a module that fails either check now fails the gate.
+
+**Working through them was worth more than the rule.** Closing the lists found
+a crash the suite could not see — a stale caret surviving a reload, which made
+the insert chord throw once a document changed on disk — an unreachable `null`
+branch, a guard that only the browser suite exercised, and a dozen claims filed
+under a module that merely reached the one they were about. None of that was
+visible while a test could satisfy the mirror by name alone.
 
 **Where a direct call cannot be a valid test**, because the behaviour only
 exists across a library boundary, the closest call point that produces a valid
