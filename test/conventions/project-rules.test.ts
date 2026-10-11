@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { TestOnly as safePathTestOnly } from '../../src/server/storage/safe-path.ts'
+import { TestOnly as safePathTestOnly } from '../../src/server/storage/primitives/safe-path.ts'
 import { isRecord } from '../../src/shared/guards.ts'
 import vitestConfig from '../../vitest.config.ts'
 
@@ -39,7 +39,7 @@ const POLLED_PAINT_WAIT = /\bwaitForFunction\s*\(/v
 const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+(?<name>\w+)/gmv
 const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}/gmv
 
-const ATOMIC_WRITE = 'src/server/storage/atomic-write.ts'
+const ATOMIC_WRITE = 'src/server/storage/primitives/atomic-write.ts'
 const DIRECT_WRITE = /\bwriteFile\(/v
 
 const SUPPRESSION = /eslint-disable|v8 ignore/v
@@ -877,6 +877,7 @@ const SOURCE_AREAS = [
   'src/server/platform',
   'src/server/routes',
   'src/server/storage',
+  'src/server/storage/primitives',
   'src/shared',
 ]
 
@@ -927,11 +928,12 @@ const AREA_EDGES: Readonly<Record<string, readonly string[]>> = {
     'src/client/platform',
     'src/client/platform/announce',
   ],
-  'src/server': ['src/server/platform', 'src/server/routes', 'src/server/storage'],
+  'src/server': ['src/server/platform', 'src/server/routes', 'src/server/storage', 'src/server/storage/primitives'],
   'src/server/markdown': [],
   'src/server/platform': [],
-  'src/server/routes': ['src/server/platform', 'src/server/storage'],
-  'src/server/storage': ['src/server/markdown', 'src/server/platform'],
+  'src/server/routes': ['src/server/platform', 'src/server/storage/primitives'],
+  'src/server/storage': ['src/server/markdown', 'src/server/platform', 'src/server/storage/primitives'],
+  'src/server/storage/primitives': ['src/server/platform'],
   'src/shared': [],
 }
 
@@ -1026,8 +1028,8 @@ describe('every module under src is driven by the test named for it', () => {
   })
 
   it('finds the mirror of a module, so neither scan above is looking at nothing', () => {
-    expect(mirrorsOf('src/server/storage/etag.ts').map((mirror) => mirror.relativePath)).toStrictEqual([
-      'test/server/storage/etag.test.ts',
+    expect(mirrorsOf('src/server/storage/primitives/etag.ts').map((mirror) => mirror.relativePath)).toStrictEqual([
+      'test/server/storage/primitives/etag.test.ts',
     ])
   })
 
@@ -1059,6 +1061,8 @@ describe('the areas under src import along declared edges', () => {
 })
 
 const GUIDES = ['CLAUDE.md', 'DESIGN.md', 'TESTING.md', 'README.md']
+
+const SOME_PATHS_ARE_NAMED = 10
 const ANCHOR_PREFIXES: Readonly<Record<string, string>> = {
   'CLAUDE.md': 'claude',
   'DESIGN.md': 'design',
@@ -1067,6 +1071,7 @@ const ANCHOR_PREFIXES: Readonly<Record<string, string>> = {
 }
 const DECLARED_ANCHOR = /<a id="(?<id>[a-z]+-[0-9a-f]{6})"><\/a>/gv
 const ANCHOR_LINK = /\]\((?<file>[A-Z]+\.md)?#(?<id>[a-z]+-[0-9a-f]{6})\)/gv
+const QUOTED_MODULE_PATH = /`(?<path>(?:src|test)\/[^`\s]*\.ts)`/gv
 
 interface Anchor {
   id: string
@@ -1093,6 +1098,27 @@ function anchorLinks(): string[] {
     ),
   )
 }
+
+function modulePathsNamedInGuides(): Array<{ document: string; path: string }> {
+  return GUIDES.flatMap((document) =>
+    [...guideText(document).matchAll(QUOTED_MODULE_PATH)].map((match) => ({
+      document,
+      path: match.groups?.path ?? '',
+    })),
+  )
+}
+
+describe('the guides name modules that are still there', () => {
+  it('names only paths the tree actually holds, so a move cannot leave a document lying', () => {
+    const known = new Set(sources.map((source) => source.relativePath))
+
+    expect(modulePathsNamedInGuides().filter(({ path: named }) => !known.has(named))).toStrictEqual([])
+  })
+
+  it('finds the paths at all, so that scan is not passing on an empty read', () => {
+    expect(modulePathsNamedInGuides().length).toBeGreaterThan(SOME_PATHS_ARE_NAMED)
+  })
+})
 
 describe('the guides link to each other by anchors that cannot rot', () => {
   it('leaves no link pointing at an anchor no document declares', () => {

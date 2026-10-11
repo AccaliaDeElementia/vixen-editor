@@ -272,7 +272,7 @@ and was **correct only while no timer was scheduled after its own** — green or
 red purely by which `setTimeout` was queued first, with nothing announcing the
 difference. So `test/conventions/` also fails on a hand-rolled `setTimeout` or
 `setInterval` anywhere in `test/`. Two files are exempt, each because it exists
-to exercise the thing the rule forbids: `test/rejections.ts`, where the thing
+to exercise the thing the rule forbids: `test/client/rejections.ts`, where the thing
 awaited is the runtime's own unhandled-rejection reporting, which happens at a
 macrotask boundary by specification and has no earlier observable moment; and
 `test/timers.test.ts`, which has to schedule a timer to prove
@@ -364,7 +364,7 @@ signal.
 on an element that is long-lived _in production_ but rebuilt per test is
 invisible to this guard, because the test's copy is discarded either way.
 Registration being bounded across repeated use of such an element is a claim a
-test has to make directly, and `test/client/files/dialogs.test.ts` makes it for the
+test has to make directly, and `test/client/platform/dialogs.test.ts` makes it for the
 file dialog — the only element here with that shape.
 
 A `{ once: true }` registration counts as standing until it fires, since one

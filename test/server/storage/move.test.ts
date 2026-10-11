@@ -9,8 +9,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { assertKindSurvives, moveEntry } from '../../../src/server/storage/move.ts'
-import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
-import { DocumentNotFoundError, EntryExistsError, InvalidMoveError } from '../../../src/server/storage/store-errors.ts'
+import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
+import {
+  DocumentNotFoundError,
+  EntryExistsError,
+  InvalidMoveError,
+} from '../../../src/server/storage/primitives/store-errors.ts'
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])

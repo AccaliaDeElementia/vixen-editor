@@ -7,7 +7,7 @@ import path from 'node:path'
 import { givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../../src/server/storage/atomic-write.ts'
+import { TestOnly } from '../../../src/server/storage/primitives/atomic-write.ts'
 import { sweepTemporaries } from '../../../src/server/storage/sweep.ts'
 
 const { temporaryBeside } = TestOnly

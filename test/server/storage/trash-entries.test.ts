@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { readTrashEntry, type TrashEntryNode } from '../../../src/server/storage/trash-entries.ts'
-import { DocumentNotFoundError } from '../../../src/server/storage/store-errors.ts'
+import { DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
 import { given, givenAsync } from '../../conditions.ts'
 
 let root = ''

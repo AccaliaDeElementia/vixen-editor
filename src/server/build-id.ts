@@ -4,7 +4,7 @@ import { createHash, type Hash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { nullWhenAbsent } from './storage/absence.ts'
+import { nullWhenAbsent } from './storage/primitives/absence.ts'
 
 const ASSETS = 'assets'
 const CLIENT_BUNDLE = 'assets/main.js'

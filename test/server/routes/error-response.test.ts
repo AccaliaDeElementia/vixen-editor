@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { applyDebugFilter } from '../../../src/server/platform/logging.ts'
 import { LockTimeoutError } from '../../../src/server/platform/lock.ts'
-import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
+import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import {
   ArchiveTooLargeError,
   BlockedRestoreError,
@@ -15,7 +15,7 @@ import {
   EmptyContentError,
   EntryExistsError,
   InvalidMoveError,
-} from '../../../src/server/storage/store-errors.ts'
+} from '../../../src/server/storage/primitives/store-errors.ts'
 import {
   invalidBody,
   payloadTooLarge,

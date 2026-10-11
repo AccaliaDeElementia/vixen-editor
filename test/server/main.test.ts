@@ -19,7 +19,7 @@ import {
 } from '../../src/server/platform/config.ts'
 import * as lockModule from '../../src/server/platform/lock.ts'
 import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/platform/lock.ts'
-import { TestOnly as atomicWriteTestOnly } from '../../src/server/storage/atomic-write.ts'
+import { TestOnly as atomicWriteTestOnly } from '../../src/server/storage/primitives/atomic-write.ts'
 import { applyDebugFilter, createLogger } from '../../src/server/platform/logging.ts'
 import { startServer, type Runtime, TestOnly as mainTestOnly } from '../../src/server/main.ts'
 

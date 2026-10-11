@@ -4,7 +4,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
-import { computeEtag } from '../storage/etag.ts'
+import { computeEtag } from '../storage/primitives/etag.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 
 import { matchesAny } from './conditional.ts'

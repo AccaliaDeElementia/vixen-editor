@@ -6,14 +6,14 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { given, givenAsync } from '../../conditions.ts'
+import { given, givenAsync } from '../../../conditions.ts'
 import {
   createFileAtomic,
   isTemporaryName,
   replaceFileAtomic,
   TestOnly,
-} from '../../../src/server/storage/atomic-write.ts'
-import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
+} from '../../../../src/server/storage/primitives/atomic-write.ts'
+import { isAllowedName } from '../../../../src/server/storage/primitives/safe-path.ts'
 
 const { temporaryBeside } = TestOnly
 

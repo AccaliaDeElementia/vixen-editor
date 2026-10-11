@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { contentMatchesExtension, detectedFormat } from '../../../src/server/storage/signatures.ts'
+import { contentMatchesExtension, detectedFormat } from '../../../../src/server/storage/primitives/signatures.ts'
 
 function bytes(...values: number[]): Uint8Array {
   return Uint8Array.from(values)

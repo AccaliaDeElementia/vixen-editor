@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { compareNames, compareNamesIn } from '../../../src/server/storage/name-order.ts'
+import { compareNames, compareNamesIn } from '../../../../src/server/storage/primitives/name-order.ts'
 
 const SAME = 0
 

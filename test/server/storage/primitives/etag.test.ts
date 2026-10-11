@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { computeEtag } from '../../../src/server/storage/etag.ts'
+import { computeEtag } from '../../../../src/server/storage/primitives/etag.ts'
 
 describe('computeEtag', () => {
   it('is stable for the same content', () => {

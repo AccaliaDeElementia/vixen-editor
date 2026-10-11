@@ -6,7 +6,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { toError } from '../platform/node-errors.ts'
 import { createLogger } from '../platform/logging.ts'
 import { LockTimeoutError } from '../platform/lock.ts'
-import { InvalidPathError } from '../storage/safe-path.ts'
+import { InvalidPathError } from '../storage/primitives/safe-path.ts'
 import {
   ArchiveTooLargeError,
   ConcurrentModificationError,
@@ -16,7 +16,7 @@ import {
   BlockedRestoreError,
   EntryExistsError,
   InvalidMoveError,
-} from '../storage/store-errors.ts'
+} from '../storage/primitives/store-errors.ts'
 
 const HTTP_BAD_REQUEST = 400
 const HTTP_NOT_FOUND = 404

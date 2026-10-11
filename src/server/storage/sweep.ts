@@ -6,10 +6,10 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createLogger } from '../platform/logging.ts'
-import { compareNames } from './name-order.ts'
+import { compareNames } from './primitives/name-order.ts'
 
-import { isTemporaryName } from './atomic-write.ts'
-import { nullWhenAbsent } from './absence.ts'
+import { isTemporaryName } from './primitives/atomic-write.ts'
+import { nullWhenAbsent } from './primitives/absence.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
 

@@ -509,7 +509,7 @@ that**: some are only enforceable by review.
 - **No `console.*` in shipped code**, and nothing writes to `stdout` or
   `stderr` directly. Diagnostics go through `createLogger`.
   → [DESIGN](DESIGN.md#design-72c03f)
-- **Every key the app binds is named in `src/client/help.ts`.** A shortcut
+- **Every key the app binds is named in `src/client/platform/help.ts`.** A shortcut
   missing from the cheatsheet cannot be bound at all.
   → [DESIGN](DESIGN.md#design-e6bdab)
 - **Do not subset the icon font**, and **do not rename the `cm-vixen-*`

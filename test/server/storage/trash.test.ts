@@ -8,8 +8,8 @@ import { given, givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
-import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
-import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/storage/store-errors.ts'
+import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
+import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
 import { TestOnly } from '../../../src/server/storage/trash.ts'
 import { isRecord } from '../../../src/shared/guards.ts'
 

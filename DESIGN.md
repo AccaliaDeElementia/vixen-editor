@@ -42,7 +42,7 @@ field names. That costs nothing while `serve` is given no HTTP/2 options.
 ## UI state
 
 Explorer width and open/closed state persist in **`localStorage`** under
-`vixen-editor:explorer`, via `src/client/preferences.ts`.
+`vixen-editor:explorer`, via `src/client/platform/preferences.ts`.
 
 `localStorage`, not `sessionStorage`: sessionStorage is cleared when the tab
 closes, so a width would survive a reload but not a browser relaunch — losing
@@ -73,7 +73,7 @@ the workspace slides into the collapsed `0`-width track and the editor vanishes.
 
 ## Keyboard
 
-**Every key the app binds is named in `src/client/help.ts`.** `KEYS` holds the
+**Every key the app binds is named in `src/client/platform/help.ts`.** `KEYS` holds the
 literals and the help entries beside it carry the same values, so a shortcut
 that is missing from the cheatsheet cannot be bound at all — which is the point,
 because a help list that is quietly incomplete is read as authoritative.
@@ -81,7 +81,7 @@ because a help list that is quietly incomplete is read as authoritative.
 Two tests hold it, and they check different halves.
 `test/conventions/keyboard-registry.test.ts` fails on a key literal, or on a
 constant that did not come from `help.ts`, at any binding site under
-`src/client/`. `test/client/help.test.ts` checks that `KEYS` and the help
+`src/client/`. `test/client/platform/help.test.ts` checks that `KEYS` and the help
 entries name the same set **in both directions**, so neither an unlisted
 binding nor an invented entry survives.
 
@@ -136,7 +136,7 @@ consequence is worth stating because it surprises: open A, click B, press Back,
 and you return to **A in the same tab set**, rather than B closing.
 
 The two spellings are deliberate — the URL says `preview` where the code says
-`markup` — and `src/client/doc-path.ts` holds the single table both directions
+`markup` — and `src/client/platform/doc-path.ts` holds the single table both directions
 read, so a reader-facing word cannot drift from the internal one.
 
 <a id="design-97a8a7"></a>
@@ -145,7 +145,7 @@ read, so a reader-facing word cannot drift from the internal one.
 
 The file tree and the editor are mounted independently by `client/main.ts` and
 never see each other, so a move reaches the editor as an event on the shared
-root — `DOCUMENT_MOVED` in `src/client/document-moved.ts`, which owns the
+root — `DOCUMENT_MOVED` in `src/client/platform/announce/document-moved.ts`, which owns the
 name and the shape so the two sides cannot disagree about either.
 
 On hearing one the editor re-reads its own identity through `pathAfterMove` —
@@ -175,7 +175,7 @@ refuses is the fault described below.
 
 ### What a name may be
 
-`isAllowedName` in `src/server/storage/safe-path.ts` is the **single** answer
+`isAllowedName` in `src/server/storage/primitives/safe-path.ts` is the **single** answer
 to "may this name exist here", used both by the path validator and by the
 walks that decide what to list. Two answers is what let a file be listed and
 then refused when opened — a real defect, hit by a document with a space in
@@ -274,7 +274,7 @@ them apart.
 ### Every write lands whole
 
 Nothing in `src/` calls `writeFile` on a store path. Writes go through
-`replaceFileAtomic` or `createFileAtomic` in `src/server/storage/atomic-write.ts`,
+`replaceFileAtomic` or `createFileAtomic` in `src/server/storage/primitives/atomic-write.ts`,
 which write a sibling temporary, `fsync` it, then put it in place with
 `rename` (replace) or `link` (create only, `EEXIST` when the name is taken).
 `link` is not interchangeable with `rename` here: `rename` would silently
@@ -599,7 +599,7 @@ the change is visible. Prefer _reporting_ the non-portable names in the UI so
 the user renames them in the store, where the fix is permanent.
 
 **Creating a name Windows cannot take is prevented at the source** — see the
-create-time rules in `src/server/storage/safe-path.ts`. That stops the problem
+create-time rules in `src/server/storage/primitives/safe-path.ts`. That stops the problem
 growing without touching names that already exist.
 
 <a id="design-72c03f"></a>
@@ -610,7 +610,7 @@ growing without touching names that already exist.
 code — `no-console` is on, and there are no suppressions for it.
 
 Server-side errors and diagnostics go through the [`debug`](https://www.npmjs.com/package/debug)
-package, via `createLogger` in `src/server/logging.ts`:
+package, via `createLogger` in `src/server/platform/logging.ts`:
 
 ```ts
 import { createLogger } from '../logging.ts'
@@ -906,13 +906,13 @@ decision anyone made on purpose.
   `public/assets/main.css` in `scripts/build.ts`. The theme is Bootswatch
   Darkly; `_tokens.scss` keeps the upstream variable names so it can be diffed
   against the original. The `cm-vixen-*` decoration class names are produced by
-  `src/client/editor/decorations.ts` and asserted by tests — restyle them, do
+  `src/client/editing/decorations.ts` and asserted by tests — restyle them, do
   not rename them.
 - **Syntax colours are not CSS.** CodeMirror's `basicSetup` bundles
   `defaultHighlightStyle`, which is built for light backgrounds and renders
   markdown markers like `#` near-black — invisible on a dark surface, and not
   reliably overridable from a stylesheet because the generated class names
-  (`ͼ5`) are unstable. `src/client/editor/highlight.ts` supplies a
+  (`ͼ5`) are unstable. `src/client/editing/highlight.ts` supplies a
   `HighlightStyle` on the Darkly ramp instead. Theme changes touching token
   colours belong there, not in SCSS.
 - **Code blocks are highlighted from grammars already in the bundle**, with the
@@ -922,7 +922,7 @@ decision anyone made on purpose.
   `shell`, `sql`, `toml`, `tsx`, `typescript`, `yaml` — one bundle rather than
   lazy loading, because the server serves a single file and code splitting would
   change that. An unknown info string renders as plain text, never as an error.
-  `src/client/highlight-code.ts` owns the set, and `test/conventions/` fails the
+  `src/client/preview/highlight-code.ts` owns the set, and `test/conventions/` fails the
   gate when it and this list disagree.
 - **The server is bundled, not just the client.** esbuild inlines every
   dependency so the runtime Docker stage ships `dist/`, `public/` and

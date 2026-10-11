@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { seedDocument, seedFolderIndex } from '../../../src/server/storage/seed.ts'
+import { seedDocument, seedFolderIndex } from '../../../../src/server/storage/primitives/seed.ts'
 
 describe('seedDocument', () => {
   it.each([

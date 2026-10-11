@@ -6,14 +6,14 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createLogger } from '../platform/logging.ts'
-import { compareNamesIn } from './name-order.ts'
+import { compareNamesIn } from './primitives/name-order.ts'
 
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
-import { createFileAtomic, replaceFileAtomic } from './atomic-write.ts'
+import { createFileAtomic, replaceFileAtomic } from './primitives/atomic-write.ts'
 import { documentIdsUnder } from './document-ids.ts'
 import { UPLOAD_EXTENSIONS } from '../../shared/documents.ts'
-import { isAtOrInside, realpathOrNull } from './containment.ts'
-import { computeEtag } from './etag.ts'
+import { isAtOrInside, realpathOrNull } from './primitives/containment.ts'
+import { computeEtag } from './primitives/etag.ts'
 import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from '../platform/lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
 import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
@@ -24,8 +24,8 @@ import {
   resolveDocumentPath,
   resolveEntryPath,
   resolveFolderPath,
-} from './safe-path.ts'
-import { contentMatchesExtension, detectedFormat } from './signatures.ts'
+} from './primitives/safe-path.ts'
+import { contentMatchesExtension, detectedFormat } from './primitives/signatures.ts'
 import {
   ABSENT_ON_READ_CODES,
   asDocumentError,
@@ -33,7 +33,7 @@ import {
   ConcurrentModificationError,
   ContentMismatchError,
   EmptyContentError,
-} from './store-errors.ts'
+} from './primitives/store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
 import { emptyTrash, moveToTrash, purgeFromTrash, readTrash, type TrashEntry } from './trash.ts'
 import { readTrashEntry, type TrashEntryNode } from './trash-entries.ts'

@@ -10,9 +10,9 @@ import { z } from 'zod'
 
 import type { Limits } from '../platform/config.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
-import { mediaTypeOf } from '../storage/media-type.ts'
-import { joinEntryPath } from '../storage/safe-path.ts'
-import { seedDocument, seedFolderIndex } from '../storage/seed.ts'
+import { mediaTypeOf } from '../storage/primitives/media-type.ts'
+import { joinEntryPath } from '../storage/primitives/safe-path.ts'
+import { seedDocument, seedFolderIndex } from '../storage/primitives/seed.ts'
 
 import { ACCEPT_LANGUAGE, preferredLocale, VARIES_BY_LANGUAGE } from './accept-language.ts'
 import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'

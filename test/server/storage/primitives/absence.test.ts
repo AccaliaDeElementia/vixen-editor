@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { nullWhenAbsent } from '../../../src/server/storage/absence.ts'
+import { nullWhenAbsent } from '../../../../src/server/storage/primitives/absence.ts'
 
 const RESULT = 'what the operation returned'
 

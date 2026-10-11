@@ -10,9 +10,9 @@ import { ZipFile } from 'yazl'
 
 import { createLogger } from '../platform/logging.ts'
 
-import { nullWhenAbsent } from './absence.ts'
-import { resolveFolderPath } from './safe-path.ts'
-import { ArchiveTooLargeError, DocumentNotFoundError } from './store-errors.ts'
+import { nullWhenAbsent } from './primitives/absence.ts'
+import { resolveFolderPath } from './primitives/safe-path.ts'
+import { ArchiveTooLargeError, DocumentNotFoundError } from './primitives/store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
 
 const logArchive = createLogger('storage/archive')

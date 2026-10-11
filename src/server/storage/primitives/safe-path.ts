@@ -2,9 +2,9 @@
 
 import path from 'node:path'
 
-import { DOCUMENT_EXTENSIONS, extensionOf } from '../../shared/documents.ts'
+import { DOCUMENT_EXTENSIONS, extensionOf } from '../../../shared/documents.ts'
 
-import { joinPath } from '../../shared/store-path.ts'
+import { joinPath } from '../../../shared/store-path.ts'
 
 export class InvalidPathError extends Error {
   override readonly name = 'InvalidPathError'

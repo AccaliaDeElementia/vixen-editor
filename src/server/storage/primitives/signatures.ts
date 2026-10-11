@@ -1,10 +1,10 @@
 'use sanity'
 
-import { NOT_FOUND, SEQUENCE_START } from '../../shared/sequences.ts'
+import { NOT_FOUND, SEQUENCE_START } from '../../../shared/sequences.ts'
 
 import { Buffer } from 'node:buffer'
 
-import { extensionOf } from '../../shared/documents.ts'
+import { extensionOf } from '../../../shared/documents.ts'
 
 const SVG_HEAD_BYTES = 1024
 

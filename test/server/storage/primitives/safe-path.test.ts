@@ -2,11 +2,11 @@
 
 import path from 'node:path'
 
-import { DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS } from '../../../src/shared/documents.ts'
+import { DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS } from '../../../../src/shared/documents.ts'
 
 import { describe, expect, it } from 'vitest'
 
-import { toError } from '../../../src/server/platform/node-errors.ts'
+import { toError } from '../../../../src/server/platform/node-errors.ts'
 
 import {
   assertNormalisedName,
@@ -16,7 +16,7 @@ import {
   resolveDocumentPath,
   resolveEntryPath,
   resolveFolderPath,
-} from '../../../src/server/storage/safe-path.ts'
+} from '../../../../src/server/storage/primitives/safe-path.ts'
 
 const ROOT = '/srv/vixen/docs'
 

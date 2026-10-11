@@ -4,10 +4,10 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { createLogger } from '../platform/logging.ts'
-import { compareNames } from './name-order.ts'
+import { compareNames } from './primitives/name-order.ts'
 import { movedPath, relinkDocument, type PathMove } from '../markdown/relink.ts'
 
-import { replaceFileAtomic } from './atomic-write.ts'
+import { replaceFileAtomic } from './primitives/atomic-write.ts'
 import { serially } from '../../shared/serially.ts'
 
 const logRelink = createLogger('storage/relink-store')

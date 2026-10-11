@@ -1,6 +1,6 @@
 'use sanity'
 
-import { ABSENT_CODES, hasErrorCode, toError } from '../platform/node-errors.ts'
+import { ABSENT_CODES, hasErrorCode, toError } from '../../platform/node-errors.ts'
 
 export async function nullWhenAbsent<T>(operation: () => Promise<T>): Promise<T | null> {
   try {

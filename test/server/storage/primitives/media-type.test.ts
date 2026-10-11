@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { mediaTypeOf, TestOnly } from '../../../src/server/storage/media-type.ts'
+import { mediaTypeOf, TestOnly } from '../../../../src/server/storage/primitives/media-type.ts'
 
 const { FALLBACK_MEDIA_TYPE } = TestOnly
 

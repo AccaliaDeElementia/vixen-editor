@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { rewriteLinkDestinations } from '../../../src/server/markdown/links.ts'
-import { isAllowedName } from '../../../src/server/storage/safe-path.ts'
+import { isAllowedName } from '../../../src/server/storage/primitives/safe-path.ts'
 import { encodeDestination } from '../../../src/shared/link-syntax.ts'
 
 function valuesIn(markdown: string): string[] {

@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { isAtOrInside, realpathOrNull } from '../../../src/server/storage/containment.ts'
+import { isAtOrInside, realpathOrNull } from '../../../../src/server/storage/primitives/containment.ts'
 
 const OVER_NAME_MAX = 'a'.repeat(300)
 
