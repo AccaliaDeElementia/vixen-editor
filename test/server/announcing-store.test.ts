@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { givenAsync } from '../conditions.ts'
 
 import { announcingStore } from '../../src/server/announcing-store.ts'
-import { createChanges, type StoreChange } from '../../src/server/changes.ts'
+import { createChanges, type StoreChange } from '../../src/server/platform/changes.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
 import { STORE_ROOT } from '../../src/shared/store-path.ts'
 

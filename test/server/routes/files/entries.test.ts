@@ -11,7 +11,7 @@ import { cast } from '../../../cast.ts'
 import { given } from '../../../conditions.ts'
 import { fieldOf, refusalOf } from '../../refusals.ts'
 import { fileRoutes } from '../../../../src/server/routes/files.ts'
-import { DEFAULT_LIMITS } from '../../../../src/server/config.ts'
+import { DEFAULT_LIMITS } from '../../../../src/server/platform/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 import { FOLDER_INDEX_NAME } from '../../../../src/shared/documents.ts'
 

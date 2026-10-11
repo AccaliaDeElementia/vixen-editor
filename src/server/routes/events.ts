@@ -3,7 +3,7 @@
 import { Hono } from 'hono'
 import { streamSSE, type SSEMessage, type SSEStreamingApi } from 'hono/streaming'
 
-import type { Changes, StoreChange } from '../changes.ts'
+import type { Changes, StoreChange } from '../platform/changes.ts'
 
 const CHANGE_EVENT = 'change'
 const BUILD_EVENT = 'build'

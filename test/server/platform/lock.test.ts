@@ -3,7 +3,7 @@
 import { given, givenAsync } from '../../conditions.ts'
 import { describe, expect, it, vi } from 'vitest'
 
-import { createWriteLock, LockTimeoutError, type WriteLock } from '../../../src/server/storage/lock.ts'
+import { createWriteLock, LockTimeoutError, type WriteLock } from '../../../src/server/platform/lock.ts'
 import { gate } from '../gate.ts'
 
 const GENEROUS_MS = 5000

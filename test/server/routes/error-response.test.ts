@@ -3,8 +3,8 @@
 import { Hono } from 'hono'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { applyDebugFilter } from '../../../src/server/logging.ts'
-import { LockTimeoutError } from '../../../src/server/storage/lock.ts'
+import { applyDebugFilter } from '../../../src/server/platform/logging.ts'
+import { LockTimeoutError } from '../../../src/server/platform/lock.ts'
 import { InvalidPathError } from '../../../src/server/storage/safe-path.ts'
 import {
   ArchiveTooLargeError,

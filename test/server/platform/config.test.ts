@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_LIMITS, loadConfig, TestOnly } from '../../src/server/config.ts'
-import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/storage/lock.ts'
+import { DEFAULT_LIMITS, loadConfig, TestOnly } from '../../../src/server/platform/config.ts'
+import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../../src/server/platform/lock.ts'
 
 const { ConfigError } = TestOnly
 

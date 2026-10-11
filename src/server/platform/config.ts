@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 
-import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from './storage/lock.ts'
+import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from './lock.ts'
 
 const DEFAULT_PORT = 3000
 const MIN_PORT = 1

@@ -5,7 +5,7 @@ import { EMPTY } from '../../shared/sequences.ts'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { createLogger } from '../logging.ts'
+import { createLogger } from '../platform/logging.ts'
 import { compareNames } from './name-order.ts'
 
 import { isTemporaryName } from './atomic-write.ts'

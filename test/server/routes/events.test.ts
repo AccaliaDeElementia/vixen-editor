@@ -4,7 +4,7 @@ import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { eventRoutes, TestOnly } from '../../../src/server/routes/events.ts'
-import { createChanges, type Changes } from '../../../src/server/changes.ts'
+import { createChanges, type Changes } from '../../../src/server/platform/changes.ts'
 import { cast } from '../../cast.ts'
 import { givenAsync } from '../../conditions.ts'
 

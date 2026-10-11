@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { Changes } from './changes.ts'
+import type { Changes } from './platform/changes.ts'
 import type { DocumentStore } from './storage/fs-store.ts'
 import type { MoveRequest } from './storage/move.ts'
 import type { RelinkOutcome } from './storage/relink-store.ts'

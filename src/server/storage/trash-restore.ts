@@ -3,7 +3,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { createLogger } from '../logging.ts'
+import { createLogger } from '../platform/logging.ts'
 
 import { nullWhenAbsent } from './absence.ts'
 import { compareNamesIn } from './name-order.ts'

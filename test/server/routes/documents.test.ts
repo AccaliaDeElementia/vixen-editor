@@ -11,7 +11,7 @@ import { given } from '../../conditions.ts'
 import { refusalOf } from '../refusals.ts'
 import { documentRoutes } from '../../../src/server/routes/documents.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
-import { createWriteLock } from '../../../src/server/storage/lock.ts'
+import { createWriteLock } from '../../../src/server/platform/lock.ts'
 import { failingStore } from '../failing-store.ts'
 import { gate } from '../gate.ts'
 

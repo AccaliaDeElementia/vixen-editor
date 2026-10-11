@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { createLogger } from '../logging.ts'
+import { createLogger } from '../platform/logging.ts'
 
 import { createFileAtomic } from './atomic-write.ts'
 import { nullWhenAbsent } from './absence.ts'

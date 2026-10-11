@@ -761,13 +761,14 @@ too, which the old rule could never do. An order still exists and is still the
 point: a cycle means a newcomer has to hold a whole side in mind at once rather
 than one directory at a time.
 
-**Two pairs do import each other, and both are the server root.** `src/server/`
-holds `logging`, `node-errors`, `config` and `changes`, which `routes/` and
-`storage/` all reach up for, and it also holds `app.ts` and `main.ts`, which
-compose them — so one directory is carrying two tiers. The old check could not
-see this, because it skipped any file sitting directly in an area root. Naming
-the two pairs is what makes the untidiness a decision rather than an accident;
-moving the four services out of the root would retire both.
+**No pair imports each other, and that took a move to achieve.** The check
+once named two, both the server root: `src/server/` held `logging`,
+`node-errors`, `config` and `changes`, which `routes/` and `storage/` reached up
+for, while also holding `app.ts` and `main.ts`, which compose them — one
+directory carrying two tiers. Those four now sit in `src/server/platform/`
+alongside `lock`, which `config` reached into `storage/` for, and both cycles
+went with them. The server's base layer is named the same as the client's and
+means the same thing: everything imports it, and it imports only `shared/`.
 
 **A type-only import is outside the check, because the compiler erases it.** It
 creates no load order and cannot produce a runtime cycle.

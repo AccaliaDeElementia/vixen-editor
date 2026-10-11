@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { refusalOf } from '../../refusals.ts'
 import { fileRoutes } from '../../../../src/server/routes/files.ts'
-import { DEFAULT_LIMITS } from '../../../../src/server/config.ts'
+import { DEFAULT_LIMITS } from '../../../../src/server/platform/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 
 let root = ''

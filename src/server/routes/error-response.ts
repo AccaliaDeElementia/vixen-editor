@@ -3,9 +3,9 @@
 import type { Context } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
-import { toError } from '../node-errors.ts'
-import { createLogger } from '../logging.ts'
-import { LockTimeoutError } from '../storage/lock.ts'
+import { toError } from '../platform/node-errors.ts'
+import { createLogger } from '../platform/logging.ts'
+import { LockTimeoutError } from '../platform/lock.ts'
 import { InvalidPathError } from '../storage/safe-path.ts'
 import {
   ArchiveTooLargeError,

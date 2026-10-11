@@ -8,7 +8,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
-import type { Limits } from '../config.ts'
+import type { Limits } from '../platform/config.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 import { mediaTypeOf } from '../storage/media-type.ts'
 import { joinEntryPath } from '../storage/safe-path.ts'

@@ -5,7 +5,7 @@ import { EMPTY } from '../../shared/sequences.ts'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { createLogger } from '../logging.ts'
+import { createLogger } from '../platform/logging.ts'
 import { compareNamesIn } from './name-order.ts'
 
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
@@ -14,7 +14,7 @@ import { documentIdsUnder } from './document-ids.ts'
 import { UPLOAD_EXTENSIONS } from '../../shared/documents.ts'
 import { isAtOrInside, realpathOrNull } from './containment.ts'
 import { computeEtag } from './etag.ts'
-import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from './lock.ts'
+import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from '../platform/lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
 import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
 import {

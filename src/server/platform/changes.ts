@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { StoreChange } from '../shared/store-change.ts'
+import type { StoreChange } from '../../shared/store-change.ts'
 import { createLogger } from './logging.ts'
 
 const logRefused = createLogger('changes', 'refusedListener')

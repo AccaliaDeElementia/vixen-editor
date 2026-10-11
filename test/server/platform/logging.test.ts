@@ -1,11 +1,11 @@
 'use sanity'
 
-import { given } from '../conditions.ts'
+import { given } from '../../conditions.ts'
 import { describe, expect, it } from 'vitest'
 
 import { afterEach } from 'vitest'
 
-import { applyDebugFilter, createLogger, TestOnly } from '../../src/server/logging.ts'
+import { applyDebugFilter, createLogger, TestOnly } from '../../../src/server/platform/logging.ts'
 
 const { loggerNamespace } = TestOnly
 

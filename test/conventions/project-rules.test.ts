@@ -194,7 +194,7 @@ const TIMER_OWNERS = [
   'src/client/preview/previews.ts',
   'src/client/platform/toast.ts',
   'src/server/routes/events.ts',
-  'src/server/storage/lock.ts',
+  'src/server/platform/lock.ts',
 ]
 
 const SCHEDULES = /\bset(?:Timeout|Interval)\b/v
@@ -874,6 +874,7 @@ const SOURCE_AREAS = [
   'src/client/workspace/views',
   'src/server',
   'src/server/markdown',
+  'src/server/platform',
   'src/server/routes',
   'src/server/storage',
   'src/shared',
@@ -926,14 +927,15 @@ const AREA_EDGES: Readonly<Record<string, readonly string[]>> = {
     'src/client/platform',
     'src/client/platform/announce',
   ],
-  'src/server': ['src/server/routes', 'src/server/storage'],
+  'src/server': ['src/server/platform', 'src/server/routes', 'src/server/storage'],
   'src/server/markdown': [],
-  'src/server/routes': ['src/server', 'src/server/storage'],
-  'src/server/storage': ['src/server', 'src/server/markdown'],
+  'src/server/platform': [],
+  'src/server/routes': ['src/server/platform', 'src/server/storage'],
+  'src/server/storage': ['src/server/markdown', 'src/server/platform'],
   'src/shared': [],
 }
 
-const AREAS_IMPORTING_EACH_OTHER = ['src/server <-> src/server/routes', 'src/server <-> src/server/storage']
+const AREAS_IMPORTING_EACH_OTHER: string[] = []
 
 function folderOf(relativePath: string): string {
   return relativePath.split('/').slice(0, -1).join('/')

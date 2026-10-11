@@ -3,7 +3,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { createLogger } from '../logging.ts'
+import { createLogger } from '../platform/logging.ts'
 import { compareNames } from './name-order.ts'
 import { movedPath, relinkDocument, type PathMove } from '../markdown/relink.ts'
 

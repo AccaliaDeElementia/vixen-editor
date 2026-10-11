@@ -8,7 +8,7 @@ import { Readable } from 'node:stream'
 
 import { ZipFile } from 'yazl'
 
-import { createLogger } from '../logging.ts'
+import { createLogger } from '../platform/logging.ts'
 
 import { nullWhenAbsent } from './absence.ts'
 import { resolveFolderPath } from './safe-path.ts'

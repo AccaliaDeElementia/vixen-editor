@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { createChanges } from '../../src/server/changes.ts'
+import { createChanges } from '../../../src/server/platform/changes.ts'
 
 describe('announcing what the store changed', () => {
   it('tells a listener what happened', () => {
