@@ -10,9 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createFsDocumentStore, type StoreLayer } from '../../../src/server/storage/fs-store.ts'
 import {
   ConcurrentModificationError,
-  ContentMismatchError,
   DocumentNotFoundError,
-  EmptyContentError,
   EntryExistsError,
 } from '../../../src/server/storage/primitives/store-errors.ts'
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
@@ -242,13 +240,6 @@ describe('createDocument', () => {
     await expect(store.read('notes.txt')).resolves.toBe('plain')
   })
 
-  it.each([
-    ['empty content', ''],
-    ['whitespace-only content', '  \n\t '],
-  ])('refuses %s', async (_label, content) => {
-    await expect(store.createDocument('empty.md', content, someone)).rejects.toThrow(EmptyContentError)
-  })
-
   it('returns an etag the caller can save against', async () => {
     const etag = await store.createDocument('notes.md', '# hello', someone)
 
@@ -306,23 +297,6 @@ describe('updateDocument', () => {
 
   it('refuses to create a document that does not exist, which is what the create endpoint is for', async () => {
     await expect(store.updateDocument('absent.md', 'x', '"whatever"', someone)).rejects.toThrow(DocumentNotFoundError)
-  })
-
-  it.each([
-    ['empty content', ''],
-    ['whitespace-only content', '  \n\t '],
-  ])('refuses %s', async (_label, content) => {
-    const etag = await seeded()
-
-    await expect(store.updateDocument('notes.md', content, etag, someone)).rejects.toThrow(EmptyContentError)
-  })
-
-  it('leaves the stored content alone when it refuses an empty save', async () => {
-    const etag = await seeded()
-
-    await givenAsync(expect(store.updateDocument('notes.md', '', etag, someone)).rejects.toThrow(EmptyContentError))
-
-    await expect(store.read('notes.md')).resolves.toBe('original')
   })
 
   it('rejects an invalid id', async () => {
@@ -465,24 +439,6 @@ describe('createUpload', () => {
 
   it('rejects a traversal in the target directory', async () => {
     await expect(store.createUpload('../outside', 'photo.png', PNG, someone)).rejects.toThrow(InvalidPathError)
-  })
-
-  it('rejects bytes that do not match the extension', async () => {
-    const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
-
-    await expect(store.createUpload('', 'photo.png', html, someone)).rejects.toThrow(ContentMismatchError)
-  })
-
-  it('does not store a file it rejected as mismatched', async () => {
-    const html = new TextEncoder().encode('<!doctype html>')
-
-    await givenAsync(expect(store.createUpload('', 'photo.png', html, someone)).rejects.toThrow(ContentMismatchError))
-
-    await expect(fs.readdir(root)).resolves.toStrictEqual([])
-  })
-
-  it('rejects an empty upload', async () => {
-    await expect(store.createUpload('', 'photo.png', new Uint8Array(), someone)).rejects.toThrow(EmptyContentError)
   })
 
   it('accepts a markdown upload, which carries no signature to check', async () => {

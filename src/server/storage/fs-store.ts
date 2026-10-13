@@ -1,7 +1,5 @@
 'use sanity'
 
-import { EMPTY } from '../../shared/sequences.ts'
-
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -18,14 +16,11 @@ import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from '
 import { moveEntry, type MoveRequest } from './move.ts'
 import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
 import { assertNormalisedName, InvalidPathError, joinEntryPath, resolveStorePath } from './primitives/safe-path.ts'
-import { contentMatchesExtension, detectedFormat } from './primitives/signatures.ts'
 import {
   ABSENT_ON_READ_CODES,
   asDocumentError,
   asExistsError,
   ConcurrentModificationError,
-  ContentMismatchError,
-  EmptyContentError,
 } from './primitives/store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
 import {
@@ -39,7 +34,6 @@ import {
 import { readTrashEntry, type TrashEntryNode } from './trash/trash-entries.ts'
 import { restoreSelection, type RestoreOutcome, type RestoreSelection } from './restore.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
-import { isBlank } from '../../shared/content.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 
 const logStore = createLogger('storage/fs-store')
@@ -66,10 +60,6 @@ export interface StoreLayer {
 
 export interface DocumentStore extends Omit<StoreLayer, 'listTrash'> {
   listTrash: () => Promise<TrashEntry[]>
-}
-
-function assertNotBlank(id: string, content: string): void {
-  if (isBlank(content)) throw new EmptyContentError(id)
 }
 
 async function readDocument(id: string, target: string): Promise<string> {
@@ -118,7 +108,6 @@ export function createFsDocumentStore(
 
     async updateDocument(id: string, content: string, expectedEtag: string): Promise<string> {
       const target = resolveStorePath(root, id)
-      assertNotBlank(id, content)
 
       return await lock.run(async () => {
         await assertResolvesInsideRoot(root, id, target)
@@ -135,7 +124,6 @@ export function createFsDocumentStore(
     async createDocument(id: string, content: string): Promise<string> {
       assertNormalisedName(id)
       const target = resolveStorePath(root, id)
-      assertNotBlank(id, content)
 
       return await lock.run(async () => {
         const parent = path.dirname(target)
@@ -155,7 +143,6 @@ export function createFsDocumentStore(
     async createFolder(folderPath: string, indexContent: string): Promise<string> {
       assertNormalisedName(folderPath)
       const target = resolveStorePath(root, folderPath)
-      assertNotBlank(folderPath, indexContent)
 
       return await lock.run(async () => {
         const parent = path.dirname(target)
@@ -177,11 +164,6 @@ export function createFsDocumentStore(
       const entryPath = joinEntryPath(directory, filename)
       assertNormalisedName(entryPath)
       const target = resolveStorePath(root, entryPath)
-
-      if (bytes.length === EMPTY) throw new EmptyContentError(entryPath)
-      if (!contentMatchesExtension(entryPath, bytes)) {
-        throw new ContentMismatchError(entryPath, detectedFormat(bytes))
-      }
 
       return await lock.run(async () => {
         const parent = path.dirname(target)

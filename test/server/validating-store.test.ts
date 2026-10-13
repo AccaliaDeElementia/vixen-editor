@@ -5,10 +5,12 @@ import { describe, expect, it } from 'vitest'
 import { someone } from './actors.ts'
 import { failingStore } from './failing-store.ts'
 import { InvalidPathError } from '../../src/server/storage/primitives/safe-path.ts'
+import { ContentMismatchError, EmptyContentError } from '../../src/server/storage/primitives/store-errors.ts'
 import { validatingStore } from '../../src/server/validating-store.ts'
 
 const REACHED_THE_LAYER = 'disk on fire'
 const BYTES = new Uint8Array([1, 2, 3])
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
 const store = validatingStore(failingStore())
 
@@ -52,6 +54,38 @@ describe('creating', () => {
   })
 })
 
+describe('content the store would otherwise have written', () => {
+  it.each([
+    ['empty content', ''],
+    ['whitespace-only content', '   \n  '],
+  ])('refuses a new document with %s', async (_label, content) => {
+    await expect(store.createDocument('notes.md', content, someone)).rejects.toThrow(EmptyContentError)
+  })
+
+  it.each([
+    ['empty content', ''],
+    ['whitespace-only content', '   \n  '],
+  ])('refuses a save of %s', async (_label, content) => {
+    await expect(store.updateDocument('notes.md', content, '"e"', someone)).rejects.toThrow(EmptyContentError)
+  })
+
+  it('refuses a folder seeded with nothing', async () => {
+    await expect(store.createFolder('journal', '  ', someone)).rejects.toThrow(EmptyContentError)
+  })
+
+  it('refuses an empty upload', async () => {
+    await expect(store.createUpload('', 'photo.png', new Uint8Array(), someone)).rejects.toThrow(EmptyContentError)
+  })
+
+  it('refuses bytes that do not match the extension', async () => {
+    await expect(store.createUpload('', 'photo.png', BYTES, someone)).rejects.toThrow(ContentMismatchError)
+  })
+
+  it('never asks the layer to store what it refused, which is why nothing is left behind', async () => {
+    await expect(store.createDocument('notes.md', '', someone)).rejects.not.toThrow(REACHED_THE_LAYER)
+  })
+})
+
 describe('uploading', () => {
   it('refuses an extension outside the upload allowlist', async () => {
     await expect(store.createUpload('', 'archive.zip', BYTES, someone)).rejects.toThrow(InvalidPathError)
@@ -67,6 +101,10 @@ describe('uploading', () => {
 
   it('refuses an upload into the reserved namespace', async () => {
     await expect(store.createUpload('.vixen', 'logo.png', BYTES, someone)).rejects.toThrow(InvalidPathError)
+  })
+
+  it('lets bytes that match their extension through to the layer', async () => {
+    await expect(store.createUpload('', 'photo.png', PNG, someone)).rejects.toThrow(REACHED_THE_LAYER)
   })
 })
 

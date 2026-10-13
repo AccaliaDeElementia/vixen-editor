@@ -9,6 +9,7 @@ import { createLogger } from '../platform/logging.ts'
 
 import { nullWhenAbsent } from './primitives/absence.ts'
 import { replaceFileAtomic } from './primitives/atomic-write.ts'
+import { resolveStorePath } from './primitives/safe-path.ts'
 import { isRecord } from '../../shared/guards.ts'
 
 const VIXEN_DIRECTORY = '.vixen'
@@ -50,7 +51,7 @@ function recordOf(known: Map<string, Actor>): Record<string, { name: string; kin
 }
 
 export function createActors(docsRoot: string, lock: WriteLock): Actors {
-  const file = path.join(path.resolve(docsRoot), VIXEN_DIRECTORY, ACTORS_NAME)
+  const file = path.join(resolveStorePath(docsRoot, VIXEN_DIRECTORY), ACTORS_NAME)
   const resident = localActor()
   let loading: Promise<Map<string, Actor>> | null = null
 

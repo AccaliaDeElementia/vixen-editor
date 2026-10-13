@@ -417,6 +417,30 @@ serving. A record is written only when it is new, so a repeat visit costs no
 write. The file is reached by a plain join, the way `.trash` is, since the
 validator refuses a dotted segment by design.
 
+### Two things the layer still decides, and why
+
+The rule is that `StoreLayer` holds storage logic only — never validation, never
+a decision taken from content or input. Two things sit on the line and stayed
+down deliberately.
+
+**A rename may not change what a file claims to be.** `assertKindSurvives`
+compares the destination against the source's kind, and that kind comes from a
+`stat`: the layer has to know whether the source is a folder before it can
+judge. Deriving it from the path instead was considered and is **unsound** — a
+folder may legitimately be named `logo.png`, and today renaming it to `notes`
+is allowed because the `stat` says folder. Inferring the kind from the
+extension would refuse that. So this is a decision taken from _stored state_
+rather than from input, which is the layer's to make.
+
+**Ordering by locale.** `list` and `tree` take a locale and sort with
+`compareNamesIn`. That is presentation input reaching the layer, and by the
+letter of the rule it belongs above. It stayed because the comparator is a
+single shared pure function, so a second implementation calls it rather than
+reimplementing it, and because lifting it would need a decorator whose return
+type differs from its argument — which breaks the chain every other layer
+preserves. The conformance suite is where ordering gets pinned across
+implementations.
+
 ### The store is two interfaces
 
 `StoreLayer` is what `fs-store` implements and what a decorator such as

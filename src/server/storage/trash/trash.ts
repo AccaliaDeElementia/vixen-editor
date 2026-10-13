@@ -54,7 +54,7 @@ function newestFirstThenIdForStableTies(a: TrashEntryRecord, b: TrashEntryRecord
 }
 
 function trashRoot(root: string): string {
-  return path.join(root, TRASH_DIRECTORY)
+  return resolveStorePath(root, TRASH_DIRECTORY)
 }
 
 function entryDirectory(root: string, entryId: string): string {
