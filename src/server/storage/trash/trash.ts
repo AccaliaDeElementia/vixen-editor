@@ -9,7 +9,7 @@ import { createLogger } from '../../platform/logging.ts'
 
 import { createFileAtomic } from '../primitives/atomic-write.ts'
 import { nullWhenAbsent } from '../primitives/absence.ts'
-import { InvalidPathError, resolveFolderPath } from '../primitives/safe-path.ts'
+import { InvalidPathError, resolveStorePath } from '../primitives/safe-path.ts'
 import { DocumentNotFoundError } from '../primitives/store-errors.ts'
 import { classifyFile } from '../../../shared/documents.ts'
 import { isRecord } from '../../../shared/guards.ts'
@@ -104,7 +104,7 @@ export async function entryKindOf(entryPath: string, target: string): Promise<En
 export async function moveToTrash(root: string, entryPath: string, actor: Actor): Promise<string> {
   if (entryPath === '') throw new InvalidPathError(entryPath, 'must not be the document root')
 
-  const target = resolveFolderPath(root, entryPath)
+  const target = resolveStorePath(root, entryPath)
   const kind = await entryKindOf(entryPath, target)
 
   const id = randomUUID()

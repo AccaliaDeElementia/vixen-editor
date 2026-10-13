@@ -128,10 +128,6 @@ describe('planArchive', () => {
   it('rejects a traversal attempt', async () => {
     await expect(planArchive(root, '../outside', GENEROUS)).rejects.toThrow(InvalidPathError)
   })
-
-  it('refuses to reach into the trash', async () => {
-    await expect(planArchive(root, '.trash', GENEROUS)).rejects.toThrow(InvalidPathError)
-  })
 })
 
 describe('archive', () => {

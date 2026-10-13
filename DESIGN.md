@@ -186,18 +186,35 @@ gives back, verbatim — `test/conventions/` fails the gate if this table and
 `NAME_RULES` disagree, which is how a prose copy of a code-owned rule silently
 went false once before.
 
-| Refused because it…                                  | Why that matters                                                    |
-| ---------------------------------------------------- | ------------------------------------------------------------------- |
-| `must not contain an empty path segment`             | `a//b` is two names with nothing between them                       |
-| `must not contain a relative path segment`           | Traversal                                                           |
-| `must not contain a segment beginning with a dot`    | Reserves the dotted namespace for the application; see below        |
-| `must not contain a backslash`                       | A separator that breaks the moment an export is unzipped on Windows |
-| `must not contain a control character`               | Corrupts logs and terminal output                                   |
-| `must not contain an invisible formatting character` | Bidi overrides and zero-width characters; the spoofing class        |
-| `may only use a zero-width joiner between emoji`     | Joining emoji is the only thing a joiner is for                     |
-| `must not be only whitespace`                        | A name nobody can see or type                                       |
-| `must not begin or end with whitespace`              | `notes.md` and `notes .md` are indistinguishable in a tree          |
-| `must be at most 255 bytes`                          | `NAME_MAX` counts bytes: 64 emoji is 256                            |
+| Refused because it…                                  | Why that matters                                                    | Refused by  |
+| ---------------------------------------------------- | ------------------------------------------------------------------- | ----------- |
+| `must not contain an empty path segment`             | `a//b` is two names with nothing between them                       | storage     |
+| `must not contain a relative path segment`           | Traversal                                                           | storage     |
+| `must not contain a segment beginning with a dot`    | Reserves the dotted namespace for the application; see below        | application |
+| `must not contain a backslash`                       | A separator that breaks the moment an export is unzipped on Windows | storage     |
+| `must not contain a control character`               | Corrupts logs and terminal output                                   | storage     |
+| `must not contain an invisible formatting character` | Bidi overrides and zero-width characters; the spoofing class        | storage     |
+| `may only use a zero-width joiner between emoji`     | Joining emoji is the only thing a joiner is for                     | storage     |
+| `must not be only whitespace`                        | A name nobody can see or type                                       | storage     |
+| `must not begin or end with whitespace`              | `notes.md` and `notes .md` are indistinguishable in a tree          | storage     |
+| `must be at most 255 bytes`                          | `NAME_MAX` counts bytes: 64 emoji is 256                            | storage     |
+
+**The third column is which layer refuses, and it is the whole of the split.**
+A rule marked _storage_ is about safety — traversal, malformed or shadowed
+names, a filesystem limit — and `resolveStorePath` applies it to anything it is
+handed, whoever asked. A rule marked _application_ is policy, and
+`validatingStore` applies it above the store. So the layer **accepts a path a
+user may not create**: `.trash/<id>/meta.json` and `.vixen/actors.json` resolve
+there, and only the application refuses them. It never accepts an unsafe one.
+
+The extension allowlist is application policy for the same reason — the layer
+stores `.json`, `.tmp` and extensionless payloads, and only the application
+decides that a _document_ ends `.md` or `.txt`.
+
+**One list, two readers.** The rules carry their layer rather than living in two
+places, because `isAllowedName` — which every walk uses to decide what to list —
+must keep applying _all_ of them. Splitting the list would be the
+listing-and-validator-disagree fault again, in a new costume.
 
 `/` never reaches these rules — a path is split on it first, so a segment
 cannot contain one.

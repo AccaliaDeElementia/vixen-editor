@@ -12,20 +12,12 @@ import { compareNamesIn } from './primitives/name-order.ts'
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './primitives/atomic-write.ts'
 import { documentIdsUnder } from './document-ids.ts'
-import { UPLOAD_EXTENSIONS } from '../../shared/documents.ts'
 import { isAtOrInside, realpathOrNull } from './primitives/containment.ts'
 import { computeEtag } from './primitives/etag.ts'
 import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from '../platform/lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
 import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
-import {
-  assertNormalisedName,
-  InvalidPathError,
-  joinEntryPath,
-  resolveDocumentPath,
-  resolveEntryPath,
-  resolveFolderPath,
-} from './primitives/safe-path.ts'
+import { assertNormalisedName, InvalidPathError, joinEntryPath, resolveStorePath } from './primitives/safe-path.ts'
 import { contentMatchesExtension, detectedFormat } from './primitives/signatures.ts'
 import {
   ABSENT_ON_READ_CODES,
@@ -118,14 +110,14 @@ export function createFsDocumentStore(
     },
 
     async read(id: string): Promise<string> {
-      const target = resolveDocumentPath(root, id)
+      const target = resolveStorePath(root, id)
       await assertResolvesInsideRoot(root, id, target)
 
       return await readDocument(id, target)
     },
 
     async updateDocument(id: string, content: string, expectedEtag: string): Promise<string> {
-      const target = resolveDocumentPath(root, id)
+      const target = resolveStorePath(root, id)
       assertNotBlank(id, content)
 
       return await lock.run(async () => {
@@ -142,7 +134,7 @@ export function createFsDocumentStore(
 
     async createDocument(id: string, content: string): Promise<string> {
       assertNormalisedName(id)
-      const target = resolveDocumentPath(root, id)
+      const target = resolveStorePath(root, id)
       assertNotBlank(id, content)
 
       return await lock.run(async () => {
@@ -162,7 +154,7 @@ export function createFsDocumentStore(
 
     async createFolder(folderPath: string, indexContent: string): Promise<string> {
       assertNormalisedName(folderPath)
-      const target = resolveFolderPath(root, folderPath)
+      const target = resolveStorePath(root, folderPath)
       assertNotBlank(folderPath, indexContent)
 
       return await lock.run(async () => {
@@ -184,7 +176,7 @@ export function createFsDocumentStore(
     async createUpload(directory: string, filename: string, bytes: Uint8Array): Promise<string> {
       const entryPath = joinEntryPath(directory, filename)
       assertNormalisedName(entryPath)
-      const target = resolveEntryPath(root, entryPath, UPLOAD_EXTENSIONS)
+      const target = resolveStorePath(root, entryPath)
 
       if (bytes.length === EMPTY) throw new EmptyContentError(entryPath)
       if (!contentMatchesExtension(entryPath, bytes)) {
@@ -207,7 +199,7 @@ export function createFsDocumentStore(
     },
 
     async readBytes(entryPath: string): Promise<Uint8Array<ArrayBuffer>> {
-      const target = resolveEntryPath(root, entryPath, UPLOAD_EXTENSIONS)
+      const target = resolveStorePath(root, entryPath)
       await assertResolvesInsideRoot(root, entryPath, target)
 
       try {

@@ -7,7 +7,7 @@ import { createLogger } from '../platform/logging.ts'
 
 import { nullWhenAbsent } from './primitives/absence.ts'
 import { compareNamesIn } from './primitives/name-order.ts'
-import { InvalidPathError, resolveFolderPath } from './primitives/safe-path.ts'
+import { InvalidPathError, resolveStorePath } from './primitives/safe-path.ts'
 import { isAtOrInside } from './primitives/containment.ts'
 import { BlockedRestoreError } from './primitives/store-errors.ts'
 import { entryKindOf, purgeFromTrash, readTrashMeta, trashPayloadPath } from './trash/trash.ts'
@@ -96,7 +96,7 @@ async function placementFor(asked: Asked, within: string): Promise<Placement> {
   const destination = asked.to ?? wasAt
   if (asked.to !== undefined) assertKindSurvives(wasAt, asked.to, kind)
 
-  return { within, source, destination, wasAt, kind, target: resolveFolderPath(asked.docsRoot, destination) }
+  return { within, source, destination, wasAt, kind, target: resolveStorePath(asked.docsRoot, destination) }
 }
 
 async function blockerFor(docsRoot: string, placement: Placement): Promise<string | null> {

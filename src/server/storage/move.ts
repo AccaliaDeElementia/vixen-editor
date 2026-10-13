@@ -7,7 +7,7 @@ import { createLogger } from '../platform/logging.ts'
 
 import { nullWhenAbsent } from './primitives/absence.ts'
 import { isAtOrInside } from './primitives/containment.ts'
-import { assertNormalisedName, InvalidPathError, resolveFolderPath } from './primitives/safe-path.ts'
+import { assertNormalisedName, InvalidPathError, resolveStorePath } from './primitives/safe-path.ts'
 import { mediaTypeOf } from './primitives/media-type.ts'
 import { EntryExistsError, InvalidMoveError } from './primitives/store-errors.ts'
 import { classifyFile } from '../../shared/documents.ts'
@@ -39,8 +39,8 @@ export async function moveEntry(root: string, request: MoveRequest): Promise<voi
 
   assertNormalisedName(to)
 
-  const fromTarget = resolveFolderPath(root, from)
-  const toTarget = resolveFolderPath(root, to)
+  const fromTarget = resolveStorePath(root, from)
+  const toTarget = resolveStorePath(root, to)
   if (fromTarget === toTarget) return
 
   if (isAtOrInside(fromTarget, toTarget)) throw new InvalidMoveError(from, to)

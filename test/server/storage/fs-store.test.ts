@@ -205,10 +205,6 @@ describe('createDocument', () => {
     await expect(store.createDocument('../escape.md', 'x', someone)).rejects.toThrow(InvalidPathError)
   })
 
-  it('rejects a hidden id', async () => {
-    await expect(store.createDocument('.hidden.md', 'x', someone)).rejects.toThrow(InvalidPathError)
-  })
-
   it('refuses to create through a symlinked directory that escapes the root', async () => {
     await fs.symlink(outside, path.join(root, 'link'))
 
@@ -407,10 +403,6 @@ describe('createFolder', () => {
     await expect(store.createFolder('../escape', '# x', someone)).rejects.toThrow(InvalidPathError)
   })
 
-  it('rejects a hidden path, which is how the trash stays unreachable', async () => {
-    await expect(store.createFolder('.trash', '# x', someone)).rejects.toThrow(InvalidPathError)
-  })
-
   it('refuses to create through a symlinked directory that escapes the root', async () => {
     await fs.symlink(outside, path.join(root, 'link'))
 
@@ -475,14 +467,6 @@ describe('createUpload', () => {
     await expect(store.createUpload('../outside', 'photo.png', PNG, someone)).rejects.toThrow(InvalidPathError)
   })
 
-  it('rejects an extension outside the upload allowlist', async () => {
-    await expect(store.createUpload('', 'payload.zip', PNG, someone)).rejects.toThrow(InvalidPathError)
-  })
-
-  it('rejects a hidden filename', async () => {
-    await expect(store.createUpload('', '.hidden.png', PNG, someone)).rejects.toThrow(InvalidPathError)
-  })
-
   it('rejects bytes that do not match the extension', async () => {
     const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
 
@@ -537,10 +521,6 @@ describe('readBytes', () => {
 
   it('throws DocumentNotFoundError for a missing file', async () => {
     await expect(store.readBytes('missing.png')).rejects.toThrow(DocumentNotFoundError)
-  })
-
-  it('rejects an extension outside the upload allowlist', async () => {
-    await expect(store.readBytes('payload.zip')).rejects.toThrow(InvalidPathError)
   })
 
   it('rejects a traversal attempt', async () => {

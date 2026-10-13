@@ -11,7 +11,7 @@ import { ZipFile } from 'yazl'
 import { createLogger } from '../platform/logging.ts'
 
 import { nullWhenAbsent } from './primitives/absence.ts'
-import { resolveFolderPath } from './primitives/safe-path.ts'
+import { resolveStorePath } from './primitives/safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from './primitives/store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
 
@@ -59,7 +59,7 @@ function collect(entries: readonly TreeEntry[]): ArchiveContents {
 }
 
 export async function planArchive(root: string, subtree: string, limits: ArchiveLimits): Promise<ArchivePlan> {
-  const base = resolveFolderPath(root, subtree)
+  const base = resolveStorePath(root, subtree)
   const stats = await nullWhenAbsent(async () => await fs.stat(base))
   if (stats?.isDirectory() !== true) throw new DocumentNotFoundError(subtree)
 

@@ -190,8 +190,6 @@ describe('rejecting impossible moves', () => {
   it.each([
     ['a traversal in the source', '../escape.md', 'notes.md'],
     ['a traversal in the destination', 'notes.md', '../escape.md'],
-    ['the trash as a source', '.trash', 'notes'],
-    ['the trash as a destination', 'notes.md', '.trash/notes.md'],
     ['an empty source', '', 'notes.md'],
     ['an empty destination', 'notes.md', ''],
   ])('rejects %s', async (_label, from, to) => {

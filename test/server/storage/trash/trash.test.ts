@@ -180,10 +180,6 @@ describe('trash', () => {
     await expect(store.trash('', someone)).rejects.toThrow(InvalidPathError)
   })
 
-  it('refuses to reach into the trash directory', async () => {
-    await expect(store.trash('.trash', someone)).rejects.toThrow(InvalidPathError)
-  })
-
   it('refuses a file the app does not manage', async () => {
     await fs.writeFile(path.join(root, 'payload.zip'), 'x')
 

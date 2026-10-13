@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception'
 
 import { announcingStore } from './announcing-store.ts'
 import { resolvingActors } from './resolving-actors.ts'
+import { validatingStore } from './validating-store.ts'
 import type { Actors } from './storage/actors.ts'
 import { createChanges, type Changes } from './platform/changes.ts'
 import { DEFAULT_LIMITS, type Limits } from './platform/config.ts'
@@ -38,7 +39,7 @@ export function buildApp({
   heartbeatMs,
 }: AppDependencies): Hono {
   const app = new Hono()
-  const announcing = resolvingActors(announcingStore(store, changes), actors)
+  const announcing = resolvingActors(validatingStore(announcingStore(store, changes)), actors)
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse()
