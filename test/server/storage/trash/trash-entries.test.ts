@@ -11,6 +11,8 @@ import { readTrashEntry, type TrashEntryNode } from '../../../../src/server/stor
 import { DocumentNotFoundError } from '../../../../src/server/storage/primitives/store-errors.ts'
 import { given, givenAsync } from '../../../conditions.ts'
 
+import { someone } from '../../actors.ts'
+
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
 
@@ -43,7 +45,7 @@ function namesIn(node: TrashEntryNode): string[] {
 describe('reading what a trashed entry holds', () => {
   it('answers a trashed file with the one item it is', async () => {
     await write('notes.md')
-    const entryId = await store.trash('notes.md')
+    const entryId = await store.trash('notes.md', someone)
 
     const entry = await readTrashEntry(root, entryId)
 
@@ -53,7 +55,7 @@ describe('reading what a trashed entry holds', () => {
   it('answers a trashed folder with what was inside it', async () => {
     await write('journal/a.md')
     await write('journal/b.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
 
     const entry = await readTrashEntry(root, entryId)
 
@@ -62,7 +64,7 @@ describe('reading what a trashed entry holds', () => {
 
   it('names each item by where it sits inside the entry', async () => {
     await write('journal/2026/march.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
 
     const entry = await readTrashEntry(root, entryId)
 
@@ -72,7 +74,7 @@ describe('reading what a trashed entry holds', () => {
   it('puts folders ahead of files, as the live tree does', async () => {
     await write('journal/a.md')
     await write('journal/zzz/deep.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
 
     const entry = await readTrashEntry(root, entryId)
 
@@ -87,7 +89,7 @@ describe('reading what a trashed entry holds', () => {
 describe('whether an item could be put back', () => {
   it('says so for an ordinary name', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
 
     const entry = await readTrashEntry(root, entryId)
 
@@ -96,7 +98,7 @@ describe('whether an item could be put back', () => {
 
   it('refuses a name the validator would no longer allow', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await fs.writeFile(path.join(root, '.trash', entryId, 'payload', ' leading.md'), '# odd')
 
     const entry = await readTrashEntry(root, entryId)
@@ -106,7 +108,7 @@ describe('whether an item could be put back', () => {
 
   it('lists that name anyway, rather than hiding something it cannot place', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await fs.writeFile(path.join(root, '.trash', entryId, 'payload', ' leading.md'), '# odd')
 
     const entry = await readTrashEntry(root, entryId)
@@ -116,7 +118,7 @@ describe('whether an item could be put back', () => {
 
   it('carries the refusal down, since a child cannot be placed under a name that cannot', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     const odd = path.join(root, '.trash', entryId, 'payload', ' odd')
     await fs.mkdir(odd)
     await fs.writeFile(path.join(odd, 'fine.md'), '# fine')
@@ -130,7 +132,7 @@ describe('whether an item could be put back', () => {
 describe('whether the live store is in the way', () => {
   it('says nothing is blocking when the path is free', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
 
     const entry = await readTrashEntry(root, entryId)
 
@@ -139,7 +141,7 @@ describe('whether the live store is in the way', () => {
 
   it('names the live path that took the entry back', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await write('journal/other.md')
 
     const entry = await readTrashEntry(root, entryId)
@@ -149,7 +151,7 @@ describe('whether the live store is in the way', () => {
 
   it('names it for an item inside the entry too', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await write('journal/a.md', '# back')
 
     const entry = await readTrashEntry(root, entryId)
@@ -163,7 +165,7 @@ describe('a symlink inside a trashed folder', () => {
     const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-outside-'))
     await fs.writeFile(path.join(outside, 'secret.md'), '# secret')
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await fs.symlink(path.join(outside, 'secret.md'), path.join(root, '.trash', entryId, 'payload', 'secret.md'))
 
     const entry = await readTrashEntry(root, entryId)
@@ -175,7 +177,7 @@ describe('a symlink inside a trashed folder', () => {
   it('is listed as a leaf when it points inside the store, since restoring moves the link', async () => {
     await write('journal/a.md')
     await write('target.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await fs.symlink(path.join(root, 'target.md'), path.join(root, '.trash', entryId, 'payload', 'link.md'))
 
     const entry = await readTrashEntry(root, entryId)
@@ -190,7 +192,7 @@ describe('a symlink inside a trashed folder', () => {
 describe('a payload that is not quite what it should be', () => {
   it('leaves out a file that is neither a document nor an image', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await fs.writeFile(path.join(root, '.trash', entryId, 'payload', 'notes.xyz'), 'x')
 
     const entry = await readTrashEntry(root, entryId)
@@ -200,7 +202,7 @@ describe('a payload that is not quite what it should be', () => {
 
   it('answers an empty folder when the payload has gone, rather than failing the listing', async () => {
     await write('journal/a.md')
-    const entryId = await store.trash('journal')
+    const entryId = await store.trash('journal', someone)
     await fs.rm(path.join(root, '.trash', entryId, 'payload'), { recursive: true })
 
     const entry = await readTrashEntry(root, entryId)

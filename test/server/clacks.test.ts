@@ -18,6 +18,8 @@ import { cast } from '../cast.ts'
 import { given } from '../conditions.ts'
 import { failingStore } from './failing-store.ts'
 
+import { someone } from './actors.ts'
+
 const { createApp } = mainTestOnly
 const { CLACKS_HEADER, CLACKS_VALUE } = clacksTestOnly
 
@@ -106,7 +108,7 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a document read', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
     const { res, headersWritten } = await answeredBy(buildApp({ store }), '/api/documents/notes.md')
 
     given(() => {
@@ -171,8 +173,8 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 204 from a trash purge', async () => {
-    await store.createDocument('notes.md', 'x')
-    const id = await store.trash('notes.md')
+    await store.createDocument('notes.md', 'x', someone)
+    const id = await store.trash('notes.md', someone)
     const { res, headersWritten } = await answeredBy(buildApp({ store }), `/api/trash/${id}`, { method: 'DELETE' })
 
     given(() => {

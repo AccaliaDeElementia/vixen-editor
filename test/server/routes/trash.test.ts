@@ -13,6 +13,8 @@ import { trashRoutes } from '../../../src/server/routes/trash.ts'
 import { cast } from '../../cast.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
 
+import { someone } from '../actors.ts'
+
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
 let app: Hono = trashRoutes(store)
@@ -37,8 +39,8 @@ describe('listing the trash', () => {
   })
 
   it('reports deleted entries in a form that tells them from live files', async () => {
-    await store.createDocument('notes.md', 'x')
-    await store.trash('notes.md')
+    await store.createDocument('notes.md', 'x', someone)
+    await store.trash('notes.md', someone)
 
     const res = await app.request('/')
 
@@ -60,8 +62,8 @@ async function restoreRequest(entryId: string, paths: readonly string[]): Promis
 
 describe('restoring from an entry', () => {
   async function trashed(): Promise<string> {
-    await store.createDocument('notes.md', '# hello')
-    return await store.trash('notes.md')
+    await store.createDocument('notes.md', '# hello', someone)
+    return await store.trash('notes.md', someone)
   }
 
   it('puts the entry back and reports where', async () => {
@@ -80,7 +82,7 @@ describe('restoring from an entry', () => {
 
   it('returns 409 when the original path is occupied, leaving the user to decide', async () => {
     const id = await trashed()
-    await store.createDocument('notes.md', 'something else')
+    await store.createDocument('notes.md', 'something else', someone)
 
     const res = await restoreRequest(id, [''])
 
@@ -88,8 +90,8 @@ describe('restoring from an entry', () => {
   })
 
   it('refuses a body that names no paths at all', async () => {
-    await store.createDocument('notes.md', '# hello')
-    const id = await store.trash('notes.md')
+    await store.createDocument('notes.md', '# hello', someone)
+    const id = await store.trash('notes.md', someone)
 
     const res = await app.request(`/${id}/restores`, {
       method: 'POST',
@@ -115,8 +117,8 @@ describe('restoring from an entry', () => {
 
 describe('purging a single entry', () => {
   it('purges the entry for good', async () => {
-    await store.createDocument('notes.md', 'x')
-    const id = await store.trash('notes.md')
+    await store.createDocument('notes.md', 'x', someone)
+    const id = await store.trash('notes.md', someone)
 
     const res = await app.request(`/${id}`, { method: 'DELETE' })
 
@@ -128,8 +130,8 @@ describe('purging a single entry', () => {
   })
 
   it('refuses a body that names no paths at all', async () => {
-    await store.createDocument('notes.md', '# hello')
-    const id = await store.trash('notes.md')
+    await store.createDocument('notes.md', '# hello', someone)
+    const id = await store.trash('notes.md', someone)
 
     const res = await app.request(`/${id}/restores`, {
       method: 'POST',
@@ -155,8 +157,8 @@ describe('purging a single entry', () => {
 
 describe('reading what an entry holds', () => {
   it('answers with what the entry holds', async () => {
-    await store.createDocument('journal/a.md', '# a')
-    const entryId = await store.trash('journal')
+    await store.createDocument('journal/a.md', '# a', someone)
+    const entryId = await store.trash('journal', someone)
 
     const res = await app.request(`/${entryId}/entries`)
     const { entry } = cast<{ entry: { name: string; children: Array<{ name: string }> } }>(await res.json())
@@ -183,8 +185,8 @@ describe('reading what an entry holds', () => {
 
 describe('restoring under a different name', () => {
   it('puts the entry where the request asked', async () => {
-    await store.createDocument('notes.md', '# hello')
-    const id = await store.trash('notes.md')
+    await store.createDocument('notes.md', '# hello', someone)
+    const id = await store.trash('notes.md', someone)
 
     const res = await app.request(`/${id}/restores`, {
       method: 'POST',
@@ -196,9 +198,9 @@ describe('restoring under a different name', () => {
   })
 
   it('refuses a new name when more than one thing was named', async () => {
-    await store.createDocument('journal/a.md', '# a')
-    await store.createDocument('journal/b.md', '# b')
-    const id = await store.trash('journal')
+    await store.createDocument('journal/a.md', '# a', someone)
+    await store.createDocument('journal/b.md', '# b', someone)
+    const id = await store.trash('journal', someone)
 
     const res = await app.request(`/${id}/restores`, {
       method: 'POST',
@@ -216,17 +218,17 @@ describe('emptying the trash', () => {
   }
 
   it('answers with how many entries it purged', async () => {
-    await store.createDocument('a.md', 'x')
-    await store.createDocument('b.md', 'y')
-    await store.trash('a.md')
-    await store.trash('b.md')
+    await store.createDocument('a.md', 'x', someone)
+    await store.createDocument('b.md', 'y', someone)
+    await store.trash('a.md', someone)
+    await store.trash('b.md', someone)
 
     expect(await fieldOf(await emptied(), 'purged')).toBe(2)
   })
 
   it('leaves the trash empty', async () => {
-    await store.createDocument('a.md', 'x')
-    await store.trash('a.md')
+    await store.createDocument('a.md', 'x', someone)
+    await store.trash('a.md', someone)
     await emptied()
 
     expect(await store.listTrash()).toStrictEqual([])
@@ -237,8 +239,8 @@ describe('emptying the trash', () => {
   })
 
   it('is not reached by a path that names one entry', async () => {
-    await store.createDocument('a.md', 'x')
-    const entryId = await store.trash('a.md')
+    await store.createDocument('a.md', 'x', someone)
+    const entryId = await store.trash('a.md', someone)
     await app.request(`/${entryId}`, { method: 'DELETE' })
 
     expect(await fieldOf(await emptied(), 'purged')).toBe(0)

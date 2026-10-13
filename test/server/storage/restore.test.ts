@@ -12,6 +12,8 @@ import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import { givenAsync } from '../../conditions.ts'
 
+import { someone } from '../actors.ts'
+
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
 
@@ -42,7 +44,7 @@ async function trashedJournal(): Promise<string> {
   await write('journal/b.md')
   await write('journal/2026/march.md')
 
-  return await store.trash('journal')
+  return await store.trash('journal', someone)
 }
 
 describe('restoring the whole entry', () => {
@@ -393,7 +395,7 @@ describe('links inside something restored under a new name', () => {
     await write('top.md', '# top')
     await write('elsewhere/pointer.md', '# pointer\n\n[at notes](../journal/notes.md)\n')
 
-    return await store.trash('journal/notes.md')
+    return await store.trash('journal/notes.md', someone)
   }
 
   it('are re-based so they still reach what they named', async () => {
@@ -432,7 +434,7 @@ describe('links inside something restored under a new name', () => {
 describe('an image restored under a different name', () => {
   it('goes where it was asked, with nothing to relink inside it', async () => {
     await write('pictures/shot.png', 'not really a png')
-    const entryId = await store.trash('pictures/shot.png')
+    const entryId = await store.trash('pictures/shot.png', someone)
 
     await restoreSelection(root, { entryId, paths: [''], to: 'pictures/renamed.png' })
 

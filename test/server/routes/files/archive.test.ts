@@ -14,6 +14,8 @@ import { fileRoutes } from '../../../../src/server/routes/files.ts'
 import { DEFAULT_LIMITS } from '../../../../src/server/platform/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 
+import { someone } from '../../actors.ts'
+
 let root = ''
 let store: DocumentStore = createFsDocumentStore('')
 let app: Hono = fileRoutes(store, DEFAULT_LIMITS)
@@ -44,8 +46,8 @@ describe('downloading a subtree as a zip', () => {
   }
 
   it('serves a zip of the whole store', async () => {
-    await store.createDocument('notes.md', '# hello')
-    await store.createDocument('journal/entry.md', '# entry')
+    await store.createDocument('notes.md', '# hello', someone)
+    await store.createDocument('journal/entry.md', '# entry', someone)
 
     const res = await app.request('/archive')
 
@@ -60,7 +62,7 @@ describe('downloading a subtree as a zip', () => {
   })
 
   it('names the download after the subtree', async () => {
-    await store.createDocument('journal/entry.md', '# entry')
+    await store.createDocument('journal/entry.md', '# entry', someone)
 
     const res = await app.request('/archive?path=journal')
 
@@ -80,7 +82,7 @@ describe('downloading a subtree as a zip', () => {
   // A quote inside a quoted filename closes it early, so the real name travels
   // in `filename*` and the quoted one is a plain-ASCII fallback.
   it('does not let a quote in the name break the quoted filename', async () => {
-    await store.createDocument('say "hi"/entry.md', '# entry')
+    await store.createDocument('say "hi"/entry.md', '# entry', someone)
 
     const res = await app.request(`/archive?path=${encodeURIComponent('say "hi"')}`)
     const disposition = res.headers.get('content-disposition') ?? ''
@@ -89,7 +91,7 @@ describe('downloading a subtree as a zip', () => {
   })
 
   it('carries a non-ASCII name through the encoded parameter', async () => {
-    await store.createDocument('café/entry.md', '# entry')
+    await store.createDocument('café/entry.md', '# entry', someone)
 
     const res = await app.request(`/archive?path=${encodeURIComponent('café')}`)
 
@@ -101,7 +103,7 @@ describe('downloading a subtree as a zip', () => {
     ['an apostrophe', "it's", 'vixen-it_s.zip'],
     ['an emoji', '🎉', 'vixen-_.zip'],
   ])('reduces %s to plain ASCII in the fallback', async (_label, folder, fallback) => {
-    await store.createDocument(`${folder}/entry.md`, '# entry')
+    await store.createDocument(`${folder}/entry.md`, '# entry', someone)
 
     const res = await app.request(`/archive?path=${encodeURIComponent(folder)}`)
 
@@ -109,8 +111,8 @@ describe('downloading a subtree as a zip', () => {
   })
 
   it('archives only the requested subtree, with paths relative to it', async () => {
-    await store.createDocument('notes.md', '# outside')
-    await store.createDocument('journal/entry.md', '# entry')
+    await store.createDocument('notes.md', '# outside', someone)
+    await store.createDocument('journal/entry.md', '# entry', someone)
 
     const res = await app.request('/archive?path=journal')
 
@@ -118,9 +120,9 @@ describe('downloading a subtree as a zip', () => {
   })
 
   it('leaves the trash out of the export', async () => {
-    await store.createDocument('notes.md', '# hello')
-    await store.createDocument('gone.md', '# gone')
-    await store.trash('gone.md')
+    await store.createDocument('notes.md', '# hello', someone)
+    await store.createDocument('gone.md', '# gone', someone)
+    await store.trash('gone.md', someone)
 
     const res = await app.request('/archive')
 
@@ -128,7 +130,7 @@ describe('downloading a subtree as a zip', () => {
   })
 
   it('returns 413 before streaming when the byte limit is exceeded', async () => {
-    await store.createDocument('notes.md', '# a document longer than four bytes')
+    await store.createDocument('notes.md', '# a document longer than four bytes', someone)
     const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, archiveMaxBytes: 4 })
 
     const res = await tiny.request('/archive')
@@ -141,8 +143,8 @@ describe('downloading a subtree as a zip', () => {
   })
 
   it('names the limit and the measured value, so the message can be specific', async () => {
-    await store.createDocument('a.md', 'x')
-    await store.createDocument('b.md', 'x')
+    await store.createDocument('a.md', 'x', someone)
+    await store.createDocument('b.md', 'x', someone)
     const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, archiveMaxEntries: 1 })
 
     const res = await tiny.request('/archive')
@@ -162,7 +164,7 @@ describe('downloading a subtree as a zip', () => {
   })
 
   it('returns 404 when the path names a file rather than a folder', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     expect((await app.request('/archive?path=notes.md')).status).toBe(404)
   })

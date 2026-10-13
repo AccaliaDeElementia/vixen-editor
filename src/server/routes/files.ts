@@ -9,6 +9,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import type { Limits } from '../platform/config.ts'
+import { actorOf } from './requesting-actor.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 import { mediaTypeOf } from '../storage/primitives/media-type.ts'
 import { joinEntryPath } from '../storage/primitives/safe-path.ts'
@@ -120,7 +121,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     async (c) => {
       const { from, to } = c.req.valid('json')
       try {
-        return c.json(await store.move({ from, to }))
+        return c.json(await store.move({ from, to }, actorOf(c)))
       } catch (error) {
         return toErrorResponse(c, error)
       }
@@ -129,7 +130,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
 
   routes.delete('/entries/:entryPath{.+}', async (c) => {
     try {
-      const id = await store.trash(c.req.param('entryPath'))
+      const id = await store.trash(c.req.param('entryPath'), actorOf(c))
       return c.json({ trashId: id })
     } catch (error) {
       return toErrorResponse(c, error)
@@ -152,7 +153,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     if (bytes.length > limits.uploadMaxBytes) return payloadTooLarge(c, limits.uploadMaxBytes)
 
     try {
-      const stored = await store.createUpload(directory, name, bytes)
+      const stored = await store.createUpload(directory, name, bytes, actorOf(c))
       return c.json({ path: stored }, HTTP_CREATED)
     } catch (error) {
       return toErrorResponse(c, error)
@@ -165,7 +166,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     async (c) => {
       const { path: folderPath } = c.req.valid('json')
       try {
-        const etag = await store.createFolder(folderPath, seedFolderIndex(folderPath))
+        const etag = await store.createFolder(folderPath, seedFolderIndex(folderPath), actorOf(c))
         return c.json({ path: joinEntryPath(folderPath, FOLDER_INDEX_NAME), etag }, HTTP_CREATED)
       } catch (error) {
         return toErrorResponse(c, error)
@@ -180,7 +181,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
       const { path: id, content } = c.req.valid('json')
 
       try {
-        const etag = await store.createDocument(id, content ?? seedDocument(id))
+        const etag = await store.createDocument(id, content ?? seedDocument(id), actorOf(c))
         return c.json({ path: id, etag }, HTTP_CREATED)
       } catch (error) {
         return toErrorResponse(c, error)

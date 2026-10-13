@@ -8,12 +8,15 @@ import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../../../cast.ts'
-import { given } from '../../../conditions.ts'
+import { given, givenAsync } from '../../../conditions.ts'
 import { fieldOf, refusalOf } from '../../refusals.ts'
 import { fileRoutes } from '../../../../src/server/routes/files.ts'
 import { DEFAULT_LIMITS } from '../../../../src/server/platform/config.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 import { FOLDER_INDEX_NAME } from '../../../../src/shared/documents.ts'
+
+import { someone } from '../../actors.ts'
+import { TestOnly as trashTestOnly } from '../../../../src/server/storage/trash/trash.ts'
 
 const EDITED = '# edited'
 
@@ -49,7 +52,7 @@ describe('the tree the browser draws', () => {
   })
 
   it('reports folders, documents and images with distinct kinds', async () => {
-    await store.createDocument('journal/september.md', 'x')
+    await store.createDocument('journal/september.md', 'x', someone)
     await fs.writeFile(path.join(root, 'photo.png'), '')
 
     const res = await app.request('/')
@@ -79,7 +82,7 @@ describe('creating a folder', () => {
     const created: unknown = await res.json()
     const etag = typeof created === 'object' && created !== null && 'etag' in created ? created.etag : undefined
 
-    await store.updateDocument(`journal/${FOLDER_INDEX_NAME}`, EDITED, String(etag))
+    await store.updateDocument(`journal/${FOLDER_INDEX_NAME}`, EDITED, String(etag), someone)
 
     await expect(store.read(`journal/${FOLDER_INDEX_NAME}`)).resolves.toBe(EDITED)
   })
@@ -149,7 +152,7 @@ describe('creating a document', () => {
     const created: unknown = await res.json()
     const etag = typeof created === 'object' && created !== null && 'etag' in created ? created.etag : undefined
 
-    await store.updateDocument('notes.md', EDITED, String(etag))
+    await store.updateDocument('notes.md', EDITED, String(etag), someone)
 
     await expect(store.read('notes.md')).resolves.toBe(EDITED)
   })
@@ -173,7 +176,7 @@ describe('creating a document', () => {
   })
 
   it('reports a document that already exists as a conflict', async () => {
-    await store.createDocument('notes.md', 'original')
+    await store.createDocument('notes.md', 'original', someone)
 
     const res = await post('documents', { path: 'notes.md' })
 
@@ -181,7 +184,7 @@ describe('creating a document', () => {
   })
 
   it('leaves the existing content alone on a conflict', async () => {
-    await store.createDocument('notes.md', 'original')
+    await store.createDocument('notes.md', 'original', someone)
     await post('documents', { path: 'notes.md', content: 'replacement' })
 
     await expect(store.read('notes.md')).resolves.toBe('original')
@@ -404,7 +407,7 @@ describe('serving a stored file as it was uploaded', () => {
     ['photo.png', PNG_BYTES, 'image/png'],
     ['notes.md', new TextEncoder().encode('# hi'), 'text/markdown'],
   ])('types %s from its extension rather than from the upload', async (name, content, expected) => {
-    await store.createUpload('', name, content)
+    await store.createUpload('', name, content, someone)
 
     const res = await app.request(`/raw/${name}`)
 
@@ -453,7 +456,7 @@ describe('serving a stored file as it was uploaded', () => {
 
 describe('moving an entry', () => {
   it('renames a document and reports what it rewrote', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     const res = await post('moves', { from: 'notes.md', to: 'renamed.md' })
 
@@ -467,8 +470,8 @@ describe('moving an entry', () => {
   })
 
   it('names the documents whose links it repaired', async () => {
-    await store.createDocument('journal/a.md', '# a')
-    await store.createDocument('notes.md', 'see [it](journal/a.md)')
+    await store.createDocument('journal/a.md', '# a', someone)
+    await store.createDocument('notes.md', 'see [it](journal/a.md)', someone)
 
     const res = await post('moves', { from: 'journal/a.md', to: 'archive/a.md' })
 
@@ -482,8 +485,8 @@ describe('moving an entry', () => {
   })
 
   it('moves a document into a folder', async () => {
-    await store.createFolder('archive', '# archive')
-    await store.createDocument('notes.md', '# hello')
+    await store.createFolder('archive', '# archive', someone)
+    await store.createDocument('notes.md', '# hello', someone)
 
     expect((await post('moves', { from: 'notes.md', to: 'archive/notes.md' })).status).toBe(200)
   })
@@ -495,8 +498,8 @@ describe('moving an entry', () => {
   })
 
   it('refuses an occupied destination rather than replacing it', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
+    await store.createDocument('notes.md', '# mine', someone)
+    await store.createDocument('archive/notes.md', '# theirs', someone)
 
     const res = await post('moves', { from: 'notes.md', to: 'archive/notes.md' })
 
@@ -504,8 +507,8 @@ describe('moving an entry', () => {
   })
 
   it('leaves both documents where they were when it refuses', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
+    await store.createDocument('notes.md', '# mine', someone)
+    await store.createDocument('archive/notes.md', '# theirs', someone)
 
     await post('moves', { from: 'notes.md', to: 'archive/notes.md' })
 
@@ -516,7 +519,7 @@ describe('moving an entry', () => {
   })
 
   it('returns 409 for a folder moved into its own descendant', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
     const res = await post('moves', { from: 'journal', to: 'journal/2026' })
 
@@ -530,7 +533,7 @@ describe('moving an entry', () => {
   })
 
   it('returns 400 for a rename that would change what the file claims to be', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     const res = await post('moves', { from: 'notes.md', to: 'notes.svg' })
 
@@ -608,8 +611,8 @@ describe('the listing follows the language the client asked for', () => {
   }
 
   beforeEach(async () => {
-    await store.createDocument('zebra.md', 'z')
-    await store.createDocument('\u00e4pple.md', 'a')
+    await store.createDocument('zebra.md', 'z', someone)
+    await store.createDocument('\u00e4pple.md', 'a', someone)
   })
 
   it('sorts for a Swedish reader when Swedish is asked for', async () => {
@@ -631,13 +634,13 @@ describe('the listing follows the language the client asked for', () => {
   })
 })
 
-async function remove(entryPath: string): Promise<Response> {
-  return await app.request(`/entries/${entryPath}`, { method: 'DELETE' })
+async function remove(entryPath: string, headers: Record<string, string> = {}): Promise<Response> {
+  return await app.request(`/entries/${entryPath}`, { method: 'DELETE', headers })
 }
 
 describe('moving an entry to the trash', () => {
   it('moves a document to the trash and reports the entry id', async () => {
-    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.md', 'x', someone)
 
     const res = await remove('notes.md')
 
@@ -649,20 +652,20 @@ describe('moving an entry to the trash', () => {
   })
 
   it('takes the document out of the listing', async () => {
-    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.md', 'x', someone)
     await remove('notes.md')
 
     await expect(store.list()).resolves.toStrictEqual([])
   })
 
   it('deletes a nested path', async () => {
-    await store.createDocument('journal/2026/notes.md', 'x')
+    await store.createDocument('journal/2026/notes.md', 'x', someone)
 
     expect((await remove('journal/2026/notes.md')).status).toBe(200)
   })
 
   it('deletes a folder', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
     const res = await remove('journal')
     given(() => {
@@ -690,3 +693,29 @@ describe('moving an entry to the trash', () => {
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
   })
 })
+
+describe('who a request credits', () => {
+  it('records the requester against the deletion, not an actor the route chose', async () => {
+    await givenAsync(store.createDocument('mine.md', '# mine', someone))
+
+    await remove('mine.md', { 'x-forwarded-for': '198.51.100.7' })
+
+    expect(await trashedMeta()).toMatchObject({ deletedBy: 'unauth:198.51.100.7' })
+  })
+
+  it('tells two requesters apart, so the credit follows the request rather than the server', async () => {
+    await givenAsync(store.createDocument('theirs.md', '# theirs', someone))
+
+    await remove('theirs.md', { 'x-forwarded-for': '203.0.113.41' })
+
+    expect(await trashedMeta()).toMatchObject({ deletedBy: 'unauth:203.0.113.41' })
+  })
+})
+
+async function trashedMeta(): Promise<unknown> {
+  const { TRASH_DIRECTORY, TRASH_META_NAME } = trashTestOnly
+  const trashRoot = path.join(root, TRASH_DIRECTORY)
+  const [entryId = ''] = await fs.readdir(trashRoot)
+
+  return JSON.parse(await fs.readFile(path.join(trashRoot, entryId, TRASH_META_NAME), 'utf8'))
+}

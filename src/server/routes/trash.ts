@@ -4,6 +4,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
+import { actorOf } from './requesting-actor.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 
 import { invalidBody, toErrorResponse } from './error-response.ts'
@@ -36,18 +37,18 @@ export function trashRoutes(store: DocumentStore): Hono {
     async (c) => {
       const { paths, to } = c.req.valid('json')
       try {
-        return c.json(await store.restore({ entryId: c.req.param('entryId'), paths, to }))
+        return c.json(await store.restore({ entryId: c.req.param('entryId'), paths, to }, actorOf(c)))
       } catch (error) {
         return toErrorResponse(c, error)
       }
     },
   )
 
-  routes.delete('/', async (c) => c.json({ purged: await store.emptyTrash() }))
+  routes.delete('/', async (c) => c.json({ purged: await store.emptyTrash(actorOf(c)) }))
 
   routes.delete('/:entryId', async (c) => {
     try {
-      await store.purge(c.req.param('entryId'))
+      await store.purge(c.req.param('entryId'), actorOf(c))
       return c.body(null, HTTP_NO_CONTENT)
     } catch (error) {
       return toErrorResponse(c, error)

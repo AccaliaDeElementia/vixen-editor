@@ -15,6 +15,8 @@ import { createWriteLock } from '../../../src/server/platform/lock.ts'
 import { failingStore } from '../failing-store.ts'
 import { gate } from '../gate.ts'
 
+import { someone } from '../actors.ts'
+
 const HTTP_INTERNAL_ERROR = 500
 
 let root = ''
@@ -40,7 +42,7 @@ async function put(id: string, content: string, ifMatch = '"any"'): Promise<Resp
 }
 
 async function seed(id: string, content: string): Promise<string> {
-  return await store.createDocument(id, content)
+  return await store.createDocument(id, content, someone)
 }
 
 describe('listing the documents', () => {
@@ -55,8 +57,8 @@ describe('listing the documents', () => {
   })
 
   it('lists stored documents', async () => {
-    await store.createDocument('b.md', 'x')
-    await store.createDocument('a.md', 'x')
+    await store.createDocument('b.md', 'x', someone)
+    await store.createDocument('a.md', 'x', someone)
 
     const res = await app.request('/')
 
@@ -66,7 +68,7 @@ describe('listing the documents', () => {
 
 describe('reading a document', () => {
   it('returns the document content as markdown', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     const res = await app.request('/notes.md')
 
@@ -81,7 +83,7 @@ describe('reading a document', () => {
   })
 
   it('carries an etag the client can save against', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
+    const etag = await store.createDocument('notes.md', '# hello', someone)
 
     const res = await app.request('/notes.md')
 
@@ -89,8 +91,8 @@ describe('reading a document', () => {
   })
 
   it('changes the etag when the content changes', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
-    await store.updateDocument('notes.md', '# changed', etag)
+    const etag = await store.createDocument('notes.md', '# hello', someone)
+    await store.updateDocument('notes.md', '# changed', etag, someone)
 
     const res = await app.request('/notes.md')
 
@@ -116,7 +118,7 @@ describe('reading a document', () => {
   })
 
   it('returns a nested document', async () => {
-    await store.createDocument('journal/2026/september.md', 'entry')
+    await store.createDocument('journal/2026/september.md', 'entry', someone)
 
     const res = await app.request('/journal/2026/september.md')
 
@@ -360,7 +362,7 @@ describe('write contention', () => {
   it('serves a read while a write holds the lock, because reads never queue', async () => {
     const lock = createWriteLock(IMPATIENT_MS)
     const contended = createFsDocumentStore(root, lock)
-    await contended.createDocument('notes.md', '# readable')
+    await contended.createDocument('notes.md', '# readable', someone)
     const busy = documentRoutes(contended)
     const held = occupy(lock)
     await held.occupied
@@ -382,7 +384,7 @@ describe('a conditional GET', () => {
   }
 
   it('answers 304 when the token still matches, so a check costs no body', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
+    const etag = await store.createDocument('notes.md', '# hello', someone)
 
     const res = await conditionalGet('notes.md', etag)
 
@@ -394,14 +396,14 @@ describe('a conditional GET', () => {
   })
 
   it('still carries the token on a 304, because a client may have lost it', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
+    const etag = await store.createDocument('notes.md', '# hello', someone)
 
     expect((await conditionalGet('notes.md', etag)).headers.get('etag')).toBe(etag)
   })
 
   it('returns the new content when the document has moved on', async () => {
-    const stale = await store.createDocument('notes.md', '# hello')
-    await store.updateDocument('notes.md', '# changed', stale)
+    const stale = await store.createDocument('notes.md', '# hello', someone)
+    await store.updateDocument('notes.md', '# changed', stale, someone)
 
     const res = await conditionalGet('notes.md', stale)
 
@@ -413,14 +415,14 @@ describe('a conditional GET', () => {
   })
 
   it('carries the new token with the new content, which is what a resolution needs', async () => {
-    const stale = await store.createDocument('notes.md', '# hello')
-    const fresh = await store.updateDocument('notes.md', '# changed', stale)
+    const stale = await store.createDocument('notes.md', '# hello', someone)
+    const fresh = await store.updateDocument('notes.md', '# changed', stale, someone)
 
     expect((await conditionalGet('notes.md', stale)).headers.get('etag')).toBe(fresh)
   })
 
   it('answers in full when no token is offered at all', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     const res = await app.request('/notes.md')
 
@@ -428,32 +430,32 @@ describe('a conditional GET', () => {
   })
 
   it('answers 404 for a document that is gone, rather than 304', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
-    await store.trash('notes.md')
+    const etag = await store.createDocument('notes.md', '# hello', someone)
+    await store.trash('notes.md', someone)
 
     expect((await conditionalGet('notes.md', etag)).status).toBe(404)
   })
 
   it('honours a weak comparison, which is what If-None-Match specifies', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
+    const etag = await store.createDocument('notes.md', '# hello', someone)
 
     expect((await conditionalGet('notes.md', `W/${etag}`)).status).toBe(304)
   })
 
   it('accepts a list of tokens, matching if any of them is current', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
+    const etag = await store.createDocument('notes.md', '# hello', someone)
 
     expect((await conditionalGet('notes.md', `"other", ${etag}`)).status).toBe(304)
   })
 
   it('answers in full when none of the offered tokens is current', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     expect((await conditionalGet('notes.md', '"one", "two"')).status).toBe(200)
   })
 
   it('answers 304 for the wildcard, which means any current version', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     expect((await conditionalGet('notes.md', '*')).status).toBe(304)
   })
@@ -461,8 +463,8 @@ describe('a conditional GET', () => {
 
 describe('the document list follows the language the client asked for', () => {
   it('sorts for a Swedish reader when Swedish is asked for', async () => {
-    await store.createDocument('zebra.md', 'z')
-    await store.createDocument('\u00e4pple.md', 'a')
+    await store.createDocument('zebra.md', 'z', someone)
+    await store.createDocument('\u00e4pple.md', 'a', someone)
 
     const res = await app.request('/', { headers: { 'accept-language': 'sv' } })
 
@@ -472,7 +474,7 @@ describe('the document list follows the language the client asked for', () => {
 
 describe('deleting a document', () => {
   it('is not something these routes offer, so deletion goes through the trash and nowhere else', async () => {
-    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.md', 'x', someone)
 
     const res = await app.request('/notes.md', { method: 'DELETE' })
 

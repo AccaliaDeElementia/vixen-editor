@@ -16,6 +16,8 @@ import {
   InvalidMoveError,
 } from '../../../src/server/storage/primitives/store-errors.ts'
 
+import { someone } from '../actors.ts'
+
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])
 
@@ -44,7 +46,7 @@ async function exists(...parts: string[]): Promise<boolean> {
 
 describe('renaming', () => {
   it('moves a document to a new name in the same folder', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     await move('notes.md', 'renamed.md')
 
@@ -55,7 +57,7 @@ describe('renaming', () => {
   })
 
   it('renames between document extensions, which name the same kind of thing', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     await move('notes.md', 'notes.txt')
 
@@ -63,7 +65,7 @@ describe('renaming', () => {
   })
 
   it('renames a folder', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
     await move('journal', 'diary')
 
@@ -71,7 +73,7 @@ describe('renaming', () => {
   })
 
   it('renames a folder whose name looks like a filename', async () => {
-    await store.createFolder('v1.2', '# release')
+    await store.createFolder('v1.2', '# release', someone)
 
     await move('v1.2', 'v1.3')
 
@@ -79,19 +81,19 @@ describe('renaming', () => {
   })
 
   it('refuses to turn a document into an image, which the raw route would then mistype', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     await expect(move('notes.md', 'notes.svg')).rejects.toThrow(InvalidPathError)
   })
 
   it('refuses to turn an image into a document', async () => {
-    await store.createUpload('', 'photo.png', PNG)
+    await store.createUpload('', 'photo.png', PNG, someone)
 
     await expect(move('photo.png', 'photo.md')).rejects.toThrow(InvalidPathError)
   })
 
   it('renames an image, keeping its extension', async () => {
-    await store.createUpload('', 'photo.png', PNG)
+    await store.createUpload('', 'photo.png', PNG, someone)
 
     await move('photo.png', 'picture.png')
 
@@ -99,13 +101,13 @@ describe('renaming', () => {
   })
 
   it('refuses to turn a PNG into a JPEG, which upload refuses for the same bytes', async () => {
-    await store.createUpload('', 'photo.png', PNG)
+    await store.createUpload('', 'photo.png', PNG, someone)
 
     await expect(move('photo.png', 'photo.jpg')).rejects.toThrow(InvalidPathError)
   })
 
   it('allows .jpg to .jpeg, two spellings the raw route serves identically', async () => {
-    await store.createUpload('', 'photo.jpg', JPEG)
+    await store.createUpload('', 'photo.jpg', JPEG, someone)
 
     await move('photo.jpg', 'photo.jpeg')
 
@@ -113,7 +115,7 @@ describe('renaming', () => {
   })
 
   it('still lets a document change between .md and .txt, which are one family', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     await move('notes.md', 'notes.txt')
 
@@ -123,8 +125,8 @@ describe('renaming', () => {
 
 describe('moving', () => {
   it('moves a document into another folder', async () => {
-    await store.createFolder('archive', '# archive')
-    await store.createDocument('notes.md', '# hello')
+    await store.createFolder('archive', '# archive', someone)
+    await store.createDocument('notes.md', '# hello', someone)
 
     await move('notes.md', 'archive/notes.md')
 
@@ -132,7 +134,7 @@ describe('moving', () => {
   })
 
   it('creates the destination parent when it does not exist', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     await move('notes.md', 'deeply/nested/notes.md')
 
@@ -140,8 +142,8 @@ describe('moving', () => {
   })
 
   it('moves a folder with everything under it', async () => {
-    await store.createFolder('journal', '# journal')
-    await store.createDocument('journal/entry.md', '# entry')
+    await store.createFolder('journal', '# journal', someone)
+    await store.createDocument('journal/entry.md', '# entry', someone)
 
     await move('journal', 'archive/journal')
 
@@ -152,7 +154,7 @@ describe('moving', () => {
   })
 
   it('treats a move onto its own path as a no-op, which is what a drag home amounts to', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     await move('notes.md', 'notes.md')
 
@@ -162,19 +164,19 @@ describe('moving', () => {
 
 describe('rejecting impossible moves', () => {
   it('refuses to move a folder into its own descendant', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
     await expect(move('journal', 'journal/2026')).rejects.toThrow(InvalidMoveError)
   })
 
   it('refuses a deeper descendant too', async () => {
-    await store.createFolder('journal/2026', '# journal')
+    await store.createFolder('journal/2026', '# journal', someone)
 
     await expect(move('journal', 'journal/2026/nested')).rejects.toThrow(InvalidMoveError)
   })
 
   it('allows a sibling whose name merely starts with the source name', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
     await move('journal', 'journal-archive')
 
@@ -205,22 +207,22 @@ describe('rejecting impossible moves', () => {
 
 describe('an occupied destination', () => {
   it('refuses rather than replacing a file', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
+    await store.createDocument('notes.md', '# mine', someone)
+    await store.createDocument('archive/notes.md', '# theirs', someone)
 
     await expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(EntryExistsError)
   })
 
   it('refuses rather than merging two folders', async () => {
-    await store.createFolder('journal', '# journal')
-    await store.createFolder('archive/journal', '# other')
+    await store.createFolder('journal', '# journal', someone)
+    await store.createFolder('archive/journal', '# other', someone)
 
     await expect(move('journal', 'archive/journal')).rejects.toThrow(EntryExistsError)
   })
 
   it('leaves both sides untouched when it refuses', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
+    await store.createDocument('notes.md', '# mine', someone)
+    await store.createDocument('archive/notes.md', '# theirs', someone)
 
     await givenAsync(expect(move('notes.md', 'archive/notes.md')).rejects.toThrow(EntryExistsError))
 
@@ -231,8 +233,8 @@ describe('an occupied destination', () => {
   })
 
   it('trashes nothing, so no recovery is needed', async () => {
-    await store.createDocument('notes.md', '# mine')
-    await store.createDocument('archive/notes.md', '# theirs')
+    await store.createDocument('notes.md', '# mine', someone)
+    await store.createDocument('archive/notes.md', '# theirs', someone)
 
     await move('notes.md', 'archive/notes.md').catch(() => undefined)
 

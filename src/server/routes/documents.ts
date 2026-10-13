@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { computeEtag } from '../storage/primitives/etag.ts'
+import { actorOf } from './requesting-actor.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 
 import { matchesAny } from './conditional.ts'
@@ -50,7 +51,7 @@ export function documentRoutes(store: DocumentStore): Hono {
       if (ifMatch === undefined) return preconditionRequired(c)
 
       try {
-        const etag = await store.updateDocument(id, c.req.valid('json').content, ifMatch)
+        const etag = await store.updateDocument(id, c.req.valid('json').content, ifMatch, actorOf(c))
         return c.body(null, HTTP_NO_CONTENT, { etag })
       } catch (error) {
         return toErrorResponse(c, error)

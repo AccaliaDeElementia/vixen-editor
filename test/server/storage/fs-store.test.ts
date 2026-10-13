@@ -18,6 +18,8 @@ import {
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import { FOLDER_INDEX_NAME } from '../../../src/shared/documents.ts'
 
+import { someone } from '../actors.ts'
+
 const OVER_NAME_MAX = 'a'.repeat(300)
 
 // Every segment is inside NAME_MAX, but the whole path exceeds PATH_MAX (4096),
@@ -49,7 +51,7 @@ afterEach(async () => {
 
 describe('read', () => {
   it('returns the stored content', async () => {
-    await store.createDocument('notes.md', 'content')
+    await store.createDocument('notes.md', 'content', someone)
 
     await expect(store.read('notes.md')).resolves.toBe('content')
   })
@@ -91,7 +93,7 @@ describe('read', () => {
   })
 
   it('allows a symlink that stays inside the root', async () => {
-    await store.createDocument('real.md', 'inside')
+    await store.createDocument('real.md', 'inside', someone)
     await fs.symlink(path.join(root, 'real.md'), path.join(root, 'alias.md'))
 
     await expect(store.read('alias.md')).resolves.toBe('inside')
@@ -116,34 +118,34 @@ describe('list', () => {
   })
 
   it('lists documents sorted by id', async () => {
-    await store.createDocument('b.md', 'x')
-    await store.createDocument('a.md', 'x')
+    await store.createDocument('b.md', 'x', someone)
+    await store.createDocument('a.md', 'x', someone)
 
     await expect(store.list()).resolves.toStrictEqual(['a.md', 'b.md'])
   })
 
   it('lists them the way a reader counts, so file9 comes before file10', async () => {
-    await store.createDocument('file10.md', 'x')
-    await store.createDocument('file9.md', 'x')
+    await store.createDocument('file10.md', 'x', someone)
+    await store.createDocument('file9.md', 'x', someone)
 
     await expect(store.list()).resolves.toStrictEqual(['file9.md', 'file10.md'])
   })
 
   it('lists nested documents with posix separators', async () => {
-    await store.createDocument('journal/2026/september.md', 'x')
+    await store.createDocument('journal/2026/september.md', 'x', someone)
 
     await expect(store.list()).resolves.toStrictEqual(['journal/2026/september.md'])
   })
 
   it('lists plain text alongside markdown, because both are documents', async () => {
-    await store.createDocument('notes.md', 'x')
-    await store.createDocument('notes.txt', 'x')
+    await store.createDocument('notes.md', 'x', someone)
+    await store.createDocument('notes.txt', 'x', someone)
 
     await expect(store.list()).resolves.toStrictEqual(['notes.md', 'notes.txt'])
   })
 
   it('ignores files that are not documents', async () => {
-    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.md', 'x', someone)
     await fs.writeFile(path.join(root, 'image.png'), '')
     await fs.writeFile(path.join(root, 'README'), '')
 
@@ -151,7 +153,7 @@ describe('list', () => {
   })
 
   it('ignores dotfiles and dot-directories', async () => {
-    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.md', 'x', someone)
     await fs.writeFile(path.join(root, '.hidden.md'), '')
     await fs.mkdir(path.join(root, '.git'), { recursive: true })
     await fs.writeFile(path.join(root, '.git', 'config.md'), '')
@@ -162,84 +164,84 @@ describe('list', () => {
 
 describe('createDocument', () => {
   it('creates a document with the content it was given', async () => {
-    await store.createDocument('notes.md', '# seeded')
+    await store.createDocument('notes.md', '# seeded', someone)
 
     await expect(store.read('notes.md')).resolves.toBe('# seeded')
   })
 
   it('creates missing parent directories', async () => {
-    await store.createDocument('journal/2026/september.md', 'entry')
+    await store.createDocument('journal/2026/september.md', 'entry', someone)
 
     await expect(store.read('journal/2026/september.md')).resolves.toBe('entry')
   })
 
   it('refuses to replace an existing document', async () => {
-    await store.createDocument('notes.md', 'original')
+    await store.createDocument('notes.md', 'original', someone)
 
-    await expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError)
+    await expect(store.createDocument('notes.md', 'replacement', someone)).rejects.toThrow(EntryExistsError)
   })
 
   it('leaves the existing content untouched when it refuses', async () => {
-    await store.createDocument('notes.md', 'original')
+    await store.createDocument('notes.md', 'original', someone)
 
-    await givenAsync(expect(store.createDocument('notes.md', 'replacement')).rejects.toThrow(EntryExistsError))
+    await givenAsync(expect(store.createDocument('notes.md', 'replacement', someone)).rejects.toThrow(EntryExistsError))
 
     await expect(store.read('notes.md')).resolves.toBe('original')
   })
 
   it('names the taken path in the error', async () => {
-    await store.createDocument('notes.md', 'original')
+    await store.createDocument('notes.md', 'original', someone)
 
-    await expect(store.createDocument('notes.md', 'x')).rejects.toThrow(/notes\.md/v)
+    await expect(store.createDocument('notes.md', 'x', someone)).rejects.toThrow(/notes\.md/v)
   })
 
   it('refuses a path occupied by a directory', async () => {
     await fs.mkdir(path.join(root, 'notes.md'), { recursive: true })
 
-    await expect(store.createDocument('notes.md', 'x')).rejects.toThrow(EntryExistsError)
+    await expect(store.createDocument('notes.md', 'x', someone)).rejects.toThrow(EntryExistsError)
   })
 
   it('rejects an invalid id', async () => {
-    await expect(store.createDocument('../escape.md', 'x')).rejects.toThrow(InvalidPathError)
+    await expect(store.createDocument('../escape.md', 'x', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('rejects a hidden id', async () => {
-    await expect(store.createDocument('.hidden.md', 'x')).rejects.toThrow(InvalidPathError)
+    await expect(store.createDocument('.hidden.md', 'x', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('refuses to create through a symlinked directory that escapes the root', async () => {
     await fs.symlink(outside, path.join(root, 'link'))
 
-    await expect(store.createDocument('link/planted.md', 'x')).rejects.toThrow(InvalidPathError)
+    await expect(store.createDocument('link/planted.md', 'x', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
-    await expect(store.createDocument(`${CREATABLE_PARENT}/${OVERLONG_LEAF}`, 'x')).rejects.toThrow(
+    await expect(store.createDocument(`${CREATABLE_PARENT}/${OVERLONG_LEAF}`, 'x', someone)).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
 
   it('surfaces a fault from the walk down to the parent too', async () => {
-    await expect(store.createDocument(DEEP_DOCUMENT, 'x')).rejects.toThrow(
+    await expect(store.createDocument(DEEP_DOCUMENT, 'x', someone)).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
 
   it('creates the document root if it does not yet exist', async () => {
     const fresh = createFsDocumentStore(path.join(root, 'nested', 'deeper'))
-    await fresh.createDocument('notes.md', 'body')
+    await fresh.createDocument('notes.md', 'body', someone)
 
     await expect(fresh.read('notes.md')).resolves.toBe('body')
   })
 
   it('round-trips unicode content', async () => {
-    await store.createDocument('unicode.md', '# ✨ héllo 世界')
+    await store.createDocument('unicode.md', '# ✨ héllo 世界', someone)
 
     await expect(store.read('unicode.md')).resolves.toBe('# ✨ héllo 世界')
   })
 
   it('stores a plain text document', async () => {
-    await store.createDocument('notes.txt', 'plain')
+    await store.createDocument('notes.txt', 'plain', someone)
 
     await expect(store.read('notes.txt')).resolves.toBe('plain')
   })
@@ -248,25 +250,25 @@ describe('createDocument', () => {
     ['empty content', ''],
     ['whitespace-only content', '  \n\t '],
   ])('refuses %s', async (_label, content) => {
-    await expect(store.createDocument('empty.md', content)).rejects.toThrow(EmptyContentError)
+    await expect(store.createDocument('empty.md', content, someone)).rejects.toThrow(EmptyContentError)
   })
 
   it('returns an etag the caller can save against', async () => {
-    const etag = await store.createDocument('notes.md', '# hello')
+    const etag = await store.createDocument('notes.md', '# hello', someone)
 
-    await expect(store.updateDocument('notes.md', '# changed', etag)).resolves.toBeTruthy()
+    await expect(store.updateDocument('notes.md', '# changed', etag, someone)).resolves.toBeTruthy()
   })
 })
 
 describe('updateDocument', () => {
   async function seeded(content = 'original'): Promise<string> {
-    return await store.createDocument('notes.md', content)
+    return await store.createDocument('notes.md', content, someone)
   }
 
   it('replaces the content when the etag matches', async () => {
     const etag = await seeded()
 
-    await store.updateDocument('notes.md', 'replaced', etag)
+    await store.updateDocument('notes.md', 'replaced', etag, someone)
 
     await expect(store.read('notes.md')).resolves.toBe('replaced')
   })
@@ -274,25 +276,25 @@ describe('updateDocument', () => {
   it('returns an etag matching the new content, so a second save needs no re-read', async () => {
     const etag = await seeded()
 
-    const next = await store.updateDocument('notes.md', 'replaced', etag)
-    await store.updateDocument('notes.md', 'again', next)
+    const next = await store.updateDocument('notes.md', 'replaced', etag, someone)
+    await store.updateDocument('notes.md', 'again', next, someone)
 
     await expect(store.read('notes.md')).resolves.toBe('again')
   })
 
   it('rejects a stale etag rather than clobbering the newer content', async () => {
     const stale = await seeded()
-    await store.updateDocument('notes.md', 'someone else got here first', stale)
+    await store.updateDocument('notes.md', 'someone else got here first', stale, someone)
 
-    await expect(store.updateDocument('notes.md', 'mine', stale)).rejects.toThrow(ConcurrentModificationError)
+    await expect(store.updateDocument('notes.md', 'mine', stale, someone)).rejects.toThrow(ConcurrentModificationError)
   })
 
   it('leaves the newer content in place when it rejects a stale etag', async () => {
     const stale = await seeded()
-    await store.updateDocument('notes.md', 'theirs', stale)
+    await store.updateDocument('notes.md', 'theirs', stale, someone)
 
     await givenAsync(
-      expect(store.updateDocument('notes.md', 'mine', stale)).rejects.toThrow(ConcurrentModificationError),
+      expect(store.updateDocument('notes.md', 'mine', stale, someone)).rejects.toThrow(ConcurrentModificationError),
     )
 
     await expect(store.read('notes.md')).resolves.toBe('theirs')
@@ -301,11 +303,13 @@ describe('updateDocument', () => {
   it('rejects an etag for entirely different content', async () => {
     await seeded()
 
-    await expect(store.updateDocument('notes.md', 'mine', '"not-an-etag"')).rejects.toThrow(ConcurrentModificationError)
+    await expect(store.updateDocument('notes.md', 'mine', '"not-an-etag"', someone)).rejects.toThrow(
+      ConcurrentModificationError,
+    )
   })
 
   it('refuses to create a document that does not exist, which is what the create endpoint is for', async () => {
-    await expect(store.updateDocument('absent.md', 'x', '"whatever"')).rejects.toThrow(DocumentNotFoundError)
+    await expect(store.updateDocument('absent.md', 'x', '"whatever"', someone)).rejects.toThrow(DocumentNotFoundError)
   })
 
   it.each([
@@ -314,45 +318,45 @@ describe('updateDocument', () => {
   ])('refuses %s', async (_label, content) => {
     const etag = await seeded()
 
-    await expect(store.updateDocument('notes.md', content, etag)).rejects.toThrow(EmptyContentError)
+    await expect(store.updateDocument('notes.md', content, etag, someone)).rejects.toThrow(EmptyContentError)
   })
 
   it('leaves the stored content alone when it refuses an empty save', async () => {
     const etag = await seeded()
 
-    await givenAsync(expect(store.updateDocument('notes.md', '', etag)).rejects.toThrow(EmptyContentError))
+    await givenAsync(expect(store.updateDocument('notes.md', '', etag, someone)).rejects.toThrow(EmptyContentError))
 
     await expect(store.read('notes.md')).resolves.toBe('original')
   })
 
   it('rejects an invalid id', async () => {
-    await expect(store.updateDocument('../escape.md', 'x', '"e"')).rejects.toThrow(InvalidPathError)
+    await expect(store.updateDocument('../escape.md', 'x', '"e"', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('refuses to follow a symlink that escapes the root', async () => {
     await fs.writeFile(path.join(outside, 'secret.md'), 'classified')
     await fs.symlink(path.join(outside, 'secret.md'), path.join(root, 'innocent.md'))
 
-    await expect(store.updateDocument('innocent.md', 'x', '"e"')).rejects.toThrow(InvalidPathError)
+    await expect(store.updateDocument('innocent.md', 'x', '"e"', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('lets only one of two concurrent saves holding the same etag through', async () => {
-    const etag = await store.createDocument('notes.md', 'original')
+    const etag = await store.createDocument('notes.md', 'original', someone)
 
     const outcomes = await Promise.allSettled([
-      store.updateDocument('notes.md', 'first writer', etag),
-      store.updateDocument('notes.md', 'second writer', etag),
+      store.updateDocument('notes.md', 'first writer', etag, someone),
+      store.updateDocument('notes.md', 'second writer', etag, someone),
     ])
 
     expect(outcomes.map((outcome) => outcome.status).toSorted()).toStrictEqual(['fulfilled', 'rejected'])
   })
 
   it('reports the loser of two concurrent saves as a conflict, not as a silent success', async () => {
-    const etag = await store.createDocument('notes.md', 'original')
+    const etag = await store.createDocument('notes.md', 'original', someone)
 
     const outcomes = await Promise.allSettled([
-      store.updateDocument('notes.md', 'first writer', etag),
-      store.updateDocument('notes.md', 'second writer', etag),
+      store.updateDocument('notes.md', 'first writer', etag, someone),
+      store.updateDocument('notes.md', 'second writer', etag, someone),
     ])
     const rejection = outcomes.find((outcome) => outcome.status === 'rejected')
 
@@ -362,59 +366,59 @@ describe('updateDocument', () => {
 
 describe('createFolder', () => {
   it('creates the directory', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
     await expect(fs.stat(path.join(root, 'journal')).then((s) => s.isDirectory())).resolves.toBe(true)
   })
 
   it('seeds the folder with an index document, so it opens to something', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
     await expect(store.read(`journal/${FOLDER_INDEX_NAME}`)).resolves.toBe('# journal')
   })
 
   it('creates missing parent directories', async () => {
-    await store.createFolder('journal/2026/september', '# september')
+    await store.createFolder('journal/2026/september', '# september', someone)
 
     await expect(store.read(`journal/2026/september/${FOLDER_INDEX_NAME}`)).resolves.toBe('# september')
   })
 
   it('refuses a folder that already exists, rather than overwriting its index', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
-    await expect(store.createFolder('journal', '# again')).rejects.toThrow(EntryExistsError)
+    await expect(store.createFolder('journal', '# again', someone)).rejects.toThrow(EntryExistsError)
   })
 
   it('leaves the existing index untouched when it refuses', async () => {
-    await store.createFolder('journal', '# journal')
+    await store.createFolder('journal', '# journal', someone)
 
-    await givenAsync(expect(store.createFolder('journal', '# again')).rejects.toThrow(EntryExistsError))
+    await givenAsync(expect(store.createFolder('journal', '# again', someone)).rejects.toThrow(EntryExistsError))
 
     await expect(store.read(`journal/${FOLDER_INDEX_NAME}`)).resolves.toBe('# journal')
   })
 
   it('refuses a path already occupied by a file', async () => {
-    await store.createDocument('journal.md', 'x')
+    await store.createDocument('journal.md', 'x', someone)
 
-    await expect(store.createFolder('journal.md', '# journal')).rejects.toThrow(EntryExistsError)
+    await expect(store.createFolder('journal.md', '# journal', someone)).rejects.toThrow(EntryExistsError)
   })
 
   it('rejects an invalid path', async () => {
-    await expect(store.createFolder('../escape', '# x')).rejects.toThrow(InvalidPathError)
+    await expect(store.createFolder('../escape', '# x', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('rejects a hidden path, which is how the trash stays unreachable', async () => {
-    await expect(store.createFolder('.trash', '# x')).rejects.toThrow(InvalidPathError)
+    await expect(store.createFolder('.trash', '# x', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('refuses to create through a symlinked directory that escapes the root', async () => {
     await fs.symlink(outside, path.join(root, 'link'))
 
-    await expect(store.createFolder('link/planted', '# x')).rejects.toThrow(InvalidPathError)
+    await expect(store.createFolder('link/planted', '# x', someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
-    await expect(store.createFolder(`${CREATABLE_PARENT}/${'d'.repeat(200)}`, '# x')).rejects.toThrow(
+    await expect(store.createFolder(`${CREATABLE_PARENT}/${'d'.repeat(200)}`, '# x', someone)).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
@@ -422,7 +426,7 @@ describe('createFolder', () => {
 
 describe('tree', () => {
   it('reports the document tree', async () => {
-    await store.createDocument('journal/september.md', 'x')
+    await store.createDocument('journal/september.md', 'x', someone)
 
     await expect(store.tree()).resolves.toMatchObject([
       { name: 'journal', kind: 'folder', children: [{ name: 'september.md', kind: 'document' }] },
@@ -438,7 +442,7 @@ describe('createUpload', () => {
   const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
   it('stores the bytes under the target directory', async () => {
-    await store.createUpload('journal', 'photo.png', PNG)
+    await store.createUpload('journal', 'photo.png', PNG, someone)
 
     await expect(
       fs.readFile(path.join(root, 'journal', 'photo.png')).then((b) => new Uint8Array(b)),
@@ -446,71 +450,71 @@ describe('createUpload', () => {
   })
 
   it('returns the stored path, which the client turns into a relative link', async () => {
-    await expect(store.createUpload('journal', 'photo.png', PNG)).resolves.toBe('journal/photo.png')
+    await expect(store.createUpload('journal', 'photo.png', PNG, someone)).resolves.toBe('journal/photo.png')
   })
 
   it('stores at the root when no directory is given', async () => {
-    await expect(store.createUpload('', 'photo.png', PNG)).resolves.toBe('photo.png')
+    await expect(store.createUpload('', 'photo.png', PNG, someone)).resolves.toBe('photo.png')
   })
 
   it('creates missing parent directories', async () => {
-    await expect(store.createUpload('journal/2026', 'photo.png', PNG)).resolves.toBe('journal/2026/photo.png')
+    await expect(store.createUpload('journal/2026', 'photo.png', PNG, someone)).resolves.toBe('journal/2026/photo.png')
   })
 
   it('refuses to replace an existing file', async () => {
-    await store.createUpload('', 'photo.png', PNG)
+    await store.createUpload('', 'photo.png', PNG, someone)
 
-    await expect(store.createUpload('', 'photo.png', PNG)).rejects.toThrow(EntryExistsError)
+    await expect(store.createUpload('', 'photo.png', PNG, someone)).rejects.toThrow(EntryExistsError)
   })
 
   it('rejects a filename carrying a separator, so an upload cannot pick its own directory', async () => {
-    await expect(store.createUpload('journal', '../escape.png', PNG)).rejects.toThrow(InvalidPathError)
+    await expect(store.createUpload('journal', '../escape.png', PNG, someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('rejects a traversal in the target directory', async () => {
-    await expect(store.createUpload('../outside', 'photo.png', PNG)).rejects.toThrow(InvalidPathError)
+    await expect(store.createUpload('../outside', 'photo.png', PNG, someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('rejects an extension outside the upload allowlist', async () => {
-    await expect(store.createUpload('', 'payload.zip', PNG)).rejects.toThrow(InvalidPathError)
+    await expect(store.createUpload('', 'payload.zip', PNG, someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('rejects a hidden filename', async () => {
-    await expect(store.createUpload('', '.hidden.png', PNG)).rejects.toThrow(InvalidPathError)
+    await expect(store.createUpload('', '.hidden.png', PNG, someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('rejects bytes that do not match the extension', async () => {
     const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
 
-    await expect(store.createUpload('', 'photo.png', html)).rejects.toThrow(ContentMismatchError)
+    await expect(store.createUpload('', 'photo.png', html, someone)).rejects.toThrow(ContentMismatchError)
   })
 
   it('does not store a file it rejected as mismatched', async () => {
     const html = new TextEncoder().encode('<!doctype html>')
 
-    await givenAsync(expect(store.createUpload('', 'photo.png', html)).rejects.toThrow(ContentMismatchError))
+    await givenAsync(expect(store.createUpload('', 'photo.png', html, someone)).rejects.toThrow(ContentMismatchError))
 
     await expect(fs.readdir(root)).resolves.toStrictEqual([])
   })
 
   it('rejects an empty upload', async () => {
-    await expect(store.createUpload('', 'photo.png', new Uint8Array())).rejects.toThrow(EmptyContentError)
+    await expect(store.createUpload('', 'photo.png', new Uint8Array(), someone)).rejects.toThrow(EmptyContentError)
   })
 
   it('accepts a markdown upload, which carries no signature to check', async () => {
     const markdown = new TextEncoder().encode('# imported')
 
-    await expect(store.createUpload('', 'imported.md', markdown)).resolves.toBe('imported.md')
+    await expect(store.createUpload('', 'imported.md', markdown, someone)).resolves.toBe('imported.md')
   })
 
   it('refuses to upload through a symlinked directory that escapes the root', async () => {
     await fs.symlink(outside, path.join(root, 'link'))
 
-    await expect(store.createUpload('link', 'photo.png', PNG)).rejects.toThrow(InvalidPathError)
+    await expect(store.createUpload('link', 'photo.png', PNG, someone)).rejects.toThrow(InvalidPathError)
   })
 
   it('surfaces a genuine filesystem fault rather than reporting the path as taken', async () => {
-    await expect(store.createUpload(CREATABLE_PARENT, `${'p'.repeat(200)}.png`, PNG)).rejects.toThrow(
+    await expect(store.createUpload(CREATABLE_PARENT, `${'p'.repeat(200)}.png`, PNG, someone)).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
@@ -520,13 +524,13 @@ describe('readBytes', () => {
   const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7])
 
   it('round-trips an upload byte for byte', async () => {
-    await store.createUpload('', 'photo.png', PNG)
+    await store.createUpload('', 'photo.png', PNG, someone)
 
     await expect(store.readBytes('photo.png')).resolves.toStrictEqual(PNG)
   })
 
   it('reads a document as bytes too', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     await expect(store.readBytes('notes.md').then((b) => new TextDecoder().decode(b))).resolves.toBe('# hello')
   })

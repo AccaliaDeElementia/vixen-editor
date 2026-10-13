@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import type { Actor } from '../../platform/actor.ts'
 import { createLogger } from '../../platform/logging.ts'
 
 import { createFileAtomic } from '../primitives/atomic-write.ts'
@@ -85,7 +86,7 @@ export async function entryKindOf(entryPath: string, target: string): Promise<En
   return kind
 }
 
-export async function moveToTrash(root: string, entryPath: string): Promise<string> {
+export async function moveToTrash(root: string, entryPath: string, actor: Actor): Promise<string> {
   if (entryPath === '') throw new InvalidPathError(entryPath, 'must not be the document root')
 
   const target = resolveFolderPath(root, entryPath)
@@ -95,7 +96,7 @@ export async function moveToTrash(root: string, entryPath: string): Promise<stri
   const directory = entryDirectory(root, id)
   await fs.mkdir(directory, { recursive: true })
 
-  const meta = { originalPath: entryPath, deletedAt: new Date().toISOString(), kind }
+  const meta = { originalPath: entryPath, deletedAt: new Date().toISOString(), kind, deletedBy: actor.id }
   await createFileAtomic(path.join(directory, TRASH_META_NAME), JSON.stringify(meta))
   await fs.rename(target, path.join(directory, TRASH_PAYLOAD_NAME))
 

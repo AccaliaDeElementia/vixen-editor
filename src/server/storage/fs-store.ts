@@ -5,6 +5,7 @@ import { EMPTY } from '../../shared/sequences.ts'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import type { Actor } from '../platform/actor.ts'
 import { createLogger } from '../platform/logging.ts'
 import { compareNamesIn } from './primitives/name-order.ts'
 
@@ -49,19 +50,19 @@ export interface DocumentStore {
   list: (locale?: string) => Promise<string[]>
   tree: (locale?: string) => Promise<TreeEntry[]>
   read: (id: string) => Promise<string>
-  createDocument: (id: string, content: string) => Promise<string>
-  createFolder: (folderPath: string, indexContent: string) => Promise<string>
-  createUpload: (directory: string, filename: string, bytes: Uint8Array) => Promise<string>
+  createDocument: (id: string, content: string, actor: Actor) => Promise<string>
+  createFolder: (folderPath: string, indexContent: string, actor: Actor) => Promise<string>
+  createUpload: (directory: string, filename: string, bytes: Uint8Array, actor: Actor) => Promise<string>
   readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
-  updateDocument: (id: string, content: string, expectedEtag: string) => Promise<string>
+  updateDocument: (id: string, content: string, expectedEtag: string, actor: Actor) => Promise<string>
   archive: (subtree: string, limits: ArchiveLimits) => Promise<ReadableStream<Uint8Array>>
-  move: (request: MoveRequest) => Promise<RelinkOutcome>
-  trash: (entryPath: string) => Promise<string>
+  move: (request: MoveRequest, actor: Actor) => Promise<RelinkOutcome>
+  trash: (entryPath: string, actor: Actor) => Promise<string>
   listTrash: () => Promise<TrashEntry[]>
   trashEntry: (entryId: string) => Promise<TrashEntryNode>
-  restore: (request: RestoreSelection) => Promise<RestoreOutcome>
-  purge: (entryId: string) => Promise<void>
-  emptyTrash: () => Promise<number>
+  restore: (request: RestoreSelection, actor: Actor) => Promise<RestoreOutcome>
+  purge: (entryId: string, actor: Actor) => Promise<void>
+  emptyTrash: (actor: Actor) => Promise<number>
 }
 
 function assertNotBlank(id: string, content: string): void {
@@ -220,8 +221,8 @@ export function createFsDocumentStore(
       })
     },
 
-    async trash(entryPath: string): Promise<string> {
-      return await lock.run(async () => await moveToTrash(root, entryPath))
+    async trash(entryPath: string, actor: Actor): Promise<string> {
+      return await lock.run(async () => await moveToTrash(root, entryPath, actor))
     },
 
     async listTrash(): Promise<TrashEntry[]> {

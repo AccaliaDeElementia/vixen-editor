@@ -12,6 +12,8 @@ import { buildApp } from '../../src/server/app.ts'
 import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
 import { failingStore } from '../server/failing-store.ts'
 
+import { someone } from '../server/actors.ts'
+
 const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as const
 
 const output: string[] = []
@@ -38,7 +40,7 @@ afterEach(async () => {
 
 describe('the application never writes to the console', () => {
   it('stays silent while serving a document', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
     await buildApp({ store }).request('/api/documents/notes.md')
 
     expect(output).toStrictEqual([])

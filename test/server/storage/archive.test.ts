@@ -13,6 +13,8 @@ import { createFsDocumentStore, type DocumentStore } from '../../../src/server/s
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
 
+import { someone } from '../actors.ts'
+
 const GENEROUS = { maxBytes: 1_000_000, maxEntries: 1000 }
 
 let root = ''
@@ -40,8 +42,8 @@ describe('planArchive', () => {
   })
 
   it('collects every managed file with its size', async () => {
-    await store.createDocument('notes.md', '1234567')
-    await store.createDocument('journal/entry.md', '12345')
+    await store.createDocument('notes.md', '1234567', someone)
+    await store.createDocument('journal/entry.md', '12345', someone)
 
     const plan = await planArchive(root, '', GENEROUS)
 
@@ -60,7 +62,7 @@ describe('planArchive', () => {
   })
 
   it('does not list a folder that its own contents already imply', async () => {
-    await store.createDocument('journal/entry.md', 'x')
+    await store.createDocument('journal/entry.md', 'x', someone)
 
     const plan = await planArchive(root, '', GENEROUS)
 
@@ -68,7 +70,7 @@ describe('planArchive', () => {
   })
 
   it('omits a file the app does not manage', async () => {
-    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.md', 'x', someone)
     await fs.writeFile(path.join(root, 'payload.zip'), 'x')
 
     const plan = await planArchive(root, '', GENEROUS)
@@ -86,21 +88,21 @@ describe('planArchive', () => {
   })
 
   it('rejects an entry count over the limit', async () => {
-    await store.createDocument('a.md', 'x')
-    await store.createDocument('b.md', 'x')
+    await store.createDocument('a.md', 'x', someone)
+    await store.createDocument('b.md', 'x', someone)
 
     await expect(planArchive(root, '', { ...GENEROUS, maxEntries: 1 })).rejects.toThrow(ArchiveTooLargeError)
   })
 
   it('rejects a byte total over the limit', async () => {
-    await store.createDocument('a.md', 'a longer document than the limit allows')
+    await store.createDocument('a.md', 'a longer document than the limit allows', someone)
 
     await expect(planArchive(root, '', { ...GENEROUS, maxBytes: 4 })).rejects.toThrow(ArchiveTooLargeError)
   })
 
   it('reports the limit and the measurement that broke it', async () => {
-    await store.createDocument('a.md', 'x')
-    await store.createDocument('b.md', 'x')
+    await store.createDocument('a.md', 'x', someone)
+    await store.createDocument('b.md', 'x', someone)
 
     const error = await planArchive(root, '', { ...GENEROUS, maxEntries: 1 }).catch((thrown: unknown) => thrown)
 
@@ -108,7 +110,7 @@ describe('planArchive', () => {
   })
 
   it('accepts a total exactly at the limit', async () => {
-    await store.createDocument('a.md', 'abcd')
+    await store.createDocument('a.md', 'abcd', someone)
 
     await expect(planArchive(root, '', { ...GENEROUS, maxBytes: 4 })).resolves.toMatchObject({ totalBytes: 4 })
   })
@@ -118,7 +120,7 @@ describe('planArchive', () => {
   })
 
   it('throws DocumentNotFoundError when the subtree names a file', async () => {
-    await store.createDocument('notes.md', 'x')
+    await store.createDocument('notes.md', 'x', someone)
 
     await expect(planArchive(root, 'notes.md', GENEROUS)).rejects.toThrow(DocumentNotFoundError)
   })
@@ -134,7 +136,7 @@ describe('planArchive', () => {
 
 describe('archive', () => {
   it('streams rather than buffering, so a large export never lands in memory', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     const stream = await store.archive('', GENEROUS)
 
@@ -142,7 +144,7 @@ describe('archive', () => {
   })
 
   it('produces a readable zip', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
 
     const stream = await store.archive('', GENEROUS)
     const bytes = Buffer.from(await new Response(stream).arrayBuffer())
@@ -163,10 +165,10 @@ describe('archive', () => {
   })
 
   it('does not take the write lock, so a download cannot block a save', async () => {
-    await store.createDocument('notes.md', '# hello')
+    await store.createDocument('notes.md', '# hello', someone)
     const stream = await store.archive('', GENEROUS)
 
-    const etag = await store.createDocument('during-download.md', '# written while downloading')
+    const etag = await store.createDocument('during-download.md', '# written while downloading', someone)
 
     expect(etag).toBeTruthy()
     await new Response(stream).arrayBuffer()
@@ -182,7 +184,7 @@ describe('archiveStream when the tree changes underneath it', () => {
   }
 
   it('streams the whole plan when nothing moves', async () => {
-    await store.createDocument('notes.md', 'hello')
+    await store.createDocument('notes.md', 'hello', someone)
     const plan = await planArchive(root, '', GENEROUS)
 
     await expect(drain(archiveStream(plan))).resolves.toBeGreaterThan(0)
@@ -205,7 +207,7 @@ describe('archiveStream when the tree changes underneath it', () => {
   }
 
   it('fails the download when a planned file is deleted first', async () => {
-    await store.createDocument('notes.md', 'hello')
+    await store.createDocument('notes.md', 'hello', someone)
     const plan = await planArchive(root, '', GENEROUS)
     await fs.rm(path.join(root, 'notes.md'))
 
@@ -213,7 +215,7 @@ describe('archiveStream when the tree changes underneath it', () => {
   })
 
   it('raises no uncaught exception doing so, which would end the process', async () => {
-    await store.createDocument('notes.md', 'hello')
+    await store.createDocument('notes.md', 'hello', someone)
     const plan = await planArchive(root, '', GENEROUS)
     await fs.rm(path.join(root, 'notes.md'))
 
