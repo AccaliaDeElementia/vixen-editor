@@ -20,6 +20,8 @@ import {
 
 const ROOT = '/srv/vixen/docs'
 
+const RESERVED_FOR_THE_APPLICATION = 'must not contain a segment beginning with a dot'
+
 const REJECTED_FOLDER_PATHS: ReadonlyArray<readonly [string, string]> = [
   ['a parent segment', '../secrets'],
   ['a nested parent segment', 'notes/../../secrets'],
@@ -203,6 +205,24 @@ describe('resolveFolderPath', () => {
     it('rejects a hidden folder nested under a visible one', () => {
       expect(() => resolveFolderPath(ROOT, 'journal/.git')).toThrow(InvalidPathError)
     })
+  })
+})
+
+describe('the dotted namespace is reserved for the application', () => {
+  it('refuses a document inside it, so bookkeeping there cannot collide with a document', () => {
+    expect(() => resolveDocumentPath(ROOT, '.vixen/notes.md')).toThrow(RESERVED_FOR_THE_APPLICATION)
+  })
+
+  it('refuses an upload into it, so bookkeeping there cannot be overwritten by a file', () => {
+    expect(() => resolveEntryPath(ROOT, '.vixen/logo.png', IMAGE_EXTENSIONS)).toThrow(RESERVED_FOR_THE_APPLICATION)
+  })
+
+  it('refuses it as a folder, so the application owns the name outright', () => {
+    expect(() => resolveFolderPath(ROOT, '.vixen')).toThrow(RESERVED_FOR_THE_APPLICATION)
+  })
+
+  it('refuses it for the dot alone, since the same name without one is accepted', () => {
+    expect(resolveFolderPath(ROOT, 'vixen')).toBe(path.join(ROOT, 'vixen'))
   })
 })
 

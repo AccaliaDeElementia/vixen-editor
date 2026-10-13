@@ -190,7 +190,7 @@ went false once before.
 | ---------------------------------------------------- | ------------------------------------------------------------------- |
 | `must not contain an empty path segment`             | `a//b` is two names with nothing between them                       |
 | `must not contain a relative path segment`           | Traversal                                                           |
-| `must not contain a segment beginning with a dot`    | Hidden files, and it is how `.trash` stays unreachable              |
+| `must not contain a segment beginning with a dot`    | Reserves the dotted namespace for the application; see below        |
 | `must not contain a backslash`                       | A separator that breaks the moment an export is unzipped on Windows |
 | `must not contain a control character`               | Corrupts logs and terminal output                                   |
 | `must not contain an invisible formatting character` | Bidi overrides and zero-width characters; the spoofing class        |
@@ -201,6 +201,17 @@ went false once before.
 
 `/` never reaches these rules — a path is split on it first, so a segment
 cannot contain one.
+
+**The dotted namespace belongs to the application.** No client-supplied path
+reaches a segment beginning with a dot, through any entry point, at any depth —
+so every dotted name anywhere in the store is free for the application's own
+bookkeeping and cannot collide with anything a user creates. `.trash/` is the
+first thing to use it.
+
+That is a promise, not only a defence. The defence reading — if you cannot list
+it, you cannot create it — is why the rule was written. The reservation is what
+it is **for**, and it is what lets a new bookkeeping name be chosen without
+first asking whether some document already has it.
 
 Everything else is allowed — spaces, apostrophes, ampersands, brackets,
 accented letters, CJK, emoji including joined sequences.
