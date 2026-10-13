@@ -374,6 +374,44 @@ rejected: it roughly halves the hold time without changing the shape of the
 curve, and it reopens the exact read-modify-write window the lock exists to
 close.
 
+### Who an action is credited to
+
+Every mutating method on the store takes an **actor**, and the routes supply one
+per request. An actor is `{ id, name, kind }` and there are three kinds.
+
+| kind              | id                                                | who sets it                                                                                                                     |
+| ----------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `local`           | `local:<uid>` of the process, named for that user | **never the API.** It is who unattributed content belongs to — an entry trashed before anyone was recorded reads back as theirs |
+| `unauthenticated` | `unauth:<address>`                                | the API, per request, until authentication exists                                                                               |
+| `unknown`         | whatever id was asked about                       | nobody. It is synthesised when a lookup misses, so a deleted actor cannot fail the operation that mentions them                 |
+
+**The address is an origin indication, not a credential.** Every anonymous actor
+has identical permissions, which is why `X-Forwarded-For` is trusted — forging
+it buys a misleading label on your own action and nothing else. It is still
+validated as an address before it becomes an id, because an id is stored and
+displayed even though it grants nothing, and the socket peer is used when no
+proxy declared one. **The day an actor id confers anything — a permission, a
+per-actor trash, a rate limit — this is the decision to reopen first.**
+
+Actors are kept in `.vixen/actors.json`, which is created and healed as it goes:
+a missing file, unreadable JSON and a malformed entry are each logged and
+rebuilt rather than raised, because bookkeeping must not stop the editor
+serving. A record is written only when it is new, so a repeat visit costs no
+write. The file is reached by a plain join, the way `.trash` is, since the
+validator refuses a dotted segment by design.
+
+### The store is two interfaces
+
+`StoreLayer` is what `fs-store` implements and what a decorator such as
+`announcingStore` wraps. `DocumentStore` is the composed contract the routes
+consume. They differ in one member: a layer reports `deletedBy` as the id it
+stored, and the store reports the resolved actor. `resolvingActors` is the one
+place a layer becomes a store.
+
+Neither interface is assignable to the other, because `Actor` is not a `string`
+in either direction — so the compiler refuses a layer handed to a route, and a
+store handed to a decorator, without any marker having to say so.
+
 <a id="design-e1ba9e"></a>
 
 ## Concurrency

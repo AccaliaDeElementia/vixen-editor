@@ -12,17 +12,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { refusalOf } from '../../refusals.ts'
 import { fileRoutes } from '../../../../src/server/routes/files.ts'
 import { DEFAULT_LIMITS } from '../../../../src/server/platform/config.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
+import type { DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 
+import { documentStoreIn } from '../../stores.ts'
 import { someone } from '../../actors.ts'
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: DocumentStore = documentStoreIn('')
 let app: Hono = fileRoutes(store, DEFAULT_LIMITS)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-archive-routes-'))
-  store = createFsDocumentStore(root)
+  store = documentStoreIn(root)
   app = fileRoutes(store, DEFAULT_LIMITS)
 })
 

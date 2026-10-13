@@ -9,7 +9,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { archiveStream, planArchive } from '../../../src/server/storage/archive.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type StoreLayer } from '../../../src/server/storage/fs-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
 
@@ -18,7 +18,7 @@ import { someone } from '../actors.ts'
 const GENEROUS = { maxBytes: 1_000_000, maxEntries: 1000 }
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('')
 let outside = ''
 
 beforeEach(async () => {

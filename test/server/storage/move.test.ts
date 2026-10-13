@@ -7,7 +7,7 @@ import path from 'node:path'
 import { givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type StoreLayer } from '../../../src/server/storage/fs-store.ts'
 import { assertKindSurvives, moveEntry } from '../../../src/server/storage/move.ts'
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import {
@@ -22,7 +22,7 @@ const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 
 const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('')
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-move-'))

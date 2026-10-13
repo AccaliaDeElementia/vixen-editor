@@ -1,8 +1,8 @@
 'use sanity'
 
-import type { DocumentStore } from '../../src/server/storage/fs-store.ts'
+import type { StoreLayer } from '../../src/server/storage/fs-store.ts'
 
-export function failingStore(): DocumentStore {
+export function failingStore(): StoreLayer {
   function fail(): Promise<never> {
     return Promise.reject(new Error('disk on fire'))
   }

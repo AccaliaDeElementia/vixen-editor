@@ -36,7 +36,14 @@ import {
   EmptyContentError,
 } from './primitives/store-errors.ts'
 import { readTree, type TreeEntry } from './tree.ts'
-import { emptyTrash, moveToTrash, purgeFromTrash, readTrash, type TrashEntry } from './trash/trash.ts'
+import {
+  emptyTrash,
+  moveToTrash,
+  purgeFromTrash,
+  readTrash,
+  type TrashEntry,
+  type TrashEntryRecord,
+} from './trash/trash.ts'
 import { readTrashEntry, type TrashEntryNode } from './trash/trash-entries.ts'
 import { restoreSelection, type RestoreOutcome, type RestoreSelection } from './restore.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
@@ -46,7 +53,7 @@ import { STORE_ROOT } from '../../shared/store-path.ts'
 const logStore = createLogger('storage/fs-store')
 const logEscape = createLogger('storage/fs-store', 'symlinkEscape')
 
-export interface DocumentStore {
+export interface StoreLayer {
   list: (locale?: string) => Promise<string[]>
   tree: (locale?: string) => Promise<TreeEntry[]>
   read: (id: string) => Promise<string>
@@ -58,11 +65,15 @@ export interface DocumentStore {
   archive: (subtree: string, limits: ArchiveLimits) => Promise<ReadableStream<Uint8Array>>
   move: (request: MoveRequest, actor: Actor) => Promise<RelinkOutcome>
   trash: (entryPath: string, actor: Actor) => Promise<string>
-  listTrash: () => Promise<TrashEntry[]>
+  listTrash: () => Promise<TrashEntryRecord[]>
   trashEntry: (entryId: string) => Promise<TrashEntryNode>
   restore: (request: RestoreSelection, actor: Actor) => Promise<RestoreOutcome>
   purge: (entryId: string, actor: Actor) => Promise<void>
   emptyTrash: (actor: Actor) => Promise<number>
+}
+
+export interface DocumentStore extends Omit<StoreLayer, 'listTrash'> {
+  listTrash: () => Promise<TrashEntry[]>
 }
 
 function assertNotBlank(id: string, content: string): void {
@@ -94,7 +105,7 @@ async function assertResolvesInsideRoot(root: string, id: string, target: string
 export function createFsDocumentStore(
   docsRoot: string,
   lock: WriteLock = createWriteLock(DEFAULT_WRITE_LOCK_TIMEOUT_MS),
-): DocumentStore {
+): StoreLayer {
   const root = path.resolve(docsRoot)
 
   return {
@@ -225,7 +236,7 @@ export function createFsDocumentStore(
       return await lock.run(async () => await moveToTrash(root, entryPath, actor))
     },
 
-    async listTrash(): Promise<TrashEntry[]> {
+    async listTrash(): Promise<TrashEntryRecord[]> {
       return await readTrash(root)
     },
 

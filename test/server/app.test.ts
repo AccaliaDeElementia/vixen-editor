@@ -6,16 +6,17 @@ import { given } from '../conditions.ts'
 
 import { buildApp } from '../../src/server/app.ts'
 import { failingStore } from './failing-store.ts'
+import { forgetfulActors } from './stores.ts'
 
 describe('an unexpected storage fault', () => {
   it('still reports the fault as a 500 with a json body', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
+    const res = await buildApp({ store: failingStore(), actors: forgetfulActors }).request('/api/documents/notes.md')
 
     await expect(res.json()).resolves.toStrictEqual({ error: 'Internal server error', code: 'INTERNAL' })
   })
 
   it('does not leak the underlying error message to the client', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/documents/notes.md')
+    const res = await buildApp({ store: failingStore(), actors: forgetfulActors }).request('/api/documents/notes.md')
 
     await expect(res.text()).resolves.not.toContain('disk on fire')
   })
@@ -23,7 +24,7 @@ describe('an unexpected storage fault', () => {
 
 describe('the endpoints the application mounts', () => {
   it('answers a health check, which is what a container probe asks for', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/health')
+    const res = await buildApp({ store: failingStore(), actors: forgetfulActors }).request('/api/health')
 
     given(() => {
       expect(res.status).toBe(200)
@@ -33,13 +34,16 @@ describe('the endpoints the application mounts', () => {
   })
 
   it('has nothing at a path it never mounted', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/nope')
+    const res = await buildApp({ store: failingStore(), actors: forgetfulActors }).request('/api/nope')
 
     expect(res.status).toBe(404)
   })
 
   it('routes a literal traversal out of a mounted prefix, so it matches nothing at all', async () => {
-    const res = await buildApp({ store: failingStore() }).request('/api/documents/../escape.md', { method: 'PUT' })
+    const res = await buildApp({ store: failingStore(), actors: forgetfulActors }).request(
+      '/api/documents/../escape.md',
+      { method: 'PUT' },
+    )
 
     expect(res.status).toBe(404)
   })

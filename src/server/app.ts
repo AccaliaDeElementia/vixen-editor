@@ -4,6 +4,8 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
 import { announcingStore } from './announcing-store.ts'
+import { resolvingActors } from './resolving-actors.ts'
+import type { Actors } from './storage/actors.ts'
 import { createChanges, type Changes } from './platform/changes.ts'
 import { DEFAULT_LIMITS, type Limits } from './platform/config.ts'
 import { createLogger } from './platform/logging.ts'
@@ -11,7 +13,7 @@ import { documentRoutes } from './routes/documents.ts'
 import { eventRoutes } from './routes/events.ts'
 import { fileRoutes } from './routes/files.ts'
 import { trashRoutes } from './routes/trash.ts'
-import type { DocumentStore } from './storage/fs-store.ts'
+import type { StoreLayer } from './storage/fs-store.ts'
 import { API_PREFIX } from '../shared/api.ts'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
@@ -19,7 +21,8 @@ const HTTP_INTERNAL_SERVER_ERROR = 500
 const logError = createLogger('app', 'onError')
 
 interface AppDependencies {
-  store: DocumentStore
+  store: StoreLayer
+  actors: Actors
   limits?: Limits
   changes?: Changes
   buildId?: string | null
@@ -28,13 +31,14 @@ interface AppDependencies {
 
 export function buildApp({
   store,
+  actors,
   limits = DEFAULT_LIMITS,
   changes = createChanges(),
   buildId = null,
   heartbeatMs,
 }: AppDependencies): Hono {
   const app = new Hono()
-  const announcing = announcingStore(store, changes)
+  const announcing = resolvingActors(announcingStore(store, changes), actors)
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse()

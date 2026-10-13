@@ -7,7 +7,7 @@ import path from 'node:path'
 import { givenAsync } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type StoreLayer } from '../../../src/server/storage/fs-store.ts'
 import {
   ConcurrentModificationError,
   ContentMismatchError,
@@ -34,7 +34,7 @@ const OVERLONG_LEAF = `${'l'.repeat(200)}.md`
 
 let root = ''
 let outside = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('')
 
 beforeEach(async () => {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-'))

@@ -8,20 +8,22 @@ import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { given } from '../../conditions.ts'
+import { givenAsync } from '../../conditions.ts'
 import { fieldOf, refusalOf } from '../refusals.ts'
 import { trashRoutes } from '../../../src/server/routes/trash.ts'
 import { cast } from '../../cast.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import type { DocumentStore } from '../../../src/server/storage/fs-store.ts'
 
+import { documentStoreIn } from '../stores.ts'
 import { someone } from '../actors.ts'
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: DocumentStore = documentStoreIn('')
 let app: Hono = trashRoutes(store)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-trash-routes-'))
-  store = createFsDocumentStore(root)
+  store = documentStoreIn(root)
   app = trashRoutes(store)
 })
 
@@ -36,6 +38,15 @@ describe('listing the trash', () => {
     const body: unknown = await res.json()
 
     expect({ status: res.status, body }).toStrictEqual({ status: 200, body: { entries: [] } })
+  })
+
+  it('names who deleted an entry, rather than handing the client an opaque id', async () => {
+    await givenAsync(store.createDocument('notes.md', 'x', someone))
+    await givenAsync(store.trash('notes.md', someone))
+
+    const entries = await fieldOf(await app.request('/'), 'entries')
+
+    expect(entries).toMatchObject([{ deletedBy: { id: someone.id, name: 'Anonymous User', kind: 'unauthenticated' } }])
   })
 
   it('reports deleted entries in a form that tells them from live files', async () => {

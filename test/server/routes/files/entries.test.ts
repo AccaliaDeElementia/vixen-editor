@@ -12,21 +12,22 @@ import { given, givenAsync } from '../../../conditions.ts'
 import { fieldOf, refusalOf } from '../../refusals.ts'
 import { fileRoutes } from '../../../../src/server/routes/files.ts'
 import { DEFAULT_LIMITS } from '../../../../src/server/platform/config.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
+import type { DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 import { FOLDER_INDEX_NAME } from '../../../../src/shared/documents.ts'
 
+import { documentStoreIn } from '../../stores.ts'
 import { someone } from '../../actors.ts'
 import { TestOnly as trashTestOnly } from '../../../../src/server/storage/trash/trash.ts'
 
 const EDITED = '# edited'
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: DocumentStore = documentStoreIn('')
 let app: Hono = fileRoutes(store, DEFAULT_LIMITS)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-files-'))
-  store = createFsDocumentStore(root)
+  store = documentStoreIn(root)
   app = fileRoutes(store, DEFAULT_LIMITS)
 })
 

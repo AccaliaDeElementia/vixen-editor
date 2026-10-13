@@ -10,7 +10,7 @@ import { givenAsync } from '../conditions.ts'
 
 import { announcingStore } from '../../src/server/announcing-store.ts'
 import { createChanges, type StoreChange } from '../../src/server/platform/changes.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type StoreLayer } from '../../src/server/storage/fs-store.ts'
 import { STORE_ROOT } from '../../src/shared/store-path.ts'
 
 import { someone } from './actors.ts'
@@ -18,8 +18,8 @@ import { someone } from './actors.ts'
 const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
 let root = ''
-let plain: DocumentStore = createFsDocumentStore('')
-let announcing: DocumentStore = plain
+let plain: StoreLayer = createFsDocumentStore('')
+let announcing: StoreLayer = plain
 let heard: StoreChange[] = []
 
 beforeEach(async () => {

@@ -13,10 +13,11 @@ import { withClacks, TestOnly as clacksTestOnly } from '../../src/server/clacks.
 import { TestOnly as mainTestOnly } from '../../src/server/main.ts'
 import { DEFAULT_LIMITS, type Config } from '../../src/server/platform/config.ts'
 import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/platform/lock.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type StoreLayer } from '../../src/server/storage/fs-store.ts'
 import { cast } from '../cast.ts'
 import { given } from '../conditions.ts'
 import { failingStore } from './failing-store.ts'
+import { forgetfulActors } from './stores.ts'
 
 import { someone } from './actors.ts'
 
@@ -30,7 +31,7 @@ let workspace = ''
 let publicDir = ''
 let docsRoot = ''
 let templatesDir = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('')
 
 beforeEach(async () => {
   workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-clacks-'))
@@ -90,7 +91,7 @@ describe('the overhead', () => {
   })
 
   it('hands back the response the app produced, so wrapping costs the caller nothing', async () => {
-    const { res } = await answeredBy(buildApp({ store }), '/api/health')
+    const { res } = await answeredBy(buildApp({ store, actors: forgetfulActors }), '/api/health')
 
     await expect(res.json()).resolves.toStrictEqual({ status: 'ok' })
   })
@@ -98,7 +99,7 @@ describe('the overhead', () => {
 
 describe('every api response carries the clacks header', () => {
   it('on a 200', async () => {
-    const { res, headersWritten } = await answeredBy(buildApp({ store }), '/api/health')
+    const { res, headersWritten } = await answeredBy(buildApp({ store, actors: forgetfulActors }), '/api/health')
 
     given(() => {
       expect(res.status).toBe(200)
@@ -109,7 +110,10 @@ describe('every api response carries the clacks header', () => {
 
   it('on a document read', async () => {
     await store.createDocument('notes.md', '# hello', someone)
-    const { res, headersWritten } = await answeredBy(buildApp({ store }), '/api/documents/notes.md')
+    const { res, headersWritten } = await answeredBy(
+      buildApp({ store, actors: forgetfulActors }),
+      '/api/documents/notes.md',
+    )
 
     given(() => {
       expect(res.status).toBe(200)
@@ -119,7 +123,10 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 404 for a missing document', async () => {
-    const { res, headersWritten } = await answeredBy(buildApp({ store }), '/api/documents/missing.md')
+    const { res, headersWritten } = await answeredBy(
+      buildApp({ store, actors: forgetfulActors }),
+      '/api/documents/missing.md',
+    )
 
     given(() => {
       expect(res.status).toBe(404)
@@ -129,7 +136,7 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 404 for an unrouted path', async () => {
-    const { res, headersWritten } = await answeredBy(buildApp({ store }), '/api/nope')
+    const { res, headersWritten } = await answeredBy(buildApp({ store, actors: forgetfulActors }), '/api/nope')
 
     given(() => {
       expect(res.status).toBe(404)
@@ -139,7 +146,10 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 400 for a rejected document id', async () => {
-    const { res, headersWritten } = await answeredBy(buildApp({ store }), '/api/documents/evil.zip')
+    const { res, headersWritten } = await answeredBy(
+      buildApp({ store, actors: forgetfulActors }),
+      '/api/documents/evil.zip',
+    )
 
     given(() => {
       expect(res.status).toBe(400)
@@ -149,11 +159,15 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 400 raised as an HTTPException by a malformed body', async () => {
-    const { res, headersWritten } = await answeredBy(buildApp({ store }), '/api/documents/notes.md', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: 'not json at all',
-    })
+    const { res, headersWritten } = await answeredBy(
+      buildApp({ store, actors: forgetfulActors }),
+      '/api/documents/notes.md',
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: 'not json at all',
+      },
+    )
 
     given(() => {
       expect(res.status).toBe(400)
@@ -163,7 +177,10 @@ describe('every api response carries the clacks header', () => {
   })
 
   it('on a 500 from an unexpected storage fault', async () => {
-    const { res, headersWritten } = await answeredBy(buildApp({ store: failingStore() }), '/api/documents/notes.md')
+    const { res, headersWritten } = await answeredBy(
+      buildApp({ store: failingStore(), actors: forgetfulActors }),
+      '/api/documents/notes.md',
+    )
 
     given(() => {
       expect(res.status).toBe(500)
@@ -175,7 +192,9 @@ describe('every api response carries the clacks header', () => {
   it('on a 204 from a trash purge', async () => {
     await store.createDocument('notes.md', 'x', someone)
     const id = await store.trash('notes.md', someone)
-    const { res, headersWritten } = await answeredBy(buildApp({ store }), `/api/trash/${id}`, { method: 'DELETE' })
+    const { res, headersWritten } = await answeredBy(buildApp({ store, actors: forgetfulActors }), `/api/trash/${id}`, {
+      method: 'DELETE',
+    })
 
     given(() => {
       expect(res.status).toBe(204)

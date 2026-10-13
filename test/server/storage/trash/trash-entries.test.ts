@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type StoreLayer } from '../../../../src/server/storage/fs-store.ts'
 import { readTrashEntry, type TrashEntryNode } from '../../../../src/server/storage/trash/trash-entries.ts'
 import { DocumentNotFoundError } from '../../../../src/server/storage/primitives/store-errors.ts'
 import { given, givenAsync } from '../../../conditions.ts'
@@ -14,7 +14,7 @@ import { given, givenAsync } from '../../../conditions.ts'
 import { someone } from '../../actors.ts'
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('')
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-payload-'))

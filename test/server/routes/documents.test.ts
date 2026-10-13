@@ -10,22 +10,23 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { given } from '../../conditions.ts'
 import { refusalOf } from '../refusals.ts'
 import { documentRoutes } from '../../../src/server/routes/documents.ts'
-import { createFsDocumentStore, type DocumentStore } from '../../../src/server/storage/fs-store.ts'
+import type { DocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { createWriteLock } from '../../../src/server/platform/lock.ts'
 import { failingStore } from '../failing-store.ts'
 import { gate } from '../gate.ts'
 
+import { documentStoreIn, documentStoreOver } from '../stores.ts'
 import { someone } from '../actors.ts'
 
 const HTTP_INTERNAL_ERROR = 500
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: DocumentStore = documentStoreIn('')
 let app: Hono = documentRoutes(store)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-routes-'))
-  store = createFsDocumentStore(root)
+  store = documentStoreIn(root)
   app = documentRoutes(store)
 })
 
@@ -299,7 +300,7 @@ describe('a storage fault the routes have no answer for', () => {
   }
 
   it('escapes a read rather than being dressed as a refusal the client could act on', async () => {
-    const { routes, reached } = capturing(failingStore())
+    const { routes, reached } = capturing(documentStoreOver(failingStore()))
 
     await routes.request('/notes.md')
 
@@ -307,7 +308,7 @@ describe('a storage fault the routes have no answer for', () => {
   })
 
   it('escapes a write just the same', async () => {
-    const { routes, reached } = capturing(failingStore())
+    const { routes, reached } = capturing(documentStoreOver(failingStore()))
 
     await routes.request('/notes.md', {
       method: 'PUT',
@@ -343,7 +344,7 @@ describe('write contention', () => {
 
   it('answers a save that cannot take the lock with 503 BUSY', async () => {
     const lock = createWriteLock(IMPATIENT_MS)
-    const busy = documentRoutes(createFsDocumentStore(root, lock))
+    const busy = documentRoutes(documentStoreIn(root, lock))
     const held = occupy(lock)
     await held.occupied
 
@@ -361,7 +362,7 @@ describe('write contention', () => {
 
   it('serves a read while a write holds the lock, because reads never queue', async () => {
     const lock = createWriteLock(IMPATIENT_MS)
-    const contended = createFsDocumentStore(root, lock)
+    const contended = documentStoreIn(root, lock)
     await contended.createDocument('notes.md', '# readable', someone)
     const busy = documentRoutes(contended)
     const held = occupy(lock)

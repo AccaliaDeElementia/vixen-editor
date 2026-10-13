@@ -7,19 +7,19 @@ import path from 'node:path'
 import { given, givenAsync } from '../../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createFsDocumentStore, type DocumentStore } from '../../../../src/server/storage/fs-store.ts'
+import { createFsDocumentStore, type StoreLayer } from '../../../../src/server/storage/fs-store.ts'
 import { InvalidPathError } from '../../../../src/server/storage/primitives/safe-path.ts'
 import { BlockedRestoreError, DocumentNotFoundError } from '../../../../src/server/storage/primitives/store-errors.ts'
 import { TestOnly } from '../../../../src/server/storage/trash/trash.ts'
 import { isRecord } from '../../../../src/shared/guards.ts'
 
 import { someone } from '../../actors.ts'
-import { anonymousActor } from '../../../../src/server/platform/actor.ts'
+import { anonymousActor, localActor } from '../../../../src/server/platform/actor.ts'
 
 const { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
 
 let root = ''
-let store: DocumentStore = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('')
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-trash-'))
@@ -94,6 +94,17 @@ describe('trash', () => {
     const meta: unknown = JSON.parse(await fs.readFile(trashPath(id, TRASH_META_NAME), 'utf8'))
 
     expect(meta).toMatchObject({ deletedBy: 'unauth:198.51.100.4' })
+  })
+
+  it('credits the user the server runs as for an entry trashed before anyone was recorded', async () => {
+    await store.createDocument('ancient.md', 'x', someone)
+    const id = await store.trash('ancient.md', someone)
+    const asItWasWrittenBefore = { originalPath: 'ancient.md', deletedAt: '2026-01-01T00:00:00.000Z', kind: 'document' }
+    await fs.writeFile(trashPath(id, TRASH_META_NAME), JSON.stringify(asItWasWrittenBefore))
+
+    const [entry] = await store.listTrash()
+
+    expect(entry?.deletedBy).toBe(localActor().id)
   })
 
   it('trashes a whole folder', async () => {

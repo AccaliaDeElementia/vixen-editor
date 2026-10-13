@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import type { Actor } from '../../platform/actor.ts'
+import { localActor, type Actor } from '../../platform/actor.ts'
 import { createLogger } from '../../platform/logging.ts'
 
 import { createFileAtomic } from '../primitives/atomic-write.ts'
@@ -28,14 +28,26 @@ const TRASH_ENTRY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 const SORT_EQUAL = 0
 const NOTHING_HELD = 0
 
-export interface TrashEntry {
+export interface TrashEntryRecord {
   id: string
   originalPath: string
   deletedAt: string
   kind: EntryKind
+  deletedBy: string
 }
 
-function newestFirstThenIdForStableTies(a: TrashEntry, b: TrashEntry): number {
+export interface TrashEntry extends Omit<TrashEntryRecord, 'deletedBy'> {
+  deletedBy: Actor
+}
+
+interface StoredMeta {
+  originalPath: string
+  deletedAt: string
+  kind: EntryKind
+  deletedBy?: string
+}
+
+function newestFirstThenIdForStableTies(a: TrashEntryRecord, b: TrashEntryRecord): number {
   const byTime = b.deletedAt.localeCompare(a.deletedAt)
 
   return byTime === SORT_EQUAL ? a.id.localeCompare(b.id) : byTime
@@ -51,17 +63,18 @@ function entryDirectory(root: string, entryId: string): string {
   return path.join(trashRoot(root), entryId)
 }
 
-function isTrashEntry(value: unknown): value is Omit<TrashEntry, 'id'> {
+function isStoredMeta(value: unknown): value is StoredMeta {
   if (!isRecord(value)) return false
 
   return (
     typeof value.originalPath === 'string' &&
     typeof value.deletedAt === 'string' &&
-    (value.kind === 'folder' || value.kind === 'document' || value.kind === 'image')
+    (value.kind === 'folder' || value.kind === 'document' || value.kind === 'image') &&
+    (value.deletedBy === undefined || typeof value.deletedBy === 'string')
   )
 }
 
-async function readMeta(root: string, entryId: string): Promise<Omit<TrashEntry, 'id'> | null> {
+async function readMeta(root: string, entryId: string): Promise<Omit<TrashEntryRecord, 'id'> | null> {
   const raw = await nullWhenAbsent(
     async () => await fs.readFile(path.join(entryDirectory(root, entryId), TRASH_META_NAME), 'utf8'),
   )
@@ -69,7 +82,9 @@ async function readMeta(root: string, entryId: string): Promise<Omit<TrashEntry,
 
   try {
     const parsed: unknown = JSON.parse(raw)
-    return isTrashEntry(parsed) ? parsed : null
+    if (!isStoredMeta(parsed)) return null
+
+    return { ...parsed, deletedBy: parsed.deletedBy ?? localActor().id }
   } catch {
     return null
   }
@@ -104,7 +119,7 @@ export async function moveToTrash(root: string, entryPath: string, actor: Actor)
   return id
 }
 
-export async function readTrash(root: string): Promise<TrashEntry[]> {
+export async function readTrash(root: string): Promise<TrashEntryRecord[]> {
   const ids = await nullWhenAbsent(async () => await fs.readdir(trashRoot(root)))
   if (ids === null) return []
 
@@ -124,7 +139,7 @@ export async function readTrash(root: string): Promise<TrashEntry[]> {
     .sort(newestFirstThenIdForStableTies)
 }
 
-export async function readTrashMeta(root: string, entryId: string): Promise<Omit<TrashEntry, 'id'>> {
+export async function readTrashMeta(root: string, entryId: string): Promise<Omit<TrashEntryRecord, 'id'>> {
   const meta = await readMeta(root, entryId)
   if (meta === null) throw new DocumentNotFoundError(entryId)
 
