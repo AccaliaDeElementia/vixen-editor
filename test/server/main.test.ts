@@ -1,6 +1,7 @@
 'use sanity'
 
 import type { serve } from '@hono/node-server'
+import type { Hono } from 'hono'
 import { given, givenAsync } from '../conditions.ts'
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
@@ -388,5 +389,25 @@ describe('startServer', () => {
     await givenAsync(expect(startServer(runtime)).rejects.toThrow(ConfigError))
 
     expect(order).toStrictEqual(['loadEnvFile'])
+  })
+})
+
+describe('what createApp composes', () => {
+  async function postingTo(app: Hono, route: string, body: unknown): Promise<Response> {
+    return await app.request(route, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('builds a store that repairs the links a move breaks, which only the wiring can get wrong', async () => {
+    const app = createApp(configFor(), publicDir)
+    await givenAsync(postingTo(app, '/api/files/documents', { path: 'target.md', content: '# target' }))
+    await givenAsync(postingTo(app, '/api/files/documents', { path: 'holder.md', content: '[t](./target.md)' }))
+
+    await postingTo(app, '/api/files/moves', { from: 'target.md', to: 'moved.md' })
+
+    expect(await fs.readFile(path.join(docsRoot, 'holder.md'), 'utf8')).toContain('./moved.md')
   })
 })

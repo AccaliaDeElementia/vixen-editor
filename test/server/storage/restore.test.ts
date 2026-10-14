@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { repairLinks } from '../../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -15,11 +16,11 @@ import { givenAsync } from '../../conditions.ts'
 import { someone } from '../actors.ts'
 
 let root = ''
-let store: StoreLayer = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('', repairLinks)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-restore-'))
-  store = createFsDocumentStore(root)
+  store = createFsDocumentStore(root, repairLinks)
 })
 
 afterEach(async () => {
@@ -51,7 +52,7 @@ describe('restoring the whole entry', () => {
   it('puts it back where it came from', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: [''] })
+    await restoreSelection(root, { entryId, paths: [''] }, repairLinks)
 
     expect(await exists('journal/2026/march.md')).toBe(true)
   })
@@ -59,7 +60,7 @@ describe('restoring the whole entry', () => {
   it('reports the path it went back to', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: [''] })
+    const outcome = await restoreSelection(root, { entryId, paths: [''] }, repairLinks)
 
     expect(outcome.restored).toStrictEqual(['journal'])
   })
@@ -67,7 +68,7 @@ describe('restoring the whole entry', () => {
   it('leaves no entry behind, since nothing of it remains', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: [''] })
+    const outcome = await restoreSelection(root, { entryId, paths: [''] }, repairLinks)
 
     expect(outcome.entryRemains).toBe(false)
   })
@@ -77,7 +78,7 @@ describe('restoring part of an entry', () => {
   it('puts back only what was asked for', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['a.md'] })
+    await restoreSelection(root, { entryId, paths: ['a.md'] }, repairLinks)
 
     expect({ a: await exists('journal/a.md'), b: await exists('journal/b.md') }).toStrictEqual({ a: true, b: false })
   })
@@ -85,7 +86,7 @@ describe('restoring part of an entry', () => {
   it('recreates the folder it used to live in', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['2026/march.md'] })
+    await restoreSelection(root, { entryId, paths: ['2026/march.md'] }, repairLinks)
 
     expect(await exists('journal/2026/march.md')).toBe(true)
   })
@@ -93,7 +94,7 @@ describe('restoring part of an entry', () => {
   it('leaves the entry holding what was not asked for', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: ['a.md'] })
+    const outcome = await restoreSelection(root, { entryId, paths: ['a.md'] }, repairLinks)
 
     expect(outcome.entryRemains).toBe(true)
   })
@@ -101,7 +102,7 @@ describe('restoring part of an entry', () => {
   it('takes several at once', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] })
+    const outcome = await restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] }, repairLinks)
 
     expect(outcome.restored).toStrictEqual(['journal/a.md', 'journal/b.md'])
   })
@@ -109,7 +110,7 @@ describe('restoring part of an entry', () => {
   it('drops the entry once the last of it has gone', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: ['a.md', 'b.md', '2026'] })
+    const outcome = await restoreSelection(root, { entryId, paths: ['a.md', 'b.md', '2026'] }, repairLinks)
 
     expect(outcome.entryRemains).toBe(false)
   })
@@ -119,7 +120,7 @@ describe('what the trash holds afterwards', () => {
   it('no longer lists the entry once the last of it has been taken back', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['a.md', 'b.md', '2026'] })
+    await restoreSelection(root, { entryId, paths: ['a.md', 'b.md', '2026'] }, repairLinks)
 
     await expect(store.listTrash()).resolves.toStrictEqual([])
   })
@@ -127,7 +128,7 @@ describe('what the trash holds afterwards', () => {
   it('still lists it while it holds something', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['a.md'] })
+    await restoreSelection(root, { entryId, paths: ['a.md'] }, repairLinks)
 
     await expect(store.listTrash()).resolves.toHaveLength(1)
   })
@@ -137,7 +138,7 @@ describe('a selection that names a folder and something inside it', () => {
   it('restores it once, rather than failing on the second', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: ['2026', '2026/march.md'] })
+    const outcome = await restoreSelection(root, { entryId, paths: ['2026', '2026/march.md'] }, repairLinks)
 
     expect(outcome.restored).toStrictEqual(['journal/2026'])
   })
@@ -145,7 +146,7 @@ describe('a selection that names a folder and something inside it', () => {
   it('still brings the contents back with it', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['2026', '2026/march.md'] })
+    await restoreSelection(root, { entryId, paths: ['2026', '2026/march.md'] }, repairLinks)
 
     expect(await exists('journal/2026/march.md')).toBe(true)
   })
@@ -153,7 +154,7 @@ describe('a selection that names a folder and something inside it', () => {
   it('treats the whole entry as covering everything else named', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: ['a.md', ''] })
+    const outcome = await restoreSelection(root, { entryId, paths: ['a.md', ''] }, repairLinks)
 
     expect(outcome.restored).toStrictEqual(['journal'])
   })
@@ -164,7 +165,7 @@ describe('a destination that is not free', () => {
     const entryId = await trashedJournal()
     await write('journal/a.md', '# live')
 
-    await expect(restoreSelection(root, { entryId, paths: ['a.md'] })).rejects.toThrow(BlockedRestoreError)
+    await expect(restoreSelection(root, { entryId, paths: ['a.md'] }, repairLinks)).rejects.toThrow(BlockedRestoreError)
   })
 
   it('names every path in the way, so the user can clear them', async () => {
@@ -172,7 +173,7 @@ describe('a destination that is not free', () => {
     await write('journal/a.md', '# live')
     await write('journal/b.md', '# live')
 
-    await expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] })).rejects.toMatchObject({
+    await expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] }, repairLinks)).rejects.toMatchObject({
       paths: ['journal/a.md', 'journal/b.md'],
     })
   })
@@ -181,7 +182,9 @@ describe('a destination that is not free', () => {
     const entryId = await trashedJournal()
     await write('journal/b.md', '# live')
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists('journal/a.md')).toBe(false)
   })
@@ -190,7 +193,7 @@ describe('a destination that is not free', () => {
     const entryId = await trashedJournal()
     await write('journal', '# a file now')
 
-    await expect(restoreSelection(root, { entryId, paths: ['a.md'] })).rejects.toThrow(BlockedRestoreError)
+    await expect(restoreSelection(root, { entryId, paths: ['a.md'] }, repairLinks)).rejects.toThrow(BlockedRestoreError)
   })
 })
 
@@ -198,7 +201,7 @@ describe('a selection that names something the entry does not hold', () => {
   it('refuses rather than restoring the rest', async () => {
     const entryId = await trashedJournal()
 
-    await expect(restoreSelection(root, { entryId, paths: ['a.md', 'nowhere.md'] })).rejects.toThrow(
+    await expect(restoreSelection(root, { entryId, paths: ['a.md', 'nowhere.md'] }, repairLinks)).rejects.toThrow(
       DocumentNotFoundError,
     )
   })
@@ -206,14 +209,16 @@ describe('a selection that names something the entry does not hold', () => {
   it('moves nothing when it does', async () => {
     const entryId = await trashedJournal()
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', 'nowhere.md'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['a.md', 'nowhere.md'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists('journal/a.md')).toBe(false)
   })
 
   it('refuses an entry that is not in the trash at all', async () => {
     await expect(
-      restoreSelection(root, { entryId: '0d5caef1-147f-45bf-8546-270886fcaa8f', paths: [''] }),
+      restoreSelection(root, { entryId: '0d5caef1-147f-45bf-8546-270886fcaa8f', paths: [''] }, repairLinks),
     ).rejects.toThrow(DocumentNotFoundError)
   })
 })
@@ -223,14 +228,16 @@ describe('a name the validator would no longer allow', () => {
     const entryId = await trashedJournal()
     await fs.writeFile(path.join(root, '.trash', entryId, 'payload', ' leading.md'), '# odd')
 
-    await expect(restoreSelection(root, { entryId, paths: [' leading.md'] })).rejects.toThrow()
+    await expect(restoreSelection(root, { entryId, paths: [' leading.md'] }, repairLinks)).rejects.toThrow()
   })
 
   it('leaves the rest of the entry alone when it is refused', async () => {
     const entryId = await trashedJournal()
     await fs.writeFile(path.join(root, '.trash', entryId, 'payload', ' leading.md'), '# odd')
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', ' leading.md'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['a.md', ' leading.md'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists('journal/a.md')).toBe(false)
   })
@@ -263,14 +270,16 @@ describe('a move that fails part way through', () => {
     const entryId = await trashedJournal()
     failTheSecondRename()
 
-    await expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] })).rejects.toThrow('EIO')
+    await expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] }, repairLinks)).rejects.toThrow('EIO')
   })
 
   it('puts back what it had already moved, so the store is as it was', async () => {
     const entryId = await trashedJournal()
     failTheSecondRename()
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists('journal/a.md')).toBe(false)
   })
@@ -279,7 +288,9 @@ describe('a move that fails part way through', () => {
     const entryId = await trashedJournal()
     failTheSecondRename()
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists(`.trash/${entryId}/payload/a.md`)).toBe(true)
   })
@@ -289,7 +300,9 @@ describe('a move that fails part way through', () => {
     failTheSecondRename()
     vi.spyOn(fs, 'rmdir').mockRejectedValue(Object.assign(new Error('ENOTEMPTY'), { code: 'ENOTEMPTY' }))
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists(`.trash/${entryId}/payload/a.md`)).toBe(true)
   })
@@ -298,7 +311,9 @@ describe('a move that fails part way through', () => {
     const entryId = await trashedJournal()
     failTheSecondRename()
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['2026/march.md', 'a.md'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['2026/march.md', 'a.md'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists('journal')).toBe(false)
   })
@@ -322,7 +337,9 @@ describe('unwinding a move that needed no new folder', () => {
       await rename(...args)
     })
 
-    await givenAsync(expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md', '2026'] })).rejects.toThrow())
+    await givenAsync(
+      expect(restoreSelection(root, { entryId, paths: ['a.md', 'b.md', '2026'] }, repairLinks)).rejects.toThrow(),
+    )
 
     expect(await exists('journal/b.md')).toBe(false)
   })
@@ -332,7 +349,7 @@ describe('restoring one thing under a different name', () => {
   it('puts it where it was told to go', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['a.md'], to: 'journal/renamed.md' })
+    await restoreSelection(root, { entryId, paths: ['a.md'], to: 'journal/renamed.md' }, repairLinks)
 
     expect(await exists('journal/renamed.md')).toBe(true)
   })
@@ -340,7 +357,7 @@ describe('restoring one thing under a different name', () => {
   it('reports the path it actually went to', async () => {
     const entryId = await trashedJournal()
 
-    const outcome = await restoreSelection(root, { entryId, paths: ['a.md'], to: 'elsewhere/kept.md' })
+    const outcome = await restoreSelection(root, { entryId, paths: ['a.md'], to: 'elsewhere/kept.md' }, repairLinks)
 
     expect(outcome.restored).toStrictEqual(['elsewhere/kept.md'])
   })
@@ -348,7 +365,7 @@ describe('restoring one thing under a different name', () => {
   it('may send it to a different folder entirely', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['a.md'], to: 'elsewhere/kept.md' })
+    await restoreSelection(root, { entryId, paths: ['a.md'], to: 'elsewhere/kept.md' }, repairLinks)
 
     expect(await exists('elsewhere/kept.md')).toBe(true)
   })
@@ -357,7 +374,7 @@ describe('restoring one thing under a different name', () => {
     const entryId = await trashedJournal()
     await fs.writeFile(path.join(root, '.trash', entryId, 'payload', ' leading.md'), '# odd')
 
-    await restoreSelection(root, { entryId, paths: [' leading.md'], to: 'journal/fixed.md' })
+    await restoreSelection(root, { entryId, paths: [' leading.md'], to: 'journal/fixed.md' }, repairLinks)
 
     expect(await exists('journal/fixed.md')).toBe(true)
   })
@@ -365,16 +382,16 @@ describe('restoring one thing under a different name', () => {
   it('refuses to change what the file claims to be', async () => {
     const entryId = await trashedJournal()
 
-    await expect(restoreSelection(root, { entryId, paths: ['a.md'], to: 'journal/a.png' })).rejects.toThrow(
-      InvalidPathError,
-    )
+    await expect(
+      restoreSelection(root, { entryId, paths: ['a.md'], to: 'journal/a.png' }, repairLinks),
+    ).rejects.toThrow(InvalidPathError)
   })
 
   it('refuses a destination that is already taken', async () => {
     const entryId = await trashedJournal()
     await write('taken.md', '# live')
 
-    await expect(restoreSelection(root, { entryId, paths: ['a.md'], to: 'taken.md' })).rejects.toThrow(
+    await expect(restoreSelection(root, { entryId, paths: ['a.md'], to: 'taken.md' }, repairLinks)).rejects.toThrow(
       BlockedRestoreError,
     )
   })
@@ -382,7 +399,7 @@ describe('restoring one thing under a different name', () => {
   it('keeps the names inside a renamed folder', async () => {
     const entryId = await trashedJournal()
 
-    await restoreSelection(root, { entryId, paths: ['2026'], to: 'journal/renamed' })
+    await restoreSelection(root, { entryId, paths: ['2026'], to: 'journal/renamed' }, repairLinks)
 
     expect(await exists('journal/renamed/march.md')).toBe(true)
   })
@@ -401,7 +418,7 @@ describe('links inside something restored under a new name', () => {
   it('are re-based so they still reach what they named', async () => {
     const entryId = await trashedWithLink()
 
-    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' })
+    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' }, repairLinks)
 
     await expect(store.read('deep/down/notes.md')).resolves.toContain('../../journal/other.md')
   })
@@ -409,7 +426,7 @@ describe('links inside something restored under a new name', () => {
   it('reach a file outside the folder just the same', async () => {
     const entryId = await trashedWithLink()
 
-    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' })
+    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' }, repairLinks)
 
     await expect(store.read('deep/down/notes.md')).resolves.toContain('../../top.md')
   })
@@ -417,7 +434,7 @@ describe('links inside something restored under a new name', () => {
   it('leave the rest of the store alone, since those links were already dead', async () => {
     const entryId = await trashedWithLink()
 
-    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' })
+    await restoreSelection(root, { entryId, paths: [''], to: 'deep/down/notes.md' }, repairLinks)
 
     await expect(store.read('elsewhere/pointer.md')).resolves.toContain('../journal/notes.md')
   })
@@ -425,7 +442,7 @@ describe('links inside something restored under a new name', () => {
   it('are left exactly as written when it goes back where it came from', async () => {
     const entryId = await trashedWithLink()
 
-    await restoreSelection(root, { entryId, paths: [''] })
+    await restoreSelection(root, { entryId, paths: [''] }, repairLinks)
 
     await expect(store.read('journal/notes.md')).resolves.toContain('./other.md')
   })
@@ -436,7 +453,7 @@ describe('an image restored under a different name', () => {
     await write('pictures/shot.png', 'not really a png')
     const entryId = await store.trash('pictures/shot.png', someone)
 
-    await restoreSelection(root, { entryId, paths: [''], to: 'pictures/renamed.png' })
+    await restoreSelection(root, { entryId, paths: [''], to: 'pictures/renamed.png' }, repairLinks)
 
     expect(await exists('pictures/renamed.png')).toBe(true)
   })
@@ -447,7 +464,7 @@ describe('a path that tries to climb out of the payload', () => {
     const entryId = await trashedJournal()
     await write('secret.md', '# secret')
 
-    return await restoreSelection(root, { entryId, paths: [within] }).catch((error: unknown) => error)
+    return await restoreSelection(root, { entryId, paths: [within] }, repairLinks).catch((error: unknown) => error)
   }
 
   it('is refused rather than reaching a sibling of the store root', async () => {

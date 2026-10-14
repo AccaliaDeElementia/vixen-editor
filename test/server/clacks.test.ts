@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { repairLinks } from '../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -31,7 +32,7 @@ let workspace = ''
 let publicDir = ''
 let docsRoot = ''
 let templatesDir = ''
-let store: StoreLayer = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('', repairLinks)
 
 beforeEach(async () => {
   workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-clacks-'))
@@ -42,7 +43,7 @@ beforeEach(async () => {
   await fs.mkdir(templatesDir, { recursive: true })
   await fs.writeFile(path.join(publicDir, 'assets', 'main.js'), 'export const built = true')
   await fs.writeFile(path.join(templatesDir, 'editor.pug'), 'h1= title')
-  store = createFsDocumentStore(docsRoot)
+  store = createFsDocumentStore(docsRoot, repairLinks)
 })
 
 afterEach(async () => {

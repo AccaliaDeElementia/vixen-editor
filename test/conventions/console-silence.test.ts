@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { repairLinks } from '../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
 import { given } from '../conditions.ts'
@@ -20,11 +21,11 @@ const CONSOLE_METHODS = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as co
 const output: string[] = []
 
 let root = ''
-let store: StoreLayer = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('', repairLinks)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-silence-'))
-  store = createFsDocumentStore(root)
+  store = createFsDocumentStore(root, repairLinks)
   output.length = 0
 
   for (const method of CONSOLE_METHODS) {

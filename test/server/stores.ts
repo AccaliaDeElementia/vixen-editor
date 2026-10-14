@@ -1,6 +1,7 @@
 'use sanity'
 
 import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from '../../src/server/platform/lock.ts'
+import { repairLinks } from '../../src/server/markdown/relink.ts'
 import { resolvingActors } from '../../src/server/resolving-actors.ts'
 import { validatingStore } from '../../src/server/validating-store.ts'
 import { unknownActor } from '../../src/server/platform/actor.ts'
@@ -11,7 +12,7 @@ export function documentStoreIn(
   root: string,
   lock: WriteLock = createWriteLock(DEFAULT_WRITE_LOCK_TIMEOUT_MS),
 ): DocumentStore {
-  return resolvingActors(validatingStore(createFsDocumentStore(root, lock)), createActors(root, lock))
+  return resolvingActors(validatingStore(createFsDocumentStore(root, repairLinks, lock)), createActors(root, lock))
 }
 
 export function documentStoreOver(layer: StoreLayer, root = ''): DocumentStore {

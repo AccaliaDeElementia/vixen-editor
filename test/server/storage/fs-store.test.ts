@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { repairLinks } from '../../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -32,7 +33,7 @@ const OVERLONG_LEAF = `${'l'.repeat(200)}.md`
 
 let root = ''
 let outside = ''
-let store: StoreLayer = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('', repairLinks)
 
 beforeEach(async () => {
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-'))
@@ -40,7 +41,7 @@ beforeEach(async () => {
   outside = path.join(base, 'outside')
   await fs.mkdir(root, { recursive: true })
   await fs.mkdir(outside, { recursive: true })
-  store = createFsDocumentStore(root)
+  store = createFsDocumentStore(root, repairLinks)
 })
 
 afterEach(async () => {
@@ -104,13 +105,13 @@ describe('list', () => {
   })
 
   it('returns an empty array when the root does not exist', async () => {
-    const missing = createFsDocumentStore(path.join(root, 'does-not-exist'))
+    const missing = createFsDocumentStore(path.join(root, 'does-not-exist'), repairLinks)
 
     await expect(missing.list()).resolves.toStrictEqual([])
   })
 
   it('surfaces a genuine filesystem fault rather than returning an empty list', async () => {
-    const unusable = createFsDocumentStore(path.join(root, OVER_NAME_MAX))
+    const unusable = createFsDocumentStore(path.join(root, OVER_NAME_MAX), repairLinks)
 
     await expect(unusable.list()).rejects.toThrow(expect.objectContaining({ code: 'ENAMETOOLONG' }))
   })
@@ -222,7 +223,7 @@ describe('createDocument', () => {
   })
 
   it('creates the document root if it does not yet exist', async () => {
-    const fresh = createFsDocumentStore(path.join(root, 'nested', 'deeper'))
+    const fresh = createFsDocumentStore(path.join(root, 'nested', 'deeper'), repairLinks)
     await fresh.createDocument('notes.md', 'body', someone)
 
     await expect(fresh.read('notes.md')).resolves.toBe('body')

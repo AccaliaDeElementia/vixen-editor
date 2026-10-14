@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { repairLinks } from '../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -18,13 +19,13 @@ import { someone } from './actors.ts'
 const PNG_BYTES = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
 let root = ''
-let plain: StoreLayer = createFsDocumentStore('')
+let plain: StoreLayer = createFsDocumentStore('', repairLinks)
 let announcing: StoreLayer = plain
 let heard: StoreChange[] = []
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-announce-'))
-  plain = createFsDocumentStore(root)
+  plain = createFsDocumentStore(root, repairLinks)
   const changes = createChanges()
   heard = []
   changes.listen((change) => {

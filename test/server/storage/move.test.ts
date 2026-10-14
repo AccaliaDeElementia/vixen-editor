@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { repairLinks } from '../../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -22,11 +23,11 @@ const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 
 const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])
 
 let root = ''
-let store: StoreLayer = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('', repairLinks)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-move-'))
-  store = createFsDocumentStore(root)
+  store = createFsDocumentStore(root, repairLinks)
 })
 
 afterEach(async () => {

@@ -13,7 +13,7 @@ import { BlockedRestoreError } from './primitives/store-errors.ts'
 import { entryKindOf, purgeFromTrash, readTrashMeta, trashPayloadPath } from './trash/trash.ts'
 import { assertKindSurvives } from './move.ts'
 import { documentIdsUnder } from './document-ids.ts'
-import { relinkAfterMove } from './relink-store.ts'
+import { relinkAfterMove, type Rewrite } from './relink-store.ts'
 import type { EntryKind } from '../../shared/documents.ts'
 import { isAtOrUnder, joinPath, STORE_ROOT } from '../../shared/store-path.ts'
 import { serially } from '../../shared/serially.ts'
@@ -153,7 +153,7 @@ async function documentsIn(docsRoot: string, done: Placed): Promise<string[]> {
   return kind === 'document' ? [destination] : []
 }
 
-async function relinkRenamed(docsRoot: string, placed: readonly Placed[]): Promise<void> {
+async function relinkRenamed(docsRoot: string, placed: readonly Placed[], rewrite: Rewrite): Promise<void> {
   await serially(
     placed.filter((done) => done.destination !== done.wasAt),
     async (done) => {
@@ -161,12 +161,16 @@ async function relinkRenamed(docsRoot: string, placed: readonly Placed[]): Promi
       const moved = await documentsIn(docsRoot, done)
       const asWritten = moved.map((id) => `${wasAt}${id.slice(destination.length)}`)
 
-      await relinkAfterMove(docsRoot, asWritten, [{ from: wasAt, to: destination }])
+      await relinkAfterMove(docsRoot, asWritten, [{ from: wasAt, to: destination }], rewrite)
     },
   )
 }
 
-export async function restoreSelection(docsRoot: string, request: RestoreSelection): Promise<RestoreOutcome> {
+export async function restoreSelection(
+  docsRoot: string,
+  request: RestoreSelection,
+  rewrite: Rewrite,
+): Promise<RestoreOutcome> {
   const { entryId } = request
   const meta = await readTrashMeta(docsRoot, entryId)
   const payload = trashPayloadPath(docsRoot, entryId)
@@ -192,7 +196,7 @@ export async function restoreSelection(docsRoot: string, request: RestoreSelecti
     throw error
   }
 
-  await relinkRenamed(docsRoot, placed)
+  await relinkRenamed(docsRoot, placed, rewrite)
 
   const emptied = await payloadIsEmpty(payload)
   if (emptied) await purgeFromTrash(docsRoot, entryId)

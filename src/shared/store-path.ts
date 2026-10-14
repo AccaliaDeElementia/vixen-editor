@@ -2,6 +2,20 @@
 
 export const STORE_ROOT = ''
 
+export interface PathMove {
+  from: string
+  to: string
+}
+
+export function movedPath(moves: readonly PathMove[], entryPath: string): string {
+  for (const { from, to } of moves) {
+    if (entryPath === from) return to
+    if (entryPath.startsWith(`${from}/`)) return `${to}${entryPath.slice(from.length)}`
+  }
+
+  return entryPath
+}
+
 export function joinPath(directory: string, name: string): string {
   return directory === STORE_ROOT ? name : `${directory}/${name}`
 }

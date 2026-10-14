@@ -7,7 +7,8 @@ import path from 'node:path'
 import { given } from '../../conditions.ts'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { relinkDocument, type PathMove } from '../../../src/server/markdown/relink.ts'
+import { repairLinks, TestOnly as relinkTestOnly } from '../../../src/server/markdown/relink.ts'
+import type { PathMove } from '../../../src/shared/store-path.ts'
 import { createFsDocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { moveEntry } from '../../../src/server/storage/move.ts'
 import { relinkAfterMove, type RelinkOutcome } from '../../../src/server/storage/relink-store.ts'
@@ -24,7 +25,7 @@ async function read(id: string): Promise<string> {
 }
 
 async function documentIds(): Promise<string[]> {
-  return await createFsDocumentStore(root).list()
+  return await createFsDocumentStore(root, repairLinks).list()
 }
 
 async function moveThenRelink(from: string, to: string): Promise<RelinkOutcome> {
@@ -34,7 +35,7 @@ async function moveThenRelink(from: string, to: string): Promise<RelinkOutcome> 
 
   const moves: PathMove[] = [{ from, to }]
 
-  return await relinkAfterMove(root, before, moves)
+  return await relinkAfterMove(root, before, moves, repairLinks)
 }
 
 async function rewrittenBy(from: string, to: string): Promise<string[]> {
@@ -240,7 +241,7 @@ describe('skipping documents that cannot hold a link', () => {
     )
 
     const unfiltered = Object.entries(CORPUS)
-      .filter(([id, content]) => relinkDocument(content, id, JOURNAL_TO_ARCHIVE) !== content)
+      .filter(([id, content]) => relinkTestOnly.relinkDocument(content, id, JOURNAL_TO_ARCHIVE) !== content)
       .map(([id]) => id)
       .sort((a, b) => a.localeCompare(b))
 

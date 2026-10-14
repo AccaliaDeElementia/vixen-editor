@@ -1,6 +1,7 @@
 'use sanity'
 
 import { givenAsync } from '../../conditions.ts'
+import { repairLinks } from '../../../src/server/markdown/relink.ts'
 import { Buffer } from 'node:buffer'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -18,7 +19,7 @@ import { someone } from '../actors.ts'
 const GENEROUS = { maxBytes: 1_000_000, maxEntries: 1000 }
 
 let root = ''
-let store: StoreLayer = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('', repairLinks)
 let outside = ''
 
 beforeEach(async () => {
@@ -27,7 +28,7 @@ beforeEach(async () => {
   outside = path.join(base, 'outside')
   await fs.mkdir(root, { recursive: true })
   await fs.mkdir(outside, { recursive: true })
-  store = createFsDocumentStore(root)
+  store = createFsDocumentStore(root, repairLinks)
 })
 
 afterEach(async () => {

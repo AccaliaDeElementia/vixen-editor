@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { repairLinks } from '../../../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -19,11 +20,11 @@ import { anonymousActor, localActor } from '../../../../src/server/platform/acto
 const { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
 
 let root = ''
-let store: StoreLayer = createFsDocumentStore('')
+let store: StoreLayer = createFsDocumentStore('', repairLinks)
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-trash-'))
-  store = createFsDocumentStore(root)
+  store = createFsDocumentStore(root, repairLinks)
 })
 
 afterEach(async () => {

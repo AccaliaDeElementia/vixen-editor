@@ -12,6 +12,7 @@ import { loadConfig, type Config } from './platform/config.ts'
 import { applyDebugFilter, createLogger } from './platform/logging.ts'
 import { pageRoutes } from './routes/pages.ts'
 import { createActors } from './storage/actors.ts'
+import { repairLinks } from './markdown/relink.ts'
 import { createFsDocumentStore } from './storage/fs-store.ts'
 import { createWriteLock } from './platform/lock.ts'
 import { sweepTemporaries } from './storage/sweep.ts'
@@ -28,7 +29,7 @@ const APP_TITLE = 'Vixen Editor'
 
 function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR, buildId: string | null = null): Hono {
   const lock = createWriteLock(config.writeLockTimeoutMs)
-  const store = createFsDocumentStore(config.docsRoot, lock)
+  const store = createFsDocumentStore(config.docsRoot, repairLinks, lock)
   const app = buildApp({ store, actors: createActors(config.docsRoot, lock), limits: config.limits, buildId })
   const templates = createTemplateRenderer(config.templatesDir, config.nodeEnv === 'production')
 

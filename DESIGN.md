@@ -382,8 +382,11 @@ the move itself. So the lock hold time scales with the store rather than with
 the move, which is the one thing about this design worth knowing before the
 store gets large. Parsing dominates, which is why a document
 holding no link syntax at all is skipped without being parsed — see
-`mayHoldLinks` in `storage/relink-store.ts`, whose soundness is pinned by a
-test computing the same answer unfiltered. A store large or link-dense enough
+`mayHoldLinks` in `markdown/relink.ts`, whose soundness is pinned by a
+test computing the same answer unfiltered. **The store does not know what a
+link is**: it lists, reads and writes, and calls a `Rewrite` it was handed at
+construction — so a second implementation inherits link repair rather than
+reimplementing it. A store large or link-dense enough
 to reach the timeout has `WRITE_LOCK_TIMEOUT_MS` to pull.
 
 Reading outside the lock and taking it only to write was measured and

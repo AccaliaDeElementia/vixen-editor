@@ -14,7 +14,7 @@ import { isAtOrInside, realpathOrNull } from './primitives/containment.ts'
 import { computeEtag } from './primitives/etag.ts'
 import { createWriteLock, DEFAULT_WRITE_LOCK_TIMEOUT_MS, type WriteLock } from '../platform/lock.ts'
 import { moveEntry, type MoveRequest } from './move.ts'
-import { relinkAfterMove, type RelinkOutcome } from './relink-store.ts'
+import { relinkAfterMove, type RelinkOutcome, type Rewrite } from './relink-store.ts'
 import { assertNormalisedName, InvalidPathError, joinEntryPath, resolveStorePath } from './primitives/safe-path.ts'
 import {
   ABSENT_ON_READ_CODES,
@@ -86,6 +86,7 @@ async function assertResolvesInsideRoot(root: string, id: string, target: string
 
 export function createFsDocumentStore(
   docsRoot: string,
+  rewrite: Rewrite,
   lock: WriteLock = createWriteLock(DEFAULT_WRITE_LOCK_TIMEOUT_MS),
 ): StoreLayer {
   const root = path.resolve(docsRoot)
@@ -202,7 +203,7 @@ export function createFsDocumentStore(
         const before = await documentIdsUnder(root, STORE_ROOT)
         await moveEntry(root, request)
 
-        return await relinkAfterMove(root, before, [{ from: request.from, to: request.to }])
+        return await relinkAfterMove(root, before, [{ from: request.from, to: request.to }], rewrite)
       })
     },
 
@@ -219,7 +220,7 @@ export function createFsDocumentStore(
     },
 
     async restore(request: RestoreSelection): Promise<RestoreOutcome> {
-      return await lock.run(async () => await restoreSelection(root, request))
+      return await lock.run(async () => await restoreSelection(root, request, rewrite))
     },
 
     async purge(entryId: string): Promise<void> {

@@ -1,14 +1,10 @@
 'use sanity'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
+import { movedPath, type PathMove } from '../../shared/store-path.ts'
 import { directoryOf, isStorePath, relativeDestination, resolveDestination } from '../../shared/link-paths.ts'
 
 import { rewriteLinkDestinations } from './links.ts'
-
-export interface PathMove {
-  from: string
-  to: string
-}
 
 interface Reading {
   pathPart: string
@@ -17,15 +13,6 @@ interface Reading {
 
 const SUFFIX_START = /[#?]/v
 const EXPLICITLY_RELATIVE = './'
-
-export function movedPath(moves: readonly PathMove[], entryPath: string): string {
-  for (const { from, to } of moves) {
-    if (entryPath === from) return to
-    if (entryPath.startsWith(`${from}/`)) return `${to}${entryPath.slice(from.length)}`
-  }
-
-  return entryPath
-}
 
 function expressRelative(writtenPath: string, directory: string, target: string): string {
   const relative = relativeDestination(directory, target)
@@ -79,7 +66,7 @@ function relinkDestination(
   return rebased ?? destination
 }
 
-export function relinkDocument(markdown: string, holderPath: string, moves: readonly PathMove[]): string {
+function relinkDocument(markdown: string, holderPath: string, moves: readonly PathMove[]): string {
   const oldDirectory = directoryOf(holderPath)
   const newDirectory = directoryOf(movedPath(moves, holderPath))
 
@@ -87,3 +74,20 @@ export function relinkDocument(markdown: string, holderPath: string, moves: read
     relinkDestination(destination, oldDirectory, newDirectory, moves),
   )
 }
+
+// CommonMark allows no whitespace between the bracket and what follows it, so
+// every form this repairs needs `](` or `]:` written literally and no escaping
+// or encoding can produce one without it appearing.
+function mayHoldLinks(content: string): boolean {
+  return content.includes('](') || content.includes(']:')
+}
+
+export function repairLinks(content: string, holder: string, moves: readonly PathMove[]): string | null {
+  if (!mayHoldLinks(content)) return null
+
+  const relinked = relinkDocument(content, holder, moves)
+
+  return relinked === content ? null : relinked
+}
+
+export const TestOnly = { relinkDocument }

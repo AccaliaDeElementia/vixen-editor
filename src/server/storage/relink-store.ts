@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import { createLogger } from '../platform/logging.ts'
 import { compareNames } from './primitives/name-order.ts'
-import { movedPath, relinkDocument, type PathMove } from '../markdown/relink.ts'
+import { movedPath, type PathMove } from '../../shared/store-path.ts'
 
 import { replaceFileAtomic } from './primitives/atomic-write.ts'
 import { serially } from '../../shared/serially.ts'
@@ -18,23 +18,16 @@ export interface RelinkOutcome {
   failed: string[]
 }
 
+export type Rewrite = (content: string, holder: string, moves: readonly PathMove[]) => string | null
+
 function holderOfEachPath(documentIds: readonly string[], moves: readonly PathMove[]): Map<string, string> {
   return new Map(documentIds.map((id) => [movedPath(moves, id), id]))
 }
 
-// CommonMark allows no whitespace between the bracket and what follows it, so
-// every form this repairs needs `](` or `]:` written literally and no escaping
-// or encoding can produce one without it appearing.
-function mayHoldLinks(content: string): boolean {
-  return content.includes('](') || content.includes(']:')
-}
-
-async function repair(target: string, holder: string, moves: readonly PathMove[]): Promise<boolean> {
+async function repair(target: string, holder: string, moves: readonly PathMove[], rewrite: Rewrite): Promise<boolean> {
   const content = await fs.readFile(target, 'utf8')
-  if (!mayHoldLinks(content)) return false
-
-  const relinked = relinkDocument(content, holder, moves)
-  if (relinked === content) return false
+  const relinked = rewrite(content, holder, moves)
+  if (relinked === null) return false
 
   await replaceFileAtomic(target, relinked)
 
@@ -45,13 +38,14 @@ export async function relinkAfterMove(
   root: string,
   documentIds: readonly string[],
   moves: readonly PathMove[],
+  rewrite: Rewrite,
 ): Promise<RelinkOutcome> {
   const rewritten: string[] = []
   const failed: string[] = []
 
   await serially(holderOfEachPath(documentIds, moves), async ([current, holder]) => {
     try {
-      if (await repair(path.join(root, current), holder, moves)) rewritten.push(current)
+      if (await repair(path.join(root, current), holder, moves, rewrite)) rewritten.push(current)
     } catch (error) {
       failed.push(current)
       logFailed('%s: %O', current, error)
