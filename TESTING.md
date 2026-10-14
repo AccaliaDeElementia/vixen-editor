@@ -142,6 +142,36 @@ module with no test at all, and it is also the one coverage exclusion. The two
 lists that once held the modules not yet satisfying this were debt rather than
 design, and they are gone; a module that fails either check now fails the gate.
 
+### A contract is a fixture, not a test file
+
+One set of behaviours can be run against more than one implementation, and the
+way to do that **without breaking the mirror** is a fixture that declares them.
+`test/server/storage/store-contract.ts` exports `storeContract(subject)`;
+`test/server/storage/fs-store.test.ts` calls it. Each module is still driven by
+the test file named for it, and the shared behaviours have one definition.
+
+Written as a _test file_ instead, it would be a test that drives two modules and
+is named for neither — the shape this project has already rejected once.
+
+**What belongs in it is decidable rather than a matter of taste: a contract test
+observes through the store and nothing else.** A test that reaches for `fs`,
+stubs a module, plants a symlink or leans on `NAME_MAX` is making a claim about
+_this_ filesystem and stays with the implementation. That line split the store's
+own tests 45 to 23 with nothing lost, and it is the line an in-memory
+implementation has to be able to meet.
+
+**The lifecycle stays with whoever can build the store.** The fixture takes a
+getter rather than a factory, so the implementation's own test owns
+`beforeEach`, and a store needing a temporary directory and one needing nothing
+both fit.
+
+**One cost, measured.** `vitest list` collects statically: it reports what a
+spec declares in its own body and not what an imported fixture registers when
+the spec calls it — 23 listed against 68 run. So the assertion scanner's
+per-file cross-check cannot see contract tests, and skips a fixture that a spec
+imports. What still guards them is narrow but real: the import would be unused
+if the call went away, and lint fails on that.
+
 **Working through them was worth more than the rule.** Closing the lists found
 a crash the suite could not see — a stale caret surviving a reload, which made
 the insert chord throw once a document changed on disk — an unreachable `null`

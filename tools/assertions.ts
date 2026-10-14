@@ -149,9 +149,16 @@ async function specsUnder(directory: string): Promise<string[]> {
   return nested.flat()
 }
 
-async function countAll(): Promise<Counted[]> {
+async function everySourceFile(): Promise<string[]> {
   const found = await Promise.all(SUITES.map(specsUnder))
-  const counted = await Promise.all(found.flat().map(async (file) => countIn(file, await readFile(file, 'utf8'))))
+
+  return found.flat()
+}
+
+async function countAll(): Promise<Counted[]> {
+  const counted = await Promise.all(
+    (await everySourceFile()).map(async (file) => countIn(file, await readFile(file, 'utf8'))),
+  )
 
   return counted.flat()
 }
@@ -234,6 +241,34 @@ interface Disagreement {
   listed: number
 }
 
+const SPEC = /\.(?:test|spec)\.ts$/v
+
+function isSpec(file: string): boolean {
+  return SPEC.test(file)
+}
+
+const DOT = /\./gv
+
+function importOf(fixture: string): RegExp {
+  return new RegExp(`from '[^']*${path.basename(fixture).replace(DOT, '\\.')}'`, 'v')
+}
+
+function importersAmong(specs: readonly string[], texts: Map<string, string>, fixture: string): string[] {
+  const imported = importOf(fixture)
+
+  return specs.filter((spec) => imported.test(texts.get(spec) ?? ''))
+}
+
+// `vitest list` collects statically: it reports the tests a spec declares in its
+// own body, and not the ones an imported fixture registers when the spec calls
+// it. Measured at 23 listed against 68 run for one such spec.
+async function asRunnersSeeThem(scanned: Counted[], files: readonly string[]): Promise<Counted[]> {
+  const specs = files.filter(isSpec)
+  const texts = new Map(await Promise.all(specs.map(async (spec) => [spec, await readFile(spec, 'utf8')] as const)))
+
+  return scanned.filter((test) => isSpec(test.file) || importersAmong(specs, texts, test.file).length === NONE)
+}
+
 function disagreements(scanned: Counted[], listed: Map<string, number>): Disagreement[] {
   const mine = tally(scanned.map(({ file }) => file))
   const everyFile = new Set([...mine.keys(), ...listed.keys()])
@@ -244,7 +279,7 @@ function disagreements(scanned: Counted[], listed: Map<string, number>): Disagre
     .sort((a, b) => a.file.localeCompare(b.file))
 }
 
-export const TestOnly = { countIn, disagreements, listing }
+export const TestOnly = { asRunnersSeeThem, countIn, disagreements, listing }
 
 if (import.meta.main) {
   const counted = await countAll()
@@ -270,7 +305,7 @@ if (import.meta.main) {
     process.stdout.write(`  ${String(assertions)}  ${file}:${String(line)}  ${name}\n`)
   }
 
-  const missed = disagreements(counted, await countedByRunners())
+  const missed = disagreements(await asRunnersSeeThem(counted, await everySourceFile()), await countedByRunners())
   if (missed.length > NONE) {
     process.stdout.write(`\n${String(missed.length)} files this scanner reads differently from the runners\n`)
     for (const { file, scanned, listed } of missed) {

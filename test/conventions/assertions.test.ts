@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../tools/assertions.ts'
 
-const { countIn, disagreements, listing } = TestOnly
+const { asRunnersSeeThem, countIn, disagreements, listing } = TestOnly
 
 const FIXTURES = path.join(import.meta.dirname, 'assertion-fixtures')
 
@@ -175,5 +175,36 @@ describe('a lister that cannot run', () => {
 
   it('names which lister failed', async () => {
     await expect(listing('playwright', 'vixen-no-such-lister', [])).rejects.toThrow(/playwright/v)
+  })
+})
+
+describe('what the runners can be asked to confirm', () => {
+  const CONTRACT = 'test/server/storage/store-contract.ts'
+  const SPEC = 'test/server/storage/fs-store.test.ts'
+  const RUN_DIRECTLY = 'test-browser/store.lifecycle.ts'
+  const THIS_SPEC = 'test/conventions/assertions.test.ts'
+
+  function declaredIn(file: string): { file: string; line: number; name: string; assertions: number } {
+    return { file, line: 1, name: 'a declaration', assertions: 1 }
+  }
+
+  it('drops what a fixture declares, because a lister collecting statically never sees it', async () => {
+    expect(await asRunnersSeeThem([declaredIn(CONTRACT)], [CONTRACT, SPEC])).toStrictEqual([])
+  })
+
+  it('keeps what a spec declares itself, which is what the cross-check is for', async () => {
+    expect((await asRunnersSeeThem([declaredIn(SPEC)], [CONTRACT, SPEC])).map(({ file }) => file)).toStrictEqual([SPEC])
+  })
+
+  it('keeps a declaring file no spec imports, because the runner lists that one directly', async () => {
+    expect((await asRunnersSeeThem([declaredIn(RUN_DIRECTLY)], [SPEC])).map(({ file }) => file)).toStrictEqual([
+      RUN_DIRECTLY,
+    ])
+  })
+
+  it('reads a path only as an import, so naming a file in a string cannot hide its tests', async () => {
+    expect((await asRunnersSeeThem([declaredIn(RUN_DIRECTLY)], [THIS_SPEC])).map(({ file }) => file)).toStrictEqual([
+      RUN_DIRECTLY,
+    ])
   })
 })
