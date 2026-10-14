@@ -1,6 +1,7 @@
 'use sanity'
 
 import { given } from '../../conditions.ts'
+import { compareNames, compareNamesIn } from '../../../src/server/storage/primitives/name-order.ts'
 import { once } from 'node:events'
 import fs from 'node:fs/promises'
 import net from 'node:net'
@@ -52,15 +53,15 @@ afterEach(async () => {
 
 describe('readTree', () => {
   it('returns nothing for an empty root', async () => {
-    await expect(readTree(root)).resolves.toStrictEqual([])
+    await expect(readTree(root, compareNames)).resolves.toStrictEqual([])
   })
 
   it('returns nothing when the root does not exist', async () => {
-    await expect(readTree(path.join(root, 'absent'))).resolves.toStrictEqual([])
+    await expect(readTree(path.join(root, 'absent'), compareNames)).resolves.toStrictEqual([])
   })
 
   it('surfaces a genuine filesystem fault rather than returning an empty tree', async () => {
-    await expect(readTree(path.join(root, OVER_NAME_MAX))).rejects.toThrow(
+    await expect(readTree(path.join(root, OVER_NAME_MAX), compareNames)).rejects.toThrow(
       expect.objectContaining({ code: 'ENAMETOOLONG' }),
     )
   })
@@ -70,7 +71,7 @@ describe('readTree', () => {
     await write('notes.txt')
     await write('photo.png')
 
-    await expect(readTree(root)).resolves.toMatchObject([
+    await expect(readTree(root, compareNames)).resolves.toMatchObject([
       { name: 'notes.md', kind: 'document' },
       { name: 'notes.txt', kind: 'document' },
       { name: 'photo.png', kind: 'image' },
@@ -82,7 +83,7 @@ describe('readTree', () => {
     await write('archive.zip')
     await write('README')
 
-    await expect(readTree(root).then(names)).resolves.toStrictEqual(['notes.md'])
+    await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual(['notes.md'])
   })
 
   it('omits dotfiles and dot-directories, including the trash', async () => {
@@ -91,7 +92,7 @@ describe('readTree', () => {
     await write('.trash/entry/payload.md')
     await write('.git/config.md')
 
-    await expect(readTree(root).then(names)).resolves.toStrictEqual(['notes.md'])
+    await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual(['notes.md'])
   })
 
   it('sorts folders before files, each alphabetically', async () => {
@@ -100,7 +101,12 @@ describe('readTree', () => {
     await write('work/a.md')
     await write('archive/a.md')
 
-    await expect(readTree(root).then(names)).resolves.toStrictEqual(['archive', 'work', 'alpha.md', 'zebra.md'])
+    await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual([
+      'archive',
+      'work',
+      'alpha.md',
+      'zebra.md',
+    ])
   })
 
   it('counts the way a reader does, so file9 comes before file10', async () => {
@@ -108,13 +114,13 @@ describe('readTree', () => {
     await write('file9.md')
     await write('file2.md')
 
-    await expect(readTree(root).then(names)).resolves.toStrictEqual(['file2.md', 'file9.md', 'file10.md'])
+    await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual(['file2.md', 'file9.md', 'file10.md'])
   })
 
   it('nests children under their folder', async () => {
     await write('journal/2026/september.md')
 
-    const tree = await readTree(root)
+    const tree = await readTree(root, compareNames)
 
     expect(names(folder(folder(tree, 'journal').children, '2026').children)).toStrictEqual(['september.md'])
   })
@@ -122,7 +128,7 @@ describe('readTree', () => {
   it('reports paths relative to the root, with posix separators', async () => {
     await write('journal/2026/september.md')
 
-    await expect(readTree(root).then(paths)).resolves.toStrictEqual([
+    await expect(readTree(root, compareNames).then(paths)).resolves.toStrictEqual([
       'journal',
       'journal/2026',
       'journal/2026/september.md',
@@ -132,7 +138,7 @@ describe('readTree', () => {
   it('keeps an empty folder, which is how a freshly made one looks before it is seeded', async () => {
     await fs.mkdir(path.join(root, 'empty'), { recursive: true })
 
-    await expect(readTree(root)).resolves.toStrictEqual([
+    await expect(readTree(root, compareNames)).resolves.toStrictEqual([
       { name: 'empty', path: 'empty', kind: 'folder', children: [] },
     ])
   })
@@ -140,7 +146,7 @@ describe('readTree', () => {
   it('reports the size of a file in bytes', async () => {
     await write('notes.md', '# hello')
 
-    const [entry] = await readTree(root)
+    const [entry] = await readTree(root, compareNames)
 
     expect(entry).toMatchObject({ kind: 'document', size: 7 })
   })
@@ -148,7 +154,7 @@ describe('readTree', () => {
   it('reports the modification time as an ISO timestamp', async () => {
     await write('notes.md', 'x')
 
-    const [entry] = await readTree(root)
+    const [entry] = await readTree(root, compareNames)
     const modified = entry?.kind === 'document' ? entry.modified : ''
 
     given(() => {
@@ -160,7 +166,7 @@ describe('readTree', () => {
   it('gives a folder no size, because a directory inode size describes nothing useful', async () => {
     await write('journal/a.md')
 
-    const [entry] = await readTree(root)
+    const [entry] = await readTree(root, compareNames)
 
     expect(Object.keys(entry ?? {}).sort()).toStrictEqual(['children', 'kind', 'name', 'path'])
   })
@@ -170,41 +176,41 @@ describe('readTree', () => {
       await fs.writeFile(path.join(outside, 'secret.md'), 'classified')
       await fs.symlink(path.join(outside, 'secret.md'), path.join(root, 'innocent.md'))
 
-      await expect(readTree(root).then(names)).resolves.toStrictEqual([])
+      await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual([])
     })
 
     it('omits a symlinked directory that escapes the root', async () => {
       await fs.writeFile(path.join(outside, 'secret.md'), 'classified')
       await fs.symlink(outside, path.join(root, 'link'))
 
-      await expect(readTree(root).then(names)).resolves.toStrictEqual([])
+      await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual([])
     })
 
     it('keeps a symlink that stays inside the root, matching what the store will read', async () => {
       await write('real.md', 'inside')
       await fs.symlink(path.join(root, 'real.md'), path.join(root, 'alias.md'))
 
-      await expect(readTree(root).then(names)).resolves.toStrictEqual(['alias.md', 'real.md'])
+      await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual(['alias.md', 'real.md'])
     })
 
     it('omits a dangling symlink', async () => {
       await fs.symlink(path.join(root, 'never-existed.md'), path.join(root, 'broken.md'))
 
-      await expect(readTree(root).then(names)).resolves.toStrictEqual([])
+      await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual([])
     })
 
     it('terminates on a symlink loop rather than walking it forever', async () => {
       await write('journal/a.md')
       await fs.symlink(root, path.join(root, 'journal', 'loop'))
 
-      await expect(readTree(root).then(paths)).resolves.toStrictEqual(['journal', 'journal/a.md'])
+      await expect(readTree(root, compareNames).then(paths)).resolves.toStrictEqual(['journal', 'journal/a.md'])
     })
 
     it('follows a symlink to a sibling directory inside the root', async () => {
       await write('source/a.md')
       await fs.symlink(path.join(root, 'source'), path.join(root, 'mirror'))
 
-      await expect(readTree(root).then(paths)).resolves.toStrictEqual([
+      await expect(readTree(root, compareNames).then(paths)).resolves.toStrictEqual([
         'mirror',
         'mirror/a.md',
         'source',
@@ -219,7 +225,7 @@ describe('readTree', () => {
     await once(socket, 'listening')
 
     try {
-      await expect(readTree(root).then(names)).resolves.toStrictEqual([])
+      await expect(readTree(root, compareNames).then(names)).resolves.toStrictEqual([])
     } finally {
       socket.close()
       await once(socket, 'close')
@@ -251,7 +257,7 @@ describe('a folder deleted while the walk is in progress', () => {
     await write('vanishes/b.md')
     removeAfterStatOf('vanishes')
 
-    const tree = await readTree(root)
+    const tree = await readTree(root, compareNames)
 
     expect(names(tree)).toStrictEqual(['keep'])
   })
@@ -262,7 +268,7 @@ describe('a folder deleted while the walk is in progress', () => {
     await write('notes.md')
     removeAfterStatOf('vanishes')
 
-    expect(paths(await readTree(root))).toStrictEqual(['keep', 'keep/a.md', 'notes.md'])
+    expect(paths(await readTree(root, compareNames))).toStrictEqual(['keep', 'keep/a.md', 'notes.md'])
   })
 
   it('omits it from an archive plan too, which walks the same tree', async () => {
@@ -281,20 +287,23 @@ describe('the locale a tree is read for', () => {
     await write('zebra.md')
     await write('\u00e4pple.md')
 
-    expect(names(await readTree(root, 'sv'))).toStrictEqual(['zebra.md', '\u00e4pple.md'])
+    expect(names(await readTree(root, compareNamesIn('sv')))).toStrictEqual(['zebra.md', '\u00e4pple.md'])
   })
 
   it('orders a nested folder the same way, not just the top level', async () => {
     await write('journal/zebra.md')
     await write('journal/\u00e4pple.md')
 
-    expect(names(folder(await readTree(root, 'sv'), 'journal').children)).toStrictEqual(['zebra.md', '\u00e4pple.md'])
+    expect(names(folder(await readTree(root, compareNamesIn('sv')), 'journal').children)).toStrictEqual([
+      'zebra.md',
+      '\u00e4pple.md',
+    ])
   })
 
   it('keeps folders ahead of files whatever the locale', async () => {
     await write('\u00e4pple.md')
     await write('zebra/note.md')
 
-    expect(names(await readTree(root, 'sv'))).toStrictEqual(['zebra', '\u00e4pple.md'])
+    expect(names(await readTree(root, compareNamesIn('sv')))).toStrictEqual(['zebra', '\u00e4pple.md'])
   })
 })

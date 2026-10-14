@@ -420,10 +420,10 @@ serving. A record is written only when it is new, so a repeat visit costs no
 write. The file is reached by a plain join, the way `.trash` is, since the
 validator refuses a dotted segment by design.
 
-### Two things the layer still decides, and why
+### What the layer still decides, and why
 
 The rule is that `StoreLayer` holds storage logic only — never validation, never
-a decision taken from content or input. Two things sit on the line and stayed
+a decision taken from content or input. One thing sits on the line and stayed
 down deliberately.
 
 **A rename may not change what a file claims to be.** `assertKindSurvives`
@@ -435,14 +435,14 @@ is allowed because the `stat` says folder. Inferring the kind from the
 extension would refuse that. So this is a decision taken from _stored state_
 rather than from input, which is the layer's to make.
 
-**Ordering by locale.** `list` and `tree` take a locale and sort with
-`compareNamesIn`. That is presentation input reaching the layer, and by the
-letter of the rule it belongs above. It stayed because the comparator is a
-single shared pure function, so a second implementation calls it rather than
-reimplementing it, and because lifting it would need a decorator whose return
-type differs from its argument — which breaks the chain every other layer
-preserves. The conformance suite is where ordering gets pinned across
-implementations.
+**Ordering is handed in, not chosen.** `list` and `tree` take a
+`NameComparator` and **no default** — the layer keeps the mechanism, because it
+owns the walk and so must sort each level, and loses the policy. The routes
+build the comparator from `Accept-Language`, which is where a locale belongs.
+A default was refused deliberately: it is where the opinion would survive, and
+two implementations defaulting differently is invisible until somebody reads a
+listing. The archive passes `compareNames` instead, because a zip's entry order
+is not a reader's preference.
 
 ### The store is two interfaces
 

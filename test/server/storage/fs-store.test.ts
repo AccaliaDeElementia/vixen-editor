@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { compareNames } from '../../../src/server/storage/primitives/name-order.ts'
 import { repairLinks } from '../../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
@@ -101,46 +102,46 @@ describe('read', () => {
 
 describe('list', () => {
   it('returns an empty array when there are no documents', async () => {
-    await expect(store.list()).resolves.toStrictEqual([])
+    await expect(store.list(compareNames)).resolves.toStrictEqual([])
   })
 
   it('returns an empty array when the root does not exist', async () => {
     const missing = createFsDocumentStore(path.join(root, 'does-not-exist'), repairLinks)
 
-    await expect(missing.list()).resolves.toStrictEqual([])
+    await expect(missing.list(compareNames)).resolves.toStrictEqual([])
   })
 
   it('surfaces a genuine filesystem fault rather than returning an empty list', async () => {
     const unusable = createFsDocumentStore(path.join(root, OVER_NAME_MAX), repairLinks)
 
-    await expect(unusable.list()).rejects.toThrow(expect.objectContaining({ code: 'ENAMETOOLONG' }))
+    await expect(unusable.list(compareNames)).rejects.toThrow(expect.objectContaining({ code: 'ENAMETOOLONG' }))
   })
 
   it('lists documents sorted by id', async () => {
     await store.createDocument('b.md', 'x', someone)
     await store.createDocument('a.md', 'x', someone)
 
-    await expect(store.list()).resolves.toStrictEqual(['a.md', 'b.md'])
+    await expect(store.list(compareNames)).resolves.toStrictEqual(['a.md', 'b.md'])
   })
 
   it('lists them the way a reader counts, so file9 comes before file10', async () => {
     await store.createDocument('file10.md', 'x', someone)
     await store.createDocument('file9.md', 'x', someone)
 
-    await expect(store.list()).resolves.toStrictEqual(['file9.md', 'file10.md'])
+    await expect(store.list(compareNames)).resolves.toStrictEqual(['file9.md', 'file10.md'])
   })
 
   it('lists nested documents with posix separators', async () => {
     await store.createDocument('journal/2026/september.md', 'x', someone)
 
-    await expect(store.list()).resolves.toStrictEqual(['journal/2026/september.md'])
+    await expect(store.list(compareNames)).resolves.toStrictEqual(['journal/2026/september.md'])
   })
 
   it('lists plain text alongside markdown, because both are documents', async () => {
     await store.createDocument('notes.md', 'x', someone)
     await store.createDocument('notes.txt', 'x', someone)
 
-    await expect(store.list()).resolves.toStrictEqual(['notes.md', 'notes.txt'])
+    await expect(store.list(compareNames)).resolves.toStrictEqual(['notes.md', 'notes.txt'])
   })
 
   it('ignores files that are not documents', async () => {
@@ -148,7 +149,7 @@ describe('list', () => {
     await fs.writeFile(path.join(root, 'image.png'), '')
     await fs.writeFile(path.join(root, 'README'), '')
 
-    await expect(store.list()).resolves.toStrictEqual(['notes.md'])
+    await expect(store.list(compareNames)).resolves.toStrictEqual(['notes.md'])
   })
 
   it('ignores dotfiles and dot-directories', async () => {
@@ -157,7 +158,7 @@ describe('list', () => {
     await fs.mkdir(path.join(root, '.git'), { recursive: true })
     await fs.writeFile(path.join(root, '.git', 'config.md'), '')
 
-    await expect(store.list()).resolves.toStrictEqual(['notes.md'])
+    await expect(store.list(compareNames)).resolves.toStrictEqual(['notes.md'])
   })
 })
 
@@ -395,13 +396,13 @@ describe('tree', () => {
   it('reports the document tree', async () => {
     await store.createDocument('journal/september.md', 'x', someone)
 
-    await expect(store.tree()).resolves.toMatchObject([
+    await expect(store.tree(compareNames)).resolves.toMatchObject([
       { name: 'journal', kind: 'folder', children: [{ name: 'september.md', kind: 'document' }] },
     ])
   })
 
   it('reports an empty tree for an empty root', async () => {
-    await expect(store.tree()).resolves.toStrictEqual([])
+    await expect(store.tree(compareNames)).resolves.toStrictEqual([])
   })
 })
 

@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { compareNames } from '../../../src/server/storage/primitives/name-order.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -25,7 +26,7 @@ async function read(id: string): Promise<string> {
 }
 
 async function documentIds(): Promise<string[]> {
-  return await createFsDocumentStore(root, repairLinks).list()
+  return await createFsDocumentStore(root, repairLinks).list(compareNames)
 }
 
 async function moveThenRelink(from: string, to: string): Promise<RelinkOutcome> {

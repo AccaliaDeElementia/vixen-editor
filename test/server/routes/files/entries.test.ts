@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { compareNames } from '../../../../src/server/storage/primitives/name-order.ts'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -215,7 +216,7 @@ describe('creating a document', () => {
   it('does not create the document it rejected as empty', async () => {
     await post('documents', { path: 'notes.md', content: '  ' })
 
-    await expect(store.list()).resolves.toStrictEqual([])
+    await expect(store.list(compareNames)).resolves.toStrictEqual([])
   })
 
   it('rejects a body with no path at all', async () => {
@@ -656,7 +657,7 @@ describe('moving an entry to the trash', () => {
     await store.createDocument('notes.md', 'x', someone)
     await remove('notes.md')
 
-    await expect(store.list()).resolves.toStrictEqual([])
+    await expect(store.list(compareNames)).resolves.toStrictEqual([])
   })
 
   it('deletes a nested path', async () => {
@@ -673,7 +674,7 @@ describe('moving an entry to the trash', () => {
       expect(res.status).toBe(200)
     })
 
-    await expect(store.tree()).resolves.toStrictEqual([])
+    await expect(store.tree(compareNames)).resolves.toStrictEqual([])
   })
 
   it('returns 404 for a path that is not there', async () => {

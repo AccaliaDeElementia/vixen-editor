@@ -10,6 +10,7 @@ import { z } from 'zod'
 
 import type { Limits } from '../platform/config.ts'
 import { actorOf } from './requesting-actor.ts'
+import { compareNamesIn } from '../storage/primitives/name-order.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 import { mediaTypeOf } from '../storage/primitives/media-type.ts'
 import { joinEntryPath } from '../storage/primitives/safe-path.ts'
@@ -83,7 +84,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
   const routes = new Hono()
 
   routes.get('/', async (c) => {
-    const tree = await store.tree(preferredLocale(c.req.header(ACCEPT_LANGUAGE)))
+    const tree = await store.tree(compareNamesIn(preferredLocale(c.req.header(ACCEPT_LANGUAGE))))
 
     return c.json({ tree }, HTTP_OK, VARIES_BY_LANGUAGE)
   })

@@ -13,6 +13,7 @@ import { createLogger } from '../platform/logging.ts'
 import { nullWhenAbsent } from './primitives/absence.ts'
 import { resolveStorePath } from './primitives/safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from './primitives/store-errors.ts'
+import { compareNames } from './primitives/name-order.ts'
 import { readTree, type TreeEntry } from './tree.ts'
 
 const logArchive = createLogger('storage/archive')
@@ -63,7 +64,7 @@ export async function planArchive(root: string, subtree: string, limits: Archive
   const stats = await nullWhenAbsent(async () => await fs.stat(base))
   if (stats?.isDirectory() !== true) throw new DocumentNotFoundError(subtree)
 
-  const plan: ArchivePlan = { base, ...collect(await readTree(base)) }
+  const plan: ArchivePlan = { base, ...collect(await readTree(base, compareNames)) }
 
   const entries = plan.files.length + plan.directories.length
   if (entries > limits.maxEntries) throw new ArchiveTooLargeError('entries', limits.maxEntries, entries)

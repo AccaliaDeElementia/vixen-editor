@@ -9,7 +9,7 @@ import { createLogger } from '../platform/logging.ts'
 import { nullWhenAbsent } from './primitives/absence.ts'
 import { isAtOrInside } from './primitives/containment.ts'
 import { isAllowedName } from './primitives/safe-path.ts'
-import { compareNamesIn, type NameComparator } from './primitives/name-order.ts'
+import type { NameComparator } from './primitives/name-order.ts'
 import { classifyFile, type FileKind } from '../../shared/documents.ts'
 import { serially } from '../../shared/serially.ts'
 import { joinPath } from '../../shared/store-path.ts'
@@ -143,7 +143,7 @@ async function walkDirectory(dir: string, prefix: string, scope: WalkScope): Pro
   return await buildEntries(entries, { dir, prefix, scope })
 }
 
-export async function readTree(docsRoot: string, locale?: string): Promise<TreeEntry[]> {
+export async function readTree(docsRoot: string, byName: NameComparator): Promise<TreeEntry[]> {
   const root = path.resolve(docsRoot)
 
   const entries = await nullWhenAbsent(async () => await fs.readdir(root, { withFileTypes: true }))
@@ -153,5 +153,5 @@ export async function readTree(docsRoot: string, locale?: string): Promise<TreeE
 
   const scope: WalkScope = { realRoot, realDir: realRoot, ancestors: new Set([realRoot]) }
 
-  return sortTree(await buildEntries(entries, { dir: root, prefix: '', scope }), compareNamesIn(locale))
+  return sortTree(await buildEntries(entries, { dir: root, prefix: '', scope }), byName)
 }

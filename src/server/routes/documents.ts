@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { computeEtag } from '../storage/primitives/etag.ts'
 import { actorOf } from './requesting-actor.ts'
+import { compareNamesIn } from '../storage/primitives/name-order.ts'
 import type { DocumentStore } from '../storage/fs-store.ts'
 
 import { matchesAny } from './conditional.ts'
@@ -24,7 +25,7 @@ export function documentRoutes(store: DocumentStore): Hono {
   const routes = new Hono()
 
   routes.get('/', async (c) => {
-    const documents = await store.list(preferredLocale(c.req.header(ACCEPT_LANGUAGE)))
+    const documents = await store.list(compareNamesIn(preferredLocale(c.req.header(ACCEPT_LANGUAGE))))
 
     return c.json({ documents }, HTTP_OK, VARIES_BY_LANGUAGE)
   })

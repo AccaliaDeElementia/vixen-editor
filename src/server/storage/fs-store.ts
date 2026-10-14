@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import type { Actor } from '../platform/actor.ts'
 import { createLogger } from '../platform/logging.ts'
-import { compareNamesIn } from './primitives/name-order.ts'
+import type { NameComparator } from './primitives/name-order.ts'
 
 import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './primitives/atomic-write.ts'
@@ -40,8 +40,8 @@ const logStore = createLogger('storage/fs-store')
 const logEscape = createLogger('storage/fs-store', 'symlinkEscape')
 
 export interface StoreLayer {
-  list: (locale?: string) => Promise<string[]>
-  tree: (locale?: string) => Promise<TreeEntry[]>
+  list: (byName: NameComparator) => Promise<string[]>
+  tree: (byName: NameComparator) => Promise<TreeEntry[]>
   read: (id: string) => Promise<string>
   createDocument: (id: string, content: string, actor: Actor) => Promise<string>
   createFolder: (folderPath: string, indexContent: string, actor: Actor) => Promise<string>
@@ -92,12 +92,12 @@ export function createFsDocumentStore(
   const root = path.resolve(docsRoot)
 
   return {
-    async list(locale?: string): Promise<string[]> {
-      return (await documentIdsUnder(root, STORE_ROOT)).sort(compareNamesIn(locale))
+    async list(byName: NameComparator): Promise<string[]> {
+      return (await documentIdsUnder(root, STORE_ROOT)).sort(byName)
     },
 
-    async tree(locale?: string): Promise<TreeEntry[]> {
-      return await readTree(root, locale)
+    async tree(byName: NameComparator): Promise<TreeEntry[]> {
+      return await readTree(root, byName)
     },
 
     async read(id: string): Promise<string> {

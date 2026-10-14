@@ -1,6 +1,7 @@
 'use sanity'
 
 import fs from 'node:fs/promises'
+import { compareNames } from '../../../../src/server/storage/primitives/name-order.ts'
 import { repairLinks } from '../../../../src/server/markdown/relink.ts'
 import os from 'node:os'
 import path from 'node:path'
@@ -191,7 +192,7 @@ describe('trash', () => {
     await store.createDocument('notes.md', 'x', someone)
     await store.trash('notes.md', someone)
 
-    await expect(store.tree()).resolves.toStrictEqual([])
+    await expect(store.tree(compareNames)).resolves.toStrictEqual([])
   })
 })
 
