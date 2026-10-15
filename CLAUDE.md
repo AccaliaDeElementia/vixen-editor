@@ -228,6 +228,42 @@ Verbosity is the cheaper side of this trade. A longer name, an extra alias or
 a separate predicate can be tested and cannot fall out of sync; a comment can
 do neither. Prefer the code every time the code can carry it.
 
+#### A string is a comment nobody will question
+
+A comment at least announces itself, and this file makes you justify it. Prose
+hidden in a **string** escapes all of that: it is not a comment, so "is this
+justified?" is never asked; it drifts from the code exactly as a comment does,
+because nothing checks a string against reality; and it is shown to a human who
+did not need it.
+
+**A string written to any output is for the reader who has to act.** One clause,
+saying what is wrong. Not why it matters, not how the check works, not what to
+do about it.
+
+The tell is **more than one sentence**, or a sentence explaining _why_ rather
+than _what_. Both mean something was put in a string because there was nowhere
+convenient to put it.
+
+| The string explains…           | The change that removes it                      |
+| ------------------------------ | ----------------------------------------------- |
+| what went wrong, in detail     | assert on the data, so the failure prints it    |
+| why the rule exists            | DESIGN.md or TESTING.md, beside the rule        |
+| what the check does or skips   | a named constant, or a test named for that case |
+| what the reader should do next | the document that owns the rule                 |
+
+The first line is the one that pays. Three guard messages here ran to 255-302
+characters, and two of them were standing in for a diagnosis the assertion had
+thrown away — one asserted on a _count_, so the failure said `expected 3 to be
+0` and named none of the leaks. Asserting on the list instead made the prose
+unnecessary rather than merely shorter.
+
+**This does not apply to a test name.** A test name is the sanctioned home for
+intent, and a long one is a comment that cannot drift, because it fails when the
+behaviour does.
+
+**End-user copy is judged by a different reader.** Enough for them to act is the
+point; it is still not the place for anything a developer needs.
+
 #### Then, if no change removes it
 
 Only three things reach here: an external fact, a suppression rationale, and

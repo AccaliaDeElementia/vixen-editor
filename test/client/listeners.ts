@@ -4,8 +4,7 @@ import { expect } from 'vitest'
 
 const NOTHING_STANDING: string[] = []
 
-const LEAKED_LISTENER =
-  'This test finished with a listener still registered on window or document. Both are shared by every test in the file, so the handler goes on firing against a subject this test has abandoned. Hold the remover whatever registered it handed back and call it.'
+const LEAKED_LISTENER = 'a test may not leave a listener on window or document'
 
 type Listener = EventListenerOrEventListenerObject | null
 type Options = AddEventListenerOptions | boolean | undefined

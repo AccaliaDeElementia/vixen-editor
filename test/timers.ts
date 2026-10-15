@@ -4,18 +4,14 @@ import { expect } from 'vitest'
 
 import { cast } from './cast.ts'
 
-const NO_INTERVALS_STANDING = 0
 const NOTHING_LEAKED: string[] = []
 const NO_DELAY = 0
 const FIRST_FRAME = 1
 const LIBRARY = 'node_modules'
 const THIS_MODULE = 'test/timers.ts'
 
-const LEAKED_TIMEOUT =
-  'This test finished with work our own code had scheduled for later. It will fire against a subject the test has abandoned, and until it does it holds that subject alive. Tear down whatever scheduled it, or hold the cancel it handed back and call it. Timers scheduled inside node_modules are not counted.'
-
-const LEAKED_INTERVAL =
-  'This test finished with a repeating timer still scheduled. An interval never completes on its own, so it goes on firing against a subject the test has abandoned for the rest of the file. Hold the cleanup whatever created it handed back and call it, or install fake timers for this test.'
+const LEAKED_TIMEOUT = 'a test may not leave a timeout scheduled'
+const LEAKED_INTERVAL = 'a test may not leave an interval scheduled'
 
 type Schedule = typeof globalThis.setInterval
 type Cancel = typeof globalThis.clearInterval
@@ -32,7 +28,7 @@ interface Scheduled {
   ours: boolean
 }
 
-const standing = new Set<IntervalHandle>()
+const standing = new Map<IntervalHandle, string>()
 const pending = new Map<TimeoutHandle, Scheduled>()
 
 function schedulingSite(): string {
@@ -71,7 +67,7 @@ export function watchIntervals(): void {
 
   globalThis.setInterval = ((...args: Parameters<Schedule>) => {
     const handle = schedule(...args)
-    standing.add(handle)
+    standing.set(handle, schedulingSite())
 
     return handle
   }) as Schedule
@@ -82,12 +78,16 @@ export function watchIntervals(): void {
   }
 }
 
-export function failOnLeakedInterval(): void {
+export function intervalsLeftScheduled(): string[] {
   const leaked = [...standing]
   standing.clear()
-  for (const handle of leaked) globalThis.clearInterval(handle)
+  for (const [handle] of leaked) globalThis.clearInterval(handle)
 
-  expect(leaked.length, LEAKED_INTERVAL).toBe(NO_INTERVALS_STANDING)
+  return leaked.map(([, origin]) => origin).sort()
+}
+
+export function failOnLeakedInterval(): void {
+  expect(intervalsLeftScheduled(), LEAKED_INTERVAL).toStrictEqual(NOTHING_LEAKED)
 }
 
 export function watchTimeouts(): void {
@@ -112,11 +112,15 @@ function describeLeak({ origin, delay }: Scheduled): string {
   return `${origin} [${String(delay)}ms]`
 }
 
-export function failOnLeakedTimeout(): void {
+export function timeoutsLeftScheduled(): string[] {
   const leaked = [...pending.values()].filter((scheduled) => scheduled.ours && !scheduled.fired).map(describeLeak)
   dropPendingTimeouts()
 
-  expect(leaked, `${LEAKED_TIMEOUT}\n  ${leaked.join('\n  ')}`).toStrictEqual(NOTHING_LEAKED)
+  return leaked
+}
+
+export function failOnLeakedTimeout(): void {
+  expect(timeoutsLeftScheduled(), LEAKED_TIMEOUT).toStrictEqual(NOTHING_LEAKED)
 }
 
 export function dropPendingTimeouts(): void {

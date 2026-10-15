@@ -735,6 +735,27 @@ Anything else that mutates `DEBUG` at runtime must do the same.
 spies on every `console` method and asserts zero calls, and `vitest.config.ts`
 forces `DEBUG=''` so silence does not depend on the developer's shell.
 
+**That spy was only half the rule, and the other half went unguarded for a long
+time.** It watches `console`, so anything written straight to a file handle goes
+past it — and vitest does not read such a write as a failure either, so the run
+stays green while the output scrolls by.
+
+happy-dom refuses a `<script type="module">` exactly that way: it reports rather
+than throws, and the test that mounted the markup goes on passing. Measured,
+that one refusal accounted for **149 occurrences and 214 KB**, which was the
+whole of the suite's `stderr`.
+
+So `test/noise.ts` watches **both `stdout` and `stderr`** for every project, the
+way `test/timers.ts` watches timers: only the runner writes to them, and the
+test that wrote fails. Both streams are watched rather than the one that had the
+defect, because the reason is the same for each and `stdout` was measured silent
+already, so guarding it cost nothing. The guard passes each write through rather
+than swallowing it — finding the source is the fix, muting the stream is not.
+
+The refusal itself came from the page fixture carrying the application's entry
+point. `renderPage` now drops it: the fixture is the page's markup, not its boot
+sequence, and `src/client/main.ts` is the one module no unit test drives.
+
 This is also why `buildApp` installs its own `app.onError`: Hono's default error
 handler calls `console.error(err)` and returns plain text. Ours logs through
 `debug` and returns `{ error: 'Internal server error' }` without leaking the

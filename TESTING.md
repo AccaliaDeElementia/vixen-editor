@@ -375,6 +375,14 @@ enforcing: the harness drops what the test abandoned, and no production code
 changed. Nothing here is a reason to leave a timer pending on purpose — it is a
 reason not to have to care.
 
+**The failure says the rule; the diff says which leak.** Each guard asserts on
+the list it found, so the origin and the delay print themselves — the message
+stays one clause, and the advice lives here rather than in a string nothing
+checks. What to do about it is always the same: hold the cleanup whatever
+scheduled it handed back and call it, or tear down the thing that scheduled it.
+A timer scheduled inside `node_modules` is not ours and is not counted, which
+`isOurs` decides and a test named for that decision pins.
+
 The guard **cancels what it found** before failing, so one leak fails its own
 test rather than every test after it in the file. Timers created under
 `vi.useFakeTimers()` are deliberately invisible to it, because the fake clock

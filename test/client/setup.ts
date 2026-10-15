@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, vi } from 'vitest'
 
 import { failOnLeakedInterval, failOnLeakedTimeout, watchIntervals, watchTimeouts } from '../timers.ts'
+import { failOnOutput, watchOutput } from '../noise.ts'
 import { cast } from '../cast.ts'
 
 import { closeTrees } from './browser/fixtures.ts'
@@ -25,6 +26,7 @@ beforeEach(() => {
 watchIntervals()
 watchTimeouts()
 watchListeners()
+watchOutput()
 
 afterEach(() => {
   closeEditors()
@@ -32,4 +34,5 @@ afterEach(() => {
   failOnLeakedInterval()
   failOnLeakedListener()
   failOnLeakedTimeout()
+  failOnOutput()
 })

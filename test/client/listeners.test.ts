@@ -11,7 +11,7 @@ describe('the leaked-listener guard', () => {
 
     expect(() => {
       failOnLeakedListener()
-    }).toThrow(/still registered on window or document/v)
+    }).toThrow(/may not leave a listener/v)
   })
 
   it('names the target and the event, so the failure says what to release', () => {

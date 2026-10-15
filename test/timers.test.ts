@@ -3,7 +3,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { given } from './conditions.ts'
-import { dropPendingTimeouts, failOnLeakedInterval, failOnLeakedTimeout, TestOnly } from './timers.ts'
+import {
+  dropPendingTimeouts,
+  failOnLeakedInterval,
+  failOnLeakedTimeout,
+  TestOnly,
+  timeoutsLeftScheduled,
+} from './timers.ts'
 
 const SOME_PERIOD_MS = 60_000
 
@@ -13,7 +19,7 @@ describe('the leaked-interval guard', () => {
 
     expect(() => {
       failOnLeakedInterval()
-    }).toThrow(/repeating timer still scheduled/v)
+    }).toThrow(/may not leave an interval/v)
   })
 
   it('passes a test that scheduled nothing', () => {
@@ -108,23 +114,19 @@ describe('the leaked-timeout guard', () => {
 
     expect(() => {
       failOnLeakedTimeout()
-    }).toThrow(/work our own code had scheduled/v)
+    }).toThrow(/may not leave a timeout/v)
   })
 
   it('says where the work was scheduled, so a reader can go and cancel it', () => {
     setTimeout(() => undefined, A_WHILE_MS)
 
-    expect(() => {
-      failOnLeakedTimeout()
-    }).toThrow(/timers\.test\.ts/v)
+    expect(timeoutsLeftScheduled().join()).toMatch(/timers\.test\.ts/v)
   })
 
   it('says how long it would have waited, which is how long it holds its subject alive', () => {
     setTimeout(() => undefined, A_WHILE_MS)
 
-    expect(() => {
-      failOnLeakedTimeout()
-    }).toThrow(/30000ms/v)
+    expect(timeoutsLeftScheduled().join()).toMatch(/30000ms/v)
   })
 
   it('passes a test that scheduled nothing', () => {
