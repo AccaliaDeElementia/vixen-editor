@@ -142,6 +142,33 @@ module with no test at all, and it is also the one coverage exclusion. The two
 lists that once held the modules not yet satisfying this were debt rather than
 design, and they are gone; a module that fails either check now fails the gate.
 
+### A test name that names code is checked against the code
+
+A test name is the sanctioned home for intent, and a long one is a comment that
+cannot drift — **as long as it describes behaviour**. The moment it names a
+symbol, it is making a claim nothing verifies: rename `directoryOf` and every
+test name mentioning it lies, silently, because nothing force-checks a string.
+
+So `test/conventions/` reads the identifiers out of every test name and requires
+each to exist somewhere under `src/`. Seven do today and none was stale, which
+is why the check went in before something had gone false rather than after.
+
+Two shapes it has to tolerate, both declared rather than inferred. A name
+holding a **call** is a code fixture rather than prose — `project-rules.test.ts`
+passes snippets like `await vi.waitFor(…)` through `it.each` — so a name
+containing a parenthesis names nothing. And `NAMED_BUT_DELIBERATELY_UNUSED`
+lists the platform APIs a test names _because the code does not use them_:
+`innerHTML`, `sendBeacon`, `sessionStorage`. That list is the one place a
+genuine absence is stated, so adding to it should be deliberate.
+
+**The scan itself lives in `test/test-names.ts`, and that placement is load
+bearing.** `vitest list` collects statically, and it reads a call to a helper
+whose name begins with `test` as a test declaration — `namesOfTestsIn(…)` was
+`testNamesIn(…)` first, and the runner duly listed a phantom test named after
+the argument. The cross-check caught it, which is the guard earning its keep;
+the lesson is that a spec is a poor home for machinery that _looks_ like a
+declaration.
+
 ### A contract is a fixture, not a test file
 
 One set of behaviours can be run against more than one implementation, and the

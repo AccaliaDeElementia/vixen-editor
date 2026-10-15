@@ -9,6 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { TestOnly as safePathTestOnly } from '../../src/server/storage/primitives/safe-path.ts'
 import { isRecord } from '../../src/shared/guards.ts'
+import { identifiersIn, namesOfTestsIn } from '../test-names.ts'
 import vitestConfig from '../../vitest.config.ts'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -1107,6 +1108,24 @@ function anchorLinks(): string[] {
   )
 }
 
+const NAMED_BUT_DELIBERATELY_UNUSED = ['innerHTML', 'sendBeacon', 'sessionStorage']
+const SOME_IDENTIFIERS_ARE_NAMED = 4
+
+function identifiersNamedInTests(): string[] {
+  return scannable()
+    .filter((source) => source.relativePath.startsWith('test'))
+    .flatMap((source) => namesOfTestsIn(source.contents))
+    .flatMap(identifiersIn)
+}
+
+function everySourceWord(): Set<string> {
+  return new Set(
+    scannable()
+      .filter((source) => source.relativePath.startsWith('src/'))
+      .flatMap((source) => identifiersIn(source.contents)),
+  )
+}
+
 function modulePathsNamedInGuides(): Array<{ document: string; path: string }> {
   return GUIDES.flatMap((document) =>
     [...guideText(document).matchAll(QUOTED_MODULE_PATH)].map((match) => ({
@@ -1125,6 +1144,26 @@ describe('the guides name modules that are still there', () => {
 
   it('finds the paths at all, so that scan is not passing on an empty read', () => {
     expect(modulePathsNamedInGuides().length).toBeGreaterThan(SOME_PATHS_ARE_NAMED)
+  })
+})
+
+describe('a test name that names code names code that still exists', () => {
+  it('names only identifiers the tree still holds, so a rename cannot leave a test name lying', () => {
+    const inSource = everySourceWord()
+
+    expect(
+      identifiersNamedInTests()
+        .filter((named) => !inSource.has(named))
+        .sort(),
+    ).toStrictEqual(NAMED_BUT_DELIBERATELY_UNUSED)
+  })
+
+  it('finds identifiers at all, so that scan is not passing on an empty read', () => {
+    expect(new Set(identifiersNamedInTests()).size).toBeGreaterThan(SOME_IDENTIFIERS_ARE_NAMED)
+  })
+
+  it('reads a name holding a call as a fixture rather than as prose, so a snippet names nothing', () => {
+    expect(identifiersNamedInTests()).not.toContain('waitForFunction')
   })
 })
 
