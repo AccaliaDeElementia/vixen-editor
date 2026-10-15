@@ -165,6 +165,21 @@ getter rather than a factory, so the implementation's own test owns
 `beforeEach`, and a store needing a temporary directory and one needing nothing
 both fit.
 
+**The second implementation lives in `test/`, not `src/`.** `createMemoryStore`
+exists to make tests fast and faults injectable, and nothing ships it — so by
+rule 6 it would be an export with no consumer. It is a test double, and it sits
+beside the other test doubles.
+
+It reuses the shared validator rather than reimplementing it: its map is keyed
+by `resolveStorePath('/memory', …)`, so the name rules, NFC and containment
+answer the same way for both implementations by construction. Only the mechanism
+differs, which is the point of having moved policy out of the layer.
+
+**It models the document lifecycle and says so for the rest.** The trash, moves,
+restore and the archive reject with a stated message rather than answering as
+though the trash were empty — an unimplemented method that returns a plausible
+answer is worse than one that refuses.
+
 **One cost, measured.** `vitest list` collects statically: it reports what a
 spec declares in its own body and not what an imported fixture registers when
 the spec calls it — 23 listed against 68 run. So the assertion scanner's

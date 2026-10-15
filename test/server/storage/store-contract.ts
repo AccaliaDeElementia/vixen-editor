@@ -250,6 +250,32 @@ export function storeContract(subject: () => StoreLayer): void {
     })
   })
 
+  describe('the name rules every implementation shares', () => {
+    it('refuses a name over the byte limit, which the filesystem counts in bytes rather than characters', async () => {
+      await expect(subject().createDocument(`${'a'.repeat(253)}.md`, 'x', someone)).rejects.toThrow(InvalidPathError)
+    })
+
+    it('accepts a name of exactly the limit, so the refusal above is the limit and not a smaller one', async () => {
+      await expect(subject().createDocument(`${'a'.repeat(252)}.md`, 'x', someone)).resolves.toBeDefined()
+    })
+
+    it('counts an emoji as its four bytes, so a short-looking name can still be refused', async () => {
+      await expect(subject().createDocument(`${'\u{1F389}'.repeat(64)}.md`, 'x', someone)).rejects.toThrow(
+        InvalidPathError,
+      )
+    })
+
+    it('refuses a name that is not normalised, so two spellings cannot become two documents', async () => {
+      await expect(subject().createDocument('cafe\u0301.md', 'x', someone)).rejects.toThrow(InvalidPathError)
+    })
+
+    it('refuses an unnormalised upload name too, since a client chooses that one as well', async () => {
+      await expect(subject().createUpload('', 'cafe\u0301.png', new Uint8Array([1]), someone)).rejects.toThrow(
+        InvalidPathError,
+      )
+    })
+  })
+
   describe('tree', () => {
     it('reports the document tree', async () => {
       await subject().createDocument('journal/september.md', 'x', someone)
