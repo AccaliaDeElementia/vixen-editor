@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
-const { fateOf, run, summaryOf } = TestOnly
+const { argsFor, fateOf, run, summaryOf } = TestOnly
 
 const CHILD_PID = 4321
 const WHOLE_GROUP = -CHILD_PID
@@ -128,5 +128,19 @@ describe('reporting a sweep', () => {
     const outcomes = [{ mutant: A_MUTANT, fate: 'killed' as const }]
 
     expect(summaryOf(outcomes).join('\n')).not.toContain('unresolved')
+  })
+})
+
+describe('what a mutant is run against', () => {
+  it('runs only the tests related to the file it mutates', () => {
+    expect(argsFor(A_MUTANT)).toContain('related')
+  })
+
+  it('names that file, so the related set is computed from it', () => {
+    expect(argsFor(A_MUTANT)).toContain(A_MUTANT.file)
+  })
+
+  it('stops at the first failure, because one dead test is the whole answer', () => {
+    expect(argsFor(A_MUTANT)).toContain('--bail=1')
   })
 })

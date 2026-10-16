@@ -183,8 +183,12 @@ function describe({ file, line, from, to }: Mutant): string {
   return `${file}:${String(line)}  '${from}' -> '${to}'`
 }
 
+function argsFor(mutant: Mutant): string[] {
+  return ['vitest', 'related', mutant.file, '--run', '--silent', '--bail=1']
+}
+
 async function judge(mutant: Mutant, timeoutMs: number): Promise<Outcome> {
-  const ran = await run('npx', ['vitest', 'run', '--silent'], timeoutMs, { env: envFor(mutant) })
+  const ran = await run('npx', argsFor(mutant), timeoutMs, { env: envFor(mutant) })
 
   return { mutant, fate: fateOf(ran) }
 }
@@ -330,7 +334,7 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
-export const TestOnly = { fateOf, run, summaryOf }
+export const TestOnly = { argsFor, fateOf, run, summaryOf }
 
 if (import.meta.main) {
   for (const interrupt of INTERRUPTS) {
