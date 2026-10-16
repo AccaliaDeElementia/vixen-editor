@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../tools/mutate.ts'
 
-const { run } = TestOnly
+const { fateOf, run, summaryOf } = TestOnly
 
 const CHILD_PID = 4321
 const WHOLE_GROUP = -CHILD_PID
@@ -87,5 +87,46 @@ describe('reading what a mutant run writes', () => {
     const ran = await run('node', ['-e', both], LONG_ENOUGH_MS)
 
     expect(ran.stdout).toBe('Tests 157 failed | 2 passed')
+  })
+})
+
+const A_MUTANT = { file: 'src/a.ts', line: 7, from: '===', to: '!==', source: '' }
+const ANOTHER_MUTANT = { ...A_MUTANT, line: 9 }
+const NO_OUTPUT_AT_ALL = ''
+
+describe('what a run proves about a mutant', () => {
+  it('reads a timeout as unresolved, because a run that never finished proved nothing', () => {
+    expect(fateOf({ stdout: NO_OUTPUT_AT_ALL, failed: true, timedOut: true })).toBe('unresolved')
+  })
+
+  it('reads a failing run as killed', () => {
+    expect(fateOf({ stdout: NO_OUTPUT_AT_ALL, failed: true, timedOut: false })).toBe('killed')
+  })
+
+  it('reads a passing run as survived', () => {
+    expect(fateOf({ stdout: NO_OUTPUT_AT_ALL, failed: false, timedOut: false })).toBe('survived')
+  })
+})
+
+describe('reporting a sweep', () => {
+  it('counts an unresolved mutant apart from the killed', () => {
+    const outcomes = [
+      { mutant: A_MUTANT, fate: 'killed' as const },
+      { mutant: ANOTHER_MUTANT, fate: 'unresolved' as const },
+    ]
+
+    expect(summaryOf(outcomes)).toContain('1 unresolved of 2')
+  })
+
+  it('leaves an unresolved mutant out of the survivors, so the score cannot be inflated', () => {
+    const outcomes = [{ mutant: A_MUTANT, fate: 'unresolved' as const }]
+
+    expect(summaryOf(outcomes)).toContain('0 survived of 1')
+  })
+
+  it('says nothing of unresolved mutants when a sweep had none', () => {
+    const outcomes = [{ mutant: A_MUTANT, fate: 'killed' as const }]
+
+    expect(summaryOf(outcomes).join('\n')).not.toContain('unresolved')
   })
 })

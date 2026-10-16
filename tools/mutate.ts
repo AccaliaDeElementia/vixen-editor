@@ -36,10 +36,13 @@ interface Mutant {
   source: string
 }
 
+type Fate = 'killed' | 'survived' | 'unresolved'
+
+const MARKS: Record<Fate, string> = { killed: 'killed', survived: 'SURVIVED', unresolved: 'UNRESOLVED' }
+
 interface Outcome {
   mutant: Mutant
-  survived: boolean
-  timedOut: boolean
+  fate: Fate
 }
 
 interface Ran {
@@ -178,19 +181,22 @@ function describe({ file, line, from, to }: Mutant): string {
 async function judge(mutant: Mutant, original: string, timeoutMs: number): Promise<Outcome> {
   try {
     await writeFile(mutant.file, mutant.source)
-    const { failed, timedOut } = await run('npx', ['vitest', 'run', '--silent'], timeoutMs)
-
-    return { mutant, survived: !failed, timedOut }
+    return { mutant, fate: fateOf(await run('npx', ['vitest', 'run', '--silent'], timeoutMs)) }
   } finally {
     await writeFile(mutant.file, original)
   }
 }
 
+function fateOf({ failed, timedOut }: Ran): Fate {
+  if (timedOut) return 'unresolved'
+
+  return failed ? 'killed' : 'survived'
+}
+
 function announce(outcome: Outcome, index: number, total: number): void {
-  const mark = outcome.survived ? 'SURVIVED' : outcome.timedOut ? 'killed (timeout)' : 'killed'
   const position = `[${String(index + FIRST_LINE)}/${String(total)}]`
 
-  process.stdout.write(`  ${position} ${mark}  ${describe(outcome.mutant)}\n`)
+  process.stdout.write(`  ${position} ${MARKS[outcome.fate]}  ${describe(outcome.mutant)}\n`)
 }
 
 async function sweepFile(file: string, timeoutMs: number, into: Outcome[]): Promise<void> {
@@ -206,12 +212,24 @@ async function sweepFile(file: string, timeoutMs: number, into: Outcome[]): Prom
   })
 }
 
-function reportOn(outcomes: Outcome[]): number {
-  const survivors = outcomes.filter((outcome) => outcome.survived)
-  process.stdout.write(`\n${String(survivors.length)} survived of ${String(outcomes.length)}\n`)
-  for (const { mutant } of survivors) process.stdout.write(`  SURVIVED  ${describe(mutant)}\n`)
+function linesFor(fate: Fate, outcomes: readonly Outcome[]): string[] {
+  const held = outcomes.filter((outcome) => outcome.fate === fate)
+  if (fate === 'unresolved' && held.length === NONE) return []
 
-  return survivors.length
+  return [
+    `${String(held.length)} ${fate} of ${String(outcomes.length)}`,
+    ...held.map(({ mutant }) => `  ${MARKS[fate]}  ${describe(mutant)}`),
+  ]
+}
+
+function summaryOf(outcomes: readonly Outcome[]): string[] {
+  return [...linesFor('survived', outcomes), ...linesFor('unresolved', outcomes)]
+}
+
+function reportOn(outcomes: Outcome[]): number {
+  process.stdout.write(`\n${summaryOf(outcomes).join('\n')}\n`)
+
+  return outcomes.filter((outcome) => outcome.fate !== 'killed').length
 }
 
 interface Case {
@@ -310,7 +328,7 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
-export const TestOnly = { run }
+export const TestOnly = { fateOf, run, summaryOf }
 
 if (import.meta.main) {
   for (const interrupt of INTERRUPTS) {
