@@ -16,3 +16,16 @@ export function namesOfTestsIn(contents: string): string[] {
 export function identifiersIn(text: string): string[] {
   return [...text.matchAll(NAMED_IDENTIFIER)].map((match) => match[0])
 }
+
+const NUMBER = /\b\d+(?:\.\d+)?\b/gv
+const NUMERIC_CONSTANT = /^const (?<name>\p{Lu}[\p{Lu}0-9_]*) = (?<value>\d+(?:\.\d+)?)\b/gmv
+
+export function restatedConstants(contents: string, names: readonly string[]): string[] {
+  const held = new Map(
+    [...contents.matchAll(NUMERIC_CONSTANT)].map((match) => [match.groups?.value ?? '', match.groups?.name ?? '']),
+  )
+
+  return [
+    ...new Set(names.flatMap((name) => [...name.matchAll(NUMBER)].flatMap((match) => held.get(match[0]) ?? []))),
+  ].sort()
+}

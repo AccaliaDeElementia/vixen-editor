@@ -34,7 +34,7 @@ async function undersizedTargetsOn(page: Page): Promise<Target[]> {
   }, MINIMUM)
 }
 
-test('every pointer target in the workspace is at least 24 by 24', async ({ page, request }) => {
+test(`every pointer target in the workspace is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
   const folder = `size-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: folder } })
   await request.post('/api/files/documents', { data: { path: `${folder}/notes.md`, content: '# hi\n' } })
@@ -47,7 +47,7 @@ test('every pointer target in the workspace is at least 24 by 24', async ({ page
   await request.delete(`/api/files/entries/${folder}`)
 })
 
-test('every pointer target in an open dialog is at least 24 by 24', async ({ page, request }) => {
+test(`every pointer target in an open dialog is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
   const folder = `sized-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: folder } })
 
@@ -61,7 +61,7 @@ test('every pointer target in an open dialog is at least 24 by 24', async ({ pag
   await request.delete(`/api/files/entries/${folder}`)
 })
 
-test('every pointer target in the trash panel is at least 24 by 24', async ({ page, request }) => {
+test(`every pointer target in the trash panel is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
   const folder = `sizet-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: folder } })
   await request.post('/api/files/documents', { data: { path: `${folder}/gone.md`, content: '# gone\n' } })
@@ -82,7 +82,7 @@ test('every pointer target in the trash panel is at least 24 by 24', async ({ pa
   await request.delete(`/api/files/entries/${folder}`)
 })
 
-test('every pointer target in a merge is at least 24 by 24', async ({ page, request }) => {
+test(`every pointer target in a merge is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
   const name = `sizem-${String(Date.now())}.md`
   const created = await request.post('/api/files/documents', { data: { path: name, content: '# first' } })
   const etag = await stringFieldOf(created, 'etag')

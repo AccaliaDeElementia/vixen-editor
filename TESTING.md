@@ -161,6 +161,23 @@ lists the platform APIs a test names _because the code does not use them_:
 `innerHTML`, `sendBeacon`, `sessionStorage`. That list is the one place a
 genuine absence is stated, so adding to it should be deliberate.
 
+**What gets checked is decided by one question: would a wrong name fail
+anything?**
+
+| a name holds…                             | if it goes false | so         |
+| ----------------------------------------- | ---------------- | ---------- |
+| a symbol — `directoryOf`                  | nothing fails    | checked    |
+| a number the test _reads_ from a constant | nothing fails    | checked    |
+| a number the test asserts literally       | the test fails   | left alone |
+| a filename the behaviour depends on       | the test fails   | left alone |
+
+So `every pointer target is at least 24 by 24` is built from `MINIMUM`, because
+raising that constant to 44 would leave four names lying and nothing red. But
+`dragging past 80% of the viewport` stays prose: the spec asserts 800px against
+a 1000px viewport, so changing the cap fails the test, and `index.md` in a name
+stays prose for the same reason — the behaviour it describes is the thing
+asserted.
+
 **The scan itself lives in `test/test-names.ts`, and that placement is load
 bearing.** `vitest list` collects statically, and it reads a call to a helper
 whose name begins with `test` as a test declaration — `namesOfTestsIn(…)` was

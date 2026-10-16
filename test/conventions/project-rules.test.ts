@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { TestOnly as safePathTestOnly } from '../../src/server/storage/primitives/safe-path.ts'
 import { isRecord } from '../../src/shared/guards.ts'
-import { identifiersIn, namesOfTestsIn } from '../test-names.ts'
+import { identifiersIn, namesOfTestsIn, restatedConstants } from '../test-names.ts'
 import vitestConfig from '../../vitest.config.ts'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -1134,6 +1134,30 @@ function modulePathsNamedInGuides(): Array<{ document: string; path: string }> {
     })),
   )
 }
+
+function namesRestatingAConstant(): string[] {
+  return scannable()
+    .filter((source) => source.relativePath.startsWith('test'))
+    .flatMap((source) =>
+      restatedConstants(source.contents, namesOfTestsIn(source.contents)).map(
+        (held) => `${source.relativePath}: ${held}`,
+      ),
+    )
+}
+
+describe('a test name does not restate a number the file holds as a constant', () => {
+  it('leaves none a change to that constant would quietly make false', () => {
+    expect(namesRestatingAConstant()).toStrictEqual([])
+  })
+
+  it('finds a restatement when there is one, so that scan is not blind', () => {
+    expect(restatedConstants('const MINIMUM = 24\n', ['is at least 24 by 24'])).toStrictEqual(['MINIMUM'])
+  })
+
+  it('leaves a number the file holds no constant for, which restates nothing', () => {
+    expect(restatedConstants('const MINIMUM = 24\n', ['opens two panes'])).toStrictEqual([])
+  })
+})
 
 describe('the guides name modules that are still there', () => {
   it('names only paths the tree actually holds, so a move cannot leave a document lying', () => {
