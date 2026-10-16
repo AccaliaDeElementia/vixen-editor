@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../tools/mutate.ts'
+import { TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
 const { fateOf, run, summaryOf } = TestOnly
 
@@ -27,11 +27,11 @@ function recordingKill(into: Signalled[]): (pid: number, signal: NodeJS.Signals)
   }
 }
 
-function neverFinishing(into: Signalled[]): Parameters<typeof run>[3] {
+function neverFinishing(into: Signalled[]): Sandbox {
   return { spawn: () => ({ pid: CHILD_PID }), kill: recordingKill(into) }
 }
 
-function finishingAtOnce(into: Signalled[]): Parameters<typeof run>[3] {
+function finishingAtOnce(into: Signalled[]): Sandbox {
   return {
     spawn: (_command, _args, done) => {
       done(FINISHED_WELL, SOME_OUTPUT)
@@ -46,13 +46,13 @@ describe('bounding a mutant run', () => {
   it('ends the whole process group, not only the child it spawned', async () => {
     const signalled: Signalled[] = []
 
-    await run(COMMAND, NO_ARGUMENTS, BRIEFLY_MS, neverFinishing(signalled))
+    await run(COMMAND, NO_ARGUMENTS, BRIEFLY_MS, { sandbox: neverFinishing(signalled) })
 
     expect(signalled).toStrictEqual([{ pid: WHOLE_GROUP, signal: 'SIGKILL' }])
   })
 
   it('settles rather than waiting on a child that will never call back', async () => {
-    const ran = await run(COMMAND, NO_ARGUMENTS, BRIEFLY_MS, neverFinishing([]))
+    const ran = await run(COMMAND, NO_ARGUMENTS, BRIEFLY_MS, { sandbox: neverFinishing([]) })
 
     expect(ran.timedOut).toBe(true)
   })
@@ -60,7 +60,7 @@ describe('bounding a mutant run', () => {
   it('signals nothing when the child finishes within the bound', async () => {
     const signalled: Signalled[] = []
 
-    await run(COMMAND, NO_ARGUMENTS, BRIEFLY_MS, finishingAtOnce(signalled))
+    await run(COMMAND, NO_ARGUMENTS, BRIEFLY_MS, { sandbox: finishingAtOnce(signalled) })
 
     expect(signalled).toStrictEqual([])
   })

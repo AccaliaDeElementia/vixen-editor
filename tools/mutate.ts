@@ -3,6 +3,7 @@
 import { spawn as spawnProcess } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 
+import { envFor } from './mutant-transform.ts'
 import { serially } from '../src/shared/serially.ts'
 
 const MUTATIONS: ReadonlyArray<readonly [string, string]> = [
@@ -33,7 +34,6 @@ interface Mutant {
   line: number
   from: string
   to: string
-  source: string
 }
 
 type Fate = 'killed' | 'survived' | 'unresolved'
@@ -57,8 +57,8 @@ interface Child {
   pid?: number | undefined
 }
 
-interface Sandbox {
-  spawn: (command: string, args: string[], done: Finished) => Child
+export interface Sandbox {
+  spawn: (command: string, args: string[], done: Finished, env?: Record<string, string>) => Child
   kill: (pid: number, signal: NodeJS.Signals) => void
 }
 
@@ -70,10 +70,10 @@ const INTERRUPTS = ['SIGINT', 'SIGTERM'] as const
 const liveGroups = new Set<number>()
 
 const defaultSandbox: Sandbox = {
-  spawn: (command, args, done) => {
+  spawn: (command, args, done, env) => {
     // Node's execFile signals only the direct child on timeout, and takes no
     // detached option -- so vitest and its forked workers outlive it.
-    const child = spawnProcess(command, args, { detached: OWN_PROCESS_GROUP })
+    const child = spawnProcess(command, args, { detached: OWN_PROCESS_GROUP, env: { ...process.env, ...env } })
     let output = NO_OUTPUT
 
     child.stdout.on('data', (chunk: Buffer) => {
@@ -113,12 +113,13 @@ function endEveryLiveGroup(): void {
   for (const pid of liveGroups) endGroup(defaultSandbox, pid)
 }
 
-async function run(
-  command: string,
-  args: string[],
-  timeoutMs?: number,
-  sandbox: Sandbox = defaultSandbox,
-): Promise<Ran> {
+interface Spawning {
+  sandbox?: Sandbox
+  env?: Record<string, string>
+}
+
+async function run(command: string, args: string[], timeoutMs?: number, spawning: Spawning = {}): Promise<Ran> {
+  const { sandbox = defaultSandbox, env } = spawning
   const settled: PromiseWithResolvers<Ran> = Promise.withResolvers()
   const running: Child = {}
 
@@ -130,10 +131,15 @@ async function run(
           settled.resolve({ stdout: NO_OUTPUT, failed: true, timedOut: true })
         }, timeoutMs)
 
-  const child = sandbox.spawn(command, args, (error, stdout) => {
-    if (expiry !== null) clearTimeout(expiry)
-    settled.resolve({ stdout, failed: error !== null, timedOut: false })
-  })
+  const child = sandbox.spawn(
+    command,
+    args,
+    (error, stdout) => {
+      if (expiry !== null) clearTimeout(expiry)
+      settled.resolve({ stdout, failed: error !== null, timedOut: false })
+    },
+    env,
+  )
 
   const { pid } = child
   running.pid = pid
@@ -163,7 +169,6 @@ function mutantsFor(file: string, contents: string): Mutant[] {
           line: index + FIRST_LINE,
           from,
           to,
-          source: [...lines.slice(NONE, index), line.replace(from, to), ...lines.slice(index + FIRST_LINE)].join('\n'),
         })),
   )
 }
@@ -178,13 +183,10 @@ function describe({ file, line, from, to }: Mutant): string {
   return `${file}:${String(line)}  '${from}' -> '${to}'`
 }
 
-async function judge(mutant: Mutant, original: string, timeoutMs: number): Promise<Outcome> {
-  try {
-    await writeFile(mutant.file, mutant.source)
-    return { mutant, fate: fateOf(await run('npx', ['vitest', 'run', '--silent'], timeoutMs)) }
-  } finally {
-    await writeFile(mutant.file, original)
-  }
+async function judge(mutant: Mutant, timeoutMs: number): Promise<Outcome> {
+  const ran = await run('npx', ['vitest', 'run', '--silent'], timeoutMs, { env: envFor(mutant) })
+
+  return { mutant, fate: fateOf(ran) }
 }
 
 function fateOf({ failed, timedOut }: Ran): Fate {
@@ -206,7 +208,7 @@ async function sweepFile(file: string, timeoutMs: number, into: Outcome[]): Prom
   process.stdout.write(`${file}: ${String(mutants.length)} mutants${note}\n`)
 
   await serially(mutants.entries(), async ([index, mutant]) => {
-    const outcome = await judge(mutant, original, timeoutMs)
+    const outcome = await judge(mutant, timeoutMs)
     into.push(outcome)
     announce(outcome, index, mutants.length)
   })

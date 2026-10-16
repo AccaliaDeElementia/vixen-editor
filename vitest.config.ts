@@ -2,6 +2,8 @@
 
 import { defineConfig } from 'vitest/config'
 
+import { mutantPlugins } from './tools/mutant-transform.ts'
+
 const silentEnv = { DEBUG: '' }
 
 // Measured across three runs, worst case per test: client 79ms, shared 4ms,
@@ -12,6 +14,7 @@ const IN_MEMORY_TIMEOUT_MS = 500
 const REAL_FILESYSTEM_TIMEOUT_MS = 3000
 
 export default defineConfig({
+  plugins: mutantPlugins(process.env),
   test: {
     projects: [
       {
