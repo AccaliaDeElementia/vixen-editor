@@ -13,6 +13,8 @@ const COMMAND = 'npx'
 const NO_ARGUMENTS: string[] = []
 const FINISHED_WELL = null
 const SOME_OUTPUT = 'ok'
+const OVER_A_PIPE_BUFFER = 200_000
+const LONG_ENOUGH_MS = 2000
 
 interface Signalled {
   pid: number
@@ -61,5 +63,29 @@ describe('bounding a mutant run', () => {
     await run(COMMAND, NO_ARGUMENTS, BRIEFLY_MS, finishingAtOnce(signalled))
 
     expect(signalled).toStrictEqual([])
+  })
+})
+
+describe('reading what a mutant run writes', () => {
+  it('drains stderr, because a pipe nobody reads stops the child once it fills', async () => {
+    const writes = `process.stderr.write('x'.repeat(${String(OVER_A_PIPE_BUFFER)}))`
+
+    const ran = await run('node', ['-e', writes], LONG_ENOUGH_MS)
+
+    expect(ran.timedOut).toBe(false)
+  })
+
+  it('reports what the child wrote to stdout, which is where the test summary lands', async () => {
+    const ran = await run('node', ['-e', "process.stdout.write('Tests 1 passed')"], LONG_ENOUGH_MS)
+
+    expect(ran.stdout).toBe('Tests 1 passed')
+  })
+
+  it('keeps stderr out of that, so a banner on the other stream cannot be read as the summary', async () => {
+    const both = "process.stderr.write('Tests 157 ----');process.stdout.write('Tests 157 failed | 2 passed')"
+
+    const ran = await run('node', ['-e', both], LONG_ENOUGH_MS)
+
+    expect(ran.stdout).toBe('Tests 157 failed | 2 passed')
   })
 })

@@ -76,6 +76,7 @@ const defaultSandbox: Sandbox = {
     child.stdout.on('data', (chunk: Buffer) => {
       output += chunk.toString()
     })
+    child.stderr.resume()
     child.on('error', (error: Error) => {
       done(error, output)
     })
