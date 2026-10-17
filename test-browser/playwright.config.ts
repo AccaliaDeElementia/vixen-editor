@@ -1,8 +1,9 @@
 'use sanity'
 
+import { runningInCI } from '../test/ci.ts'
 import { defineConfig, devices } from '@playwright/test'
 
-const ci = process.env.CI !== undefined
+const ci = runningInCI(process.env)
 
 const LIFECYCLE = /store\.lifecycle\.ts$/v
 

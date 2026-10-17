@@ -473,6 +473,27 @@ This applies to `npm test`, `npm run build` and `npm run test:browser` alike.
 A quick `test:unit` loop can be as sloppy as you like, because nothing is being
 claimed about it.
 
+### A sampled mutation finding is not a gate failure
+
+`npm test` draws a short mutation sample after the suite, through npm's
+`posttest` hook, and that sample can change the status:
+
+| status        | means                                                                  |
+| ------------- | ---------------------------------------------------------------------- |
+| `0`           | passed                                                                 |
+| `5`           | **passed, with a mutation finding** — raise a task, do not block on it |
+| anything else | a failure                                                              |
+
+A survivor in a file **with uncommitted changes** is not a finding: it exits
+`1`. The thin test covers code about to be committed and the file is already
+open, so it gets fixed now. It may be an unrelated coincidence; fix it anyway.
+
+**`CI` suppresses the sample**, and `test/ci.ts` is the one place that decides
+what `CI` means: set, and not `false`, `0` or empty. Those spellings are a
+deliberate opt-out people really do set, so presence alone would read them
+backwards. `playwright.config.ts` reads the same function, so the repo has one
+answer rather than two. The image build sets `CI=true` and never sees `5`.
+
 ## Announce a raised browser floor
 
 The supported floor is recorded in

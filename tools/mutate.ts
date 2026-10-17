@@ -29,7 +29,7 @@ const FIRST_INDEX = 0
 const VERDICT_WIDTH = 17
 const CASE_FIELDS = ['label', 'file', 'from', 'to', 'project', 'spec', 'test']
 
-interface Mutant {
+export interface Mutant {
   file: string
   line: number
   from: string
@@ -40,7 +40,7 @@ type Fate = 'killed' | 'survived' | 'unresolved'
 
 const MARKS: Record<Fate, string> = { killed: 'killed', survived: 'SURVIVED', unresolved: 'UNRESOLVED' }
 
-interface Outcome {
+export interface Outcome {
   mutant: Mutant
   fate: Fate
 }
@@ -118,7 +118,7 @@ interface Spawning {
   env?: Record<string, string>
 }
 
-async function run(command: string, args: string[], timeoutMs?: number, spawning: Spawning = {}): Promise<Ran> {
+export async function run(command: string, args: string[], timeoutMs?: number, spawning: Spawning = {}): Promise<Ran> {
   const { sandbox = defaultSandbox, env } = spawning
   const settled: PromiseWithResolvers<Ran> = Promise.withResolvers()
   const running: Child = {}
@@ -158,7 +158,7 @@ function skippable(line: string): boolean {
   return trimmed === '' || trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')
 }
 
-function mutantsFor(file: string, contents: string): Mutant[] {
+export function mutantsFor(file: string, contents: string): Mutant[] {
   const lines = contents.split('\n')
 
   return lines.flatMap((line, index) =>
@@ -173,7 +173,7 @@ function mutantsFor(file: string, contents: string): Mutant[] {
   )
 }
 
-function describe({ file, line, from, to }: Mutant): string {
+export function describeMutant({ file, line, from, to }: Mutant): string {
   return `${file}:${String(line)}  '${from}' -> '${to}'`
 }
 
@@ -181,7 +181,7 @@ function argsFor(mutant: Mutant): string[] {
   return ['vitest', 'related', mutant.file, '--run', '--silent', '--bail=1']
 }
 
-async function judge(mutant: Mutant, timeoutMs: number): Promise<Outcome> {
+export async function judge(mutant: Mutant, timeoutMs: number): Promise<Outcome> {
   const ran = await run('npx', argsFor(mutant), timeoutMs, { env: envFor(mutant) })
 
   return { mutant, fate: fateOf(ran) }
@@ -196,7 +196,7 @@ function fateOf({ failed, timedOut }: Ran): Fate {
 function announce(outcome: Outcome, index: number, total: number): void {
   const position = `[${String(index + FIRST_LINE)}/${String(total)}]`
 
-  process.stdout.write(`  ${position} ${MARKS[outcome.fate]}  ${describe(outcome.mutant)}\n`)
+  process.stdout.write(`  ${position} ${MARKS[outcome.fate]}  ${describeMutant(outcome.mutant)}\n`)
 }
 
 async function sweepFile(file: string, timeoutMs: number, into: Outcome[]): Promise<void> {
@@ -218,7 +218,7 @@ function linesFor(fate: Fate, outcomes: readonly Outcome[]): string[] {
 
   return [
     `${String(held.length)} ${fate} of ${String(outcomes.length)}`,
-    ...held.map(({ mutant }) => `  ${MARKS[fate]}  ${describe(mutant)}`),
+    ...held.map(({ mutant }) => `  ${MARKS[fate]}  ${describeMutant(mutant)}`),
   ]
 }
 
@@ -315,7 +315,7 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
-export const TestOnly = { argsFor, fateOf, lineHolding, run, summaryOf }
+export const TestOnly = { argsFor, fateOf, lineHolding, summaryOf }
 
 if (import.meta.main) {
   for (const interrupt of INTERRUPTS) {

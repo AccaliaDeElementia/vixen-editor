@@ -4,9 +4,9 @@ import { readFile } from 'node:fs/promises'
 
 import { describe, expect, it } from 'vitest'
 
-import { TestOnly, type Sandbox } from '../../tools/mutate.ts'
+import { run, TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
-const { argsFor, fateOf, lineHolding, run, summaryOf } = TestOnly
+const { argsFor, fateOf, lineHolding, summaryOf } = TestOnly
 
 const CHILD_PID = 4321
 const WHOLE_GROUP = -CHILD_PID
