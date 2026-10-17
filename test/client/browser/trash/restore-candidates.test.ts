@@ -136,6 +136,16 @@ describe('the order candidates are offered in', () => {
 
     expect(paths(restoreCandidatesFor('journal/a.md', trash, new Set()))).toHaveLength(2)
   })
+
+  it('leaves two deletions at the same instant in the order they arrived, since nothing tells them apart', () => {
+    const trash = [
+      trashed('journal/a.md', 'document', EARLIER, 'first'),
+      trashed('journal/a.md', 'document', EARLIER, 'second'),
+      trashed('journal/a.md', 'document', EARLIER, 'third'),
+    ]
+
+    expect(paths(restoreCandidatesFor('journal/a.md', trash, new Set()))).toStrictEqual(['first', 'second', 'third'])
+  })
 })
 
 describe('nothing to offer', () => {
