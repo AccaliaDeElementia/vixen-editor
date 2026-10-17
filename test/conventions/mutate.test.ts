@@ -1,10 +1,12 @@
 'use sanity'
 
+import { readFile } from 'node:fs/promises'
+
 import { describe, expect, it } from 'vitest'
 
 import { TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
-const { argsFor, fateOf, run, summaryOf } = TestOnly
+const { argsFor, fateOf, lineHolding, run, summaryOf } = TestOnly
 
 const CHILD_PID = 4321
 const WHOLE_GROUP = -CHILD_PID
@@ -142,5 +144,26 @@ describe('what a mutant is run against', () => {
 
   it('stops at the first failure, because one dead test is the whole answer', () => {
     expect(argsFor(A_MUTANT)).toContain('--bail=1')
+  })
+})
+
+describe('finding the line a case names', () => {
+  it('counts from one, so it names the line a reader would', () => {
+    expect(lineHolding(['first', 'const a = 1 === 1'].join('\n'), '===')).toBe(2)
+  })
+
+  it('takes the first line holding the text, which is the one a case means', () => {
+    expect(lineHolding(['a === b', 'c === d'].join('\n'), '===')).toBe(1)
+  })
+})
+
+describe('what the tool does to the tree', () => {
+  it('reads source files and writes none, so a sweep cannot leave a mutant on disk', async () => {
+    const source = await readFile('tools/mutate.ts', 'utf8')
+
+    expect({ reads: source.includes('readFile'), writes: source.includes('writeFile') }).toStrictEqual({
+      reads: true,
+      writes: false,
+    })
   })
 })

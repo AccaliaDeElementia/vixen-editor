@@ -1,7 +1,7 @@
 'use sanity'
 
 import { spawn as spawnProcess } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 
 import { envFor } from './mutant-transform.ts'
 import { serially } from '../src/shared/serially.ts'
@@ -173,12 +173,6 @@ function mutantsFor(file: string, contents: string): Mutant[] {
   )
 }
 
-async function workspaceState(): Promise<string> {
-  const { stdout } = await run('git', ['status', '--porcelain'])
-
-  return stdout
-}
-
 function describe({ file, line, from, to }: Mutant): string {
   return `${file}:${String(line)}  '${from}' -> '${to}'`
 }
@@ -259,40 +253,35 @@ function ranNothing(output: string): boolean {
   return counted.reduce((total, match) => total + Number(match.groups?.count ?? NONE), NONE) === NONE
 }
 
+function lineHolding(source: string, from: string): number {
+  return source.split('\n').findIndex((line) => line.includes(from)) + FIRST_LINE
+}
+
 async function checkCase(item: Case, timeoutMs: number): Promise<Verdict> {
   const target = await readFile(item.file, 'utf8')
   if (!target.includes(item.from)) throw new Error(`${item.label}: '${item.from}' is not in ${item.file}`)
 
-  try {
-    await writeFile(item.file, target.replace(item.from, item.to))
-    const { stdout, failed } = await run(
-      'npx',
-      ['vitest', 'run', '--project', item.project, item.spec, '-t', item.test],
-      timeoutMs,
-    )
-    if (ranNothing(stdout)) return 'NO TESTS MATCHED'
+  const mutation = { file: item.file, line: lineHolding(target, item.from), from: item.from, to: item.to }
+  const { stdout, failed } = await run(
+    'npx',
+    ['vitest', 'run', '--project', item.project, item.spec, '-t', item.test],
+    timeoutMs,
+    { env: envFor(mutation) },
+  )
+  if (ranNothing(stdout)) return 'NO TESTS MATCHED'
 
-    return failed ? 'CAUGHT' : 'STILL PASSES'
-  } finally {
-    await writeFile(item.file, target)
-  }
+  return failed ? 'CAUGHT' : 'STILL PASSES'
 }
 
 export async function check(cases: Case[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<number> {
   if (cases.length === NONE) throw new Error('name at least one case to check')
 
-  const entered = await workspaceState()
   const verdicts: Verdict[] = []
-  try {
-    await serially(cases, async (item) => {
-      const verdict = await checkCase(item, timeoutMs)
-      verdicts.push(verdict)
-      process.stdout.write(`  ${verdict.padEnd(VERDICT_WIDTH)}${item.label}\n`)
-    })
-  } finally {
-    const left = await workspaceState()
-    if (left !== entered) process.stdout.write(`\nWORKSPACE CHANGED — restore by hand.\n${entered}\n${left}`)
-  }
+  await serially(cases, async (item) => {
+    const verdict = await checkCase(item, timeoutMs)
+    verdicts.push(verdict)
+    process.stdout.write(`  ${verdict.padEnd(VERDICT_WIDTH)}${item.label}\n`)
+  })
 
   return verdicts.filter((verdict) => verdict !== 'CAUGHT').length
 }
@@ -300,18 +289,10 @@ export async function check(cases: Case[], timeoutMs = DEFAULT_TIMEOUT_MS): Prom
 export async function mutate(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<number> {
   if (files.length === NONE) throw new Error('name at least one file to mutate')
 
-  const entered = await workspaceState()
   const outcomes: Outcome[] = []
-  try {
-    await serially(files, async (file) => {
-      await sweepFile(file, timeoutMs, outcomes)
-    })
-  } finally {
-    const left = await workspaceState()
-    if (left !== entered) {
-      process.stdout.write(`\nWORKSPACE CHANGED — restore by hand.\nentered:\n${entered}\nleft:\n${left}`)
-    }
-  }
+  await serially(files, async (file) => {
+    await sweepFile(file, timeoutMs, outcomes)
+  })
 
   if (outcomes.length === NONE) throw new Error('no mutants were produced, so nothing was measured')
 
@@ -334,7 +315,7 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
-export const TestOnly = { argsFor, fateOf, run, summaryOf }
+export const TestOnly = { argsFor, fateOf, lineHolding, run, summaryOf }
 
 if (import.meta.main) {
   for (const interrupt of INTERRUPTS) {

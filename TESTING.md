@@ -45,11 +45,18 @@ them, but it means a green `test:coverage` is not a green gate.
 deliberate choice rather than an accident.
 
 **`npm run mutate` answers a question coverage cannot**: 100% says every line
-ran, never that anything depended on the result. It rewrites one operator at a
-time and re-runs the suite, so a mutant that survives names a line no test
-constrains. It costs a full run per mutant, which is why it is a tool to reach
-for deliberately and never a gate. It brackets itself with the workspace state
-on entry and refuses to report success for a file it found nothing to mutate.
+ran, never that anything depended on the result. It changes one operator at a
+time and re-runs the tests, so a mutant that survives names a line no test
+constrains.
+
+**It writes nothing.** The change is applied in memory, by a vite plugin the
+config installs only when the environment names a mutation, so a sweep cannot
+leave a mutant on disk or overwrite an edit in progress — and a dirty tree is
+not a reason to refuse to run. It drives only the tests _related_ to the
+mutated file and stops at the first failure, so a mutant costs a fraction of a
+full run. A mutant whose run times out is reported as **unresolved** rather
+than killed, because a run that never finished proved nothing, and it refuses
+to report success for a file it found nothing to mutate.
 
 **`npm run assertions` answers a narrower one**: whether each test makes a
 single claim, and whether the scanner can see every test there is. It counts
