@@ -373,6 +373,17 @@ describe('dismissing through the handle', () => {
 
     expect(texts()).toStrictEqual([])
   })
+
+  it('dismisses a toast revived after it had gone, which is no longer the fade it replaced', () => {
+    const handle = createToast(root).show('working')
+    vi.advanceTimersByTime(TOAST_VISIBLE_MS)
+    settle()
+    handle.update('working again')
+
+    handle.dismiss()
+
+    expect(texts()).toStrictEqual([])
+  })
 })
 
 describe('withdrawing what one caller raised', () => {
