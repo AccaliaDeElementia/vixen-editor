@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 
 import { describe, expect, it } from 'vitest'
 
-import { run, TestOnly, type Sandbox } from '../../tools/mutate.ts'
+import { mutantsFor, run, TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
 const { argsFor, fateOf, lineHolding, summaryOf } = TestOnly
 
@@ -92,7 +92,7 @@ describe('reading what a mutant run writes', () => {
   })
 })
 
-const A_MUTANT = { file: 'src/a.ts', line: 7, from: '===', to: '!==', source: '' }
+const A_MUTANT = { file: 'src/a.ts', line: 7, from: '===', to: '!==', expected: 'killed' as const }
 const ANOTHER_MUTANT = { ...A_MUTANT, line: 9 }
 const NO_OUTPUT_AT_ALL = ''
 
@@ -165,5 +165,67 @@ describe('what the tool does to the tree', () => {
       reads: true,
       writes: false,
     })
+  })
+})
+
+const EXPECTED_TO_SURVIVE = ['/* mutation-ignore >= -- a stable sort cannot tell them apart */', 'a > b ? x : y'].join(
+  '\n',
+)
+
+describe('prose that reads like code', () => {
+  it('is left alone inside a block comment, however far from the opening line', () => {
+    const source = ['/* a note mentioning true, and', '   a === b on a later line */', 'const x = 1'].join('\n')
+
+    expect(mutantsFor('src/a.ts', source)).toStrictEqual([])
+  })
+
+  it('is mutated outside one, so that scan is not simply blind to the words', () => {
+    expect(mutantsFor('src/a.ts', 'const x = true').map((mutant) => mutant.to)).toStrictEqual(['false'])
+  })
+
+  it('does not take a path holding a star for the start of a comment', () => {
+    expect(mutantsFor('src/a.ts', ["const route = '/assets/*'", 'const x = true'].join('\n'))).toHaveLength(1)
+  })
+})
+
+describe('a mutant a comment says should survive', () => {
+  it('is expected to survive, so the sweep checks the claim rather than skipping it', () => {
+    expect(mutantsFor('src/a.ts', EXPECTED_TO_SURVIVE).map((mutant) => mutant.expected)).toStrictEqual(['survived'])
+  })
+
+  it('is expected to die when nothing says otherwise', () => {
+    expect(mutantsFor('src/a.ts', 'a > b ? x : y').map((mutant) => mutant.expected)).toStrictEqual(['killed'])
+  })
+
+  it('refuses a line carrying more than one mutable operation, which it could not tell apart', () => {
+    const ambiguous = ['/* mutation-ignore >= -- why */', 'a > b && c === d'].join('\n')
+
+    expect(() => mutantsFor('src/a.ts', ambiguous)).toThrow(/one mutable operation/v)
+  })
+
+  it('refuses a marker naming a change that line does not make, so a stale marker cannot hide', () => {
+    const wrong = ['/* mutation-ignore !== -- why */', 'a > b ? x : y'].join('\n')
+
+    expect(() => mutantsFor('src/a.ts', wrong)).toThrow(/does not make/v)
+  })
+
+  it('names the file and line it refused, because a sweep stops there', () => {
+    const ambiguous = ['/* mutation-ignore >= -- why */', 'a > b && c === d'].join('\n')
+
+    expect(() => mutantsFor('src/a.ts', ambiguous)).toThrow(/src\/a\.ts:2/v)
+  })
+})
+
+describe('reporting a claim that has expired', () => {
+  it('names a mutant that was expected to survive and died, because the reason has stopped being true', () => {
+    const outcomes = [{ mutant: { ...A_MUTANT, expected: 'survived' as const }, fate: 'killed' as const }]
+
+    expect(summaryOf(outcomes)).toContain('1 expired of 1')
+  })
+
+  it('says nothing of expired claims when none were made', () => {
+    const outcomes = [{ mutant: A_MUTANT, fate: 'killed' as const }]
+
+    expect(summaryOf(outcomes).join('\n')).not.toContain('expired')
   })
 })

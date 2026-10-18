@@ -117,9 +117,16 @@ A comment is justified in exactly two cases:
    particular default. If reading this repo end to end would not reveal it, it
    may be a comment.
 
-2. **Tooling suppressions** (`eslint-disable-*`, `v8 ignore`). These must
-   _always_ carry a human-readable rationale explaining what prompted the
-   suppression. A bare suppression is not acceptable.
+2. **Tooling suppressions** (`eslint-disable-*`, `v8 ignore`,
+   `mutation-ignore`). These must _always_ carry a human-readable rationale
+   explaining what prompted the suppression. A bare suppression is not
+   acceptable.
+
+   `mutation-ignore <replacement> -- <why>` on the line above says a mutant is
+   **expected to survive**, and a sweep fails if it is ever _killed_ — so the
+   claim retires itself rather than quietly outliving its reason. The marked
+   line must carry exactly one mutable operation, or the sweep refuses to start:
+   a marker that could mean either of two mutants means neither.
 
 #### One form per purpose
 

@@ -49,6 +49,14 @@ ran, never that anything depended on the result. It changes one operator at a
 time and re-runs the tests, so a mutant that survives names a line no test
 constrains.
 
+**A mutant that no test can kill is marked where it lives**, with
+`/* mutation-ignore >= -- why */` above the line, rather than listed in a file
+nobody opens. It means _expected to survive_: the sweep still runs it and fails
+if it gets **killed**, because the stated reason has stopped being true. Two
+exist today, and both are about a comparison that cannot be observed — a stable
+sort cannot distinguish returning −1 from returning 0 for equal values, and an
+assignment no later reader can reach.
+
 **It writes nothing.** The change is applied in memory, by a vite plugin the
 config installs only when the environment names a mutation, so a sweep cannot
 leave a mutant on disk or overwrite an edit in progress — and a dirty tree is

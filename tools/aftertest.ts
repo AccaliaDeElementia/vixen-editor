@@ -126,7 +126,7 @@ export async function sampleMutants(): Promise<number> {
   const survivors: Mutant[] = []
   await serially(drawn, async (mutant) => {
     const outcome = await judge(mutant, TIMEOUT_MS)
-    if (outcome.fate !== 'killed') survivors.push(mutant)
+    if (outcome.fate !== mutant.expected) survivors.push(mutant)
   })
 
   await remember(drawn, await rememberedKeys())

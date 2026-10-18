@@ -41,6 +41,10 @@ function byDirectnessThenRecency(left: RestoreCandidate, right: RestoreCandidate
   if (left.whole !== right.whole) return left.whole ? ANCESTOR_LAST : DIRECT_FIRST
   if (left.deletedAt === right.deletedAt) return SAME_GROUP
 
+  /* mutation-ignore >= -- Array.sort is stable, so returning DIRECT_FIRST for equal
+     values and returning SAME_GROUP are indistinguishable. Exposing this would need a
+     comparator that answers non-zero for equivalent values, breaking its own contract;
+     the guard above is what makes equality unreachable here. */
   return left.deletedAt > right.deletedAt ? DIRECT_FIRST : ANCESTOR_LAST
 }
 

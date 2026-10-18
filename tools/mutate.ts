@@ -22,6 +22,8 @@ const MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 const DEFAULT_TIMEOUT_MS = 120_000
 const NONE = 0
 const FIRST_LINE = 1
+const ONE_MUTANT = 1
+const KILLED: Fate = 'killed'
 const ARGUMENTS_START = 2
 const FAILURE = 1
 const SUCCESS = 0
@@ -34,6 +36,7 @@ export interface Mutant {
   line: number
   from: string
   to: string
+  expected: Fate
 }
 
 type Fate = 'killed' | 'survived' | 'unresolved'
@@ -152,25 +155,71 @@ export async function run(command: string, args: string[], timeoutMs?: number, s
   }
 }
 
-function skippable(line: string): boolean {
+const OPENS_BLOCK = '/*'
+const CLOSES_BLOCK = '*/'
+
+function startsComment(line: string): boolean {
   const trimmed = line.trimStart()
 
-  return trimmed === '' || trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')
+  return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith(OPENS_BLOCK)
+}
+
+// A block comment's later lines carry no marker of their own, so a line-by-line
+// reading takes them for code and mutates the prose.
+function codeLines(lines: readonly string[]): boolean[] {
+  let inBlock = false
+
+  return lines.map((line) => {
+    const wasInBlock = inBlock
+    if (inBlock) inBlock = !line.includes(CLOSES_BLOCK)
+    else inBlock = line.trimStart().startsWith(OPENS_BLOCK) && !line.includes(CLOSES_BLOCK)
+
+    return !wasInBlock && !inBlock && line.trim() !== '' && !startsComment(line)
+  })
+}
+
+const EXPECTED_TO_SURVIVE = /mutation-ignore\s+(?<to>\S+)\s+--/v
+const NO_PREVIOUS_LINE = ''
+
+function claimedAbove(lines: readonly string[], isCode: readonly boolean[], index: number): string | null {
+  for (let above = index - ONE_MUTANT; above >= NONE && isCode[above] === false; above -= ONE_MUTANT) {
+    const named = EXPECTED_TO_SURVIVE.exec(lines[above] ?? NO_PREVIOUS_LINE)?.groups?.to
+    if (named !== undefined) return named
+  }
+
+  return null
+}
+
+function asClaimed(found: Mutant[], claim: string, where: string): Mutant[] {
+  const [only] = found
+  if (found.length !== ONE_MUTANT || only === undefined) {
+    throw new Error(`${where}: a mutation-ignore needs a line carrying one mutable operation, not ${found.length}`)
+  }
+  if (only.to.trim() !== claim) {
+    throw new Error(`${where}: a mutation-ignore names '${claim}', which that line does not make`)
+  }
+
+  return [{ ...only, expected: 'survived' }]
 }
 
 export function mutantsFor(file: string, contents: string): Mutant[] {
   const lines = contents.split('\n')
+  const isCode = codeLines(lines)
 
-  return lines.flatMap((line, index) =>
-    skippable(line)
-      ? []
-      : MUTATIONS.filter(([from]) => line.includes(from)).map(([from, to]) => ({
-          file,
-          line: index + FIRST_LINE,
-          from,
-          to,
-        })),
-  )
+  return lines.flatMap((line, index) => {
+    if (isCode[index] !== true) return []
+
+    const found = MUTATIONS.filter(([from]) => line.includes(from)).map(([from, to]) => ({
+      file,
+      line: index + FIRST_LINE,
+      from,
+      to,
+      expected: KILLED,
+    }))
+    const claim = claimedAbove(lines, isCode, index)
+
+    return claim === null ? found : asClaimed(found, claim, `${file}:${String(index + FIRST_LINE)}`)
+  })
 }
 
 export function describeMutant({ file, line, from, to }: Mutant): string {
@@ -193,10 +242,16 @@ function fateOf({ failed, timedOut }: Ran): Fate {
   return failed ? 'killed' : 'survived'
 }
 
+function markFor({ mutant, fate }: Outcome): string {
+  if (fate === mutant.expected) return fate === 'killed' ? MARKS.killed : 'survived as claimed'
+
+  return fate === 'killed' ? 'EXPIRED' : MARKS[fate]
+}
+
 function announce(outcome: Outcome, index: number, total: number): void {
   const position = `[${String(index + FIRST_LINE)}/${String(total)}]`
 
-  process.stdout.write(`  ${position} ${MARKS[outcome.fate]}  ${describeMutant(outcome.mutant)}\n`)
+  process.stdout.write(`  ${position} ${markFor(outcome)}  ${describeMutant(outcome.mutant)}\n`)
 }
 
 async function sweepFile(file: string, timeoutMs: number, into: Outcome[]): Promise<void> {
@@ -212,24 +267,32 @@ async function sweepFile(file: string, timeoutMs: number, into: Outcome[]): Prom
   })
 }
 
-function linesFor(fate: Fate, outcomes: readonly Outcome[]): string[] {
-  const held = outcomes.filter((outcome) => outcome.fate === fate)
-  if (fate === 'unresolved' && held.length === NONE) return []
-
+function linesFor(label: string, mark: string, held: readonly Outcome[], total: number): string[] {
   return [
-    `${String(held.length)} ${fate} of ${String(outcomes.length)}`,
-    ...held.map(({ mutant }) => `  ${MARKS[fate]}  ${describeMutant(mutant)}`),
+    `${String(held.length)} ${label} of ${String(total)}`,
+    ...held.map(({ mutant }) => `  ${mark}  ${describeMutant(mutant)}`),
   ]
 }
 
+function whose(outcomes: readonly Outcome[], fate: Fate, expected: Fate): Outcome[] {
+  return outcomes.filter((outcome) => outcome.fate === fate && outcome.mutant.expected === expected)
+}
+
 function summaryOf(outcomes: readonly Outcome[]): string[] {
-  return [...linesFor('survived', outcomes), ...linesFor('unresolved', outcomes)]
+  const unresolved = outcomes.filter((outcome) => outcome.fate === 'unresolved')
+  const expired = whose(outcomes, 'killed', 'survived')
+
+  return [
+    ...linesFor('survived', MARKS.survived, whose(outcomes, 'survived', 'killed'), outcomes.length),
+    ...(unresolved.length === NONE ? [] : linesFor('unresolved', MARKS.unresolved, unresolved, outcomes.length)),
+    ...(expired.length === NONE ? [] : linesFor('expired', 'EXPIRED', expired, outcomes.length)),
+  ]
 }
 
 function reportOn(outcomes: Outcome[]): number {
   process.stdout.write(`\n${summaryOf(outcomes).join('\n')}\n`)
 
-  return outcomes.filter((outcome) => outcome.fate !== 'killed').length
+  return outcomes.filter((outcome) => outcome.fate !== outcome.mutant.expected).length
 }
 
 interface Case {

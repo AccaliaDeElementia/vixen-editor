@@ -8,9 +8,9 @@ import { eligible, keyOf, sample, statusFor } from '../../tools/aftertest.ts'
 import { runningInCI } from '../ci.ts'
 
 const BUDGET = 8
-const IN_WORK = { file: 'src/a.ts', line: 1, from: '===', to: '!==' }
+const IN_WORK = { file: 'src/a.ts', line: 1, from: '===', to: '!==', expected: 'killed' as const }
 const ALSO_IN_WORK = { ...IN_WORK, line: 2 }
-const ELSEWHERE = { file: 'src/b.ts', line: 1, from: '===', to: '!==' }
+const ELSEWHERE = { file: 'src/b.ts', line: 1, from: '===', to: '!==', expected: 'killed' as const }
 
 interface Named {
   file: string

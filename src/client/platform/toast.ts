@@ -71,6 +71,9 @@ function createSlot(severity: Severity, initial: string, isOverflow: boolean, go
   function detach(): void {
     element?.remove()
     element = null
+    /* mutation-ignore true -- every later reader early-returns on a null element, so
+       this assignment is state hygiene that nothing can observe. Deleting it instead
+       was weighed in an earlier audit and refused. */
     fading = false
     gone()
   }

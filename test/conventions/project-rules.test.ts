@@ -43,7 +43,7 @@ const EXPORTED_BINDINGS = /^export\s+(?:type\s+)?\{(?<names>[^\}]*)\}/gmv
 const ATOMIC_WRITE = 'src/server/storage/primitives/atomic-write.ts'
 const DIRECT_WRITE = /\bwriteFile\(/v
 
-const SUPPRESSION = /eslint-disable|v8 ignore/v
+const SUPPRESSION = /(?:\/\/|\/\*)[^\n]*(?:eslint-disable|v8 ignore|mutation-ignore)/v
 const CLOSES_COVERAGE_REGION = /v8 ignore (?:stop|end)/v
 const RATIONALE = /--\s*\S/v
 
