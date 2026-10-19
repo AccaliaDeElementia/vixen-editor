@@ -75,6 +75,11 @@ Every setting is an environment variable, and every one has a default.
 otherwise. Setting it in a `.env` file beside the process works as well as
 exporting it in the shell.
 
+`DOCS_ROOT` must be an ordinary directory on a single filesystem. A mountpoint
+inside it, or a symbolic link leading out of it, is **not supported**: the
+editor refuses to read or serve anything that resolves outside the root, and it
+makes no attempt to keep a write or a move atomic across one.
+
 <a id="readme-b1e550"></a>
 
 ## Addressing a document
