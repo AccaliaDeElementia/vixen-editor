@@ -579,6 +579,9 @@ that**: some are only enforceable by review.
 - **Do not subset the icon font**, and **do not rename the `cm-vixen-*`
   decoration classes** — restyle them instead.
   → [DESIGN](DESIGN.md#design-15c5ed)
+- **A module is too big when a reader must hold too much at once** — the largest
+  scope in it, and the mutable state live across that scope — **never because of
+  its line count.** → [DESIGN](DESIGN.md#design-6b2d41)
 - **Shipped code switches no ESLint rule off.** Prefer fixing the code, then an
   inline suppression with a rationale; a scoped override in `eslint.config.js`
   is the last resort and needs adding to an approved list.

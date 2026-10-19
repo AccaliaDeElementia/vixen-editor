@@ -940,6 +940,40 @@ boundary. The tree JSON is the example — the client deliberately narrows the
 server's entry, dropping `size` and `modified` it never renders, and forcing
 one type on both would make one of them lie.
 
+<a id="design-6b2d41"></a>
+
+### What makes a module too big
+
+**Line count is not the measure, and judging by it points at the wrong files.**
+What costs a reader is how much they must hold at once, and that has two parts:
+the largest single scope in the module, and the mutable state live across it. A
+`let` at the top of a long closure is in play for every line of it, a `const` is
+not, and a declaration costs nothing at all.
+
+The distinction is load bearing because a long file can be long for opposite
+reasons. `fs-store.ts` is almost all interface declaration plus an adapter of
+thin delegating members. `tab-keys.ts` is two chord tables and a short binder.
+By lines both look like the worst in the tree; by what a reader must hold,
+neither is a candidate. `bootstrap.ts` holds one of the longest functions in
+`src/` and is among the easiest of them to follow, because it is a wiring
+manifest whose bindings are almost all `const` — it reads top to bottom with
+nothing changing underneath.
+
+The modules that are genuinely hard are the ones where several pieces of mutable
+state are live across a long closure and read from many places, because then the
+reader has to track who can still observe a stale value.
+
+**So the pressure to split comes from cognition rather than from size, and the
+remedy follows the state**: give the cluster of bindings that belong together a
+name and a module of its own, and what stays behind becomes wiring. Splitting a
+long but linear module for its length alone buys files and indirection and no
+understanding — and the organisation audit already refused one such merge, for
+the same reason in the other direction.
+
+`max-lines` stays a backstop rather than a judgement. It cannot see any of the
+above, so a module approaching it is a prompt to apply this rule, never an
+instruction to cut.
+
 <a id="design-79c76a"></a>
 
 ## Browser support
