@@ -14,19 +14,21 @@ import { createDialogs, type Dialogs } from '../platform/dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { collectRuns } from './rebuild.ts'
 import { createTrashPanel } from './trash/trash-panel.ts'
+import { createTreeContents } from './tree-contents.ts'
+import { createDrawHold } from './draw-hold.ts'
 import { createSelection } from './selection.ts'
 import { createTreeKeyboard } from './tree/tree-keyboard.ts'
 import { createFilesClient, type FilesClient } from './files-client.ts'
 import { openFolders, pruneOpenFolders, readOpenFolders, setFolderOpen } from './tree/open-folders.ts'
-import { ancestorsOf, folderPathsIn, type TrashNode, type TreeNode } from './tree/tree-model.ts'
+import { ancestorsOf } from './tree/tree-model.ts'
 import { isAtOrUnder } from '../../shared/store-path.ts'
 import { requestInsert } from '../platform/announce/insert-entry.ts'
 import { requestKeep } from '../platform/announce/keep-request.ts'
 import { KEYS } from '../platform/help.ts'
-import { renderTree, TREE_SELECTOR } from './tree/tree-view.ts'
-import { renderTrashPanel, TRASH_LIST_SELECTOR, TRASH_PATH } from './trash/trash-view.ts'
-import { rowIndexOf, ROW_SELECTOR, type VisibleRow } from './tree/drawing.ts'
-import { FILES_PANEL, panelShowing, showPanel, TRASH_PANEL } from '../platform/panels.ts'
+import { TREE_SELECTOR } from './tree/tree-view.ts'
+import { TRASH_LIST_SELECTOR, TRASH_PATH } from './trash/trash-view.ts'
+import { rowIndexOf } from './tree/drawing.ts'
+import { FILES_PANEL, showPanel, TRASH_PANEL } from '../platform/panels.ts'
 
 interface FileTreeOptions {
   root?: ParentNode
@@ -89,23 +91,20 @@ async function runFileTree({
   navigate,
 }: Mounted): Promise<FileTree> {
   const toast = createToast(root)
-  let nodes: readonly TreeNode[] = []
-  let trash: readonly TrashNode[] = []
-  let open: ReadonlySet<string> = new Set()
-  let visible: VisibleRow[] = []
+  const contents = createTreeContents({ root, tree, trashList, selected: () => selectedPath() })
 
   const { insertableSelection, markSelected, reflect, select, selectedPath, targetDirectory, visibleSelection } =
     createSelection({
       root,
-      shown: () => visible,
-      elements: rows,
+      shown: contents.shown,
+      elements: contents.rowElements,
       startingAt: openDocument.path(),
     })
 
   const keyboard = createTreeKeyboard({
-    shown: () => visible,
-    elements: rows,
-    isOpen: (entryPath: string) => open.has(entryPath),
+    shown: contents.shown,
+    elements: contents.rowElements,
+    isOpen: contents.isOpen,
     toggle: (entryPath: string) => {
       toggle(entryPath)
     },
@@ -121,7 +120,7 @@ async function runFileTree({
     client,
     dialogs,
     toast,
-    held: () => trash.length,
+    held: contents.trashHeld,
     reload: async () => {
       await load()
     },
@@ -130,42 +129,24 @@ async function runFileTree({
     },
   })
 
-  function showingTheTrash(): boolean {
-    return trashList !== null && panelShowing(root) === TRASH_PANEL
-  }
-
-  function shownHost(): HTMLElement {
-    return showingTheTrash() && trashList !== null ? trashList : tree
-  }
-
   const rowHosts = trashList === null ? [tree] : [tree, trashList]
 
-  function rows(): HTMLElement[] {
-    return [...shownHost().querySelectorAll<HTMLElement>(ROW_SELECTOR)]
-  }
-
-  let draggingFromTheTree = false
-  let heldBackADraw = false
+  const drawHold = createDrawHold(() => {
+    draw(contents.openFolders())
+  })
 
   function draw(next: ReadonlySet<string>, focusPath?: string): void {
-    open = next
-    if (draggingFromTheTree) {
-      heldBackADraw = true
+    contents.openTo(next)
+    if (drawHold.defer()) return
 
-      return
-    }
-
-    visible =
-      showingTheTrash() && trashList !== null
-        ? renderTrashPanel(trashList, { trash, selected: selectedPath() })
-        : renderTree(tree, { nodes, open, selected: selectedPath() })
+    contents.repaint()
     trashPanel.paint()
     reflect()
     if (focusPath !== undefined) focusAt(indexOfPath(focusPath))
   }
 
   function toggle(entryPath: string): void {
-    setFolderOpen(entryPath, !open.has(entryPath))
+    setFolderOpen(entryPath, !contents.isOpen(entryPath))
     draw(readOpenFolders(), entryPath)
   }
 
@@ -188,8 +169,8 @@ async function runFileTree({
   }
 
   listenOnRows('click', (event) => {
-    const index = rowIndexOf(shownHost(), event.target)
-    const current = index === null ? undefined : visible[index]
+    const index = rowIndexOf(contents.shownHost(), event.target)
+    const current = index === null ? undefined : contents.rowAt(index)
     if (current === undefined) return
 
     if (!current.expandable) {
@@ -210,8 +191,8 @@ async function runFileTree({
   })
 
   listenOnRows('dblclick', (event) => {
-    const index = rowIndexOf(shownHost(), event.target)
-    const current = index === null ? undefined : visible[index]
+    const index = rowIndexOf(contents.shownHost(), event.target)
+    const current = index === null ? undefined : contents.rowAt(index)
     if (current === undefined) return
 
     event.preventDefault()
@@ -228,8 +209,8 @@ async function runFileTree({
   }
 
   listenOnRows('keydown', (event) => {
-    const index = rowIndexOf(shownHost(), event.target)
-    const current = index === null ? undefined : visible[index]
+    const index = rowIndexOf(contents.shownHost(), event.target)
+    const current = index === null ? undefined : contents.rowAt(index)
     if (current === undefined) return
 
     if (insertsSelected(event)) {
@@ -248,7 +229,7 @@ async function runFileTree({
     openFolders(ancestorsOf(entryPath))
     select(entryPath)
     draw(readOpenFolders())
-    rows()[indexOfPath(entryPath)]?.scrollIntoView({ block: 'nearest' })
+    contents.rowElements()[indexOfPath(entryPath)]?.scrollIntoView({ block: 'nearest' })
   }
 
   function revealPath(entryPath: string): void {
@@ -257,12 +238,12 @@ async function runFileTree({
   }
 
   function openPath(entryPath: string | null): void {
-    const row = visible.find((candidate) => candidate.path === entryPath)
+    const row = contents.rowFor(entryPath)
     if (row !== undefined) openRow(row)
   }
 
   function openCreated(entryPath: string): void {
-    const isFolder = folderPathsIn(nodes).includes(entryPath)
+    const isFolder = contents.folderPaths().includes(entryPath)
 
     openFolders(isFolder ? [...ancestorsOf(entryPath), entryPath] : ancestorsOf(entryPath))
     select(entryPath)
@@ -277,10 +258,11 @@ async function runFileTree({
   }
 
   async function load(): Promise<void> {
-    ;[nodes, trash] = await Promise.all([client.tree(), client.trash()])
+    const [nodes, trash] = await Promise.all([client.tree(), client.trash()])
+    contents.replaceWith(nodes, trash)
 
     openFolders(ancestorsOf(openDocument.path()))
-    draw(pruneOpenFolders([...folderPathsIn(nodes), TRASH_PATH]))
+    draw(pruneOpenFolders([...contents.folderPaths(), TRASH_PATH]))
   }
 
   const runs = collectRuns()
@@ -304,13 +286,13 @@ async function runFileTree({
   bindActions(context)
   trashPanel.bind()
   const panels = onPanelChanged(root, () => {
-    draw(open)
+    draw(contents.openFolders())
   })
   bindDragAndDrop(
     {
       client,
       toast,
-      rowAt: (index) => visible[index],
+      rowAt: contents.rowAt,
       refresh: load,
       track: runs.track,
       revealPath,
@@ -329,26 +311,13 @@ async function runFileTree({
     }
   }
 
-  tree.addEventListener('pointerdown', () => {
-    draggingFromTheTree = true
-  })
-
-  tree.addEventListener('dragstart', () => {
-    draggingFromTheTree = true
-  })
-
-  function theDragIsOver(): void {
-    draggingFromTheTree = false
-    if (!heldBackADraw) return
-
-    heldBackADraw = false
-    draw(open)
-  }
+  tree.addEventListener('pointerdown', drawHold.hold)
+  tree.addEventListener('dragstart', drawHold.hold)
 
   const RELEASES = ['pointerup', 'pointercancel', 'dragend', 'drop']
   const { ownerDocument: releasedOn } = tree
 
-  for (const release of RELEASES) releasedOn.addEventListener(release, theDragIsOver)
+  for (const release of RELEASES) releasedOn.addEventListener(release, drawHold.release)
 
   const { offStoreChanged } = onStoreChanged(root, () => {
     runs.track(reload())
@@ -364,7 +333,7 @@ async function runFileTree({
       offStoreChanged()
       offRevealRequested()
       panels.offPanelChanged()
-      for (const release of RELEASES) releasedOn.removeEventListener(release, theDragIsOver)
+      for (const release of RELEASES) releasedOn.removeEventListener(release, drawHold.release)
       toast.dismissRaised()
     },
   }
