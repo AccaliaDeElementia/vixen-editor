@@ -13,6 +13,7 @@ interface AcrossPanesOptions {
 
 interface AcrossPanes {
   open: () => readonly PaneWorkspace[]
+  savedEverywhere: () => Promise<boolean>
   showingTheDocument: (entryPath: string) => PaneWorkspace
   contentOf: (entryPath: string) => string | null
   caretInto: (entryPath: string, offset: number) => void
@@ -24,6 +25,12 @@ export function createAcrossPanes(options: AcrossPanesOptions): AcrossPanes {
     const elsewhere = options.aside()
 
     return elsewhere === null ? [options.primary] : [options.primary, elsewhere]
+  }
+
+  async function savedEverywhere(): Promise<boolean> {
+    const answers = await Promise.all(open().map(async (surface) => await surface.flush()))
+
+    return answers.every((saved) => saved)
   }
 
   function editorHolding(entryPath: string): DocumentTab | null {
@@ -41,6 +48,7 @@ export function createAcrossPanes(options: AcrossPanesOptions): AcrossPanes {
 
   return {
     open,
+    savedEverywhere,
 
     showingTheDocument: (entryPath: string) =>
       open().find((surface) => holdsATabFor(surface, entryPath)) ?? options.primary,

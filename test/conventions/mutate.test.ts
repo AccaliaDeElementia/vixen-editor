@@ -4,9 +4,9 @@ import { readFile } from 'node:fs/promises'
 
 import { describe, expect, it } from 'vitest'
 
-import { mutantsFor, run, TestOnly, type Sandbox } from '../../tools/mutate.ts'
+import { judge, mutantsFor, run, TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
-const { argsFor, fateOf, lineHolding, summaryOf } = TestOnly
+const { argsFor, fateOf, lineHolding, mirrorArgsFor, summaryOf } = TestOnly
 
 const CHILD_PID = 4321
 const WHOLE_GROUP = -CHILD_PID
@@ -130,6 +130,80 @@ describe('reporting a sweep', () => {
     const outcomes = [{ mutant: A_MUTANT, fate: 'killed' as const }]
 
     expect(summaryOf(outcomes).join('\n')).not.toContain('unresolved')
+  })
+})
+
+describe('the test named for the module under the mutant', () => {
+  const SOMEWHERE = {
+    file: 'src/client/platform/toast.ts',
+    line: 1,
+    from: '===',
+    to: '!==',
+    expected: 'killed' as const,
+  }
+
+  function failingWhen(into: string[][], match: string): Sandbox {
+    return {
+      spawn: (_command, args, done) => {
+        into.push(args)
+        done(args.some((argument) => argument.includes(match)) ? new Error('dead') : FINISHED_WELL, SOME_OUTPUT)
+
+        return { pid: CHILD_PID }
+      },
+      kill: () => undefined,
+    }
+  }
+
+  it('names the mirror of the module, which the project guarantees exists', () => {
+    expect(mirrorArgsFor(SOMEWHERE)).toContain('test/client/platform/toast')
+  })
+
+  it('passes with no tests, so a module without a mirror falls through rather than reading as killed', () => {
+    expect(mirrorArgsFor(SOMEWHERE)).toContain('--passWithNoTests')
+  })
+
+  it('is run before the related set, because it is the one most likely to answer', async () => {
+    const calls: string[][] = []
+
+    await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen(calls, 'never matches') })
+
+    expect(calls.at(0)).toContain('test/client/platform/toast')
+  })
+
+  it('settles the mutant on its own, so the related set is never reached', async () => {
+    const calls: string[][] = []
+
+    await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen(calls, 'test/client/platform/toast') })
+
+    expect(calls).toHaveLength(1)
+  })
+
+  it('reports the kill it made, rather than deferring the verdict', async () => {
+    const outcome = await judge(SOMEWHERE, LONG_ENOUGH_MS, {
+      sandbox: failingWhen([], 'test/client/platform/toast'),
+    })
+
+    expect(outcome.fate).toBe('killed')
+  })
+
+  it('hands on to the related set when the mutant outlived its own test', async () => {
+    const calls: string[][] = []
+
+    await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen(calls, 'related') })
+
+    expect(calls.at(1)).toContain('related')
+  })
+
+  it('takes the related set word for it when the module survived its own test', async () => {
+    const outcome = await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen([], 'related') })
+
+    expect(outcome.fate).toBe('killed')
+  })
+
+  it('leaves a mutant nothing killed as a survivor', async () => {
+    const outcome = await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen([], 'never matches') })
+
+    expect(outcome.fate).toBe('survived')
   })
 })
 

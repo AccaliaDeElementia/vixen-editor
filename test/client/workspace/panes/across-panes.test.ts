@@ -18,14 +18,19 @@ interface Holding {
   holding?: string | null
   content?: string
   tabs?: readonly TabAt[]
+  saves?: boolean
 }
 
 let carets: Array<{ into: string; at: number }> = []
 let shown: TabAt[] = []
 let opened: TabAt[] = []
 let tracked: Array<Promise<void>> = []
+let flushed: string[] = []
 
-function surface(name: string, { holds = null, holding, content = '', tabs = [] }: Holding = {}): PaneWorkspace {
+function surface(
+  name: string,
+  { holds = null, holding, content = '', tabs = [], saves = true }: Holding = {},
+): PaneWorkspace {
   const editor = cast<DocumentTab>({
     holding: () => (holding === undefined ? holds : holding),
     view: cast<EditorView>({ state: { doc: { toString: () => content } } }),
@@ -47,6 +52,11 @@ function surface(name: string, { holds = null, holding, content = '', tabs = [] 
       await Promise.resolve()
       shown.push(at)
     },
+    flush: async () => {
+      flushed.push(name)
+
+      return await Promise.resolve(saves)
+    },
   })
 }
 
@@ -65,6 +75,35 @@ beforeEach(() => {
   shown = []
   opened = []
   tracked = []
+  flushed = []
+})
+
+describe('saving every open pane before the page goes', () => {
+  it('answers that everything was written when the only pane saved', async () => {
+    expect(await panesOf(surface('primary'), NOTHING).savedEverywhere()).toBe(true)
+  })
+
+  it('answers that something was lost when the only pane could not save', async () => {
+    expect(await panesOf(surface('primary', { saves: false }), NOTHING).savedEverywhere()).toBe(false)
+  })
+
+  it('asks the pane beside it too, so a document open there is not left behind', async () => {
+    await panesOf(surface('primary'), surface('aside')).savedEverywhere()
+
+    expect(flushed).toStrictEqual(['primary', 'aside'])
+  })
+
+  it('answers that something was lost when the pane beside it could not save', async () => {
+    const panes = panesOf(surface('primary'), surface('aside', { saves: false }))
+
+    expect(await panes.savedEverywhere()).toBe(false)
+  })
+
+  it('asks only the pane there is when the workspace was never split', async () => {
+    await panesOf(surface('primary'), NOTHING).savedEverywhere()
+
+    expect(flushed).toStrictEqual(['primary'])
+  })
 })
 
 describe('which panes are open', () => {

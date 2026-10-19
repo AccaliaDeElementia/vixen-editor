@@ -391,11 +391,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     dialogs,
     reload: reopen,
     announce: setStatus,
-    saveEverything: async () => {
-      const everywhere = [primaryWorkspace.flush(), aside.current()?.flush() ?? Promise.resolve(true)]
-
-      return (await Promise.all(everywhere)).every((saved) => saved)
-    },
+    saveEverything: panes.savedEverywhere,
   })
 
   const noticeBuild = watchBuild(servedBuild, () => {

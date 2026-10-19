@@ -20,6 +20,10 @@ const MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const DEFAULT_TIMEOUT_MS = 600_000
+const SOURCE_ROOT = 'src/'
+const TEST_ROOT = 'test/'
+const SOURCE_EXTENSION = '.ts'
+const NOTHING_DROPPED = 0
 const NONE = 0
 const FIRST_LINE = 1
 const ONE_MUTANT = 1
@@ -279,10 +283,22 @@ function argsFor(mutant: Mutant): string[] {
   return ['vitest', 'related', mutant.file, '--run', '--silent', '--bail=1']
 }
 
-export async function judge(mutant: Mutant, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<Outcome> {
-  const ran = await run('npx', argsFor(mutant), timeoutMs, { env: envFor(mutant) })
+function mirrorArgsFor(mutant: Mutant): string[] {
+  const named = mutant.file.replace(SOURCE_ROOT, TEST_ROOT).slice(NOTHING_DROPPED, -SOURCE_EXTENSION.length)
 
-  return { mutant, fate: fateOf(ran) }
+  return ['vitest', 'run', named, '--silent', '--bail=1', '--passWithNoTests']
+}
+
+export async function judge(
+  mutant: Mutant,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  spawning: Spawning = {},
+): Promise<Outcome> {
+  const settings = { ...spawning, env: envFor(mutant) }
+  const byItsOwn = await run('npx', mirrorArgsFor(mutant), timeoutMs, settings)
+  if (fateOf(byItsOwn) !== 'survived') return { mutant, fate: fateOf(byItsOwn) }
+
+  return { mutant, fate: fateOf(await run('npx', argsFor(mutant), timeoutMs, settings)) }
 }
 
 function fateOf({ failed, timedOut }: Ran): Fate {
@@ -427,7 +443,7 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
-export const TestOnly = { argsFor, fateOf, lineHolding, summaryOf }
+export const TestOnly = { argsFor, fateOf, lineHolding, mirrorArgsFor, summaryOf }
 
 if (import.meta.main) {
   for (const interrupt of INTERRUPTS) {

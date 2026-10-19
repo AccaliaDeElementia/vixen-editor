@@ -107,6 +107,10 @@ describe('a pane that was given nothing to hold', () => {
 
     expect(record.saved).toStrictEqual([])
   })
+
+  it('answers that nothing was lost, because it never had an editor to save', async () => {
+    expect(await paneHolding(null).flush()).toBe(true)
+  })
 })
 
 describe('a pane that was given a document', () => {
@@ -124,6 +128,23 @@ describe('a pane that was given a document', () => {
     await pane.flush()
 
     expect(record.saved.map(({ id }) => id)).toStrictEqual(['notes.md'])
+  })
+
+  it('answers that it wrote what it held, so a caller can tell a settled pane from a refused one', async () => {
+    const pane = paneHolding('notes.md')
+    const { view } = pane.editor()
+    view.dispatch({ changes: { from: 0, insert: 'real work' } })
+
+    expect(await pane.flush()).toBe(true)
+  })
+
+  it('answers that something was lost when the document could not be written', async () => {
+    const refusing = { save: () => Promise.reject(new Error('refused')) }
+    const pane = paneHolding('notes.md', {}, refusing)
+    const { view } = pane.editor()
+    view.dispatch({ changes: { from: 0, insert: 'real work' } })
+
+    expect(await pane.flush()).toBe(false)
   })
 })
 
