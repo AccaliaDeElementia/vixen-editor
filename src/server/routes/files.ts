@@ -5,7 +5,7 @@ import { SEQUENCE_START } from '../../shared/sequences.ts'
 import path from 'node:path'
 
 import { zValidator } from '@hono/zod-validator'
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 
 import type { Limits } from '../platform/config.ts'
@@ -18,7 +18,9 @@ import { seedDocument, seedFolderIndex } from '../storage/primitives/seed.ts'
 
 import { ACCEPT_LANGUAGE, preferredLocale, VARIES_BY_LANGUAGE } from './accept-language.ts'
 import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'
+import { BodyTooLargeError, receiveMultipart, type ReceivedBody, type ReceivedFile } from './multipart.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
+import { STORE_ROOT } from '../../shared/store-path.ts'
 
 const HTTP_OK = 200
 const HTTP_CREATED = 201
@@ -60,24 +62,33 @@ function contentDisposition(name: string): string {
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`
 }
 
-function uploadedFile(body: Record<string, unknown>): File | null {
-  const { file } = body
+const UPLOAD_FIELD = 'file'
+const NO_OTHER_FILES = 0
 
-  return file instanceof File ? file : null
+function uploadedFile(received: ReceivedBody): ReceivedFile | null {
+  return received.files.find((part) => part.name === UPLOAD_FIELD) ?? null
 }
 
-function storedName(body: Record<string, unknown>, file: File): string | null {
-  const { filename } = body
-
-  if (filename === undefined) return file.name
-  return typeof filename === 'string' ? filename : null
+function sentAFieldAsAFile(received: ReceivedBody): boolean {
+  return received.files.filter((part) => part.name !== UPLOAD_FIELD).length > NO_OTHER_FILES
 }
 
-function targetDirectory(body: Record<string, unknown>): string | null {
-  const { path: directory } = body
+function storedName(received: ReceivedBody, file: ReceivedFile): string {
+  return received.fields.filename ?? file.filename
+}
 
-  if (directory === undefined) return ''
-  return typeof directory === 'string' ? directory : null
+function targetDirectory(received: ReceivedBody): string {
+  return received.fields.path ?? STORE_ROOT
+}
+
+async function receivedOrRefusal(c: Context, maxBytes: number): Promise<ReceivedBody | Response> {
+  try {
+    return await receiveMultipart(c.req.raw, maxBytes)
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) return payloadTooLarge(c, maxBytes)
+
+    return invalidBody(c)
+  }
 }
 
 export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
@@ -142,19 +153,19 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
     const declared = Number(c.req.header('content-length') ?? UNDECLARED_LENGTH)
     if (declared > limits.uploadMaxBytes) return payloadTooLarge(c, limits.uploadMaxBytes)
 
-    const body = await c.req.parseBody()
-    const file = uploadedFile(body)
-    const directory = targetDirectory(body)
-    if (file === null || directory === null) return invalidBody(c)
+    const received = await receivedOrRefusal(c, limits.uploadMaxBytes)
+    if (received instanceof Response) return received
 
-    const name = storedName(body, file)
-    if (name === null) return invalidBody(c)
-
-    const bytes = new Uint8Array(await file.arrayBuffer())
-    if (bytes.length > limits.uploadMaxBytes) return payloadTooLarge(c, limits.uploadMaxBytes)
+    const file = uploadedFile(received)
+    if (file === null || sentAFieldAsAFile(received)) return invalidBody(c)
 
     try {
-      const stored = await store.createUpload(directory, name, bytes, actorOf(c))
+      const stored = await store.createUpload(
+        targetDirectory(received),
+        storedName(received, file),
+        file.bytes,
+        actorOf(c),
+      )
       return c.json({ path: stored }, HTTP_CREATED)
     } catch (error) {
       return toErrorResponse(c, error)
@@ -193,4 +204,11 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
   return routes
 }
 
-export const TestOnly = { archiveName, contentDisposition, storedName, targetDirectory, uploadedFile }
+export const TestOnly = {
+  archiveName,
+  contentDisposition,
+  sentAFieldAsAFile,
+  storedName,
+  targetDirectory,
+  uploadedFile,
+}

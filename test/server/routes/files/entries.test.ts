@@ -247,6 +247,30 @@ async function upload(
   return await target.request('/uploads', { method: 'POST', body: form })
 }
 
+const OVER_A_TINY_LIMIT = 64
+const BOUNDARY = 'xvixenx'
+
+function undeclared(size: number): RequestInit {
+  const head = `--${BOUNDARY}\r\nContent-Disposition: form-data; name="file"; filename="big.png"\r\n\r\n`
+  const tail = `\r\n--${BOUNDARY}--\r\n`
+  const body = new ReadableStream<Uint8Array>({
+    start: (controller) => {
+      const encoder = new TextEncoder()
+      controller.enqueue(encoder.encode(head))
+      controller.enqueue(new Uint8Array(size))
+      controller.enqueue(encoder.encode(tail))
+      controller.close()
+    },
+  })
+
+  return {
+    method: 'POST',
+    headers: { 'content-type': `multipart/form-data; boundary=${BOUNDARY}` },
+    body,
+    duplex: 'half',
+  }
+}
+
 async function uploadNamed(sentAs: string, storeAs: unknown, bytes: Uint8Array<ArrayBuffer>): Promise<Response> {
   const form = new FormData()
   form.append('file', new File([bytes], sentAs))
@@ -343,6 +367,24 @@ describe('uploading a file', () => {
     })
 
     expect(res.status).toBe(413)
+  })
+
+  it('refuses an undeclared body over the limit, which no content-length would have caught', async () => {
+    const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, uploadMaxBytes: 4 })
+
+    const res = await tiny.request('/uploads', undeclared(OVER_A_TINY_LIMIT))
+
+    expect(res.status).toBe(413)
+  })
+
+  it('refuses a body that is not multipart at all, rather than failing as a server error', async () => {
+    const res = await app.request('/uploads', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: 'not a multipart body',
+    })
+
+    expect(res.status).toBe(400)
   })
 
   it('stores an upload of exactly the limit, because the limit is what is allowed', async () => {

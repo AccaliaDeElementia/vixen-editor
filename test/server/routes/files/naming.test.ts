@@ -3,12 +3,19 @@
 import { describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../../../src/server/routes/files.ts'
+import type { ReceivedBody, ReceivedFile } from '../../../../src/server/routes/multipart.ts'
 import { STORE_ROOT } from '../../../../src/shared/store-path.ts'
 
-const { archiveName, contentDisposition, storedName, targetDirectory, uploadedFile } = TestOnly
+const { archiveName, contentDisposition, sentAFieldAsAFile, storedName, targetDirectory, uploadedFile } = TestOnly
 
-function png(name: string): File {
-  return new File([new Uint8Array([1])], name)
+const NO_BYTES = new Uint8Array()
+
+function body(parts: Partial<ReceivedBody> = {}): ReceivedBody {
+  return { fields: {}, files: [], ...parts }
+}
+
+function part(name: string, filename: string): ReceivedFile {
+  return { name, filename, bytes: NO_BYTES }
 }
 
 describe('what a downloaded archive is called', () => {
@@ -43,40 +50,44 @@ describe('what a downloaded archive is called', () => {
 
 describe('reading what a multipart upload carried', () => {
   it('takes the file it was given', () => {
-    const sent = png('photo.png')
+    const sent = part('file', 'photo.png')
 
-    expect(uploadedFile({ file: sent })).toBe(sent)
-  })
-
-  it('refuses a body whose file field is not a file at all', () => {
-    expect(uploadedFile({ file: 'photo.png' })).toBeNull()
+    expect(uploadedFile(body({ files: [sent] }))).toBe(sent)
   })
 
   it('refuses a body carrying no file', () => {
-    expect(uploadedFile({})).toBeNull()
+    expect(uploadedFile(body())).toBeNull()
+  })
+
+  it('ignores a file sent under another field, so only the upload itself counts', () => {
+    expect(uploadedFile(body({ files: [part('filename', 'sneaky.png')] }))).toBeNull()
   })
 
   it('stores a file under its own name when none was chosen', () => {
-    expect(storedName({}, png('photo.png'))).toBe('photo.png')
+    expect(storedName(body(), part('file', 'photo.png'))).toBe('photo.png')
   })
 
   it('stores it under the name that was chosen instead', () => {
-    expect(storedName({ filename: 'chosen.png' }, png('photo.png'))).toBe('chosen.png')
-  })
-
-  it('refuses a chosen name that is not text', () => {
-    expect(storedName({ filename: 42 }, png('photo.png'))).toBeNull()
+    expect(storedName(body({ fields: { filename: 'chosen.png' } }), part('file', 'photo.png'))).toBe('chosen.png')
   })
 
   it('lands an upload at the store root when no directory was named', () => {
-    expect(targetDirectory({})).toBe(STORE_ROOT)
+    expect(targetDirectory(body())).toBe(STORE_ROOT)
   })
 
   it('lands it in the directory that was named', () => {
-    expect(targetDirectory({ path: 'journal/2026' })).toBe('journal/2026')
+    expect(targetDirectory(body({ fields: { path: 'journal/2026' } }))).toBe('journal/2026')
+  })
+})
+
+describe('a part sent as a file where text was expected', () => {
+  it('is refused, because a blob is neither a name nor a directory', () => {
+    const sent = body({ files: [part('file', 'photo.png'), part('filename', 'sneaky')] })
+
+    expect(sentAFieldAsAFile(sent)).toBe(true)
   })
 
-  it('refuses a directory that is not text', () => {
-    expect(targetDirectory({ path: 42 })).toBeNull()
+  it('is not reported when the upload itself is the only file', () => {
+    expect(sentAFieldAsAFile(body({ files: [part('file', 'photo.png')] }))).toBe(false)
   })
 })
