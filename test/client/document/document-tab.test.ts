@@ -288,6 +288,41 @@ describe('carrying a document to the other pane', () => {
   })
 })
 
+describe('the save shortcut', () => {
+  function pressSave(made: DocumentTab): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true })
+    made.view.contentDOM.dispatchEvent(event)
+
+    return event
+  }
+
+  it('is handled, so the browser does not also offer to save the page', () => {
+    const made = tab()
+    made.open(FIRST, '# stored')
+
+    expect(pressSave(made).defaultPrevented).toBe(true)
+  })
+
+  it('is handled even when the tab holds no document, so the shortcut never falls through', () => {
+    expect(pressSave(tab()).defaultPrevented).toBe(true)
+  })
+
+  it('says there is nothing to save when the buffer matches what is stored', () => {
+    const made = tab()
+    made.open(FIRST, '# stored')
+
+    pressSave(made)
+
+    expect(announced).toContain(`No changes in ${FIRST}`)
+  })
+
+  it('says nothing at all when the tab holds no document, because there is nothing to name', () => {
+    pressSave(tab())
+
+    expect(announced).toStrictEqual([])
+  })
+})
+
 describe('the caret', () => {
   it('is at the top of a document just opened', () => {
     const made = tab()

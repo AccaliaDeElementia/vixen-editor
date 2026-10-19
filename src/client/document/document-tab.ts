@@ -16,6 +16,7 @@ import type { Toast } from '../platform/toast.ts'
 import { createAutosave, type SaveState } from './autosave.ts'
 import { formattingKeys } from '../editing/control-bar.ts'
 import { recallCaret } from './carets.ts'
+import { createTabCaret } from './tab-caret.ts'
 import type { CaretMemory } from './caret-memory.ts'
 import { isConflict, offerResolution } from './conflict.ts'
 import { bindEntryDrops, bindFileDrops } from '../editing/drops.ts'
@@ -88,28 +89,21 @@ function startsALine(state: EditorState, position: number | null): boolean {
 export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   const { session, files, dialogs, toast, statusBar, documentId, openUrl, announce } = options
 
-  let caretPosition = TOP_OF_DOCUMENT
   let openedAt: string | null = null
   const materialised = createMaterialised()
   let lastRefusal: unknown = null
 
   const holder = createHolderControl()
 
-  let merged = ''
-  const merging = createMergeControl(() => {
-    announce(`${merged} merged — every change resolved`)
+  const merging = createMergeControl((of: string) => {
+    announce(`${of} merged — every change resolved`)
   })
 
-  function rememberWhereTheCaretIs(): void {
-    if (openedAt === null) return
-
-    options.caretMemory.moved(openedAt, caretPosition)
-  }
-
-  function settleTheCaret(): void {
-    rememberWhereTheCaretIs()
-    options.caretMemory.settle()
-  }
+  const caret = createTabCaret({
+    memory: options.caretMemory,
+    holding: () => openedAt,
+    onMoved: options.onCaretMoved,
+  })
 
   async function writeDocument(content: string): Promise<void> {
     const target = documentId()
@@ -142,42 +136,40 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
     return true
   }
 
-  const save = (): boolean => {
-    const target = documentId()
-    if (target === null) return false
+  const saveTheDocument = (target: string): void => {
     if (autosave.state() === 'clean') {
       announce(`No changes in ${target}`)
-      return true
+
+      return
     }
 
     void autosave.flush().then(() => {
       if (autosave.state() === 'clean') announce(`Saved ${target}`)
     })
+  }
+
+  const save = (): boolean => {
+    const target = documentId()
+    if (target !== null) saveTheDocument(target)
 
     return true
   }
 
-  function stateFor(doc: string, caret: number): EditorState {
+  function stateFor(doc: string, startsAt: number): EditorState {
     return createEditorState({
       doc,
-      selection: { anchor: caret },
+      selection: { anchor: startsAt },
       extensions: [
         basicSetup,
         holder.unset,
         merging.inactive,
         EditorView.lineWrapping,
         Prec.high(
-          keymap.of([
-            { key: KEYS.save, preventDefault: true, run: save },
-            { key: KEYS.openLink, run: openLinkAtCaret },
-            ...formattingKeys,
-          ]),
+          keymap.of([{ key: KEYS.save, run: save }, { key: KEYS.openLink, run: openLinkAtCaret }, ...formattingKeys]),
         ),
         EditorView.updateListener.of((update) => {
-          caretPosition = caretIn(update.state)
+          caret.moved(caretIn(update.state))
           merging.endWhenResolved(update.view)
-          options.onCaretMoved(caretPosition)
-          rememberWhereTheCaretIs()
           if (!update.docChanged) return
 
           const content = update.state.doc.toString()
@@ -230,35 +222,32 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   }
 
   function load(content: string): void {
-    caretPosition = Math.min(caretPosition, content.length)
-    view.setState(stateFor(content, caretPosition))
+    view.setState(stateFor(content, caret.clampTo(content.length)))
     autosave.reset(content)
     statusBar.showWordCount(content)
     options.onReloaded(content)
   }
 
   function open(entryPath: string, content: string): void {
-    settleTheCaret()
+    caret.settle()
     if (openedAt !== null) materialised.remember(openedAt, view.state)
     openedAt = entryPath
 
     const loaded = materialised.recall(entryPath, content)
-    const caret = loaded === null ? recallCaret(entryPath, content.length) : caretIn(loaded)
+    const startsAt = loaded === null ? recallCaret(entryPath, content.length) : caretIn(loaded)
 
-    caretPosition = caret
-    options.caretMemory.opened(entryPath, caret)
-    view.setState(loaded ?? stateFor(content, caret))
+    caret.opened(entryPath, startsAt)
+    view.setState(loaded ?? stateFor(content, startsAt))
     holder.follow(view, entryPath)
     autosave.reset(content)
     statusBar.showWordCount(content)
-    view.dispatch({ effects: EditorView.scrollIntoView(caret) })
+    view.dispatch({ effects: EditorView.scrollIntoView(startsAt) })
   }
 
   function adopt(entryPath: string, carried: CarriedDocument): void {
     const text = carried.state.doc.toString()
     openedAt = entryPath
-    caretPosition = caretIn(carried.state)
-    options.caretMemory.opened(entryPath, caretPosition)
+    caret.opened(entryPath, caretIn(carried.state))
     view.setState(carried.state)
     holder.follow(view, entryPath)
     autosave.reset(carried.storedContent)
@@ -267,7 +256,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   }
 
   function handOver(): CarriedDocument {
-    settleTheCaret()
+    caret.settle()
 
     const carried = { state: view.state, storedContent: autosave.lastSaved() }
     openedAt = null
@@ -303,8 +292,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
           await autosave.flush()
         },
         merge: (onDisk: string) => {
-          merged = target
-          merging.begin(view, onDisk)
+          merging.begin(view, onDisk, target)
           announce(`Merging ${target} — accept or reject each change, then it saves as usual`)
         },
       },
@@ -341,7 +329,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
   return {
     view,
     recheck,
-    caret: () => caretPosition,
+    caret: caret.at,
     saveState: autosave.state,
     flush: autosave.flush,
     insertAt,
@@ -357,14 +345,14 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
       holder.follow(view, to)
     },
     rescue: () => {
-      settleTheCaret()
+      caret.settle()
       const target = documentId()
       const content = view.state.doc.toString()
       if (target !== null && !isBlank(content)) session.saveOnUnload(target, content)
     },
     settleBeforeLeaving,
     teardownDocument: () => {
-      settleTheCaret()
+      caret.settle()
       autosave.stop()
       unwatchFreshness()
       view.destroy()

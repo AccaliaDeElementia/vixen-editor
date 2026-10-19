@@ -16,13 +16,14 @@ const DIFFERING_LINE = { from: 6, to: 10 }
 interface Harness {
   view: EditorView
   merging: MergeControl
-  resolved: { count: number }
+  resolved: { count: number; of: string[] }
 }
 
 function editorShowing(buffer: string): Harness {
-  const resolved = { count: 0 }
-  const merging = createMergeControl(() => {
+  const resolved = { count: 0, of: [] as string[] }
+  const merging = createMergeControl((of: string) => {
     resolved.count += 1
+    resolved.of.push(of)
   })
 
   const parent = document.createElement('div')
@@ -68,7 +69,7 @@ describe('beginning a merge', () => {
   it('marks the lines that differ from what is on disk', () => {
     const { view, merging } = editorShowing(IN_BUFFER)
 
-    merging.begin(view, ON_DISK)
+    merging.begin(view, ON_DISK, 'notes.md')
 
     expect(changedLines(view)).toBe(1)
   })
@@ -76,7 +77,7 @@ describe('beginning a merge', () => {
   it('shows the stored version as the side being replaced, not the buffer', () => {
     const { view, merging } = editorShowing(IN_BUFFER)
 
-    merging.begin(view, ON_DISK)
+    merging.begin(view, ON_DISK, 'notes.md')
 
     expect(strickenText(view)).toContain('theirs')
   })
@@ -84,7 +85,7 @@ describe('beginning a merge', () => {
   it('does not strike the buffer, which is the side being kept', () => {
     const { view, merging } = editorShowing(IN_BUFFER)
 
-    merging.begin(view, ON_DISK)
+    merging.begin(view, ON_DISK, 'notes.md')
 
     expect(strickenText(view)).not.toContain('mine')
   })
@@ -92,7 +93,7 @@ describe('beginning a merge', () => {
   it('leaves the buffer as it was, so nothing is resolved by opening the view', () => {
     const { view, merging } = editorShowing(IN_BUFFER)
 
-    merging.begin(view, ON_DISK)
+    merging.begin(view, ON_DISK, 'notes.md')
 
     expect(view.state.doc.toString()).toBe(IN_BUFFER)
   })
@@ -100,7 +101,7 @@ describe('beginning a merge', () => {
   it('offers an accept and a reject for each difference', () => {
     const { view, merging } = editorShowing(IN_BUFFER)
 
-    merging.begin(view, ON_DISK)
+    merging.begin(view, ON_DISK, 'notes.md')
 
     expect(view.dom.querySelectorAll('.cm-chunkButtons button')).toHaveLength(2)
   })
@@ -109,16 +110,25 @@ describe('beginning a merge', () => {
 describe('resolving every difference', () => {
   it('removes the overlay', () => {
     const { view, merging } = editorShowing(IN_BUFFER)
-    merging.begin(view, ON_DISK)
+    merging.begin(view, ON_DISK, 'notes.md')
 
     view.dispatch({ changes: { ...DIFFERING_LINE, insert: 'theirs' } })
 
     expect(changedLines(view)).toBe(0)
   })
 
+  it('names the document it was merging, so the report does not have to be told separately', () => {
+    const harness = editorShowing(IN_BUFFER)
+    harness.merging.begin(harness.view, ON_DISK, 'notes.md')
+
+    harness.view.dispatch({ changes: { ...DIFFERING_LINE, insert: 'theirs' } })
+
+    expect(harness.resolved.of).toStrictEqual(['notes.md'])
+  })
+
   it('reports it once, and not again on the next edit', () => {
     const harness = editorShowing(IN_BUFFER)
-    harness.merging.begin(harness.view, ON_DISK)
+    harness.merging.begin(harness.view, ON_DISK, 'notes.md')
 
     harness.view.dispatch({ changes: { ...DIFFERING_LINE, insert: 'theirs' } })
     harness.view.dispatch({ changes: { from: 0, insert: 'later edit ' } })
@@ -130,7 +140,7 @@ describe('resolving every difference', () => {
 describe('accepting a difference, which leaves the buffer untouched', () => {
   it('still takes the overlay down, because the difference is gone', () => {
     const harness = editorShowing(IN_BUFFER)
-    harness.merging.begin(harness.view, ON_DISK)
+    harness.merging.begin(harness.view, ON_DISK, 'notes.md')
 
     acceptChunk(harness.view, getChunks(harness.view.state)?.chunks[0]?.fromB ?? 0)
 
@@ -139,7 +149,7 @@ describe('accepting a difference, which leaves the buffer untouched', () => {
 
   it('leaves the buffer as it was, since accepting means keeping it', () => {
     const harness = editorShowing(IN_BUFFER)
-    harness.merging.begin(harness.view, ON_DISK)
+    harness.merging.begin(harness.view, ON_DISK, 'notes.md')
 
     acceptChunk(harness.view, getChunks(harness.view.state)?.chunks[0]?.fromB ?? 0)
 
@@ -148,7 +158,7 @@ describe('accepting a difference, which leaves the buffer untouched', () => {
 
   it('reports the merge resolved, so the caller can stop warning', () => {
     const harness = editorShowing(IN_BUFFER)
-    harness.merging.begin(harness.view, ON_DISK)
+    harness.merging.begin(harness.view, ON_DISK, 'notes.md')
 
     acceptChunk(harness.view, getChunks(harness.view.state)?.chunks[0]?.fromB ?? 0)
 
@@ -159,7 +169,7 @@ describe('accepting a difference, which leaves the buffer untouched', () => {
 describe('resolving only some of the differences', () => {
   it('keeps the overlay, because there is still a decision to make', () => {
     const harness = editorShowing('alpha\nmine\ngamma\nmine again\n')
-    harness.merging.begin(harness.view, 'alpha\ntheirs\ngamma\ntheirs again\n')
+    harness.merging.begin(harness.view, 'alpha\ntheirs\ngamma\ntheirs again\n', 'notes.md')
 
     harness.view.dispatch({ changes: { ...DIFFERING_LINE, insert: 'theirs' } })
 
@@ -168,7 +178,7 @@ describe('resolving only some of the differences', () => {
 
   it('reports nothing resolved while a decision is outstanding', () => {
     const harness = editorShowing('alpha\nmine\ngamma\nmine again\n')
-    harness.merging.begin(harness.view, 'alpha\ntheirs\ngamma\ntheirs again\n')
+    harness.merging.begin(harness.view, 'alpha\ntheirs\ngamma\ntheirs again\n', 'notes.md')
 
     harness.view.dispatch({ changes: { ...DIFFERING_LINE, insert: 'theirs' } })
 

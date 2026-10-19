@@ -5,6 +5,7 @@ import { Compartment, type EditorState, type Extension } from '@codemirror/state
 import { EditorView } from '@codemirror/view'
 
 const NOTHING_LEFT = 0
+const NOTHING_YET = ''
 
 const reachableChunkButtons: Extension = EditorView.theme({
   '.cm-chunkButtons button': { minHeight: '24px', minWidth: '24px', padding: '0 0.5em' },
@@ -12,7 +13,7 @@ const reachableChunkButtons: Extension = EditorView.theme({
 
 export interface MergeControl {
   inactive: Extension
-  begin: (view: EditorView, onDisk: string) => void
+  begin: (view: EditorView, onDisk: string, of: string) => void
   endWhenResolved: (view: EditorView) => void
 }
 
@@ -20,13 +21,15 @@ function differencesLeft(state: EditorState): number | null {
   return getChunks(state)?.chunks.length ?? null
 }
 
-export function createMergeControl(onResolved: () => void): MergeControl {
+export function createMergeControl(onResolved: (of: string) => void): MergeControl {
   const overlay = new Compartment()
+  let mergingOf = NOTHING_YET
 
   return {
     inactive: overlay.of([]),
 
-    begin(view: EditorView, onDisk: string): void {
+    begin(view: EditorView, onDisk: string, of: string): void {
+      mergingOf = of
       view.dispatch({
         effects: overlay.reconfigure([unifiedMergeView({ original: onDisk }), reachableChunkButtons]),
       })
@@ -36,7 +39,7 @@ export function createMergeControl(onResolved: () => void): MergeControl {
       if (differencesLeft(view.state) !== NOTHING_LEFT) return
 
       view.dispatch({ effects: overlay.reconfigure([]) })
-      onResolved()
+      onResolved(mergingOf)
     },
   }
 }
