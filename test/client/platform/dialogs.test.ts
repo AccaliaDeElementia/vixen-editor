@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createDialogs } from '../../../src/client/platform/dialogs.ts'
 import { renderDialog } from '../templates.ts'
+import { cast } from '../../cast.ts'
 
 function page(): void {
   document.body.innerHTML = renderDialog()
@@ -236,6 +237,21 @@ describe('prompt', () => {
 describe('the one dialog a page has', () => {
   it('is owned by a single dialogs, however many parts of the app ask for one', () => {
     expect(createDialogs(document)).toBe(createDialogs(document))
+  })
+
+  it('binds the input once, however many times it is asked for', () => {
+    const input = document.querySelector<HTMLInputElement>('#file-dialog-entry')
+    const binding = vi.spyOn(cast<HTMLElement>(input), 'addEventListener')
+
+    createDialogs(document)
+    createDialogs(document)
+    createDialogs(document)
+
+    expect(binding.mock.calls.filter(([name]) => name === 'keydown')).toHaveLength(1)
+  })
+
+  it('is shared by two roots that find it, because the element is what they have in common', () => {
+    expect(createDialogs(document)).toBe(createDialogs(document.body))
   })
 
   it('is not shared with a page that has a dialog element of its own', () => {
