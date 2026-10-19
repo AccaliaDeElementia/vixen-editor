@@ -19,7 +19,7 @@ const MUTATIONS: ReadonlyArray<readonly [string, string]> = [
   ['false', 'true'],
 ]
 
-const DEFAULT_TIMEOUT_MS = 120_000
+const DEFAULT_TIMEOUT_MS = 600_000
 const NONE = 0
 const FIRST_LINE = 1
 const ONE_MUTANT = 1
@@ -178,6 +178,53 @@ function codeLines(lines: readonly string[]): boolean[] {
   })
 }
 
+const DECLARES_TYPE = /^(?:export\s+)?type\s+\w/v
+const OPENS_A_GROUP = '({['
+const CLOSES_A_GROUP = ')}]'
+const TRAILS_INTO_NEXT_LINE = '=|&,({['
+const LEADS_FROM_PREVIOUS_LINE = '|&'
+const BALANCED = 0
+const NO_SUCH_LINE = ''
+const THE_LINE_AFTER = 1
+const LAST_CHARACTER = -1
+const FIRST_CHARACTER = 0
+
+function countIn(line: string, characters: string): number {
+  return Array.from(line).filter((character) => characters.includes(character)).length
+}
+
+function isOneOf(character: string | undefined, characters: string): boolean {
+  return character !== undefined && characters.includes(character)
+}
+
+function groupDepthChange(line: string): number {
+  return countIn(line, OPENS_A_GROUP) - countIn(line, CLOSES_A_GROUP)
+}
+
+function typeDeclarationLines(lines: readonly string[]): boolean[] {
+  let depth = BALANCED
+  let declaring = false
+
+  return lines.map((line, index) => {
+    const trimmed = line.trim()
+    if (!declaring) {
+      if (!DECLARES_TYPE.test(trimmed)) return false
+      declaring = true
+      depth = BALANCED
+    }
+
+    depth += groupDepthChange(line)
+    const next = lines[index + THE_LINE_AFTER]?.trim() ?? NO_SUCH_LINE
+    const unfinished =
+      depth !== BALANCED ||
+      isOneOf(trimmed.at(LAST_CHARACTER), TRAILS_INTO_NEXT_LINE) ||
+      isOneOf(next.at(FIRST_CHARACTER), LEADS_FROM_PREVIOUS_LINE)
+    if (!unfinished) declaring = false
+
+    return true
+  })
+}
+
 const EXPECTED_TO_SURVIVE = /mutation-ignore\s+(?<to>\S+)\s+--/v
 const NO_PREVIOUS_LINE = ''
 
@@ -205,11 +252,13 @@ function asClaimed(found: Mutant[], claim: string, where: string): Mutant[] {
 export function mutantsFor(file: string, contents: string): Mutant[] {
   const lines = contents.split('\n')
   const isCode = codeLines(lines)
+  const isType = typeDeclarationLines(lines)
 
   return lines.flatMap((line, index) => {
     if (isCode[index] !== true) return []
 
-    const found = MUTATIONS.filter(([from]) => line.includes(from)).map(([from, to]) => ({
+    const mutable = isType[index] === true ? [] : MUTATIONS.filter(([from]) => line.includes(from))
+    const found = mutable.map(([from, to]) => ({
       file,
       line: index + FIRST_LINE,
       from,
@@ -230,7 +279,7 @@ function argsFor(mutant: Mutant): string[] {
   return ['vitest', 'related', mutant.file, '--run', '--silent', '--bail=1']
 }
 
-export async function judge(mutant: Mutant, timeoutMs: number): Promise<Outcome> {
+export async function judge(mutant: Mutant, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<Outcome> {
   const ran = await run('npx', argsFor(mutant), timeoutMs, { env: envFor(mutant) })
 
   return { mutant, fate: fateOf(ran) }

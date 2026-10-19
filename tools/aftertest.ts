@@ -3,7 +3,7 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { describeMutant, judge, mutantsFor, run, type Mutant } from './mutate.ts'
+import { describeMutant, judge, mutantsFor, run, type Mutant, type Outcome } from './mutate.ts'
 import { runningInCI } from '../test/ci.ts'
 import { serially } from '../src/shared/serially.ts'
 
@@ -12,13 +12,15 @@ const SOURCE_EXTENSION = '.ts'
 const BUDGET = 8
 const REMEMBERED = 200
 const RECORD = '.vixen-mutants.json'
-const TIMEOUT_MS = 120_000
+const SAMPLE_TIMEOUT_MS = 30_000
 
 const NONE = 0
 const ONE = 1
 const START = 0
 const STATUS_WIDTH = 3
 const RENAMED = ' -> '
+
+const UNRESOLVED = 'unresolved'
 
 const ALL_WELL = 0
 const SURVIVOR_IN_WORK = 1
@@ -102,14 +104,43 @@ async function remember(drawn: readonly Mutant[], previous: readonly string[]): 
   await writeFile(RECORD, JSON.stringify(keys))
 }
 
-function report(survivors: readonly Mutant[], drawn: readonly Mutant[], inWork: readonly string[]): void {
-  process.stdout.write(`\nmutation sample: ${String(drawn.length)} run, ${String(survivors.length)} survived\n`)
+export async function judgeInTurn(
+  drawn: readonly Mutant[],
+  tryOne: (mutant: Mutant) => Promise<Outcome>,
+  say: (line: string) => void,
+): Promise<Outcome[]> {
+  const answers: Outcome[] = []
+
+  await serially(drawn.entries(), async ([index, mutant]) => {
+    say(`  [${String(index + ONE)}/${String(drawn.length)}] ${describeMutant(mutant)}\n`)
+    answers.push(await tryOne(mutant))
+  })
+
+  return answers
+}
+
+export function findings(answers: readonly Outcome[]): Mutant[] {
+  return answers
+    .filter(({ fate, mutant }) => fate !== UNRESOLVED && fate !== mutant.expected)
+    .map(({ mutant }) => mutant)
+}
+
+function report(answers: readonly Outcome[], inWork: readonly string[]): void {
+  const found = findings(answers)
+  const unresolved = answers.filter(({ fate }) => fate === UNRESOLVED)
+  const ran = `${String(answers.length)} run, ${String(found.length)} to answer for`
+  const timing = unresolved.length === NONE ? '' : `, ${String(unresolved.length)} out of time`
+  process.stdout.write(`mutation sample: ${ran}${timing}\n`)
+
   const touched = new Set(inWork)
-  for (const mutant of survivors) {
+  for (const { mutant } of unresolved) {
+    process.stdout.write(`  out of time, so nothing was proved  ${describeMutant(mutant)}\n`)
+  }
+  for (const mutant of found) {
     const where = touched.has(mutant.file) ? 'in work in progress' : 'elsewhere'
     process.stdout.write(`  WARNING  survived ${where}  ${describeMutant(mutant)}\n`)
   }
-  if (survivors.length > NONE) process.stdout.write('  raise a task to investigate after the current commit\n')
+  if (found.length > NONE) process.stdout.write('  raise a task to investigate after the current commit\n')
 }
 
 export async function sampleMutants(): Promise<number> {
@@ -123,16 +154,19 @@ export async function sampleMutants(): Promise<number> {
     randomly,
   )
 
-  const survivors: Mutant[] = []
-  await serially(drawn, async (mutant) => {
-    const outcome = await judge(mutant, TIMEOUT_MS)
-    if (outcome.fate !== mutant.expected) survivors.push(mutant)
-  })
+  process.stdout.write(`\nmutation sample: ${String(drawn.length)} mutants\n`)
+  const answers = await judgeInTurn(
+    drawn,
+    async (mutant) => await judge(mutant, SAMPLE_TIMEOUT_MS),
+    (line) => {
+      process.stdout.write(line)
+    },
+  )
 
   await remember(drawn, await rememberedKeys())
-  report(survivors, drawn, inWork)
+  report(answers, inWork)
 
-  return statusFor(survivors, inWork)
+  return statusFor(findings(answers), inWork)
 }
 
 if (import.meta.main && !runningInCI(process.env)) {

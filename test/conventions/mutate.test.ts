@@ -188,6 +188,54 @@ describe('prose that reads like code', () => {
   })
 })
 
+describe('a type the compiler erases', () => {
+  it('yields no mutant, because changing a type is a compile error or nothing at all', () => {
+    expect(mutantsFor('src/a.ts', 'type Outcome = { ok: true } | { ok: false }')).toStrictEqual([])
+  })
+
+  it('is mutated where the same words are a value, so the scan is not simply blind to them', () => {
+    expect(mutantsFor('src/a.ts', 'const outcome = { ok: true }')).toHaveLength(1)
+  })
+
+  it('reads an exported declaration the same way as a local one', () => {
+    expect(mutantsFor('src/a.ts', 'export type Outcome = { ok: true }')).toStrictEqual([])
+  })
+
+  it('follows a union onto the lines below it, which carry no mark of their own', () => {
+    const source = ['type Outcome =', '  | { ok: true }', '  | { ok: false }'].join('\n')
+
+    expect(mutantsFor('src/a.ts', source)).toStrictEqual([])
+  })
+
+  it('follows a braced declaration to its closing line', () => {
+    const source = ['type Outcome = {', '  ok: true', '}'].join('\n')
+
+    expect(mutantsFor('src/a.ts', source)).toStrictEqual([])
+  })
+
+  it('releases the line after one, so the code below a type is still measured', () => {
+    const source = ['type Outcome = {', '  ok: true', '}', 'const x = true'].join('\n')
+
+    expect(mutantsFor('src/a.ts', source)).toHaveLength(1)
+  })
+
+  it('releases the line after a blank one, which is how a real file separates them', () => {
+    const source = ['type Outcome = { ok: true }', '', 'const x = true'].join('\n')
+
+    expect(mutantsFor('src/a.ts', source)).toHaveLength(1)
+  })
+
+  it('leaves a value named type alone, which declares nothing', () => {
+    expect(mutantsFor('src/a.ts', 'type = true').map((mutant) => mutant.to)).toStrictEqual(['false'])
+  })
+
+  it('releases the line after a union, which ends without a brace to close', () => {
+    const source = ['type Outcome =', '  | { ok: true }', '  | { ok: false }', 'const x = true'].join('\n')
+
+    expect(mutantsFor('src/a.ts', source)).toHaveLength(1)
+  })
+})
+
 describe('a mutant a comment says should survive', () => {
   it('is expected to survive, so the sweep checks the claim rather than skipping it', () => {
     expect(mutantsFor('src/a.ts', EXPECTED_TO_SURVIVE).map((mutant) => mutant.expected)).toStrictEqual(['survived'])

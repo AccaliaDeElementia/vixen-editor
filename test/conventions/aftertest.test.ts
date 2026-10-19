@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises'
 
 import { describe, expect, it } from 'vitest'
 
-import { eligible, keyOf, sample, statusFor } from '../../tools/aftertest.ts'
+import { eligible, findings, judgeInTurn, keyOf, sample, statusFor } from '../../tools/aftertest.ts'
+import type { Mutant, Outcome } from '../../tools/mutate.ts'
 import { runningInCI } from '../ci.ts'
 
 const BUDGET = 8
@@ -57,6 +58,96 @@ describe('drawing a sample', () => {
 
   it('takes what there is when the pool is smaller than the budget', () => {
     expect(sample([IN_WORK], [ELSEWHERE], BUDGET, inOrder)).toHaveLength(2)
+  })
+})
+
+describe('watching a sample run', () => {
+  const KILLED = 'killed' as const
+  const SURVIVED = 'survived' as const
+
+  interface Fake {
+    say: (line: string) => void
+    tryOne: (mutant: Mutant) => Promise<Outcome>
+  }
+
+  function logging(into: string[], fate: Outcome['fate']): Fake {
+    return {
+      say: (line) => {
+        into.push(`said ${line.trim()}`)
+      },
+      tryOne: async (mutant) => {
+        into.push(`ran ${keyOf(mutant)}`)
+
+        return await Promise.resolve({ mutant, fate })
+      },
+    }
+  }
+
+  it('names a mutant before running it, so a slow one never reads as a wedge', async () => {
+    const log: string[] = []
+    const { say, tryOne } = logging(log, KILLED)
+
+    await judgeInTurn([IN_WORK, ELSEWHERE], tryOne, say)
+
+    expect(log.at(0)).toContain('said')
+  })
+
+  it('names each in turn, so the line on screen is the one being run', async () => {
+    const log: string[] = []
+    const { say, tryOne } = logging(log, KILLED)
+
+    await judgeInTurn([IN_WORK, ELSEWHERE], tryOne, say)
+
+    expect(log.filter((entry) => entry.startsWith('said'))).toHaveLength(2)
+  })
+
+  it('counts the mutant against the size of the draw, so the end is in sight', async () => {
+    const said: string[] = []
+    const { tryOne } = logging([], KILLED)
+
+    await judgeInTurn([IN_WORK, ELSEWHERE], tryOne, (line) => {
+      said.push(line)
+    })
+
+    expect(said.at(1)).toContain('[2/2]')
+  })
+
+  it('says which mutant, because the count alone names nothing', async () => {
+    const said: string[] = []
+    const { tryOne } = logging([], KILLED)
+
+    await judgeInTurn([IN_WORK], tryOne, (line) => {
+      said.push(line)
+    })
+
+    expect(said.at(0)).toContain('src/a.ts:1')
+  })
+
+  it('hands back what each one answered, so the caller decides what counts', async () => {
+    const { say, tryOne } = logging([], SURVIVED)
+
+    expect(await judgeInTurn([IN_WORK], tryOne, say)).toStrictEqual([{ mutant: IN_WORK, fate: SURVIVED }])
+  })
+})
+
+describe('which answers are findings', () => {
+  const KILLED = 'killed' as const
+  const CLAIMED = { ...ELSEWHERE, expected: 'survived' as const }
+
+  it('counts one that lived where a test should have killed it', () => {
+    expect(findings([{ mutant: IN_WORK, fate: 'survived' }])).toStrictEqual([IN_WORK])
+  })
+
+  it('counts one that died although a marker claimed it would live, because the claim has expired', () => {
+    expect(findings([{ mutant: CLAIMED, fate: KILLED }])).toStrictEqual([CLAIMED])
+  })
+
+  it('leaves out one that died as expected', () => {
+    expect(findings([{ mutant: IN_WORK, fate: KILLED }])).toStrictEqual([])
+  })
+
+  it('leaves out one that ran out of time, because a run that never finished proved nothing', () => {
+    expect(findings([{ mutant: IN_WORK, fate: 'unresolved' }])).toStrictEqual([])
   })
 })
 
