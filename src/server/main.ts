@@ -16,6 +16,7 @@ import { repairLinks } from './markdown/relink.ts'
 import { createFsDocumentStore } from './storage/fs-store.ts'
 import { createWriteLock } from './platform/lock.ts'
 import { sweepTemporaries } from './storage/sweep.ts'
+import { clearStaging } from './storage/staging.ts'
 import { createTemplateRenderer } from './templates.ts'
 import { archiveUrlFor } from '../shared/api.ts'
 import { STORE_ROOT } from '../shared/store-path.ts'
@@ -53,6 +54,7 @@ export interface Runtime {
 
 const defaultRuntime: Runtime = {
   loadEnvFile: () => {
+    /* mutation-ignore false -- tooling configuration, with no app logic around it. */
     loadDotenv({ quiet: true })
   },
   serve,
@@ -72,6 +74,7 @@ async function buildIdOrUnknown(publicDir: string, templatesDir: string): Promis
 
 async function sweepBeforeServing(docsRoot: string): Promise<void> {
   try {
+    await clearStaging(docsRoot)
     await sweepTemporaries(docsRoot)
   } catch (error) {
     logStartup('sweep of %s failed: %O', docsRoot, error)

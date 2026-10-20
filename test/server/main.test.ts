@@ -21,6 +21,7 @@ import {
 import * as lockModule from '../../src/server/platform/lock.ts'
 import { DEFAULT_WRITE_LOCK_TIMEOUT_MS } from '../../src/server/platform/lock.ts'
 import { TestOnly as atomicWriteTestOnly } from '../../src/server/storage/primitives/atomic-write.ts'
+import { TestOnly as stagingTestOnly } from '../../src/server/storage/staging.ts'
 import { applyDebugFilter, createLogger } from '../../src/server/platform/logging.ts'
 import { startServer, type Runtime, TestOnly as mainTestOnly } from '../../src/server/main.ts'
 
@@ -354,6 +355,24 @@ describe('startServer', () => {
     await startServer(runtime)
 
     expect(orphanWhenServeRan).toBe(false)
+  })
+
+  it('has already cleared an abandoned staged import by the time it calls serve', async () => {
+    const staged = path.join(docsRoot, stagingTestOnly.STAGING_DIRECTORY, 'abandoned')
+    await fs.mkdir(staged, { recursive: true })
+    await fs.writeFile(path.join(staged, 'a.md'), '')
+
+    let stagedWhenServeRan: boolean | null = null
+    const { runtime } = recordingRuntime()
+    const { serve: recordingServe } = runtime
+    runtime.serve = (...args: Parameters<typeof serve>) => {
+      stagedWhenServeRan = existsSync(staged)
+      return recordingServe(...args)
+    }
+
+    await startServer(runtime)
+
+    expect(stagedWhenServeRan).toBe(false)
   })
 
   it('still serves when the build cannot be identified, because that is a diagnostic', async () => {
