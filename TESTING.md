@@ -258,6 +258,22 @@ exists across a library boundary, the closest call point that produces a valid
 test is used instead. That is a lever to be resisted rather than reached for,
 and it is raised with the human before it is pulled.
 
+<a id="testing-4e21d7"></a>
+
+### A fake claims a production type in one audited place
+
+`cast<T>` in `test/cast.ts` is the only place a test may assert that a fake
+satisfies a production type. It suppresses `no-unsafe-type-assertion` and
+`no-unnecessary-type-parameters`, and both rules are right about it: the
+assertion is unchecked, and `T` only names the return.
+
+**Routing every such claim through one function is what lets those rules stay
+on across the rest of the suite**, so an unchecked assertion written anywhere
+else is a lint failure rather than a habit.
+
+`cast` checks nothing. A fake that drifts from the type it claims fails in the
+test that uses it, not at the cast.
+
 <a id="testing-3b7e1c"></a>
 
 ### The browser suite shares one store, and specs must survive each other

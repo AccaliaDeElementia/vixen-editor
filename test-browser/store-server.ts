@@ -42,8 +42,7 @@ function serve(port: number, docsRoot: string): ChildProcess {
 export const test = base.extend<object, { storeServer: StoreServer }>({
   storeServer: [
     /* eslint-disable-next-line no-empty-pattern -- Playwright reads a fixture's dependencies from this
-       destructuring pattern, so an empty one is how a fixture declares it needs none. A named parameter is
-       rejected outright at run time, which is how this was found. */
+       destructuring pattern, so an empty one is how a fixture declares it needs none. */
     async ({}, use, workerInfo) => {
       const port = FIRST_PORT + workerInfo.parallelIndex
       const url = `http://127.0.0.1:${String(port)}`

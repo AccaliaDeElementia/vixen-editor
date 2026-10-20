@@ -162,12 +162,32 @@ points at** — the line is where the rule noticed, rarely where the problem is.
    the function, change the return type, replace the loop. Suppressions
    removed this way here have twice turned out to be sitting on top of live
    bugs that the suppression was hiding.
-4. **Only then suppress**, when no practical restructuring avoids it, and say
-   in the rationale what was tried and why it did not work.
+4. **Only then suppress**, when no practical restructuring avoids it.
 
 A suppression that survives this is usually one where the rule asks for the
 opposite of the requirement — serialising where it wants concurrency, say.
 Saying so is what marks it permanent rather than pending.
+
+#### A rationale is written for the reader six months from now
+
+**What you tried goes in the reply. What is true goes in the comment.** Those
+are two audiences, and a rationale that serves both serves neither.
+
+The reviewer reading the change today wants the attempts — which restructurings
+were tried and why each failed — and the announcement below is where they get
+them. The reader six months from now has one question, _why is this here_, and
+every sentence of archaeology is something they must wade through to reach the
+answer. Worse, the attempts age: a restructuring that failed against last year's
+code may work against this year's, and the comment will still say it was tried.
+
+So a rationale carries **the conclusion, and the bare minimum that supports it**.
+One clause where one will do. `the root necessarily exists once a target inside
+it resolved` is the whole of a good one.
+
+The tell is the same as for prose anywhere: a sentence about _how this was
+found_, a sentence naming an alternative that was rejected, or a sentence
+explaining a project-wide policy. The first two belong in the reply, the third
+in whichever of these documents owns the rule.
 
 #### A rationale expires, and nothing announces it
 
