@@ -38,7 +38,8 @@ them, but it means a green `test:coverage` is not a green gate.
 | `npm run dev`            | Watch every source dir; rebuild and restart on change                               |
 | `npm run format`         | Rewrite files to Prettier style (the fix for a format failure)                      |
 | `npm run lint:fix`       | Apply ESLint autofixes                                                              |
-| `npm run mutate <files>` | Mutation-test those files against the unit suite — **not part of the gate**         |
+| `npm run mutate <files>` | Mutation-test whole files against their own mirror tests — **not part of the gate** |
+| `npm run mutate:all`     | The same over every module in `src/`, written to `.vixen-census.md` (~20 min)       |
 | `npm run assertions`     | One claim per test, cross-checked against both runners — **on the `pretest` chain** |
 
 `test:unit` is the shortcut, and it is named so that reaching for it is a
@@ -60,11 +61,39 @@ assignment no later reader can reach.
 **It writes nothing.** The change is applied in memory, by a vite plugin the
 config installs only when the environment names a mutation, so a sweep cannot
 leave a mutant on disk or overwrite an edit in progress — and a dirty tree is
-not a reason to refuse to run. It drives only the tests _related_ to the
-mutated file and stops at the first failure, so a mutant costs a fraction of a
-full run. A mutant whose run times out is reported as **unresolved** rather
-than killed, because a run that never finished proved nothing, and it refuses
-to report success for a file it found nothing to mutate.
+not a reason to refuse to run. A mutant whose run times out is reported as
+**unresolved** rather than killed, because a run that never finished proved
+nothing, and it refuses to report success for a file it found nothing to
+mutate.
+
+**It runs one thing: the mirror test of the module it mutated**, and stops at
+the first failure. It used to fall through to the wider related set when a
+mutant outlived its own test, which meant a mutant could be recorded as killed
+on the strength of a neighbour's coverage. That is a weaker claim than the one
+worth making — every module's behaviour pinned by the test named for it — and
+it hid survivors: a census taken the day the fall-through was removed found
+**23** that the suite as a whole had been covering for.
+
+Judging one file also makes a survivor cheap. Under the fall-through a survivor
+cost a whole extra suite run; now it costs what any other mutant costs, so the
+census takes the same time whether it finds nothing or finds hundreds.
+
+**The post-test sweep judges changed lines, not whole files.** Measured over
+fourteen commits, whole-file judging charged 83 mutants for a commit that
+introduced 7 mutants' worth of new behaviour, and 23 for one that introduced
+none at all. Import lines carry no mutable operation — 812 of them in `src/`
+and not one mutant between them — so a commit that moves modules and rewrites
+imports sweeps instantly rather than re-proving what it did not touch.
+
+**A move only reads that way because both sides of the rename are named** when
+the diff is asked for. Measured against `4bd1e8f`, which moved twenty modules
+into `primitives/`: naming both paths reports **24 changed lines and 0
+mutants**, where naming only the destination reports **1639 lines and 58**. Git
+pairs a rename when the pathspec covers both ends and treats the file as wholly
+new when it does not. A rename reaches the sweep as one only once it is staged,
+which `git mv` does; a file moved with plain `mv` arrives untracked and is
+judged whole, which is the right answer for a file the tree has never seen. Which
+rules bind that sweep is in [CLAUDE.md](CLAUDE.md#claude-7e3a05).
 
 **`npm run assertions` answers a narrower one**: whether each test makes a
 single claim, and whether the scanner can see every test there is. It counts

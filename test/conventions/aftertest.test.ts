@@ -4,64 +4,113 @@ import { readFile } from 'node:fs/promises'
 
 import { describe, expect, it } from 'vitest'
 
-import { eligible, findings, judgeInTurn, keyOf, sample, statusFor } from '../../tools/aftertest.ts'
+import {
+  addedLinesIn,
+  filesFrom,
+  findings,
+  judgeInTurn,
+  pathspecFor,
+  slownessWarning,
+  statusFor,
+} from '../../tools/aftertest.ts'
 import type { Mutant, Outcome } from '../../tools/mutate.ts'
 import { runningInCI } from '../ci.ts'
 
-const BUDGET = 8
 const IN_WORK = { file: 'src/a.ts', line: 1, from: '===', to: '!==', expected: 'killed' as const }
-const ALSO_IN_WORK = { ...IN_WORK, line: 2 }
 const ELSEWHERE = { file: 'src/b.ts', line: 1, from: '===', to: '!==', expected: 'killed' as const }
 
-interface Named {
-  file: string
-}
-
-function inOrder(items: readonly Named[], count: number): Named[] {
-  return items.slice(0, count)
-}
-
-function manyIn(file: string, howMany: number): Array<typeof IN_WORK> {
-  return Array.from({ length: howMany }, (_unused, index) => ({ ...IN_WORK, file, line: index + 1 }))
-}
-
-describe('which mutants a run is still allowed to draw', () => {
-  it('drops one drawn recently, so a later run reaches further into the file', () => {
-    expect(eligible([IN_WORK, ALSO_IN_WORK], [keyOf(IN_WORK)])).toStrictEqual([ALSO_IN_WORK])
+describe('which files are in work', () => {
+  it('takes a modified source file', () => {
+    expect(filesFrom(' M src/a.ts\n')).toStrictEqual([{ file: 'src/a.ts', renamedFrom: null, untracked: false }])
   })
 
-  it('keeps one never drawn', () => {
-    expect(eligible([IN_WORK], [])).toStrictEqual([IN_WORK])
-  })
-})
-
-describe('drawing a sample', () => {
-  it('takes no more than the budget', () => {
-    expect(sample(manyIn('src/a.ts', 50), manyIn('src/b.ts', 50), BUDGET, inOrder)).toHaveLength(BUDGET)
+  it('marks an untracked file, which has no earlier version to compare against', () => {
+    expect(filesFrom('?? src/a.ts\n')).toStrictEqual([{ file: 'src/a.ts', renamedFrom: null, untracked: true }])
   })
 
-  it('spends most of the budget on the work in progress', () => {
-    const drawn = sample(manyIn('src/a.ts', 50), manyIn('src/b.ts', 50), BUDGET, inOrder)
-
-    expect(drawn.filter((mutant) => mutant.file === 'src/a.ts')).toHaveLength(BUDGET - 1)
+  it('takes the name a rename arrived at, not the one it left', () => {
+    expect(filesFrom('R  src/a.ts -> src/b.ts\n')).toStrictEqual([
+      { file: 'src/b.ts', renamedFrom: 'src/a.ts', untracked: false },
+    ])
   })
 
-  it('always keeps one for a file nobody is editing, which nothing else would reach', () => {
-    const drawn = sample(manyIn('src/a.ts', 50), manyIn('src/b.ts', 50), BUDGET, inOrder)
-
-    expect(drawn.filter((mutant) => mutant.file === 'src/b.ts')).toHaveLength(1)
+  it('leaves out a file outside the source tree, which carries no mutants', () => {
+    expect(filesFrom(' M test/a.test.ts\n M package.json\n')).toStrictEqual([])
   })
 
-  it('spends the whole budget elsewhere when nothing is being edited', () => {
-    expect(sample([], manyIn('src/b.ts', 50), BUDGET, inOrder)).toHaveLength(BUDGET)
+  it('leaves out a source file that is not TypeScript', () => {
+    expect(filesFrom(' M src/templates/editor.pug\n')).toStrictEqual([])
   })
 
-  it('takes what there is when the pool is smaller than the budget', () => {
-    expect(sample([IN_WORK], [ELSEWHERE], BUDGET, inOrder)).toHaveLength(2)
+  it('reads nothing from an unchanged tree', () => {
+    expect(filesFrom('')).toStrictEqual([])
   })
 })
 
-describe('watching a sample run', () => {
+describe('which paths a file is asked about', () => {
+  it('names the file alone when it only changed', () => {
+    expect(pathspecFor({ file: 'src/a.ts', renamedFrom: null, untracked: false })).toStrictEqual(['src/a.ts'])
+  })
+
+  it('names both sides of a rename, which is what lets git pair them into one move', () => {
+    expect(pathspecFor({ file: 'src/b.ts', renamedFrom: 'src/a.ts', untracked: false })).toStrictEqual([
+      'src/a.ts',
+      'src/b.ts',
+    ])
+  })
+})
+
+describe('which lines a diff added', () => {
+  it('takes every line of a multi-line hunk', () => {
+    expect([...addedLinesIn('@@ -1,0 +4,3 @@\n')]).toStrictEqual([4, 5, 6])
+  })
+
+  it('takes the one line of a hunk that names no count', () => {
+    expect([...addedLinesIn('@@ -7 +9 @@\n')]).toStrictEqual([9])
+  })
+
+  it('takes nothing from a hunk that only deleted, so a removal judges nothing', () => {
+    expect([...addedLinesIn('@@ -3,2 +2,0 @@\n')]).toStrictEqual([])
+  })
+
+  it('gathers every hunk, because one file can change in several places', () => {
+    expect([...addedLinesIn('@@ -1 +1 @@\n context\n@@ -9,0 +12,2 @@\n')]).toStrictEqual([1, 12, 13])
+  })
+
+  it('reads nothing from a diff with no hunks at all', () => {
+    expect([...addedLinesIn('diff --git a/src/a.ts b/src/b.ts\nsimilarity index 100%\n')]).toStrictEqual([])
+  })
+})
+
+describe('what a sweep does to the exit status', () => {
+  it('passes when nothing survived', () => {
+    expect(statusFor([])).toBe(0)
+  })
+
+  it('fails outright, because every survivor sits in work about to be committed', () => {
+    expect(statusFor([IN_WORK])).toBe(1)
+  })
+})
+
+describe('flagging a sweep that took too long', () => {
+  it('says nothing about a sweep inside the budget', () => {
+    expect(slownessWarning(119_000, 100, 9)).toBeNull()
+  })
+
+  it('names the seconds, so the reader can tell a slow test from a large commit', () => {
+    expect(slownessWarning(134_000, 310, 41)).toContain('134s')
+  })
+
+  it('names how many mutants it judged, which separates size from slowness', () => {
+    expect(slownessWarning(134_000, 310, 41)).toContain('310 mutants')
+  })
+
+  it('names how many files they came from, which is the one a reviewer feels', () => {
+    expect(slownessWarning(134_000, 310, 41)).toContain('41 files')
+  })
+})
+
+describe('watching a sweep run', () => {
   const KILLED = 'killed' as const
   const SURVIVED = 'survived' as const
 
@@ -76,7 +125,7 @@ describe('watching a sample run', () => {
         into.push(`said ${line.trim()}`)
       },
       tryOne: async (mutant) => {
-        into.push(`ran ${keyOf(mutant)}`)
+        into.push(`ran ${mutant.file}:${String(mutant.line)}`)
 
         return await Promise.resolve({ mutant, fate })
       },
@@ -101,7 +150,7 @@ describe('watching a sample run', () => {
     expect(log.filter((entry) => entry.startsWith('said'))).toHaveLength(2)
   })
 
-  it('counts the mutant against the size of the draw, so the end is in sight', async () => {
+  it('counts the mutant against the size of the sweep, so the end is in sight', async () => {
     const said: string[] = []
     const { tryOne } = logging([], KILLED)
 
@@ -134,7 +183,7 @@ describe('which answers are findings', () => {
   const KILLED = 'killed' as const
   const CLAIMED = { ...ELSEWHERE, expected: 'survived' as const }
 
-  it('counts one that lived where a test should have killed it', () => {
+  it('counts one that lived where its own test should have killed it', () => {
     expect(findings([{ mutant: IN_WORK, fate: 'survived' }])).toStrictEqual([IN_WORK])
   })
 
@@ -151,25 +200,7 @@ describe('which answers are findings', () => {
   })
 })
 
-describe('what a sample does to the exit status', () => {
-  it('passes when nothing survived', () => {
-    expect(statusFor([], ['src/a.ts'])).toBe(0)
-  })
-
-  it('fails outright when a survivor sits in work about to be committed', () => {
-    expect(statusFor([IN_WORK], ['src/a.ts'])).toBe(1)
-  })
-
-  it('reports a finding when the survivor is in a file nobody touched', () => {
-    expect(statusFor([ELSEWHERE], ['src/a.ts'])).toBe(5)
-  })
-
-  it('takes the harder verdict when survivors fall on both sides', () => {
-    expect(statusFor([ELSEWHERE, IN_WORK], ['src/a.ts'])).toBe(1)
-  })
-})
-
-describe('when the sample does not run at all', () => {
+describe('when the sweep does not run at all', () => {
   const SETS_CI = /^\s*CI=(?<value>\S+)/mv
 
   it('stands down for the value the Dockerfile actually sets, rather than one it might have set', async () => {

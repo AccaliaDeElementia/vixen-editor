@@ -13,7 +13,7 @@ public/assets/
 .env.local
 
 # Which mutants the sampled run drew recently; shapes a random draw only.
-.vixen-mutants.json
+.vixen-census.md
 
 *.log
 .eslintcache

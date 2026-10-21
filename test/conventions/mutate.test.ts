@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import { judge, mutantsFor, run, TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
-const { argsFor, fateOf, lineHolding, mirrorArgsFor, summaryOf } = TestOnly
+const { fateOf, lineHolding, mirrorArgsFor, summaryOf } = TestOnly
 
 const CHILD_PID = 4321
 const WHOLE_GROUP = -CHILD_PID
@@ -162,23 +162,19 @@ describe('the test named for the module under the mutant', () => {
     expect(mirrorArgsFor(SOMEWHERE)).toContain('--passWithNoTests')
   })
 
-  it('is run before the related set, because it is the one most likely to answer', async () => {
+  it('asks its own test and nothing else, so every behaviour is pinned where it is owned', async () => {
     const calls: string[][] = []
 
     await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen(calls, 'never matches') })
 
-    expect(calls.at(0)).toContain('test/client/platform/toast')
-  })
-
-  it('settles the mutant on its own, so the related set is never reached', async () => {
-    const calls: string[][] = []
-
-    await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen(calls, 'test/client/platform/toast') })
-
     expect(calls).toHaveLength(1)
   })
 
-  it('reports the kill it made, rather than deferring the verdict', async () => {
+  it('stops at the first failure, because one dead test is the whole answer', () => {
+    expect(mirrorArgsFor(SOMEWHERE)).toContain('--bail=1')
+  })
+
+  it('reports the kill its own test made', async () => {
     const outcome = await judge(SOMEWHERE, LONG_ENOUGH_MS, {
       sandbox: failingWhen([], 'test/client/platform/toast'),
     })
@@ -186,38 +182,10 @@ describe('the test named for the module under the mutant', () => {
     expect(outcome.fate).toBe('killed')
   })
 
-  it('hands on to the related set when the mutant outlived its own test', async () => {
-    const calls: string[][] = []
-
-    await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen(calls, 'related') })
-
-    expect(calls.at(1)).toContain('related')
-  })
-
-  it('takes the related set word for it when the module survived its own test', async () => {
-    const outcome = await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen([], 'related') })
-
-    expect(outcome.fate).toBe('killed')
-  })
-
-  it('leaves a mutant nothing killed as a survivor', async () => {
+  it('leaves a mutant its own test did not kill as a survivor, whatever another test would have done', async () => {
     const outcome = await judge(SOMEWHERE, LONG_ENOUGH_MS, { sandbox: failingWhen([], 'never matches') })
 
     expect(outcome.fate).toBe('survived')
-  })
-})
-
-describe('what a mutant is run against', () => {
-  it('runs only the tests related to the file it mutates', () => {
-    expect(argsFor(A_MUTANT)).toContain('related')
-  })
-
-  it('names that file, so the related set is computed from it', () => {
-    expect(argsFor(A_MUTANT)).toContain(A_MUTANT.file)
-  })
-
-  it('stops at the first failure, because one dead test is the whole answer', () => {
-    expect(argsFor(A_MUTANT)).toContain('--bail=1')
   })
 })
 

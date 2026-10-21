@@ -25,6 +25,7 @@
     "lint": "eslint . --cache",
     "assertions": "node tools/assertions.ts",
     "mutate": "node tools/mutate.ts",
+    "mutate:all": "node tools/census.ts",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write --log-level=warn --cache .",
     "format:check": "prettier --check .",

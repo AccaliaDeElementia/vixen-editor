@@ -279,10 +279,6 @@ export function describeMutant({ file, line, from, to }: Mutant): string {
   return `${file}:${String(line)}  '${from}' -> '${to}'`
 }
 
-function argsFor(mutant: Mutant): string[] {
-  return ['vitest', 'related', mutant.file, '--run', '--silent', '--bail=1']
-}
-
 function mirrorArgsFor(mutant: Mutant): string[] {
   const named = mutant.file.replace(SOURCE_ROOT, TEST_ROOT).slice(NOTHING_DROPPED, -SOURCE_EXTENSION.length)
 
@@ -295,10 +291,8 @@ export async function judge(
   spawning: Spawning = {},
 ): Promise<Outcome> {
   const settings = { ...spawning, env: envFor(mutant) }
-  const byItsOwn = await run('npx', mirrorArgsFor(mutant), timeoutMs, settings)
-  if (fateOf(byItsOwn) !== 'survived') return { mutant, fate: fateOf(byItsOwn) }
 
-  return { mutant, fate: fateOf(await run('npx', argsFor(mutant), timeoutMs, settings)) }
+  return { mutant, fate: fateOf(await run('npx', mirrorArgsFor(mutant), timeoutMs, settings)) }
 }
 
 function fateOf({ failed, timedOut }: Ran): Fate {
@@ -414,7 +408,7 @@ export async function check(cases: Case[], timeoutMs = DEFAULT_TIMEOUT_MS): Prom
   return verdicts.filter((verdict) => verdict !== 'CAUGHT').length
 }
 
-export async function mutate(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<number> {
+export async function sweep(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Outcome[]> {
   if (files.length === NONE) throw new Error('name at least one file to mutate')
 
   const outcomes: Outcome[] = []
@@ -424,7 +418,11 @@ export async function mutate(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): P
 
   if (outcomes.length === NONE) throw new Error('no mutants were produced, so nothing was measured')
 
-  return reportOn(outcomes)
+  return outcomes
+}
+
+export async function mutate(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<number> {
+  return reportOn(await sweep(files, timeoutMs))
 }
 
 function isCase(value: unknown): value is Case {
@@ -443,7 +441,7 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
-export const TestOnly = { argsFor, fateOf, lineHolding, mirrorArgsFor, summaryOf }
+export const TestOnly = { fateOf, lineHolding, mirrorArgsFor, summaryOf }
 
 if (import.meta.main) {
   for (const interrupt of INTERRUPTS) {

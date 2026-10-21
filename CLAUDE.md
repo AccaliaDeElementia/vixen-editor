@@ -500,26 +500,56 @@ This applies to `npm test`, `npm run build` and `npm run test:browser` alike.
 A quick `test:unit` loop can be as sloppy as you like, because nothing is being
 claimed about it.
 
-### A sampled mutation finding is not a gate failure
+### Every mutant on a line you changed must die in that module's own test
 
-`npm test` draws a short mutation sample after the suite, through npm's
-`posttest` hook, and that sample can change the status:
+`npm test` sweeps after the suite, through npm's `posttest` hook. It judges
+**every mutant sitting on a line this working tree changed**, in every dirty
+`.ts` file under `src/`. A clean tree, or a change that touches no mutable
+operation, judges nothing and exits `0` at once.
 
-| status        | means                                                                  |
-| ------------- | ---------------------------------------------------------------------- |
-| `0`           | passed                                                                 |
-| `5`           | **passed, with a mutation finding** — raise a task, do not block on it |
-| anything else | a failure                                                              |
+**A mutant must be killed by the mirror test of the module it lives in**, not
+by whatever else happens to exercise that code. A neighbour's test killing it
+proves the behaviour is reachable, never that the module that owns it has
+pinned it. A survivor is a gate failure — `1`, fix it now. The thin test covers
+code about to be committed and the file is already open. It may be an unrelated
+coincidence; fix it anyway. The only alternative is a `mutation-ignore` marker
+carrying the argument for why nothing can kill it.
 
-A survivor in a file **with uncommitted changes** is not a finding: it exits
-`1`. The thin test covers code about to be committed and the file is already
-open, so it gets fixed now. It may be an unrelated coincidence; fix it anyway.
+**Judging the diff is narrower than judging the file**, deliberately. A commit
+that only moves modules and rewrites imports changes no mutable operation, so
+it sweeps instantly instead of re-proving mutants that did not change. What
+that misses — a changed line breaking a behaviour pinned on an unchanged one —
+is caught by the suite that ran before it and by the census below.
 
-**`CI` suppresses the sample**, and `test/ci.ts` is the one place that decides
+**A sweep past 120 seconds prints a warning and nothing else.** It is never a
+failure and there is no cap. It means one of two things, and the line gives the
+numbers to tell them apart: tests are waiting on real time, or the commit has
+grown past what a human can review.
+
+**`CI` suppresses the sweep**, and `test/ci.ts` is the one place that decides
 what `CI` means: set, and not `false`, `0` or empty. Those spellings are a
 deliberate opt-out people really do set, so presence alone would read them
 backwards. `playwright.config.ts` reads the same function, so the repo has one
-answer rather than two. The image build sets `CI=true` and never sees `5`.
+answer rather than two. A CI checkout is clean and would exit `0` anyway, but
+`.dockerignore` excludes `.git/`, so the image build has no repository to read
+and the guard is what keeps that from mattering.
+
+<a id="claude-7e3a05"></a>
+
+### Bookend a plan file with a full census
+
+`npm run mutate:all` judges every mutant in `src/` the same way, and writes
+`.vixen-census.md`. It takes about twenty minutes.
+
+**Run it when a plan file opens, and again when it closes, and quote the result
+in that plan.** The post-test sweep only ever sees changed lines, so nothing
+else catches a mutant that rots behind a change somewhere it did not look. A
+plan is the right boundary because any effort worth its own file is long enough
+to absorb the cost, and because it ties the census to work rather than to a
+clock — a project sitting at MVP is not asked to re-prove what it just proved.
+
+**Quoting it in the plan is the mechanism.** A census nobody writes down is a
+census nobody ran.
 
 ## Announce a raised browser floor
 

@@ -1,7 +1,6 @@
 'use sanity'
 
-import { readdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
+import { readFile } from 'node:fs/promises'
 
 import { describeMutant, judge, mutantsFor, run, type Mutant, type Outcome } from './mutate.ts'
 import { runningInCI } from '../test/ci.ts'
@@ -9,99 +8,108 @@ import { serially } from '../src/shared/serially.ts'
 
 const SOURCE_ROOT = 'src'
 const SOURCE_EXTENSION = '.ts'
-const BUDGET = 8
-const REMEMBERED = 200
-const RECORD = '.vixen-mutants.json'
-const SAMPLE_TIMEOUT_MS = 30_000
+const JUDGEMENT_TIMEOUT_MS = 30_000
+const SLOW_SWEEP_MS = 120_000
+const MS_PER_SECOND = 1000
 
 const NONE = 0
 const ONE = 1
-const START = 0
+const FIRST_LINE = 1
 const STATUS_WIDTH = 3
 const RENAMED = ' -> '
+const UNTRACKED = '??'
+const NOT_RENAMED = null
 
 const UNRESOLVED = 'unresolved'
 
 const ALL_WELL = 0
 const SURVIVOR_IN_WORK = 1
-const SURVIVOR_ELSEWHERE = 5
 
-type Pick<T> = (items: readonly T[], count: number) => T[]
+const HUNK = /^@@ -\S+ \+(?<start>\d+)(?:,(?<count>\d+))? @@/gmv
 
-export function keyOf({ file, line, from, to }: Mutant): string {
-  return `${file}:${String(line)}:${from}>${to}`
-}
-
-export function eligible(pool: readonly Mutant[], recently: readonly string[]): Mutant[] {
-  const seen = new Set(recently)
-
-  return pool.filter((mutant) => !seen.has(keyOf(mutant)))
-}
-
-export function sample<T>(inWork: readonly T[], elsewhere: readonly T[], budget: number, pick: Pick<T>): T[] {
-  const spare = pick(elsewhere, Math.max(ONE, budget - inWork.length))
-
-  return [...pick(inWork, budget - spare.length), ...spare]
-}
-
-export function statusFor(survivors: readonly Mutant[], inWork: readonly string[]): number {
-  if (survivors.length === NONE) return ALL_WELL
-  const touched = new Set(inWork)
-
-  return survivors.some((mutant) => touched.has(mutant.file)) ? SURVIVOR_IN_WORK : SURVIVOR_ELSEWHERE
-}
-
-function randomly<T>(items: readonly T[], count: number): T[] {
-  const pool = [...items]
-  const taken: T[] = []
-
-  while (taken.length < count && pool.length > NONE) {
-    const [picked] = pool.splice(Math.floor(Math.random() * pool.length), ONE)
-    if (picked !== undefined) taken.push(picked)
-  }
-
-  return taken
+export interface InWork {
+  file: string
+  renamedFrom: string | null
+  untracked: boolean
 }
 
 function pathIn(line: string): string {
   const named = line.slice(STATUS_WIDTH)
   const renamed = named.indexOf(RENAMED)
 
-  return renamed < START ? named.trim() : named.slice(renamed + RENAMED.length).trim()
+  return renamed < NONE ? named.trim() : named.slice(renamed + RENAMED.length).trim()
 }
 
-async function filesInWork(): Promise<string[]> {
-  const { stdout } = await run('git', ['status', '--porcelain'])
+function renamedFromIn(line: string): string | null {
+  const named = line.slice(STATUS_WIDTH)
+  const renamed = named.indexOf(RENAMED)
 
-  return stdout
+  return renamed < NONE ? NOT_RENAMED : named.slice(NONE, renamed).trim()
+}
+
+export function filesFrom(porcelain: string): InWork[] {
+  return porcelain
     .split('\n')
     .filter((line) => line.trim() !== '')
-    .map(pathIn)
-    .filter((named) => named.startsWith(`${SOURCE_ROOT}/`) && named.endsWith(SOURCE_EXTENSION))
+    .map((line) => ({
+      file: pathIn(line),
+      renamedFrom: renamedFromIn(line),
+      untracked: line.startsWith(UNTRACKED),
+    }))
+    .filter(({ file }) => file.startsWith(`${SOURCE_ROOT}/`) && file.endsWith(SOURCE_EXTENSION))
 }
 
-async function everyMutant(): Promise<Mutant[]> {
-  const named = await readdir(SOURCE_ROOT, { recursive: true })
-  const sources = named.map((entry) => path.join(SOURCE_ROOT, entry)).filter((file) => file.endsWith(SOURCE_EXTENSION))
-  const found = await Promise.all(sources.map(async (file) => mutantsFor(file, await readFile(file, 'utf8'))))
+export function addedLinesIn(diff: string): Set<number> {
+  const added = new Set<number>()
 
-  return found.flat()
-}
-
-async function rememberedKeys(): Promise<string[]> {
-  try {
-    const parsed: unknown = JSON.parse(await readFile(RECORD, 'utf8'))
-
-    return Array.isArray(parsed) ? parsed.filter((entry) => typeof entry === 'string') : []
-  } catch {
-    return []
+  for (const { groups } of diff.matchAll(HUNK)) {
+    const start = Number(groups?.start)
+    const count = groups?.count === undefined ? ONE : Number(groups.count)
+    for (const line of Array.from({ length: count }, (_unused, offset) => start + offset)) added.add(line)
   }
+
+  return added
 }
 
-async function remember(drawn: readonly Mutant[], previous: readonly string[]): Promise<void> {
-  const keys = [...drawn.map(keyOf), ...previous].slice(START, REMEMBERED)
+function everyLineOf(source: string): Set<number> {
+  return new Set(source.split('\n').map((_unused, index) => index + FIRST_LINE))
+}
 
-  await writeFile(RECORD, JSON.stringify(keys))
+export function pathspecFor({ file, renamedFrom }: InWork): string[] {
+  return renamedFrom === NOT_RENAMED ? [file] : [renamedFrom, file]
+}
+
+async function changedLinesIn(entry: InWork, source: string): Promise<Set<number>> {
+  if (entry.untracked) return everyLineOf(source)
+
+  const { stdout } = await run('git', ['diff', '--unified=0', 'HEAD', '--', ...pathspecFor(entry)])
+
+  return addedLinesIn(stdout)
+}
+
+async function mutantsOnChangedLines(inWork: readonly InWork[]): Promise<Mutant[]> {
+  const found: Mutant[] = []
+
+  await serially(inWork, async (entry) => {
+    const source = await readFile(entry.file, 'utf8').catch(() => null)
+    if (source === null) return
+
+    const changed = await changedLinesIn(entry, source)
+    found.push(...mutantsFor(entry.file, source).filter(({ line }) => changed.has(line)))
+  })
+
+  return found
+}
+
+export function statusFor(survivors: readonly Mutant[]): number {
+  return survivors.length === NONE ? ALL_WELL : SURVIVOR_IN_WORK
+}
+
+export function slownessWarning(elapsedMs: number, mutants: number, files: number): string | null {
+  if (elapsedMs < SLOW_SWEEP_MS) return null
+  const seconds = Math.round(elapsedMs / MS_PER_SECOND)
+
+  return `  WARNING  ${String(seconds)}s to judge ${String(mutants)} mutants across ${String(files)} files\n`
 }
 
 export async function judgeInTurn(
@@ -125,50 +133,43 @@ export function findings(answers: readonly Outcome[]): Mutant[] {
     .map(({ mutant }) => mutant)
 }
 
-function report(answers: readonly Outcome[], inWork: readonly string[]): void {
+function report(answers: readonly Outcome[], elapsedMs: number, files: number): void {
   const found = findings(answers)
   const unresolved = answers.filter(({ fate }) => fate === UNRESOLVED)
   const ran = `${String(answers.length)} run, ${String(found.length)} to answer for`
   const timing = unresolved.length === NONE ? '' : `, ${String(unresolved.length)} out of time`
-  process.stdout.write(`mutation sample: ${ran}${timing}\n`)
+  process.stdout.write(`mutation sweep: ${ran}${timing}\n`)
 
-  const touched = new Set(inWork)
   for (const { mutant } of unresolved) {
     process.stdout.write(`  out of time, so nothing was proved  ${describeMutant(mutant)}\n`)
   }
   for (const mutant of found) {
-    const where = touched.has(mutant.file) ? 'in work in progress' : 'elsewhere'
-    process.stdout.write(`  WARNING  survived ${where}  ${describeMutant(mutant)}\n`)
+    process.stdout.write(`  SURVIVED its own test  ${describeMutant(mutant)}\n`)
   }
-  if (found.length > NONE) process.stdout.write('  raise a task to investigate after the current commit\n')
+
+  const slow = slownessWarning(elapsedMs, answers.length, files)
+  if (slow !== null) process.stdout.write(slow)
 }
 
-export async function sampleMutants(): Promise<number> {
-  const inWork = await filesInWork()
-  const touched = new Set(inWork)
-  const open = eligible(await everyMutant(), await rememberedKeys())
-  const drawn = sample(
-    open.filter((mutant) => touched.has(mutant.file)),
-    open.filter((mutant) => !touched.has(mutant.file)),
-    BUDGET,
-    randomly,
-  )
+export async function sweepWorkInProgress(): Promise<number> {
+  const inWork = filesFrom((await run('git', ['status', '--porcelain'])).stdout)
+  const drawn = await mutantsOnChangedLines(inWork)
+  if (drawn.length === NONE) return ALL_WELL
 
-  process.stdout.write(`\nmutation sample: ${String(drawn.length)} mutants\n`)
+  process.stdout.write(`\nmutation sweep: ${String(drawn.length)} mutants on changed lines\n`)
+  const started = performance.now()
   const answers = await judgeInTurn(
     drawn,
-    async (mutant) => await judge(mutant, SAMPLE_TIMEOUT_MS),
+    async (mutant) => await judge(mutant, JUDGEMENT_TIMEOUT_MS),
     (line) => {
       process.stdout.write(line)
     },
   )
+  report(answers, performance.now() - started, inWork.length)
 
-  await remember(drawn, await rememberedKeys())
-  report(answers, inWork)
-
-  return statusFor(findings(answers), inWork)
+  return statusFor(findings(answers))
 }
 
 if (import.meta.main && !runningInCI(process.env)) {
-  process.exitCode = await sampleMutants()
+  process.exitCode = await sweepWorkInProgress()
 }
