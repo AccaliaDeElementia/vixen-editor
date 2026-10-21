@@ -1,6 +1,7 @@
 'use sanity'
 
 import { Busboy } from '@fastify/busboy'
+import { createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
@@ -37,7 +38,13 @@ function joined(chunks: readonly Uint8Array[]): Uint8Array {
   return bytes
 }
 
-export async function receiveMultipart(request: Request, maxBytes: number): Promise<ReceivedBody> {
+interface Parsing<T> {
+  parts: InstanceType<typeof Busboy>
+  settled: PromiseWithResolvers<T>
+  run: () => Promise<T>
+}
+
+function parsing<T>(request: Request, maxBytes: number): Parsing<T> {
   const { body } = request
   if (body === null) throw new TypeError('the request carried no body')
 
@@ -47,8 +54,24 @@ export async function receiveMultipart(request: Request, maxBytes: number): Prom
     limits: { fileSize: refuseFrom },
     preservePath: true,
   })
+  const settled: PromiseWithResolvers<T> = Promise.withResolvers()
+
+  return {
+    parts,
+    settled,
+    run: async () => {
+      pipeline(Readable.fromWeb(body), parts).catch((error: unknown) => {
+        settled.reject(error)
+      })
+
+      return await settled.promise
+    },
+  }
+}
+
+export async function receiveMultipart(request: Request, maxBytes: number): Promise<ReceivedBody> {
+  const { parts, settled, run } = parsing<ReceivedBody>(request, maxBytes)
   const received: ReceivedBody = { fields: {}, files: [] }
-  const settled: PromiseWithResolvers<ReceivedBody> = Promise.withResolvers()
 
   parts.on('field', (name: string, value: string) => {
     received.fields[name] = value
@@ -71,9 +94,49 @@ export async function receiveMultipart(request: Request, maxBytes: number): Prom
     settled.resolve(received)
   })
 
-  pipeline(Readable.fromWeb(body), parts).catch((error: unknown) => {
-    settled.reject(error)
+  return await run()
+}
+
+interface ReceivedPart {
+  name: string
+  filename: string
+}
+
+export interface ReceivedArchive {
+  fields: Record<string, string>
+  parts: ReceivedPart[]
+}
+
+const ARCHIVE_FIELD = 'file'
+
+export async function receiveArchive(request: Request, maxBytes: number, writeTo: string): Promise<ReceivedArchive> {
+  const { parts, settled, run } = parsing<ReceivedArchive>(request, maxBytes)
+  const received: ReceivedArchive = { fields: {}, parts: [] }
+  let written: Promise<void> = Promise.resolve()
+
+  parts.on('field', (name: string, value: string) => {
+    received.fields[name] = value
   })
 
-  return await settled.promise
+  parts.on('file', (name: string, stream: Readable, filename: string) => {
+    received.parts.push({ name, filename })
+    stream.on('limit', () => {
+      settled.reject(new BodyTooLargeError(maxBytes))
+    })
+
+    if (name === ARCHIVE_FIELD) written = pipeline(stream, createWriteStream(writeTo))
+    else stream.resume()
+  })
+
+  parts.on('finish', () => {
+    void written
+      .then(() => {
+        settled.resolve(received)
+      })
+      .catch((error: unknown) => {
+        settled.reject(error)
+      })
+  })
+
+  return await run()
 }

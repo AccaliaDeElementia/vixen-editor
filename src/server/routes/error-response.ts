@@ -74,6 +74,14 @@ const STATUS_AND_CODE_ONLY: readonly SimpleMapping[] = [
   },
 ]
 
+export function archiveRefused(c: Context, reasons: readonly string[]): Response {
+  return refuse(c, HTTP_BAD_REQUEST, 'INVALID_PATH', { error: 'The archive holds entries this store refuses', reasons })
+}
+
+export function archiveCollides(c: Context, paths: readonly string[]): Response {
+  return refuse(c, HTTP_CONFLICT, 'ALREADY_EXISTS', { error: 'The archive would replace what is already there', paths })
+}
+
 export function toErrorResponse(c: Context, error: unknown): Response {
   const simple = STATUS_AND_CODE_ONLY.find(({ type }) => error instanceof type)
   if (simple !== undefined) return refuse(c, simple.status, simple.code, { error: simple.message })

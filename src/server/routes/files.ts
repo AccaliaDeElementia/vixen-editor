@@ -17,8 +17,18 @@ import { joinEntryPath } from '../storage/primitives/safe-path.ts'
 import { seedDocument, seedFolderIndex } from '../storage/primitives/seed.ts'
 
 import { ACCEPT_LANGUAGE, preferredLocale, VARIES_BY_LANGUAGE } from './accept-language.ts'
-import { invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'
-import { BodyTooLargeError, receiveMultipart, type ReceivedBody, type ReceivedFile } from './multipart.ts'
+import { archiveCollides, archiveRefused, invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'
+import { archiveFormatOf } from '../storage/archive-format.ts'
+import { importZip } from '../storage/import-archive.ts'
+import { open, rm } from 'node:fs/promises'
+import {
+  BodyTooLargeError,
+  receiveArchive,
+  receiveMultipart,
+  type ReceivedArchive,
+  type ReceivedBody,
+  type ReceivedFile,
+} from './multipart.ts'
 import { FOLDER_INDEX_NAME } from '../../shared/documents.ts'
 import { STORE_ROOT } from '../../shared/store-path.ts'
 
@@ -64,6 +74,7 @@ function contentDisposition(name: string): string {
 
 const UPLOAD_FIELD = 'file'
 const NO_OTHER_FILES = 0
+const ONE_ARCHIVE = 1
 
 function uploadedFile(received: ReceivedBody): ReceivedFile | null {
   return received.files.find((part) => part.name === UPLOAD_FIELD) ?? null
@@ -89,6 +100,52 @@ async function receivedOrRefusal(c: Context, maxBytes: number): Promise<Received
 
     return invalidBody(c)
   }
+}
+
+const ARCHIVE_HEAD_BYTES = 8
+
+async function headOf(staged: string): Promise<Uint8Array> {
+  const file = await open(staged)
+  try {
+    const { buffer } = await file.read(new Uint8Array(ARCHIVE_HEAD_BYTES), SEQUENCE_START, ARCHIVE_HEAD_BYTES)
+
+    return buffer
+  } finally {
+    await file.close()
+  }
+}
+
+async function archiveOrRefusal(c: Context, staged: string, maxBytes: number): Promise<ReceivedArchive | Response> {
+  try {
+    return await receiveArchive(c.req.raw, maxBytes, staged)
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) return payloadTooLarge(c, maxBytes)
+
+    return invalidBody(c)
+  }
+}
+
+async function importInto(c: Context, store: DocumentStore, staged: string, maxBytes: number): Promise<Response> {
+  const received = await archiveOrRefusal(c, staged, maxBytes)
+  if (received instanceof Response) return received
+
+  const { parts } = received
+  const [only] = parts
+  if (only === undefined || parts.length !== ONE_ARCHIVE || only.name !== UPLOAD_FIELD) return invalidBody(c)
+
+  const head = await headOf(staged)
+  if (archiveFormatOf(head) === null) return invalidBody(c)
+
+  const outcome = await importZip({
+    store,
+    archivePath: staged,
+    into: received.fields.path ?? STORE_ROOT,
+    actor: actorOf(c),
+  })
+  if (outcome.kind === 'refused') return archiveRefused(c, outcome.reasons)
+  if (outcome.kind === 'collides') return archiveCollides(c, outcome.paths)
+
+  return c.json({ paths: outcome.paths }, HTTP_CREATED)
 }
 
 export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
@@ -169,6 +226,18 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
       return c.json({ path: stored }, HTTP_CREATED)
     } catch (error) {
       return toErrorResponse(c, error)
+    }
+  })
+
+  routes.post('/imports', async (c) => {
+    const declared = Number(c.req.header('content-length') ?? UNDECLARED_LENGTH)
+    if (declared > limits.archiveMaxBytes) return payloadTooLarge(c, limits.archiveMaxBytes)
+
+    const staged = await store.stageArchive()
+    try {
+      return await importInto(c, store, staged, limits.archiveMaxBytes)
+    } finally {
+      await rm(staged, { force: true })
     }
   })
 

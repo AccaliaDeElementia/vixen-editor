@@ -22,6 +22,7 @@ import {
   asExistsError,
   ConcurrentModificationError,
 } from './primitives/store-errors.ts'
+import { stageArchive } from './staging.ts'
 import { readTree, type TreeEntry } from './tree.ts'
 import {
   emptyTrash,
@@ -56,6 +57,7 @@ export interface StoreLayer {
   restore: (request: RestoreSelection, actor: Actor) => Promise<RestoreOutcome>
   purge: (entryId: string, actor: Actor) => Promise<void>
   emptyTrash: (actor: Actor) => Promise<number>
+  stageArchive: () => Promise<string>
 }
 
 export interface DocumentStore extends Omit<StoreLayer, 'listTrash'> {
@@ -160,6 +162,8 @@ export function createFsDocumentStore(
         return computeEtag(indexContent)
       })
     },
+
+    stageArchive: async () => await stageArchive(root),
 
     async createUpload(directory: string, filename: string, bytes: Uint8Array): Promise<string> {
       const entryPath = joinEntryPath(directory, filename)

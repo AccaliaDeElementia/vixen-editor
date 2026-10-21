@@ -939,7 +939,7 @@ const AREA_EDGES: Readonly<Record<string, readonly string[]>> = {
   ],
   'src/server/markdown': [],
   'src/server/platform': [],
-  'src/server/routes': ['src/server/platform', 'src/server/storage/primitives'],
+  'src/server/routes': ['src/server/platform', 'src/server/storage', 'src/server/storage/primitives'],
   'src/server/storage': ['src/server/platform', 'src/server/storage/primitives', 'src/server/storage/trash'],
   'src/server/storage/primitives': ['src/server/platform'],
   'src/server/storage/trash': ['src/server/platform', 'src/server/storage/primitives'],

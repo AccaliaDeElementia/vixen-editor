@@ -1,5 +1,6 @@
 'use sanity'
 
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -28,6 +29,13 @@ export async function clearStaging(docsRoot: string): Promise<string[]> {
   logStaging('removed %d abandoned staged import(s)', abandoned.length)
 
   return [...abandoned].sort(compareNames)
+}
+
+export async function stageArchive(docsRoot: string): Promise<string> {
+  const staging = stagingRoot(docsRoot)
+  await fs.mkdir(staging, { recursive: true })
+
+  return path.join(staging, `${randomUUID()}.archive`)
 }
 
 export const TestOnly = { STAGING_DIRECTORY, stagingRoot }

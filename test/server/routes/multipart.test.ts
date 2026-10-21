@@ -1,8 +1,12 @@
 'use sanity'
 
-import { describe, expect, it } from 'vitest'
+import fs from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 
-import { BodyTooLargeError, receiveMultipart } from '../../../src/server/routes/multipart.ts'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { BodyTooLargeError, receiveArchive, receiveMultipart } from '../../../src/server/routes/multipart.ts'
 
 const GENEROUS = 1024
 const TINY = 8
@@ -132,5 +136,62 @@ describe('a body that is not multipart at all', () => {
     const request = new Request('http://editor.invalid/uploads', { method: 'POST' })
 
     await expect(receiveMultipart(request, GENEROUS)).rejects.toThrow()
+  })
+})
+
+describe('taking an archive straight to a file', () => {
+  let root = ''
+
+  beforeEach(async () => {
+    root = await fs.mkdtemp(path.join(os.tmpdir(), 'vixen-receive-'))
+  })
+
+  afterEach(async () => {
+    await fs.rm(root, { recursive: true, force: true })
+  })
+
+  function staged(): string {
+    return path.join(root, 'staged.zip')
+  }
+
+  it('writes what arrived, rather than holding it to hand back', async () => {
+    await receiveArchive(posted(withFile(bytesOf(32))), GENEROUS, staged())
+
+    await expect(fs.readFile(staged())).resolves.toStrictEqual(Buffer.from(bytesOf(32)))
+  })
+
+  it('reads the other parts as fields, so a target directory still arrives', async () => {
+    const form = withFile(bytesOf(4))
+    form.append('path', 'journal')
+
+    expect((await receiveArchive(posted(form), GENEROUS, staged())).fields).toStrictEqual({ path: 'journal' })
+  })
+
+  it('names the parts that arrived as files, so an unexpected one can be refused', async () => {
+    const form = withFile(bytesOf(4))
+    form.append('extra', new Blob(['sneaky']))
+
+    const received = await receiveArchive(posted(form), GENEROUS, staged())
+
+    expect(received.parts.map((part) => part.name)).toStrictEqual(['file', 'extra'])
+  })
+
+  it('refuses a body over the limit rather than writing it out', async () => {
+    await expect(receiveArchive(posted(withFile(bytesOf(TINY * 4))), TINY, staged())).rejects.toBeInstanceOf(
+      BodyTooLargeError,
+    )
+  })
+
+  it('refuses when the staged file cannot be written, rather than reporting success', async () => {
+    const nowhere = path.join(root, 'absent', 'staged.zip')
+
+    await expect(receiveArchive(posted(withFile(bytesOf(4))), GENEROUS, nowhere)).rejects.toThrow()
+  })
+
+  it('reports no parts when the body carried no file, so the caller can refuse it', async () => {
+    const form = new FormData()
+    form.append('path', 'journal')
+
+    expect((await receiveArchive(posted(form), GENEROUS, staged())).parts).toHaveLength(NOTHING_SENT)
   })
 })

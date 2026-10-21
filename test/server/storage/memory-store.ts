@@ -101,6 +101,8 @@ export function createMemoryStore(): StoreLayer {
   }
 
   return {
+    stageArchive: refuse,
+
     list: async (byName: NameComparator) => await Promise.resolve(storePathsHeld().filter(isDocument).sort(byName)),
 
     tree: async (byName: NameComparator) => await Promise.resolve(treeUnder(STORE_ROOT, byName)),

@@ -8,6 +8,7 @@ export function failingStore(): StoreLayer {
   }
 
   return {
+    stageArchive: fail,
     list: fail,
     tree: fail,
     read: fail,
