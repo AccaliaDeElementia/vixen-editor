@@ -18,7 +18,7 @@ import { resolveStorePath } from './primitives/safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from './primitives/store-errors.ts'
 import { compareNames } from './primitives/name-order.ts'
 import { readTree, type TreeEntry } from './tree.ts'
-import type { ArchiveFormat } from './archive-format.ts'
+import type { ArchiveFormat } from '../../shared/archive-formats.ts'
 
 const logArchive = createLogger('storage/archive')
 

@@ -14,6 +14,7 @@ export interface FilesClient {
   createDocument: (entryPath: string, content?: string) => Promise<void>
   createFolder: (folderPath: string) => Promise<void>
   upload: (directory: string, file: File, filename?: string) => Promise<string>
+  importArchive: (directory: string, archive: File) => Promise<string[]>
   move: (from: string, to: string) => Promise<string[]>
   remove: (entryPath: string) => Promise<string>
   restore: (entryId: string, paths?: readonly string[], to?: string) => Promise<RestoreOutcome>
@@ -36,28 +37,40 @@ function parseRestoreOutcome(payload: unknown): RestoreOutcome {
   return { restored: stringsIn(payload.restored), entryRemains: payload.entryRemains === true }
 }
 
+interface RefusalDetail {
+  paths: readonly string[]
+  reasons: readonly string[]
+}
+
+const NOTHING_NAMED: RefusalDetail = { paths: [], reasons: [] }
+
 export class FilesRequestError extends Error {
   override readonly name = 'FilesRequestError'
   readonly status: number
   readonly code: string
   readonly paths: readonly string[]
+  readonly reasons: readonly string[]
 
-  constructor(status: number, message: string, code: string, paths: readonly string[]) {
+  constructor(status: number, message: string, code: string, { paths, reasons }: RefusalDetail = NOTHING_NAMED) {
     super(message)
     this.status = status
     this.code = code
     this.paths = paths
+    this.reasons = reasons
   }
 }
 
 async function failureOf(response: Response): Promise<FilesRequestError> {
   const body: unknown = await response.json().catch(() => null)
-  if (!isRecord(body)) return new FilesRequestError(response.status, response.statusText, 'UNKNOWN', [])
+  if (!isRecord(body)) return new FilesRequestError(response.status, response.statusText, 'UNKNOWN')
 
   const message = typeof body.error === 'string' ? body.error : response.statusText
   const code = typeof body.code === 'string' ? body.code : 'UNKNOWN'
 
-  return new FilesRequestError(response.status, message, code, stringsIn(body.paths))
+  return new FilesRequestError(response.status, message, code, {
+    paths: stringsIn(body.paths),
+    reasons: stringsIn(body.reasons),
+  })
 }
 
 function encodePath(entryPath: string): string {
@@ -119,6 +132,18 @@ export function createFilesClient(
       )
 
       return isRecord(created) && typeof created.path === 'string' ? created.path : ''
+    },
+
+    async importArchive(directory: string, archive: File): Promise<string[]> {
+      const form = new FormData()
+      form.append('file', archive)
+      form.append('path', directory)
+
+      const imported: unknown = await send(`${baseUrl}/files/imports`, { method: 'POST', body: form }).then(
+        async (response): Promise<unknown> => await response.json(),
+      )
+
+      return isRecord(imported) ? stringsIn(imported.paths) : []
     },
 
     async move(from: string, to: string): Promise<RepairedPath[]> {

@@ -8,7 +8,7 @@ import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
 import { joinPath } from '../../shared/store-path.ts'
 import { eachZipFile, readZipEntries } from './zip-entries.ts'
 import { eachTarFile, readTarEntries } from './tar-entries.ts'
-import type { ArchiveFormat } from './archive-format.ts'
+import type { ArchiveFormat } from '../../shared/archive-formats.ts'
 import { verdictFor, type ArchiveEntry } from './archive-entry.ts'
 import type { TreeEntry } from './tree.ts'
 

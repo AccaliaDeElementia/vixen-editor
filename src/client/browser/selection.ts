@@ -1,6 +1,6 @@
 'use sanity'
 
-import { updateArchiveLink, updateInsertAvailability } from './actions.ts'
+import { updateInsertAvailability } from './actions.ts'
 import { directoryOf } from '../../shared/link-paths.ts'
 import { isAtOrUnder, STORE_ROOT } from '../../shared/store-path.ts'
 import { TRASH_PATH } from './trash/trash-view.ts'
@@ -51,7 +51,6 @@ export function createSelection({ elements, root, shown, startingAt }: Selecting
   }
 
   function reflect(): void {
-    updateArchiveLink(root, targetDirectory())
     updateInsertAvailability(root, insertableSelection())
   }
 

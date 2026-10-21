@@ -2,9 +2,6 @@
 
 import pug from 'pug'
 
-import { archiveUrlFor } from '../../src/shared/api.ts'
-import { STORE_ROOT } from '../../src/shared/store-path.ts'
-
 const TEMPLATES = 'src/templates'
 
 const BODY = /<body[^>]*>(?<markup>[\s\S]*)<\/body>/v
@@ -22,9 +19,7 @@ function withoutTheEntryPoint(markup: string): string {
 }
 
 export function renderPage(): string {
-  return withoutTheEntryPoint(
-    bodyOf(pug.renderFile(`${TEMPLATES}/editor.pug`, { title: 'vixen-editor', archiveUrl: archiveUrlFor(STORE_ROOT) })),
-  )
+  return withoutTheEntryPoint(bodyOf(pug.renderFile(`${TEMPLATES}/editor.pug`, { title: 'vixen-editor' })))
 }
 
 export function renderDialog(): string {

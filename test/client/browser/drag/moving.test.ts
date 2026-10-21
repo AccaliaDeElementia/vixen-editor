@@ -237,7 +237,7 @@ describe('moving by drag', () => {
   })
 
   it('reports a move the server refuses for a reason the user cannot fix', async () => {
-    client.move.mockRejectedValue(new FilesRequestError(409, 'Cannot move into its own descendant', 'INVALID_MOVE', []))
+    client.move.mockRejectedValue(new FilesRequestError(409, 'Cannot move into its own descendant', 'INVALID_MOVE'))
     await start()
 
     drag('notes.md', rowFor('archive'))
@@ -542,7 +542,7 @@ describe('after a move succeeds', () => {
   })
 
   it('reports a refusal to the user rather than failing silently', async () => {
-    client.move.mockRejectedValue(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS', []))
+    client.move.mockRejectedValue(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS'))
     await start()
 
     drag('notes.md', rowFor('archive'))

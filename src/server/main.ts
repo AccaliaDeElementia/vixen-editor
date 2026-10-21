@@ -18,8 +18,6 @@ import { createWriteLock } from './platform/lock.ts'
 import { sweepTemporaries } from './storage/sweep.ts'
 import { clearStaging } from './storage/staging.ts'
 import { createTemplateRenderer } from './templates.ts'
-import { archiveUrlFor } from '../shared/api.ts'
-import { STORE_ROOT } from '../shared/store-path.ts'
 
 const logStartup = createLogger('main', 'startServer')
 
@@ -37,9 +35,7 @@ function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR, build
   app.use(CLIENT_BUNDLE_ROUTE, serveStatic({ root: publicDir }))
   app.route(
     '/',
-    pageRoutes(() =>
-      templates.render(EDITOR_TEMPLATE, { title: APP_TITLE, archiveUrl: archiveUrlFor(STORE_ROOT), buildId }),
-    ),
+    pageRoutes(() => templates.render(EDITOR_TEMPLATE, { title: APP_TITLE, buildId })),
   )
 
   return app

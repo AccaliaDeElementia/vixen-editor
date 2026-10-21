@@ -112,17 +112,32 @@ test('a rejected name stays in the dialog to be corrected', async ({ page, reque
   await request.delete(`/api/files/entries/${name}`)
 })
 
-test('the archive link follows the selection', async ({ page, request }) => {
-  const name = `zip-${String(Date.now())}`
+test('a tarball download is named for the selected folder', async ({ page, request }) => {
+  const name = `tar-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: name } })
 
   await page.goto('/doc/')
-  await givenAsync(expect(page.locator('#download-archive')).toHaveAttribute('href', '/api/files/archive'))
-
+  await givenAsync(expect(page.locator(`.tree__row[data-path="${name}"]`)).toBeVisible())
   await page.locator(`.tree__row[data-path="${name}"]`).click()
-  await expect(page.locator('#download-archive')).toHaveAttribute('href', `/api/files/archive?path=${name}`)
+
+  const download = page.waitForEvent('download')
+  await page.locator('#archive-actions').click()
+  await page.locator('#file-dialog').getByRole('button', { name: 'Download .tar.gz' }).click()
+
+  expect((await download).suggestedFilename()).toBe(`vixen-${name}.tar.gz`)
 
   await request.delete(`/api/files/entries/${name}`)
+})
+
+test('choosing to import opens the file picker rather than downloading', async ({ page }) => {
+  await page.goto('/doc/')
+  await givenAsync(expect(page.locator('#archive-actions')).toBeVisible())
+
+  const picker = page.waitForEvent('filechooser')
+  await page.locator('#archive-actions').click()
+  await page.locator('#file-dialog').getByRole('button', { name: 'Import an archive' }).click()
+
+  expect((await picker).isMultiple()).toBe(false)
 })
 
 test('closing the explorer takes its actions away rather than disabling them', async ({ page }) => {

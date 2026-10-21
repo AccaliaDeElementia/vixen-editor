@@ -269,6 +269,7 @@ async function runFileTree({
 
   const context: ActionContext = {
     root,
+    navigate,
     client,
     dialogs,
     toast,

@@ -678,6 +678,25 @@ produce a zip that Windows Explorer refuses to extract.
 characters at extraction time, where the user can see what changed and
 override it. Explorer's built-in handler cannot. Point people there.
 
+<a id="design-3c9f21"></a>
+
+### One archive button, three choices
+
+Download and import share one toolbar action, which opens `dialogs.choose`.
+Import sits there rather than beside upload because upload means _add these
+files_ where import means _unpack this archive_, and because import had no
+affordance at all — the archive button is where a reader already looks.
+
+**A split button was priced and refused.** It is an ARIA menu button —
+`aria-haspopup`, roving tabindex, arrow keys, type-ahead, Escape — and the
+pattern most often got wrong. `dialogs.choose` is a native `<dialog>` that is
+already axe-clean and keyboard-tested, so the choice costs one click and no new
+widget. If that click ever grates, the upgrade is a `<details>` disclosure, not
+a menu.
+
+Because the reader picks a format every time, nothing has to guess one, so no
+user-agent sniffing and no stored preference.
+
 <a id="design-2fcd7d"></a>
 
 ### Why not munge the names on the way out

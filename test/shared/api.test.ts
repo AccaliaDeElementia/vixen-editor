@@ -16,16 +16,20 @@ describe('API_PREFIX', () => {
 })
 
 describe('archiveUrlFor', () => {
-  it('addresses the whole store with no query', () => {
-    expect(archiveUrlFor(STORE_ROOT)).toBe('/api/files/archive')
+  it('addresses the whole store by format alone', () => {
+    expect(archiveUrlFor(STORE_ROOT, 'zip')).toBe('/api/files/archive?format=zip')
   })
 
   it('addresses a subtree by query, encoding it', () => {
-    expect(archiveUrlFor('my folder/2026')).toBe('/api/files/archive?path=my%20folder%2F2026')
+    expect(archiveUrlFor('my folder/2026', 'zip')).toBe('/api/files/archive?path=my%20folder%2F2026&format=zip')
+  })
+
+  it('encodes the format, so the dot in a tarball cannot arrive as something else', () => {
+    expect(archiveUrlFor(STORE_ROOT, 'tar.gz')).toBe('/api/files/archive?format=tar.gz')
   })
 
   it('builds under whatever prefix it is given, which is what makes the default a default', () => {
-    expect(archiveUrlFor(STORE_ROOT, '/elsewhere')).toBe('/elsewhere/files/archive')
+    expect(archiveUrlFor(STORE_ROOT, 'zip', '/elsewhere')).toBe('/elsewhere/files/archive?format=zip')
   })
 })
 

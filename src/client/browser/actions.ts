@@ -10,7 +10,9 @@ import { documentNameFor } from './document-name.ts'
 import { rebuildingRunner } from './rebuild.ts'
 import { FilesRequestError, type FilesClient } from './files-client.ts'
 import { archiveUrlFor } from '../../shared/api.ts'
+import { archiveFormatNamed } from '../../shared/archive-formats.ts'
 import { serially } from '../../shared/serially.ts'
+import { SEQUENCE_START } from '../../shared/sequences.ts'
 import { joinPath } from '../../shared/store-path.ts'
 
 const ACTION_SELECTORS = {
@@ -18,7 +20,8 @@ const ACTION_SELECTORS = {
   newFolder: '#new-folder',
   upload: '#upload-file',
   uploadInput: '#upload-input',
-  download: '#download-archive',
+  archive: '#archive-actions',
+  importInput: '#import-input',
   remove: '#delete-entry',
   reveal: '#reveal-document',
   openSelected: '#open-selected',
@@ -35,6 +38,7 @@ function isCorrectableInDialog(code: string): code is CorrectableInDialog {
 
 export interface ActionContext {
   root: ParentNode
+  navigate: (url: string) => void
   client: FilesClient
   dialogs: Dialogs
   toast: Toast
@@ -87,6 +91,62 @@ async function uploadAll(context: ActionContext, files: readonly File[]): Promis
   await serially(files, async (file) => {
     await context.client.upload(context.targetDirectory(), file).catch((error: unknown) => {
       context.toast.error(`${file.name}: ${errorMessage(error)}`)
+    })
+  })
+}
+
+const IMPORT_AN_ARCHIVE = 'import'
+const ARCHIVE_REQUEST = {
+  title: 'Archive',
+  message: 'Download this folder, or add the contents of an archive to it.',
+  choices: [
+    { value: 'zip', label: 'Download .zip' },
+    { value: 'tar.gz', label: 'Download .tar.gz' },
+    { value: IMPORT_AN_ARCHIVE, label: 'Import an archive' },
+  ],
+} as const
+
+function refusalDetail(error: unknown): string | null {
+  if (!(error instanceof FilesRequestError)) return null
+
+  return error.reasons[SEQUENCE_START] ?? error.paths[SEQUENCE_START] ?? null
+}
+
+function importFailure(error: unknown): string {
+  const detail = refusalDetail(error)
+
+  return detail === null ? errorMessage(error) : `${errorMessage(error)}: ${detail}`
+}
+
+async function importOne(context: ActionContext, archive: File): Promise<void> {
+  try {
+    const placed = await context.client.importArchive(context.targetDirectory(), archive)
+    context.toast.show(`Imported ${String(placed.length)} from ${archive.name}`)
+  } catch (error) {
+    context.toast.error(importFailure(error))
+  }
+}
+
+function bindArchive(context: ActionContext, run: (work: () => Promise<void>) => void): void {
+  const input = context.root.querySelector<HTMLInputElement>(ACTION_SELECTORS.importInput)
+
+  context.root.querySelector(ACTION_SELECTORS.archive)?.addEventListener('click', () => {
+    run(async () => {
+      const chosen = await context.dialogs.choose(ARCHIVE_REQUEST)
+      const format = chosen === null ? null : archiveFormatNamed(chosen)
+
+      if (format !== null) context.navigate(archiveUrlFor(context.targetDirectory(), format))
+      if (chosen === IMPORT_AN_ARCHIVE) input?.click()
+    })
+  })
+
+  input?.addEventListener('change', () => {
+    const [archive] = input.files ?? []
+    input.value = ''
+    if (archive === undefined) return
+
+    run(async () => {
+      await importOne(context, archive)
     })
   })
 }
@@ -187,6 +247,7 @@ export function bindActions(context: ActionContext): void {
   })
 
   bindUpload(context, run)
+  bindArchive(context, run)
 }
 
 export function updateInsertAvailability(root: ParentNode, selection: string | null): void {
@@ -194,8 +255,4 @@ export function updateInsertAvailability(root: ParentNode, selection: string | n
   if (button === null) return
 
   button.disabled = selection === null
-}
-
-export function updateArchiveLink(root: ParentNode, directory: string): void {
-  root.querySelector<HTMLAnchorElement>(ACTION_SELECTORS.download)?.setAttribute('href', archiveUrlFor(directory))
 }

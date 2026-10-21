@@ -217,6 +217,14 @@ describe('Enter', () => {
 
     expect(opened).toStrictEqual([])
   })
+
+  it('leaves the toggled folder selected, so the next key acts on it', async () => {
+    await start()
+
+    press('journal')
+
+    expect(selectedPaths()).toStrictEqual(['journal'])
+  })
 })
 
 describe('inserting the selection with the keyboard', () => {

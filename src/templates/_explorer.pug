@@ -7,7 +7,11 @@ aside.explorer#explorer(aria-label='Sidebar')
         span.icon(aria-hidden='true') create_new_folder
       button.explorer__action#upload-file(type='button' aria-label='Upload' title='Upload')
         span.icon(aria-hidden='true') upload_file
-      a.explorer__action#download-archive(href=archiveUrl aria-label='Download archive' title='Download archive')
+      button.explorer__action#archive-actions(
+        type='button'
+        aria-label='Download or import an archive'
+        title='Download or import an archive'
+      )
         span.icon(aria-hidden='true') folder_zip
       button.explorer__action#delete-entry(type='button' aria-label='Delete' title='Delete')
         span.icon(aria-hidden='true') delete
@@ -23,6 +27,7 @@ aside.explorer#explorer(aria-label='Sidebar')
       )
         span.icon(aria-hidden='true') input
       input#upload-input(type='file' multiple hidden aria-hidden='true' tabindex='-1')
+      input#import-input(type='file' accept='.zip,.tar.gz,.tgz' hidden aria-hidden='true' tabindex='-1')
     ul.tree#file-tree(role='tree' aria-label='Documents')
   section.panel(data-panel='trash' aria-label='Trash' hidden)
     .explorer__toolbar(role='toolbar' aria-label='Trash actions')

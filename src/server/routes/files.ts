@@ -25,7 +25,8 @@ import {
   toErrorResponse,
   unsupportedFormat,
 } from './error-response.ts'
-import { archiveFormatOf, type ArchiveFormat } from '../storage/archive-format.ts'
+import { archiveFormatOf } from '../storage/archive-format.ts'
+import { archiveFormatNamed, type ArchiveFormat } from '../../shared/archive-formats.ts'
 import { importArchive } from '../storage/import-archive.ts'
 import { open, rm } from 'node:fs/promises'
 import {
@@ -69,16 +70,10 @@ const ARCHIVE_MEDIA_TYPES: Readonly<Record<ArchiveFormat, string>> = {
   zip: 'application/zip',
   'tar.gz': 'application/gzip',
 }
-const ARCHIVE_FORMATS: readonly ArchiveFormat[] = ['zip', 'tar.gz']
-
 function archiveName(subtree: string, format: ArchiveFormat): string {
   const leaf = path.posix.basename(subtree)
 
   return `vixen-${leaf === '' ? WHOLE_STORE : leaf}.${format}`
-}
-
-function requestedFormat(asked: string): ArchiveFormat | null {
-  return ARCHIVE_FORMATS.find((format) => format === asked) ?? null
 }
 
 function contentDisposition(name: string): string {
@@ -191,7 +186,7 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
 
   routes.get('/archive', async (c) => {
     const subtree = c.req.query('path') ?? ''
-    const format = requestedFormat(c.req.query('format') ?? DEFAULT_FORMAT)
+    const format = archiveFormatNamed(c.req.query('format') ?? DEFAULT_FORMAT)
     if (format === null) return unsupportedFormat(c)
 
     try {

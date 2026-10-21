@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createSelection } from '../../../src/client/browser/selection.ts'
 import { TRASH_PATH } from '../../../src/client/browser/trash/trash-view.ts'
 import type { VisibleRow } from '../../../src/client/browser/tree/drawing.ts'
-import { archiveUrlFor } from '../../../src/shared/api.ts'
 import { joinPath, STORE_ROOT } from '../../../src/shared/store-path.ts'
 
 import { given } from '../../conditions.ts'
@@ -45,10 +44,6 @@ function insertButton(): HTMLButtonElement {
   if (element === null) throw new Error('missing the insert button')
 
   return element
-}
-
-function archiveHref(): string | null {
-  return root.querySelector<HTMLAnchorElement>('#download-archive')?.getAttribute('href') ?? null
 }
 
 beforeEach(() => {
@@ -159,12 +154,6 @@ describe('where a new entry would be created', () => {
 })
 
 describe('bringing the toolbar into step with the selection', () => {
-  it('points the archive link at the folder a download would take', () => {
-    selectionStartingAt(NESTED).reflect()
-
-    expect(archiveHref()).toBe(archiveUrlFor(FOLDER))
-  })
-
   it('offers insert when the selection is something a document can link to', () => {
     selectionStartingAt(NESTED).reflect()
 

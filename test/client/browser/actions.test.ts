@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
-import { bindActions, updateArchiveLink, updateInsertAvailability } from '../../../src/client/browser/actions.ts'
+import { bindActions, updateInsertAvailability } from '../../../src/client/browser/actions.ts'
 import { FilesRequestError, type FilesClient } from '../../../src/client/browser/files-client.ts'
 import { onDeletionPending } from '../../../src/client/platform/announce/deletion-pending.ts'
 import { onEntryTrashed, type TrashedEntry } from '../../../src/client/platform/announce/entry-trashed.ts'
@@ -38,6 +38,7 @@ interface StoreCalls {
   createFolder: Mock<(folderPath: string) => Promise<void>>
   upload: Mock<(directory: string, file: File) => Promise<string>>
   remove: Mock<(entryPath: string) => Promise<string>>
+  importArchive: Mock<(directory: string, archive: File) => Promise<string[]>>
 }
 
 let client: StoreCalls = freshClient()
@@ -45,6 +46,8 @@ let prompt: Mock<(request: PromptLike) => Promise<boolean>> = vi.fn()
 let confirm: Mock<() => Promise<boolean>> = vi.fn()
 let refusals: string[] = []
 let notices: string[] = []
+let navigations: string[] = []
+let chosen: string | null = null
 let tracked: Array<Promise<void>> = []
 let refreshes = 0
 let steps: string[] = []
@@ -56,6 +59,7 @@ function freshClient(): StoreCalls {
     createFolder: vi.fn().mockResolvedValue(undefined),
     upload: vi.fn().mockResolvedValue('journal/photo.png'),
     remove: vi.fn().mockResolvedValue(TRASH_ID),
+    importArchive: vi.fn().mockResolvedValue(['journal/a.md', 'journal/b.md']),
   }
 }
 
@@ -70,8 +74,11 @@ function bound({ selection = SELECTED, directory = FOLDER, confirmed = true, dis
 
   bindActions({
     root,
+    navigate: (url: string) => {
+      navigations.push(url)
+    },
     client: cast<FilesClient>(client),
-    dialogs: cast<Dialogs>({ prompt, confirm }),
+    dialogs: cast<Dialogs>({ prompt, confirm, choose: async () => await Promise.resolve(chosen) }),
     toast: cast<Toast>({
       show: (message: string) => {
         notices.push(message)
@@ -131,6 +138,8 @@ beforeEach(() => {
   client = freshClient()
   refusals = []
   notices = []
+  navigations = []
+  chosen = null
   tracked = []
   refreshes = 0
   steps = []
@@ -225,7 +234,7 @@ describe('creating a folder', () => {
 describe('a name the store will not take', () => {
   it('keeps the dialog open with the reason, rather than throwing what was typed away', async () => {
     bound()
-    client.createDocument.mockRejectedValue(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS', []))
+    client.createDocument.mockRejectedValue(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS'))
     let reported: string | null = 'not asked'
     bindActionsWith(
       vi.fn(async (request: PromptLike) => {
@@ -243,7 +252,7 @@ describe('a name the store will not take', () => {
 
   it('reports a refusal the reader cannot fix by retyping', async () => {
     bound()
-    client.createDocument.mockRejectedValue(new FilesRequestError(503, 'Busy, try again', 'BUSY', []))
+    client.createDocument.mockRejectedValue(new FilesRequestError(503, 'Busy, try again', 'BUSY'))
 
     press('#new-document')
     await settled()
@@ -259,6 +268,9 @@ function bindActionsWith(prompting: Mock<(request: PromptLike) => Promise<boolea
     root,
     client: cast<FilesClient>(client),
     dialogs: cast<Dialogs>({ prompt: prompting, confirm: vi.fn().mockResolvedValue(true) }),
+    navigate: (url: string) => {
+      navigations.push(url)
+    },
     toast: cast<Toast>({
       show: () => undefined,
       error: (message: string) => {
@@ -409,7 +421,7 @@ describe('uploading files', () => {
   it('reports one refused file without discarding the rest', async () => {
     bound()
     client.upload.mockImplementation(async (_directory: string, file: File) => {
-      if (file.name === 'bad.png') throw new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH', [])
+      if (file.name === 'bad.png') throw new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH')
 
       return await Promise.resolve('ok')
     })
@@ -480,26 +492,6 @@ describe('what the toolbar says about the selection', () => {
       updateInsertAvailability(root, SELECTED)
     }).not.toThrow()
   })
-
-  it('points the archive link at the folder a download would take', () => {
-    updateArchiveLink(root, FOLDER)
-
-    expect(root.querySelector('#download-archive')?.getAttribute('href')).toBe(archiveUrlFor(FOLDER))
-  })
-
-  it('points it at the whole store when that is the target', () => {
-    updateArchiveLink(root, STORE_ROOT)
-
-    expect(root.querySelector('#download-archive')?.getAttribute('href')).toBe(archiveUrlFor(STORE_ROOT))
-  })
-
-  it('leaves a page without the link alone rather than failing', () => {
-    root.querySelector('#download-archive')?.remove()
-
-    expect(() => {
-      updateArchiveLink(root, FOLDER)
-    }).not.toThrow()
-  })
 })
 
 describe('a failure that is not an Error at all', () => {
@@ -511,5 +503,153 @@ describe('a failure that is not an Error at all', () => {
     await settled()
 
     expect(refusals).toStrictEqual(['unknown error'])
+  })
+})
+
+describe('the archive button', () => {
+  function importInput(): HTMLInputElement {
+    const element = root.querySelector<HTMLInputElement>('#import-input')
+    if (element === null) throw new Error('missing the import input')
+
+    return element
+  }
+
+  function sendArchive(files: readonly File[] | null): void {
+    const input = importInput()
+    Object.defineProperty(input, 'files', { value: files, configurable: true })
+    input.dispatchEvent(new Event('change'))
+  }
+
+  it.each(['zip', 'tar.gz'] as const)('downloads the target folder as %s when that is chosen', async (format) => {
+    chosen = format
+    bound()
+
+    press('#archive-actions')
+    await settled()
+
+    expect(navigations).toStrictEqual([archiveUrlFor(FOLDER, format)])
+  })
+
+  it('downloads the whole store when that is the target', async () => {
+    chosen = 'zip'
+    bound({ directory: STORE_ROOT })
+
+    press('#archive-actions')
+    await settled()
+
+    expect(navigations).toStrictEqual([archiveUrlFor(STORE_ROOT, 'zip')])
+  })
+
+  it('downloads nothing when the dialog is dismissed', async () => {
+    chosen = null
+    bound()
+
+    press('#archive-actions')
+    await settled()
+
+    expect(navigations).toStrictEqual([])
+  })
+
+  it('opens the file picker rather than downloading when an import is chosen', async () => {
+    chosen = 'import'
+    bound()
+    const opened = vi.spyOn(importInput(), 'click')
+
+    press('#archive-actions')
+    await settled()
+
+    expect({ opened: opened.mock.calls.length, navigations }).toStrictEqual({ opened: 1, navigations: [] })
+  })
+
+  it('imports the chosen archive into the target folder', async () => {
+    bound()
+    const archive = new File(['PK'], 'notes.zip')
+
+    sendArchive([archive])
+    await settled()
+
+    expect(client.importArchive.mock.calls).toStrictEqual([[FOLDER, archive]])
+  })
+
+  it('reports what landed, so the reader knows the archive was taken whole', async () => {
+    bound()
+
+    sendArchive([new File(['PK'], 'notes.zip')])
+    await settled()
+
+    expect(notices).toStrictEqual(['Imported 2 from notes.zip'])
+  })
+
+  it('refreshes the tree, which is what makes the imported files visible', async () => {
+    bound()
+
+    sendArchive([new File(['PK'], 'notes.zip')])
+    await settled()
+
+    expect(refreshes).toBe(1)
+  })
+
+  it('names the entry that was refused, which is the only thing the reader can act on', async () => {
+    bound()
+    client.importArchive.mockRejectedValue(
+      new FilesRequestError(400, 'Refused', 'INVALID_PATH', {
+        paths: [],
+        reasons: ['../evil.md is not a name the store accepts'],
+      }),
+    )
+
+    sendArchive([new File(['PK'], 'notes.zip')])
+    await settled()
+
+    expect(refusals).toStrictEqual(['Refused: ../evil.md is not a name the store accepts'])
+  })
+
+  it('names the path that is already there when the archive would replace it', async () => {
+    bound()
+    client.importArchive.mockRejectedValue(
+      new FilesRequestError(409, 'Already there', 'ALREADY_EXISTS', { paths: ['notes.md'], reasons: [] }),
+    )
+
+    sendArchive([new File(['PK'], 'notes.zip')])
+    await settled()
+
+    expect(refusals).toStrictEqual(['Already there: notes.md'])
+  })
+
+  it('reports a refusal that names no entry at all on its message alone', async () => {
+    bound()
+    client.importArchive.mockRejectedValue(new FilesRequestError(400, 'Not an archive', 'BAD_REQUEST'))
+
+    sendArchive([new File(['PK'], 'notes.zip')])
+    await settled()
+
+    expect(refusals).toStrictEqual(['Not an archive'])
+  })
+
+  it('reports a failure that names nothing on its own message alone', async () => {
+    bound()
+    client.importArchive.mockRejectedValue(new Error('disk on fire'))
+
+    sendArchive([new File(['PK'], 'notes.zip')])
+    await settled()
+
+    expect(refusals).toStrictEqual(['disk on fire'])
+  })
+
+  it('imports nothing when the picker is dismissed without a file', async () => {
+    bound()
+
+    sendArchive(null)
+    await settled()
+
+    expect(client.importArchive.mock.calls).toStrictEqual([])
+  })
+
+  it('leaves a page without the archive button alone rather than failing', () => {
+    root.querySelector('#archive-actions')?.remove()
+
+    expect(() => {
+      bound()
+    }).not.toThrow()
   })
 })

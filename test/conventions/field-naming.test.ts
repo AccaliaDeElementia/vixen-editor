@@ -3,8 +3,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { createTemplateRenderer } from '../../src/server/templates.ts'
-import { archiveUrlFor } from '../../src/shared/api.ts'
-import { STORE_ROOT } from '../../src/shared/store-path.ts'
 
 const CREDENTIAL_TOKENS = ['login', 'username', 'user', 'email', 'mail', 'password', 'passwd', 'account', 'signin']
 
@@ -23,7 +21,6 @@ export function credentialTokensIn(value: string): string[] {
 function renderedPage(): string {
   return createTemplateRenderer('src/templates', false).render('editor', {
     title: 'Vixen Editor',
-    archiveUrl: archiveUrlFor(STORE_ROOT),
   })
 }
 

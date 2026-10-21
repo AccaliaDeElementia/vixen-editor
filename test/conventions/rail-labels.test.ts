@@ -3,8 +3,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { createTemplateRenderer } from '../../src/server/templates.ts'
-import { archiveUrlFor } from '../../src/shared/api.ts'
-import { STORE_ROOT } from '../../src/shared/store-path.ts'
 
 const CONTROL = /<(?:button|a)\b[^>]*>/gv
 const IDENTIFIED = /id="(?<id>[^"]*)"/v
@@ -14,7 +12,6 @@ const NONE = 0
 function renderedPage(): string {
   return createTemplateRenderer('src/templates', false).render('editor', {
     title: 'Vixen Editor',
-    archiveUrl: archiveUrlFor(STORE_ROOT),
   })
 }
 

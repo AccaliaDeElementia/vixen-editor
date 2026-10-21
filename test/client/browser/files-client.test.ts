@@ -157,6 +157,47 @@ describe('mutations', () => {
     await expect(client().upload('', new File(['x'], 'p.png'))).resolves.toBe('')
   })
 
+  it('imports an archive and reports every path it placed', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ paths: ['journal/a.md', 'journal/b.md'] }, 201))
+
+    await expect(client().importArchive('journal', new File(['PK'], 'notes.zip'))).resolves.toStrictEqual([
+      'journal/a.md',
+      'journal/b.md',
+    ])
+  })
+
+  it('sends the archive to the imports route, which is the only one that takes one', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ paths: [] }, 201))
+
+    await client().importArchive('journal', new File(['PK'], 'notes.zip'))
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/files/imports', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('sends the folder the import was asked for, so the archive lands where the reader is', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ paths: [] }, 201))
+
+    await client().importArchive('journal', new File(['PK'], 'notes.zip'))
+
+    expect(bodyOf(fetchMock)?.get('path')).toBe('journal')
+  })
+
+  it('reports nothing placed when the import response names no paths', async () => {
+    fetchMock.mockResolvedValue(jsonResponse('not a record', 201))
+
+    await expect(client().importArchive('', new File(['PK'], 'notes.zip'))).resolves.toStrictEqual([])
+  })
+
+  it('carries the reasons a refused archive named, which is what the reader can act on', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ code: 'INVALID_PATH', error: 'Refused', reasons: ['a.md is bad'] }, 400))
+
+    const refusal = await client()
+      .importArchive('', new File(['PK'], 'notes.zip'))
+      .catch((error: unknown) => error)
+
+    expect(refusal).toMatchObject({ reasons: ['a.md is bad'] })
+  })
+
   it('deletes through the entries route, which moves to the trash', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ trashId: 'abc' }))
 

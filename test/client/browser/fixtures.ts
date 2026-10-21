@@ -51,11 +51,12 @@ const TOOLBAR_ACTIONS = [
   '#new-document',
   '#new-folder',
   '#upload-file',
-  '#download-archive',
+  '#archive-actions',
   '#delete-entry',
   '#reveal-document',
   '#insert-entry',
   '#upload-input',
+  '#import-input',
 ]
 
 export function treePage({ withToolbar = false, withOpenSelected = false } = {}): HTMLElement {

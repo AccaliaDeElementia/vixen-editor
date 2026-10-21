@@ -1,8 +1,7 @@
 'use sanity'
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
-
-export type ArchiveFormat = 'zip' | 'tar.gz'
+import type { ArchiveFormat } from '../../shared/archive-formats.ts'
 
 const FORMAT = 1
 const ZIP_LOCAL_FILE = 'PK\u0003\u0004'

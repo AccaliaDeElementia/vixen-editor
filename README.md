@@ -9,7 +9,7 @@ readable, greppable and backup-able with the tools you already have.
 - [Configuration](#readme-83d9c4)
 - [Addressing a document](#readme-b1e550)
 - [Browser support](#readme-c93f2a)
-- [Extracting a downloaded archive](#readme-4a7e19)
+- [Downloading and importing archives](#readme-4a7e19)
 - [Working on it](#readme-d05b6c)
 
 <a id="readme-6e4b78"></a>
@@ -21,6 +21,9 @@ readable, greppable and backup-able with the tools you already have.
   what you wrote.
 - **A file browser beside the editor.** Create, rename, move, upload and
   download; drag a file in to upload it, drag one onto the document to link it.
+- **Archives in and out.** The archive button downloads the folder you are in
+  as a zip or a gzipped tarball, or takes one and adds its contents to that
+  folder. An archive is accepted whole or refused whole.
 - **Deleting is recoverable.** A delete moves the entry to a trash area you can
   list and restore from, rather than removing bytes.
 - **Images work the way markdown expects.** `![](./photo.png)` resolves against
@@ -114,15 +117,20 @@ outright — so it is a floor rather than a recommendation.
 
 <a id="readme-4a7e19"></a>
 
-## Extracting a downloaded archive
+## Downloading and importing archives
 
 A download is a faithful copy of your tree: the names in the archive are the
-names on disk, unchanged. Downloads come as a **zip** by default, or as a
-**gzipped tarball**: add `?format=zip` or `?format=tar.gz` to the download
-URL.
+names on disk, unchanged. The archive button offers a **zip** or a **gzipped
+tarball**; the URL behind it takes `?format=zip` or `?format=tar.gz`.
 
 A tarball records no owner and one permission bit for every file, so extracting
 one gives you files owned by you rather than by whoever ran the server.
+
+An **import** goes the other way: the same button takes a `.zip` or `.tar.gz`
+and adds what it holds to the folder you are in. Every entry is judged before
+anything is written, so an archive carrying a name this store will not accept,
+or a file that is already there, is refused in its entirety and nothing
+changes.
 
 Linux allows filenames Windows does not — `< > : " | ? *`, a trailing dot, and
 the device names such as `CON` and `NUL`. If your store holds one, **Windows

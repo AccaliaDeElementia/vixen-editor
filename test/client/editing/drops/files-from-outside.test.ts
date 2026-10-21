@@ -193,7 +193,7 @@ describe('several files at once', () => {
     const element = editor()
     upload.mockImplementation((directory: string, file: File) =>
       file.name === 'bad.png'
-        ? Promise.reject(new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH', []))
+        ? Promise.reject(new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH'))
         : Promise.resolve(`${directory}/${file.name}`),
     )
 
@@ -208,7 +208,7 @@ describe('several files at once', () => {
     const element = editor()
     upload.mockImplementation((directory: string, file: File) =>
       file.name === 'bad.png'
-        ? Promise.reject(new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH', []))
+        ? Promise.reject(new FilesRequestError(400, 'Content does not match', 'CONTENT_MISMATCH'))
         : Promise.resolve(`${directory}/${file.name}`),
     )
 
@@ -222,7 +222,7 @@ describe('several files at once', () => {
 
 describe('a drop whose whole outcome is silence, so the work itself is the only signal', () => {
   it('inserts nothing when every file was refused', async () => {
-    upload.mockRejectedValue(new FilesRequestError(400, 'nope', 'CONTENT_MISMATCH', []))
+    upload.mockRejectedValue(new FilesRequestError(400, 'nope', 'CONTENT_MISMATCH'))
 
     await receive([png('a.png')], AT_CARET, () => false, dropOptions())
 
@@ -232,7 +232,7 @@ describe('a drop whose whole outcome is silence, so the work itself is the only 
 
 describe('a name that is already taken', () => {
   function collides(): void {
-    upload.mockRejectedValueOnce(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS', []))
+    upload.mockRejectedValueOnce(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS'))
   }
 
   it('offers a different name rather than failing silently', async () => {
@@ -287,7 +287,7 @@ describe('a name that is already taken', () => {
       },
     })
     collides()
-    upload.mockRejectedValueOnce(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS', []))
+    upload.mockRejectedValueOnce(new FilesRequestError(409, 'Already exists', 'ALREADY_EXISTS'))
 
     dropFiles(element, [png('a.png')])
 
