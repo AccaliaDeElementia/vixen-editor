@@ -7,7 +7,7 @@ import type { Actor } from '../platform/actor.ts'
 import { createLogger } from '../platform/logging.ts'
 import type { NameComparator } from './primitives/name-order.ts'
 
-import { archiveStream, planArchive, type ArchiveLimits } from './archive.ts'
+import { archiveStream, planArchive, type ArchiveRequest } from './archive.ts'
 import { createFileAtomic, replaceFileAtomic } from './primitives/atomic-write.ts'
 import { documentIdsUnder } from './document-ids.ts'
 import { isAtOrInside, realpathOrNull } from './primitives/containment.ts'
@@ -49,7 +49,7 @@ export interface StoreLayer {
   createUpload: (directory: string, filename: string, bytes: Uint8Array, actor: Actor) => Promise<string>
   readBytes: (entryPath: string) => Promise<Uint8Array<ArrayBuffer>>
   updateDocument: (id: string, content: string, expectedEtag: string, actor: Actor) => Promise<string>
-  archive: (subtree: string, limits: ArchiveLimits) => Promise<ReadableStream<Uint8Array>>
+  archive: (subtree: string, request: ArchiveRequest) => Promise<ReadableStream<Uint8Array>>
   move: (request: MoveRequest, actor: Actor) => Promise<RelinkOutcome>
   trash: (entryPath: string, actor: Actor) => Promise<string>
   listTrash: () => Promise<TrashEntryRecord[]>
@@ -198,8 +198,8 @@ export function createFsDocumentStore(
       }
     },
 
-    async archive(subtree: string, limits: ArchiveLimits): Promise<ReadableStream<Uint8Array>> {
-      return archiveStream(await planArchive(root, subtree, limits))
+    async archive(subtree: string, request: ArchiveRequest): Promise<ReadableStream<Uint8Array>> {
+      return archiveStream(await planArchive(root, subtree, request), request.format)
     },
 
     async move(request: MoveRequest): Promise<RelinkOutcome> {

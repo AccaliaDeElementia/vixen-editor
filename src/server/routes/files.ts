@@ -17,8 +17,15 @@ import { joinEntryPath } from '../storage/primitives/safe-path.ts'
 import { seedDocument, seedFolderIndex } from '../storage/primitives/seed.ts'
 
 import { ACCEPT_LANGUAGE, preferredLocale, VARIES_BY_LANGUAGE } from './accept-language.ts'
-import { archiveCollides, archiveRefused, invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'
-import { archiveFormatOf } from '../storage/archive-format.ts'
+import {
+  archiveCollides,
+  archiveRefused,
+  invalidBody,
+  payloadTooLarge,
+  toErrorResponse,
+  unsupportedFormat,
+} from './error-response.ts'
+import { archiveFormatOf, type ArchiveFormat } from '../storage/archive-format.ts'
 import { importArchive } from '../storage/import-archive.ts'
 import { open, rm } from 'node:fs/promises'
 import {
@@ -56,10 +63,22 @@ const UNSAFE_IN_QUOTED_FILENAME = /[^A-Za-z0-9._\-]+/gv
 // RFC 5987 attr-char is narrower than what encodeURIComponent leaves alone.
 const NOT_ATTR_CHAR = /['\(\)*]/gv
 
-function archiveName(subtree: string): string {
+const WHOLE_STORE = 'documents'
+const DEFAULT_FORMAT = 'zip'
+const ARCHIVE_MEDIA_TYPES: Readonly<Record<ArchiveFormat, string>> = {
+  zip: 'application/zip',
+  'tar.gz': 'application/gzip',
+}
+const ARCHIVE_FORMATS: readonly ArchiveFormat[] = ['zip', 'tar.gz']
+
+function archiveName(subtree: string, format: ArchiveFormat): string {
   const leaf = path.posix.basename(subtree)
 
-  return `vixen-${leaf === '' ? 'documents' : leaf}.zip`
+  return `vixen-${leaf === '' ? WHOLE_STORE : leaf}.${format}`
+}
+
+function requestedFormat(asked: string): ArchiveFormat | null {
+  return ARCHIVE_FORMATS.find((format) => format === asked) ?? null
 }
 
 function contentDisposition(name: string): string {
@@ -172,15 +191,19 @@ export function fileRoutes(store: DocumentStore, limits: Limits): Hono {
 
   routes.get('/archive', async (c) => {
     const subtree = c.req.query('path') ?? ''
+    const format = requestedFormat(c.req.query('format') ?? DEFAULT_FORMAT)
+    if (format === null) return unsupportedFormat(c)
+
     try {
       const stream = await store.archive(subtree, {
+        format,
         maxBytes: limits.archiveMaxBytes,
         maxEntries: limits.archiveMaxEntries,
       })
 
       return c.body(stream, HTTP_OK, {
-        'content-type': 'application/zip',
-        'content-disposition': contentDisposition(archiveName(subtree)),
+        'content-type': ARCHIVE_MEDIA_TYPES[format],
+        'content-disposition': contentDisposition(archiveName(subtree, format)),
       })
     } catch (error) {
       return toErrorResponse(c, error)

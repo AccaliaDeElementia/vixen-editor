@@ -1,7 +1,7 @@
 'use sanity'
 
 import type { Actor } from './platform/actor.ts'
-import type { ArchiveLimits } from './storage/archive.ts'
+import type { ArchiveRequest } from './storage/archive.ts'
 import type { StoreLayer } from './storage/fs-store.ts'
 import type { MoveRequest } from './storage/move.ts'
 import { assertEntryName, assertFolderName, joinEntryPath } from './storage/primitives/safe-path.ts'
@@ -49,10 +49,10 @@ export function validatingStore(store: StoreLayer): StoreLayer {
       return await store.readBytes(entryPath)
     },
 
-    async archive(subtree: string, limits: ArchiveLimits): Promise<ReadableStream<Uint8Array>> {
+    async archive(subtree: string, request: ArchiveRequest): Promise<ReadableStream<Uint8Array>> {
       assertFolderName(subtree)
 
-      return await store.archive(subtree, limits)
+      return await store.archive(subtree, request)
     },
 
     async createDocument(id: string, content: string, actor: Actor): Promise<string> {

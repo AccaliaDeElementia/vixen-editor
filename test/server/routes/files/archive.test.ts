@@ -8,6 +8,8 @@ import { given } from '../../../conditions.ts'
 import { Buffer } from 'node:buffer'
 import type { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { unpackTar } from 'modern-tar'
+import { gunzipSync } from 'node:zlib'
 
 import { refusalOf } from '../../refusals.ts'
 import { fileRoutes } from '../../../../src/server/routes/files.ts'
@@ -174,5 +176,61 @@ describe('downloading a subtree as a zip', () => {
     const res = await app.request('/archive?path=..%2F..%2Fetc')
 
     await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
+  })
+})
+
+describe('choosing the download format', () => {
+  async function namesIn(res: Response): Promise<string[]> {
+    const found = await unpackTar(gunzipSync(Buffer.from(await res.arrayBuffer())))
+
+    return found.map(({ header }) => header.name)
+  }
+
+  it('serves a gzipped tarball when the request asks for one', async () => {
+    await store.createDocument('notes.md', '# hello', someone)
+
+    const res = await app.request('/archive?format=tar.gz')
+
+    given(() => {
+      expect({ status: res.status, contentType: res.headers.get('content-type') }).toStrictEqual({
+        status: 200,
+        contentType: 'application/gzip',
+      })
+    })
+
+    await expect(namesIn(res)).resolves.toStrictEqual(['notes.md'])
+  })
+
+  it('names a tarball after the subtree, with the extension the format asks for', async () => {
+    await store.createDocument('journal/entry.md', '# entry', someone)
+
+    const res = await app.request('/archive?path=journal&format=tar.gz')
+
+    expect(res.headers.get('content-disposition')).toBe(
+      'attachment; filename="vixen-journal.tar.gz"; filename*=UTF-8\'\'vixen-journal.tar.gz',
+    )
+  })
+
+  it('serves a zip when the request names it, so the default is not the only way there', async () => {
+    await store.createDocument('notes.md', '# hello', someone)
+
+    const res = await app.request('/archive?format=zip')
+
+    expect(res.headers.get('content-type')).toBe('application/zip')
+  })
+
+  it('refuses a format it cannot write, rather than quietly serving another', async () => {
+    const res = await app.request('/archive?format=tar.bz2')
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'BAD_REQUEST' })
+  })
+
+  it('refuses the format before measuring, because the request is wrong whatever the store holds', async () => {
+    await store.createDocument('notes.md', '# a document longer than four bytes', someone)
+    const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, archiveMaxBytes: 4 })
+
+    const res = await tiny.request('/archive?format=rar')
+
+    expect(res.status).toBe(400)
   })
 })

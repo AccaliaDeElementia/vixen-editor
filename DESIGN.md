@@ -656,6 +656,18 @@ status code instead of a truncated download.
 sanitising, no renaming, no rewriting of document contents. An export is a
 faithful copy of the tree or it is not worth having.
 
+**Two formats, one plan.** `planArchive` measures the tree against the limits
+and knows nothing about encoding; `archiveStream(plan, format)` picks the
+writer. zip is the default because it needs no tool on Windows; tar.gz is
+offered because the target audience is on Linux, and it is the same word the
+import side detects from the magic bytes.
+
+**A tarball carries no identity.** Ownership is written as `0`/`0` with empty
+user and group names, and every file gets one mode, so an export says nothing
+about the account the server runs as and no permission bit on disk reaches the
+download. Modification times are kept, because they are the store's data rather
+than the server's.
+
 Linux accepts filenames that Windows does not: `< > : " | ? *`, the device
 names (`CON`, `PRN`, `AUX`, `NUL`, `COM0`–`COM9`, `LPT0`–`LPT9`, with or
 without an extension), and a trailing dot. A store holding such a name — one

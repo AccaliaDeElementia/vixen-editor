@@ -116,8 +116,13 @@ outright — so it is a floor rather than a recommendation.
 
 ## Extracting a downloaded archive
 
-A download is a faithful copy of your tree: the names in the zip are the names
-on disk, unchanged.
+A download is a faithful copy of your tree: the names in the archive are the
+names on disk, unchanged. Downloads come as a **zip** by default, or as a
+**gzipped tarball**: add `?format=zip` or `?format=tar.gz` to the download
+URL.
+
+A tarball records no owner and one permission bit for every file, so extracting
+one gives you files owned by you rather than by whoever ran the server.
 
 Linux allows filenames Windows does not — `< > : " | ? *`, a trailing dot, and
 the device names such as `CON` and `NUL`. If your store holds one, **Windows

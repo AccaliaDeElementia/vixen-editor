@@ -8,8 +8,10 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { unpackTar, type ParsedTarEntryWithData } from 'modern-tar'
+import { gunzipSync } from 'node:zlib'
 
-import { archiveStream, planArchive } from '../../../src/server/storage/archive.ts'
+import { archiveStream, planArchive, type ArchiveRequest } from '../../../src/server/storage/archive.ts'
 import { createFsDocumentStore, type StoreLayer } from '../../../src/server/storage/fs-store.ts'
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import { ArchiveTooLargeError, DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
@@ -17,6 +19,8 @@ import { ArchiveTooLargeError, DocumentNotFoundError } from '../../../src/server
 import { someone } from '../actors.ts'
 
 const GENEROUS = { maxBytes: 1_000_000, maxEntries: 1000 }
+const AS_ZIP: ArchiveRequest = { ...GENEROUS, format: 'zip' }
+const AS_TAR: ArchiveRequest = { ...GENEROUS, format: 'tar.gz' }
 
 let root = ''
 let store: StoreLayer = createFsDocumentStore('', repairLinks)
@@ -110,6 +114,12 @@ describe('planArchive', () => {
     expect(error).toMatchObject({ unit: 'entries', limit: 1, measured: 2 })
   })
 
+  it('accepts an entry count exactly at the limit', async () => {
+    await store.createDocument('a.md', 'x', someone)
+
+    await expect(planArchive(root, '', { ...GENEROUS, maxEntries: 1 })).resolves.toMatchObject({ files: ['a.md'] })
+  })
+
   it('accepts a total exactly at the limit', async () => {
     await store.createDocument('a.md', 'abcd', someone)
 
@@ -135,7 +145,7 @@ describe('archive', () => {
   it('streams rather than buffering, so a large export never lands in memory', async () => {
     await store.createDocument('notes.md', '# hello', someone)
 
-    const stream = await store.archive('', GENEROUS)
+    const stream = await store.archive('', AS_ZIP)
 
     expect(stream).toBeInstanceOf(ReadableStream)
   })
@@ -143,7 +153,7 @@ describe('archive', () => {
   it('produces a readable zip', async () => {
     await store.createDocument('notes.md', '# hello', someone)
 
-    const stream = await store.archive('', GENEROUS)
+    const stream = await store.archive('', AS_ZIP)
     const bytes = Buffer.from(await new Response(stream).arrayBuffer())
 
     expect({
@@ -155,7 +165,7 @@ describe('archive', () => {
   it('carries an empty folder into the zip, so the structure survives a round trip', async () => {
     await fs.mkdir(path.join(root, 'empty'), { recursive: true })
 
-    const stream = await store.archive('', GENEROUS)
+    const stream = await store.archive('', AS_ZIP)
     const bytes = Buffer.from(await new Response(stream).arrayBuffer())
 
     expect(bytes.includes(Buffer.from('empty/'))).toBe(true)
@@ -163,7 +173,7 @@ describe('archive', () => {
 
   it('does not take the write lock, so a download cannot block a save', async () => {
     await store.createDocument('notes.md', '# hello', someone)
-    const stream = await store.archive('', GENEROUS)
+    const stream = await store.archive('', AS_ZIP)
 
     const etag = await store.createDocument('during-download.md', '# written while downloading', someone)
 
@@ -184,7 +194,7 @@ describe('archiveStream when the tree changes underneath it', () => {
     await store.createDocument('notes.md', 'hello', someone)
     const plan = await planArchive(root, '', GENEROUS)
 
-    await expect(drain(archiveStream(plan))).resolves.toBeGreaterThan(0)
+    await expect(drain(archiveStream(plan, 'zip'))).resolves.toBeGreaterThan(0)
   })
 
   async function uncaughtDuring(work: () => Promise<void>): Promise<unknown[]> {
@@ -208,7 +218,7 @@ describe('archiveStream when the tree changes underneath it', () => {
     const plan = await planArchive(root, '', GENEROUS)
     await fs.rm(path.join(root, 'notes.md'))
 
-    await expect(drain(archiveStream(plan))).rejects.toThrow('ENOENT')
+    await expect(drain(archiveStream(plan, 'zip'))).rejects.toThrow('ENOENT')
   })
 
   it('raises no uncaught exception doing so, which would end the process', async () => {
@@ -217,9 +227,78 @@ describe('archiveStream when the tree changes underneath it', () => {
     await fs.rm(path.join(root, 'notes.md'))
 
     const raised = await uncaughtDuring(async () => {
-      await givenAsync(expect(drain(archiveStream(plan))).rejects.toThrow('ENOENT'))
+      await givenAsync(expect(drain(archiveStream(plan, 'zip'))).rejects.toThrow('ENOENT'))
     })
 
     expect(raised).toStrictEqual([])
+  })
+})
+
+describe('archiveStream as tar.gz', () => {
+  async function unpacked(stream: ReadableStream<Uint8Array>): Promise<ParsedTarEntryWithData[]> {
+    return await unpackTar(gunzipSync(Buffer.from(await new Response(stream).arrayBuffer())))
+  }
+
+  it('is a gzip member, so the browser can save it under the name it is given', async () => {
+    await store.createDocument('notes.md', '# hello', someone)
+
+    const stream = await store.archive('', AS_TAR)
+    const bytes = Buffer.from(await new Response(stream).arrayBuffer())
+
+    expect([...bytes.subarray(0, 2)]).toStrictEqual([0x1f, 0x8b])
+  })
+
+  it('carries every file with the bytes the store holds', async () => {
+    await store.createDocument('notes.md', '# hello', someone)
+    await store.createDocument('journal/entry.md', '# entry', someone)
+
+    const found = await unpacked(await store.archive('', AS_TAR))
+
+    expect(found.map(({ header, data }) => [header.name, Buffer.from(data ?? []).toString('utf8')])).toStrictEqual([
+      ['journal/entry.md', '# entry'],
+      ['notes.md', '# hello'],
+    ])
+  })
+
+  it('carries an empty folder, which nothing else in the tarball would imply', async () => {
+    await fs.mkdir(path.join(root, 'empty'), { recursive: true })
+
+    const found = await unpacked(await store.archive('', AS_TAR))
+
+    expect(found.map(({ header }) => [header.name, header.type])).toStrictEqual([['empty/', 'directory']])
+  })
+
+  it('names no owner, so the archive says nothing about the account that built it', async () => {
+    await store.createDocument('notes.md', '# hello', someone)
+
+    const [entry] = await unpacked(await store.archive('', AS_TAR))
+
+    expect(entry?.header).toMatchObject({ uid: 0, gid: 0, uname: '', gname: '' })
+  })
+
+  it('gives every file one mode, so no permission bit on disk reaches the download', async () => {
+    await store.createDocument('notes.md', '# hello', someone)
+    await fs.chmod(path.join(root, 'notes.md'), 0o777)
+
+    const [entry] = await unpacked(await store.archive('', AS_TAR))
+
+    expect(entry?.header.mode).toBe(0o644)
+  })
+
+  it('keeps the time the store last wrote the file', async () => {
+    await store.createDocument('notes.md', '# hello', someone)
+    const written = await fs.stat(path.join(root, 'notes.md'))
+
+    const [entry] = await unpacked(await store.archive('', AS_TAR))
+
+    expect(entry?.header.mtime?.getTime()).toBe(Math.floor(written.mtimeMs / 1000) * 1000)
+  })
+
+  it('fails the download when a planned file is deleted first', async () => {
+    await store.createDocument('notes.md', 'hello', someone)
+    const plan = await planArchive(root, '', GENEROUS)
+    await fs.rm(path.join(root, 'notes.md'))
+
+    await expect(new Response(archiveStream(plan, 'tar.gz')).arrayBuffer()).rejects.toThrow('ENOENT')
   })
 })

@@ -20,11 +20,11 @@ function part(name: string, filename: string): ReceivedFile {
 
 describe('what a downloaded archive is called', () => {
   it('is named for the subtree it holds', () => {
-    expect(archiveName('journal/2026')).toBe('vixen-2026.zip')
+    expect(archiveName('journal/2026', 'zip')).toBe('vixen-2026.zip')
   })
 
   it('is named for the store itself when the whole store was asked for', () => {
-    expect(archiveName(STORE_ROOT)).toBe('vixen-documents.zip')
+    expect(archiveName(STORE_ROOT, 'zip')).toBe('vixen-documents.zip')
   })
 
   it('offers the name as a plain quoted filename, which every browser understands', () => {

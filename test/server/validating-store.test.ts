@@ -28,7 +28,9 @@ describe('reading', () => {
   })
 
   it('refuses an archive of the trash, which is not addressable through the API', async () => {
-    await expect(store.archive('.trash', { maxBytes: 1, maxEntries: 1 })).rejects.toThrow(InvalidPathError)
+    await expect(store.archive('.trash', { format: 'zip', maxBytes: 1, maxEntries: 1 })).rejects.toThrow(
+      InvalidPathError,
+    )
   })
 })
 

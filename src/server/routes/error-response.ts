@@ -41,6 +41,10 @@ export function invalidBody(c: Context): Response {
   return refuse(c, HTTP_BAD_REQUEST, 'BAD_REQUEST', { error: 'Invalid request body' })
 }
 
+export function unsupportedFormat(c: Context): Response {
+  return refuse(c, HTTP_BAD_REQUEST, 'BAD_REQUEST', { error: 'Unsupported archive format' })
+}
+
 export function preconditionRequired(c: Context): Response {
   return refuse(c, HTTP_PRECONDITION_REQUIRED, 'PRECONDITION_REQUIRED', { error: 'If-Match is required' })
 }
