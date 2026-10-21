@@ -22,8 +22,8 @@ describe('what an archive says it is', () => {
     expect(archiveFormatOf(new TextEncoder().encode('# not an archive'))).toBe(NOT_AN_ARCHIVE)
   })
 
-  it('refuses a gzip, which is not a format this endpoint takes yet', () => {
-    expect(archiveFormatOf(GZIP_HEAD)).toBe(NOT_AN_ARCHIVE)
+  it('reads a gzip as a tarball, which is the only thing this store gzips', () => {
+    expect(archiveFormatOf(GZIP_HEAD)).toBe('tar.gz')
   })
 
   it('refuses a file too short to carry a signature', () => {

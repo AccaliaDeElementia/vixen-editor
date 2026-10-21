@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { importZip } from '../../../src/server/storage/import-archive.ts'
+import { importArchive } from '../../../src/server/storage/import-archive.ts'
 import { createFsDocumentStore } from '../../../src/server/storage/fs-store.ts'
 import { localActor } from '../../../src/server/platform/actor.ts'
 import { STORE_ROOT } from '../../../src/shared/store-path.ts'
@@ -25,8 +25,8 @@ async function archiveOf(entries: readonly FixtureEntry[]): Promise<string> {
   return target
 }
 
-async function importing(entries: readonly FixtureEntry[], into = STORE_ROOT): ReturnType<typeof importZip> {
-  return await importZip({ store, archivePath: await archiveOf(entries), into, actor: localActor() })
+async function importing(entries: readonly FixtureEntry[], into = STORE_ROOT): ReturnType<typeof importArchive> {
+  return await importArchive({ store, archivePath: await archiveOf(entries), format: 'zip', into, actor: localActor() })
 }
 
 beforeEach(async () => {

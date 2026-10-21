@@ -6,15 +6,32 @@ import { compareNames } from './primitives/name-order.ts'
 import { EMPTY } from '../../shared/sequences.ts'
 import { basenameOf, directoryOf } from '../../shared/link-paths.ts'
 import { joinPath } from '../../shared/store-path.ts'
-import { readZipEntries, eachZipFile } from './zip-entries.ts'
+import { eachZipFile, readZipEntries } from './zip-entries.ts'
+import { eachTarFile, readTarEntries } from './tar-entries.ts'
+import type { ArchiveFormat } from './archive-format.ts'
 import { verdictFor, type ArchiveEntry } from './archive-entry.ts'
 import type { TreeEntry } from './tree.ts'
 
 interface ImportRequest {
   store: Pick<StoreLayer, 'tree' | 'createUpload'>
   archivePath: string
+  format: ArchiveFormat
   into: string
   actor: Actor
+}
+
+interface Reader {
+  entries: (archivePath: string) => Promise<ArchiveEntry[]>
+  each: (
+    archivePath: string,
+    wanted: ReadonlySet<string>,
+    take: (name: string, bytes: Uint8Array) => Promise<void> | void,
+  ) => Promise<void>
+}
+
+const READERS: Readonly<Record<ArchiveFormat, Reader>> = {
+  zip: { entries: readZipEntries, each: eachZipFile },
+  'tar.gz': { entries: readTarEntries, each: eachTarFile },
 }
 
 type ImportOutcome =
@@ -54,8 +71,17 @@ function decide(found: readonly ArchiveEntry[], into: string): Decided {
   return decided
 }
 
-export async function importZip({ store, archivePath, into, actor }: ImportRequest): Promise<ImportOutcome> {
-  const { refusals, taking } = decide(await readZipEntries(archivePath), into)
+export async function importArchive({
+  store,
+  archivePath,
+  format,
+  into,
+  actor,
+}: ImportRequest): Promise<ImportOutcome> {
+  const {
+    [format]: { entries, each },
+  } = READERS
+  const { refusals, taking } = decide(await entries(archivePath), into)
   if (refusals.length > EMPTY) return { kind: 'refused', reasons: sorted(refusals) }
   if (taking.length === EMPTY) return { kind: 'refused', reasons: [NOTHING_TO_TAKE] }
 
@@ -64,7 +90,7 @@ export async function importZip({ store, archivePath, into, actor }: ImportReque
   if (collides.length > EMPTY) return { kind: 'collides', paths: sorted(collides) }
 
   const placed: string[] = []
-  await eachZipFile(archivePath, new Set(taking.map(({ from }) => from)), async (name, bytes) => {
+  await each(archivePath, new Set(taking.map(({ from }) => from)), async (name, bytes) => {
     const to = joinPath(into, name)
     placed.push(await store.createUpload(directoryOf(to), basenameOf(to), bytes, actor))
   })

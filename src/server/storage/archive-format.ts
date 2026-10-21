@@ -2,18 +2,27 @@
 
 import { SEQUENCE_START } from '../../shared/sequences.ts'
 
-type ArchiveFormat = 'zip'
+export type ArchiveFormat = 'zip' | 'tar.gz'
 
+const FORMAT = 1
 const ZIP_LOCAL_FILE = 'PK\u0003\u0004'
 const ZIP_EMPTY_DIRECTORY = 'PK\u0005\u0006'
-const ZIP_SIGNATURES: readonly Uint8Array[] = [ZIP_LOCAL_FILE, ZIP_EMPTY_DIRECTORY].map((signature) =>
-  new TextEncoder().encode(signature),
-)
+const GZIP_MEMBER = '\u001f\u008b'
+
+function bytesOf(signature: string): Uint8Array {
+  return Uint8Array.from(signature, (character) => character.charCodeAt(SEQUENCE_START))
+}
+
+const SIGNATURES: ReadonlyArray<readonly [Uint8Array, ArchiveFormat]> = [
+  [bytesOf(ZIP_LOCAL_FILE), 'zip'],
+  [bytesOf(ZIP_EMPTY_DIRECTORY), 'zip'],
+  [bytesOf(GZIP_MEMBER), 'tar.gz'],
+]
 
 function opensWith(head: Uint8Array, signature: Uint8Array): boolean {
   return signature.every((byte, index) => head[SEQUENCE_START + index] === byte)
 }
 
 export function archiveFormatOf(head: Uint8Array): ArchiveFormat | null {
-  return ZIP_SIGNATURES.some((signature) => opensWith(head, signature)) ? 'zip' : null
+  return SIGNATURES.find(([signature]) => opensWith(head, signature))?.[FORMAT] ?? null
 }

@@ -19,7 +19,7 @@ import { seedDocument, seedFolderIndex } from '../storage/primitives/seed.ts'
 import { ACCEPT_LANGUAGE, preferredLocale, VARIES_BY_LANGUAGE } from './accept-language.ts'
 import { archiveCollides, archiveRefused, invalidBody, payloadTooLarge, toErrorResponse } from './error-response.ts'
 import { archiveFormatOf } from '../storage/archive-format.ts'
-import { importZip } from '../storage/import-archive.ts'
+import { importArchive } from '../storage/import-archive.ts'
 import { open, rm } from 'node:fs/promises'
 import {
   BodyTooLargeError,
@@ -103,6 +103,7 @@ async function receivedOrRefusal(c: Context, maxBytes: number): Promise<Received
 }
 
 const ARCHIVE_HEAD_BYTES = 8
+const UNREADABLE = null
 
 async function headOf(staged: string): Promise<Uint8Array> {
   const file = await open(staged)
@@ -133,15 +134,17 @@ async function importInto(c: Context, store: DocumentStore, staged: string, maxB
   const [only] = parts
   if (only === undefined || parts.length !== ONE_ARCHIVE || only.name !== UPLOAD_FIELD) return invalidBody(c)
 
-  const head = await headOf(staged)
-  if (archiveFormatOf(head) === null) return invalidBody(c)
+  const format = archiveFormatOf(await headOf(staged))
+  if (format === null) return invalidBody(c)
 
-  const outcome = await importZip({
+  const outcome = await importArchive({
     store,
     archivePath: staged,
+    format,
     into: received.fields.path ?? STORE_ROOT,
     actor: actorOf(c),
-  })
+  }).catch(() => UNREADABLE)
+  if (outcome === UNREADABLE) return invalidBody(c)
   if (outcome.kind === 'refused') return archiveRefused(c, outcome.reasons)
   if (outcome.kind === 'collides') return archiveCollides(c, outcome.paths)
 

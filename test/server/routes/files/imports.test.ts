@@ -1,6 +1,8 @@
 'use sanity'
 
+import { Buffer } from 'node:buffer'
 import fs from 'node:fs/promises'
+import { gzipSync } from 'node:zlib'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -14,10 +16,15 @@ import type { DocumentStore } from '../../../../src/server/storage/fs-store.ts'
 import { documentStoreIn } from '../../stores.ts'
 import { someone } from '../../actors.ts'
 import { SYMLINK_MODE, zipOf, type FixtureEntry } from '../../storage/zip-fixtures.ts'
+import { tarGzOf } from '../../storage/tar-fixtures.ts'
 import { TestOnly as stagingTestOnly } from '../../../../src/server/storage/staging.ts'
 
 const CONTENT = new TextEncoder().encode('# stored')
 const NOTHING_LEFT = 0
+const GARBAGE_BLOCK = 2048
+const NEAR_THE_END = 10
+const ALL_BITS = 0xff
+const FILLER = 0x41
 
 let root = ''
 let store: DocumentStore = documentStoreIn('')
@@ -169,11 +176,89 @@ describe('an archive over the limit', () => {
     expect(res.status).toBe(413)
   })
 
+  it('is read at a declared length of exactly the limit, because the limit is what is allowed', async () => {
+    const exact = fileRoutes(store, { ...DEFAULT_LIMITS, archiveMaxBytes: 5 })
+
+    const res = await exact.request('/imports', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '5' },
+      body: '--x--',
+    })
+
+    expect(res.status).toBe(400)
+  })
+
   it('is refused before it is read, when the sender declares its length', async () => {
     const tiny = fileRoutes(store, { ...DEFAULT_LIMITS, archiveMaxBytes: 4 })
 
     const res = await importing([{ name: 'a.md', bytes: CONTENT }], undefined, tiny)
 
     expect(res.status).toBe(413)
+  })
+})
+
+describe('importing a tarball', () => {
+  async function importingTar(name: string, bytes: Uint8Array): Promise<Response> {
+    const form = new FormData()
+    form.append('file', new File([await tarGzOf([{ name, bytes }])], 'archive.tar.gz'))
+
+    return await app.request('/imports', { method: 'POST', body: form })
+  }
+
+  it('is taken on its bytes, whatever the file was called', async () => {
+    const res = await importingTar('journal/a.md', CONTENT)
+
+    expect({ status: res.status, body: await res.json() }).toStrictEqual({
+      status: 201,
+      body: { paths: ['journal/a.md'] },
+    })
+  })
+
+  it('places what the tarball held', async () => {
+    await importingTar('journal/a.md', CONTENT)
+
+    await expect(store.read('journal/a.md')).resolves.toBe('# stored')
+  })
+
+  it('is refused whole when it carries an entry the store will not take', async () => {
+    const form = new FormData()
+    const archive = await tarGzOf([
+      { name: 'journal/a.md', bytes: CONTENT },
+      { name: 'journal/link', type: 'symlink', linkname: '/etc/passwd' },
+    ])
+    form.append('file', new File([archive], 'archive.tar.gz'))
+
+    const res = await app.request('/imports', { method: 'POST', body: form })
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
+  })
+
+  it('is refused when it is gzipped but holds no tar, because there is nothing to take', async () => {
+    const form = new FormData()
+    form.append('file', new File([gzipSync(Buffer.from('not a tarball'))], 'archive.tar.gz'))
+
+    const res = await app.request('/imports', { method: 'POST', body: form })
+
+    await expect(refusalOf(res)).resolves.toStrictEqual({ status: 400, code: 'INVALID_PATH' })
+  })
+
+  it('is refused rather than reported as a server fault when the compression is corrupt', async () => {
+    const corrupt = gzipSync(Buffer.alloc(GARBAGE_BLOCK, FILLER))
+    corrupt.writeUInt8((corrupt.at(-NEAR_THE_END) ?? FILLER) ^ ALL_BITS, corrupt.length - NEAR_THE_END)
+    const form = new FormData()
+    form.append('file', new File([corrupt], 'archive.tar.gz'))
+
+    const res = await app.request('/imports', { method: 'POST', body: form })
+
+    expect(res.status).toBe(400)
+  })
+
+  it('is refused rather than reported as a server fault when the tar cannot be read', async () => {
+    const form = new FormData()
+    form.append('file', new File([gzipSync(Buffer.alloc(GARBAGE_BLOCK, 0xff))], 'archive.tar.gz'))
+
+    const res = await app.request('/imports', { method: 'POST', body: form })
+
+    expect(res.status).toBe(400)
   })
 })
