@@ -195,3 +195,11 @@ describe('taking an archive straight to a file', () => {
     expect((await receiveArchive(posted(form), GENEROUS, staged())).parts).toHaveLength(NOTHING_SENT)
   })
 })
+
+describe('the filename a client chose', () => {
+  it('arrives whole, so a name reaching for a directory is refused later rather than quietly renamed', async () => {
+    const received = await receiveMultipart(posted(withFile(bytesOf(4), '../escape.png')), GENEROUS)
+
+    expect(received.files.at(0)?.filename).toBe('../escape.png')
+  })
+})

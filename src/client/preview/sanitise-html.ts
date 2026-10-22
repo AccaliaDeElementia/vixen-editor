@@ -77,14 +77,16 @@ const ALLOWED_ATTR = [
   'title',
 ]
 
+const BY_NAME_ONLY = false
+
 const purify = createDOMPurify(globalThis.window)
 
 export function sanitiseHtml(raw: string): DocumentFragment {
   return purify.sanitize(raw, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
-    ALLOW_DATA_ATTR: false,
-    ALLOW_ARIA_ATTR: false,
+    ALLOW_DATA_ATTR: BY_NAME_ONLY,
+    ALLOW_ARIA_ATTR: BY_NAME_ONLY,
     RETURN_DOM_FRAGMENT: true,
   })
 }

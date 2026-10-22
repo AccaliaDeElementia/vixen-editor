@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { isAtOrUnder, joinPath, STORE_ROOT, deepestSharedFolder } from '../../src/shared/store-path.ts'
+import { isAtOrUnder, joinPath, movedPath, STORE_ROOT, deepestSharedFolder } from '../../src/shared/store-path.ts'
 
 describe('STORE_ROOT', () => {
   it('is how the root of the store is addressed', () => {
@@ -81,5 +81,34 @@ describe('deepestSharedFolder', () => {
 
   it('does not mistake a name that merely starts the same for a shared folder', () => {
     expect(deepestSharedFolder(['journal/a.md', 'journalism/a.md'])).toBe('')
+  })
+})
+
+describe('movedPath', () => {
+  const RENAMED = [{ from: 'notes.md', to: 'journal/notes.md' }]
+
+  it('answers where an entry that moved now lives', () => {
+    expect(movedPath(RENAMED, 'notes.md')).toBe('journal/notes.md')
+  })
+
+  it('leaves an entry no move names exactly where it was', () => {
+    expect(movedPath(RENAMED, 'other.md')).toBe('other.md')
+  })
+
+  it('carries what sat inside a moved folder along with it', () => {
+    expect(movedPath([{ from: 'journal', to: 'archive' }], 'journal/a.md')).toBe('archive/a.md')
+  })
+
+  it('leaves a sibling whose name merely starts the same alone', () => {
+    expect(movedPath([{ from: 'journal', to: 'archive' }], 'journal-notes.md')).toBe('journal-notes.md')
+  })
+
+  it('takes the first move that names it, so an earlier move wins', () => {
+    const twice = [
+      { from: 'a.md', to: 'b.md' },
+      { from: 'a.md', to: 'c.md' },
+    ]
+
+    expect(movedPath(twice, 'a.md')).toBe('b.md')
   })
 })

@@ -116,7 +116,8 @@ Tests are written first. Two suites, deliberately separate:
 
 - **`test/`** — Vitest, in four projects: `test/server` (node environment),
   `test/client` (happy-dom), `test/shared` (node) and `test/conventions`
-  (node). This is the coverage gate and runs inside the Docker build.
+  (node). This is the coverage gate and runs inside the Docker build. One
+  client file overrides its environment; see [below](#testing-0b4d12).
 - **`test-browser/`** — Playwright. Needs browser binaries the slim runtime
   image does not carry, so it is excluded from `npm test`. Reserve it for
   assertions that require real layout, geometry or paint, and for driving the
@@ -147,6 +148,40 @@ Tests are written first. Two suites, deliberately separate:
   Both projects match the one lifecycle file and pick their half of it with
   `grep` against a `@setup` / `@teardown` tag, which is what lets two tests
   that are three lines apart stay in the same file.
+
+<a id="testing-0b4d12"></a>
+
+### A client file may ask for jsdom, and only for one reason
+
+happy-dom is the client environment. A file opts out with a docblock, after the
+directive rule 2 requires:
+
+```ts
+'use sanity'
+
+// @vitest-environment jsdom
+```
+
+**The one reason is behaviour happy-dom implements _incorrectly_ — never
+behaviour that is merely awkward to test.** The difference is demonstrable: an
+incorrect implementation makes the obvious test pass _vacuously_, which is how
+this was found. Tests asserting that `sanitise-html.ts` strips a `data-`
+attribute passed under happy-dom and the mutants survived anyway, because
+DOMPurify removes the `<body>` wrapper there and takes every element with it —
+so `firstElementChild` was null and `[]` matched `[]` for the wrong reason.
+
+**Each such file carries a test that fails when the environment is wrong**, so
+the override cannot rot into a lie. In `sanitise-html.test.ts` that is _keeps an
+attribute the allowlist names_: under happy-dom nothing survives sanitising and
+the helper throws, rather than the strip assertions passing on an empty list.
+
+**Reaching for jsdom as an escape hatch mostly fails loudly**, which is why the
+rule needs little enforcement. jsdom implements no `ResizeObserver`, no
+`dialog.showModal`, no `DataTransfer`, no pointer capture, no `scrollIntoView`
+and no layout, so a file doing real UI work does not run under it at all —
+measured at **525 failures across 36 files** when the whole client project was
+pointed at jsdom. happy-dom is the right default precisely because this project
+is an editor built on those APIs.
 
 <a id="testing-4c6769"></a>
 

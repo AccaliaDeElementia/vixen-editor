@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { TestOnly as relinkTestOnly } from '../../../src/server/markdown/relink.ts'
+import { repairLinks, TestOnly as relinkTestOnly } from '../../../src/server/markdown/relink.ts'
 import { movedPath, type PathMove } from '../../../src/shared/store-path.ts'
 
 const RENAME_FILE: PathMove[] = [{ from: 'journal/a.md', to: 'journal/renamed.md' }]
@@ -256,5 +256,23 @@ describe('a link to a directory', () => {
     const rewritten = relinkTestOnly.relinkDocument('[a](../journal)', 'journal/a.md', MOVE_FOLDER)
 
     expect(rewritten).toBe('[a](.)')
+  })
+})
+
+describe('repairLinks', () => {
+  it('repairs a document carrying nothing but an inline link', () => {
+    expect(repairLinks('see [it](journal/a.md)', 'notes.md', MOVE_FOLDER)).toBe('see [it](archive/a.md)')
+  })
+
+  it('repairs a document carrying nothing but a reference definition', () => {
+    expect(repairLinks('[id]: journal/a.md', 'notes.md', MOVE_FOLDER)).toBe('[id]: archive/a.md')
+  })
+
+  it('answers nothing for a document holding no link at all, which is not worth parsing', () => {
+    expect(repairLinks('plain prose with no link', 'notes.md', MOVE_FOLDER)).toBeNull()
+  })
+
+  it('answers nothing when every link it holds survived the move unchanged', () => {
+    expect(repairLinks('see [it](elsewhere/a.md)', 'notes.md', MOVE_FOLDER)).toBeNull()
   })
 })

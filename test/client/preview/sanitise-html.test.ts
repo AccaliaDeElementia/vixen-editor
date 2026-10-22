@@ -1,5 +1,7 @@
 'use sanity'
 
+// @vitest-environment jsdom
+
 import { describe, expect, it } from 'vitest'
 
 import { sanitiseHtml, TestOnly } from '../../../src/client/preview/sanitise-html.ts'
@@ -57,5 +59,26 @@ describe('what the allowlist lets through as attributes', () => {
 describe('sanitising', () => {
   it('gives back a fragment, so nothing is ever assigned through innerHTML', () => {
     expect(sanitiseHtml('<p>safe</p>')).toBeInstanceOf(DocumentFragment)
+  })
+})
+
+describe('the attribute families the allowlist does not reopen', () => {
+  function attributesOf(raw: string): string[] {
+    const { firstElementChild: element } = sanitiseHtml(raw)
+    if (element === null) throw new Error(`nothing survived sanitising ${raw}`)
+
+    return [...element.attributes].map(({ name }) => name)
+  }
+
+  it('keeps an attribute the allowlist names, so the checks below are not passing vacuously', () => {
+    expect(attributesOf('<p title="t">text</p>')).toStrictEqual(['title'])
+  })
+
+  it('strips a data attribute, which the allowlist never named', () => {
+    expect(attributesOf('<p data-payload="x">text</p>')).toStrictEqual([])
+  })
+
+  it('strips an aria attribute, because a document may not describe the app to a reader', () => {
+    expect(attributesOf('<p aria-label="x">text</p>')).toStrictEqual([])
   })
 })

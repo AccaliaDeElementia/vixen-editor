@@ -652,6 +652,10 @@ that**: some are only enforceable by review.
 - **Every module under `src/` has a test named for it, and that test drives
   it.** There is one exception, `src/client/main.ts`, which is also the one
   coverage exclusion. → [TESTING](TESTING.md#testing-4c6769)
+- **A client test runs under happy-dom.** A file may name `jsdom` in a docblock
+  only where happy-dom is _incorrect_, never where it is merely awkward, and it
+  carries a test that fails if the environment is wrong.
+  → [TESTING](TESTING.md#testing-0b4d12)
 - **Resilience to another client's changes is tested deliberately**, in a chaos
   spec under `test-browser/`, never left to the browser suite's own cross-talk
   to find. → [TESTING](TESTING.md#testing-3b7e1c)
