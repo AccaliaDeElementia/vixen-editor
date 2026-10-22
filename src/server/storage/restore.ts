@@ -206,3 +206,5 @@ export async function restoreSelection(
 
   return { restored, entryRemains: !emptied }
 }
+
+export const TestOnly = { madeFor }

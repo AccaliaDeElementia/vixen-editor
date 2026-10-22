@@ -16,6 +16,7 @@ const CENTRAL_UNCOMPRESSED_SIZE = 24
 const LOCAL_FLAGS = 6
 const CENTRAL_FLAGS = 8
 const NO_UTF8_FLAG = 0
+const ENCRYPTED_FLAG = 1
 const LAST_ASCII = '\u007f'
 const CENTRAL_FILE_HEADER = Buffer.from([0x50, 0x4b, 0x01, 0x02])
 
@@ -111,6 +112,23 @@ describe('a name the archive chose', () => {
     const found = await readZipEntries(archive)
 
     expect(found.at(0)?.name).toBeNull()
+  })
+
+  it('reports an entry the archive flagged as encrypted, which the verdict refuses', async () => {
+    const archive = await archiveOf([{ name: 'secret.md', bytes: CONTENT }])
+    const whole = await fs.readFile(archive)
+    whole.writeUInt16LE(ENCRYPTED_FLAG, whole.indexOf(CENTRAL_FILE_HEADER) + CENTRAL_FLAGS)
+    await fs.writeFile(archive, whole)
+
+    const found = await readZipEntries(archive)
+
+    expect(found.at(0)?.encrypted).toBe(true)
+  })
+
+  it('reports an ordinary entry as unencrypted, which is what lets the verdict take it', async () => {
+    const found = await readZipEntries(await archiveOf([{ name: 'notes.md', bytes: CONTENT }]))
+
+    expect(found.at(0)?.encrypted).toBe(false)
   })
 
   it('reads an accented name the archive flagged as unicode', async () => {

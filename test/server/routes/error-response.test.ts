@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { applyDebugFilter } from '../../../src/server/platform/logging.ts'
+import { loggedDuring } from '../logged.ts'
 import { LockTimeoutError } from '../../../src/server/platform/lock.ts'
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import {
@@ -49,20 +50,7 @@ async function refusedFor(error: unknown): Promise<Refusal> {
 }
 
 async function capture(work: () => Promise<void>): Promise<string> {
-  const { default: createDebug } = await import('debug')
-  const { log: original } = createDebug
-
-  createDebug.log = (...args: unknown[]): void => {
-    lines.push(args.map(String).join(' '))
-  }
-  applyDebugFilter({ DEBUG: 'vixen-editor:*' })
-
-  try {
-    await work()
-  } finally {
-    createDebug.log = original
-    applyDebugFilter({})
-  }
+  lines.push(...(await loggedDuring(work)))
 
   return lines.join('\n')
 }

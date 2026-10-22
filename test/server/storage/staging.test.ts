@@ -6,7 +6,8 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { clearStaging, TestOnly } from '../../../src/server/storage/staging.ts'
+import { clearStaging, stageArchive, TestOnly } from '../../../src/server/storage/staging.ts'
+import { givenAsync } from '../../conditions.ts'
 
 const { STAGING_DIRECTORY, stagingRoot } = TestOnly
 
@@ -95,5 +96,13 @@ describe('clearing what a crashed import left behind', () => {
     await clearStaging(root)
 
     expect(await exists('journal/a.md')).toBe(true)
+  })
+})
+
+describe('stageArchive', () => {
+  it('stages into a directory an earlier archive already created', async () => {
+    await givenAsync(expect(stageArchive(root)).resolves.toContain(STAGING_DIRECTORY))
+
+    await expect(stageArchive(root)).resolves.toContain(STAGING_DIRECTORY)
   })
 })

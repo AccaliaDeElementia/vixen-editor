@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { TestOnly } from '../../../src/server/storage/primitives/atomic-write.ts'
 import { sweepTemporaries } from '../../../src/server/storage/sweep.ts'
+import { loggedDuring } from '../logged.ts'
 
 const { temporaryBeside } = TestOnly
 
@@ -164,5 +165,25 @@ describe('sweepTemporaries', () => {
     await expect(fs.readFile(bait, 'utf8')).resolves.toBe('x')
 
     await fs.rm(outside, { recursive: true, force: true })
+  })
+})
+
+describe('what a sweep says for itself', () => {
+  it('says nothing when it found nothing to remove', async () => {
+    const lines = await loggedDuring(async () => {
+      await sweepTemporaries(root)
+    })
+
+    expect(lines).toStrictEqual([])
+  })
+
+  it('reports the count once it removed something, which is the only time it is worth saying', async () => {
+    await write(orphanIn(''))
+
+    const lines = await loggedDuring(async () => {
+      await sweepTemporaries(root)
+    })
+
+    expect(lines.join('\n')).toContain('removed 1')
   })
 })

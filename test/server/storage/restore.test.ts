@@ -8,12 +8,14 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createFsDocumentStore, type StoreLayer } from '../../../src/server/storage/fs-store.ts'
-import { restoreSelection } from '../../../src/server/storage/restore.ts'
+import { restoreSelection, TestOnly } from '../../../src/server/storage/restore.ts'
 import { BlockedRestoreError, DocumentNotFoundError } from '../../../src/server/storage/primitives/store-errors.ts'
 import { InvalidPathError } from '../../../src/server/storage/primitives/safe-path.ts'
 import { givenAsync } from '../../conditions.ts'
 
 import { someone } from '../actors.ts'
+
+const { madeFor } = TestOnly
 
 let root = ''
 let store: StoreLayer = createFsDocumentStore('', repairLinks)
@@ -479,5 +481,15 @@ describe('a path that tries to climb out of the payload', () => {
     await climbing('../../secret.md')
 
     expect(await exists('secret.md')).toBe(true)
+  })
+})
+
+describe('the directories a restore made on its way in', () => {
+  it('names the one it created, once, when the file sits directly inside it', () => {
+    expect(madeFor('/docs/journal', '/docs/journal/a.md')).toStrictEqual(['/docs/journal'])
+  })
+
+  it('names every level below it, deepest first, so each is emptied before its parent', () => {
+    expect(madeFor('/docs/a', '/docs/a/b/c/note.md')).toStrictEqual(['/docs/a/b/c', '/docs/a/b', '/docs/a'])
   })
 })

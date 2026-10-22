@@ -14,6 +14,7 @@ import {
   TestOnly,
 } from '../../../../src/server/storage/primitives/atomic-write.ts'
 import { isAllowedName } from '../../../../src/server/storage/primitives/safe-path.ts'
+import { loggedDuring } from '../../logged.ts'
 
 const { temporaryBeside } = TestOnly
 
@@ -292,7 +293,18 @@ describe('isTemporaryName', () => {
     ['the prefix alone', '.vixen-'],
     ['the suffix alone', 'something.tmp'],
     ['a plausible near miss', '.vixen.tmp'],
+    ['the prefix and suffix with no name between them', '.vixen-.tmp'],
   ])('rejects %s', (_name, candidate) => {
     expect(isTemporaryName(candidate)).toBe(false)
+  })
+})
+
+describe('what a write says for itself', () => {
+  it('says nothing after a replace, whose rename already took the temporary away', async () => {
+    const lines = await loggedDuring(async () => {
+      await replaceFileAtomic(at('note.md'), 'hello')
+    })
+
+    expect(lines).toStrictEqual([])
   })
 })

@@ -2,7 +2,11 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { asDocumentError, DocumentNotFoundError } from '../../../../src/server/storage/primitives/store-errors.ts'
+import {
+  asDocumentError,
+  ContentMismatchError,
+  DocumentNotFoundError,
+} from '../../../../src/server/storage/primitives/store-errors.ts'
 
 function errnoError(code: string): Error {
   return Object.assign(new Error(code), { code })
@@ -29,5 +33,15 @@ describe('asDocumentError', () => {
     const boom = new Error('boom')
 
     expect(asDocumentError('notes.md', boom, ['ENOENT'])).toBe(boom)
+  })
+})
+
+describe('ContentMismatchError', () => {
+  it('names the format the bytes turned out to be', () => {
+    expect(new ContentMismatchError('photo.png', 'webp').message).toContain('looks like a webp file')
+  })
+
+  it('says the bytes are no image at all when nothing recognised them', () => {
+    expect(new ContentMismatchError('photo.png', null).message).toContain('is not a recognised image')
   })
 })
