@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { cast } from '../../../cast.ts'
-import { createPane, type Pane } from '../../../../src/client/workspace/panes/pane.ts'
+import { carryTab, createPane, type Pane } from '../../../../src/client/workspace/panes/pane.ts'
 import { readKeptTabs, writeKeptTabs, type PaneId } from '../../../../src/client/workspace/tabs/kept-tabs.ts'
 import type { TabAt } from '../../../../src/client/workspace/tabs/open-tabs.ts'
 
@@ -270,5 +270,67 @@ describe('a tab that goes to make room for another', () => {
     held.open(OTHER)
 
     expect(displaced).toStrictEqual([])
+  })
+})
+
+describe('the active tab a pane remembers', () => {
+  it('records the showing tab once that tab is kept', () => {
+    pane().keep(EDITING)
+
+    expect(readKeptTabs('primary').active).toStrictEqual({ ...EDITING })
+  })
+
+  it('records none while the showing tab is only being previewed, which nothing would restore', () => {
+    pane().open(EDITING)
+
+    expect(readKeptTabs('primary').active).toBeNull()
+  })
+
+  it('records none for a pane showing nothing at all', () => {
+    const held = pane()
+    held.keep(EDITING)
+
+    held.close(EDITING)
+
+    expect(readKeptTabs('primary').active).toBeNull()
+  })
+})
+
+describe('whether a pane is empty', () => {
+  it('is empty before anything opens in it', () => {
+    expect(pane().isEmpty()).toBe(true)
+  })
+
+  it('is not empty once it holds a tab', () => {
+    const held = pane()
+    held.keep(EDITING)
+
+    expect(held.isEmpty()).toBe(false)
+  })
+})
+
+describe('carrying a tab from one pane to another', () => {
+  it('moves the tab into the pane that asked for it', () => {
+    const source = pane('primary')
+    const destination = pane('secondary', paneElement())
+    source.keep(EDITING)
+
+    carryTab('editor:notes.md', destination, source, 0)
+
+    expect(destination.held()).toStrictEqual([{ ...EDITING, ephemeral: false }])
+  })
+
+  it('carries nothing for an identity no tab answers to', () => {
+    const source = pane('primary')
+    const destination = pane('secondary', paneElement())
+    source.keep(EDITING)
+
+    expect(carryTab('editor:', destination, source, 0)).toBeNull()
+  })
+
+  it('carries nothing when no pane is named to carry it from', () => {
+    const destination = pane('secondary', paneElement())
+
+    expect(carryTab('editor:notes.md', destination, null, 0)).toBeNull()
   })
 })
