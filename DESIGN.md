@@ -648,6 +648,18 @@ caught by `test-browser/rendering.spec.ts`, not by any unit test.
 Measuring the archive first is what lets an oversized request fail with a
 status code instead of a truncated download.
 
+**The server refuses to start without a client to serve.** `startServer` checks
+that the public directory is a directory before it builds the app, and throws
+naming the path if it is not. Without it there is no stylesheet and no script,
+and the editor does not degrade — the browser gets a blank page. Hono's
+`serveStatic` only writes `root path … is not found` to the console and carries
+on serving, which is how a deployment could have looked healthy while handing
+every visitor a broken page.
+
+That check is also why `createApp` takes the public directory rather than
+defaulting it: a default belongs to the deployment, and a test that constructs
+an app without one depends on whether the repo happens to have been built.
+
 <a id="design-428132"></a>
 
 ## Archive portability

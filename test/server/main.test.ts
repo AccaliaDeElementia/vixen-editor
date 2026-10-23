@@ -186,12 +186,8 @@ describe('createApp', () => {
     await expect(fs.readFile(path.join(docsRoot, 'wired.md'), 'utf8')).resolves.toBe('# wired')
   })
 
-  it('builds a working app when the public directory is left to its default', async () => {
-    // Asserting on a file under ./public would couple this to whether the repo
-    // has been built, so this only exercises the default-argument path.
-    const res = await createApp(configFor()).request('/api/health')
-
-    expect(res.status).toBe(200)
+  it('serves the client from ./public unless a deployment says otherwise', () => {
+    expect(defaultRuntime.publicDir).toBe(DEFAULT_PUBLIC_DIR)
   })
 })
 
@@ -202,7 +198,7 @@ describe('the write lock timeout is configurable', () => {
   it('hands the configured timeout to the lock the store runs on', () => {
     const made = vi.spyOn(lockModule, 'createWriteLock')
 
-    createApp(configFor({ writeLockTimeoutMs: 250 }))
+    createApp(configFor({ writeLockTimeoutMs: 250 }), publicDir)
 
     expect(made).toHaveBeenCalledWith(250)
     vi.restoreAllMocks()
@@ -428,5 +424,29 @@ describe('what createApp composes', () => {
     await postingTo(app, '/api/files/moves', { from: 'target.md', to: 'moved.md' })
 
     expect(await fs.readFile(path.join(docsRoot, 'holder.md'), 'utf8')).toContain('./moved.md')
+  })
+})
+
+describe('starting with no client to serve', () => {
+  it('refuses to start, because neither stylesheet nor script would be served', async () => {
+    const { runtime } = recordingRuntime({ publicDir: path.join(workspace, 'never-built') })
+
+    await expect(startServer(runtime)).rejects.toThrow(/never-built/v)
+  })
+
+  it('serves nothing before refusing, so no browser is handed a broken page', async () => {
+    const { runtime, recorded } = recordingRuntime({ publicDir: path.join(workspace, 'never-built') })
+
+    await startServer(runtime).catch(() => undefined)
+
+    expect(recorded).toStrictEqual([])
+  })
+
+  it('refuses when the path names a file rather than a directory', async () => {
+    const asFile = path.join(workspace, 'not-a-directory')
+    await fs.writeFile(asFile, 'x')
+    const { runtime } = recordingRuntime({ publicDir: asFile })
+
+    await expect(startServer(runtime)).rejects.toThrow(/not-a-directory/v)
   })
 })

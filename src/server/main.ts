@@ -1,6 +1,8 @@
 'use sanity'
 
 import { serve } from '@hono/node-server'
+import fs from 'node:fs/promises'
+
 import { serveStatic } from '@hono/node-server/serve-static'
 import { config as loadDotenv } from 'dotenv'
 import type { Hono } from 'hono'
@@ -17,6 +19,7 @@ import { createFsDocumentStore } from './storage/fs-store.ts'
 import { createWriteLock } from './platform/lock.ts'
 import { sweepTemporaries } from './storage/sweep.ts'
 import { clearStaging } from './storage/staging.ts'
+import { nullWhenAbsent } from './storage/primitives/absence.ts'
 import { createTemplateRenderer } from './templates.ts'
 
 const logStartup = createLogger('main', 'startServer')
@@ -26,7 +29,7 @@ const CLIENT_BUNDLE_ROUTE = '/assets/*'
 const EDITOR_TEMPLATE = 'editor'
 const APP_TITLE = 'Vixen Editor'
 
-function createApp(config: Config, publicDir: string = DEFAULT_PUBLIC_DIR, buildId: string | null = null): Hono {
+function createApp(config: Config, publicDir: string, buildId: string | null = null): Hono {
   const lock = createWriteLock(config.writeLockTimeoutMs)
   const store = createFsDocumentStore(config.docsRoot, repairLinks, lock)
   const app = buildApp({ store, actors: createActors(config.docsRoot, lock), limits: config.limits, buildId })
@@ -67,6 +70,13 @@ async function buildIdOrUnknown(publicDir: string, templatesDir: string): Promis
   }
 }
 
+async function assertClientIsThere(publicDir: string): Promise<void> {
+  const present = await nullWhenAbsent(async () => await fs.stat(publicDir))
+  if (present?.isDirectory() === true) return
+
+  throw new Error(`no client to serve from ${publicDir}`)
+}
+
 async function sweepBeforeServing(docsRoot: string): Promise<void> {
   try {
     await clearStaging(docsRoot)
@@ -81,6 +91,7 @@ export async function startServer(runtime: Runtime = defaultRuntime): Promise<Re
   applyDebugFilter(runtime.env)
 
   const config = loadConfig(runtime.env)
+  await assertClientIsThere(runtime.publicDir)
   await sweepBeforeServing(config.docsRoot)
   const app = createApp(config, runtime.publicDir, await buildIdOrUnknown(runtime.publicDir, config.templatesDir))
 
