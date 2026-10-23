@@ -66,6 +66,20 @@ not a reason to refuse to run. A mutant whose run times out is reported as
 nothing, and it refuses to report success for a file it found nothing to
 mutate.
 
+**A whole-file sweep judges several mutants at once**, because each one is a
+`vitest` process driving a single spec and so occupies about one core. Measured
+over 82 mutants: one at a time took 75s, four at a time 22s, eight 17s. Past
+eight the load keeps climbing while the wall time stops falling, so the width
+is capped there; `MUTATE_CONCURRENCY` overrides it for measuring that ceiling
+again. Output is buffered per file and printed in the order the files were
+named, so a parallel sweep reads exactly like a serial one.
+
+**The post-test sweep stays serial, deliberately.** It only ever judges the
+mutants on changed lines, which is a median of 27 and under a minute, so it has
+little to gain — and its elapsed time _is_ the signal behind the warning
+described in [CLAUDE.md](CLAUDE.md#claude-7e3a05). Judging those in parallel
+would hide both of the things that warning exists to catch.
+
 **It runs one thing: the mirror test of the module it mutated**, and stops at
 the first failure. It used to fall through to the wider related set when a
 mutant outlived its own test, which meant a mutant could be recorded as killed

@@ -539,7 +539,8 @@ and the guard is what keeps that from mattering.
 ### Bookend a plan file with a full census
 
 `npm run mutate:all` judges every mutant in `src/` the same way, and writes
-`.vixen-census.md`. It takes about twenty minutes.
+`.vixen-census.md`. It judges several mutants at once, so it costs minutes rather than the
+half hour a serial sweep would.
 
 **Run it when a plan file opens, and again when it closes, and quote the result
 in that plan.** The post-test sweep only ever sees changed lines, so nothing

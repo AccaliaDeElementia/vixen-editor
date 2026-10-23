@@ -2,6 +2,7 @@
 
 import { spawn as spawnProcess } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
+import { cpus } from 'node:os'
 
 import { envFor } from './mutant-transform.ts'
 import { serially } from '../src/shared/serially.ts'
@@ -20,6 +21,8 @@ const MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const DEFAULT_TIMEOUT_MS = 600_000
+const ONE_AT_A_TIME = 1
+const WIDEST_USEFUL = 8
 const SOURCE_ROOT = 'src/'
 const TEST_ROOT = 'test/'
 const SOURCE_EXTENSION = '.ts'
@@ -313,17 +316,102 @@ function announce(outcome: Outcome, index: number, total: number): void {
   process.stdout.write(`  ${position} ${markFor(outcome)}  ${describeMutant(outcome.mutant)}\n`)
 }
 
-async function sweepFile(file: string, timeoutMs: number, into: Outcome[]): Promise<void> {
-  const original = await readFile(file, 'utf8')
-  const mutants = mutantsFor(file, original)
+interface FileSweep {
+  file: string
+  mutants: Mutant[]
+  answers: Map<number, Outcome>
+}
+
+interface Pending {
+  sweep: FileSweep
+  index: number
+}
+
+async function sweepsFor(files: readonly string[]): Promise<FileSweep[]> {
+  const planned: FileSweep[] = []
+
+  await serially(files, async (file) => {
+    planned.push({ file, mutants: mutantsFor(file, await readFile(file, 'utf8')), answers: new Map() })
+  })
+
+  return planned
+}
+
+function pendingIn(planned: readonly FileSweep[]): Pending[] {
+  return planned.flatMap((sweep) => sweep.mutants.map((_unused, index) => ({ sweep, index })))
+}
+
+function isFinished({ mutants, answers }: FileSweep): boolean {
+  return answers.size === mutants.length
+}
+
+function announceFile({ file, mutants, answers }: FileSweep): void {
   const note = mutants.length === NONE ? ' — nothing to mutate, so this file was not measured' : ''
   process.stdout.write(`${file}: ${String(mutants.length)} mutants${note}\n`)
 
-  await serially(mutants.entries(), async ([index, mutant]) => {
-    const outcome = await judge(mutant, timeoutMs)
-    into.push(outcome)
-    announce(outcome, index, mutants.length)
+  for (const [index] of mutants.entries()) {
+    const answered = answers.get(index)
+    if (answered !== undefined) announce(answered, index, mutants.length)
+  }
+}
+
+function announceFinished(planned: readonly FileSweep[], from: number, settled: boolean): number {
+  let at = from
+
+  while (at < planned.length) {
+    const reached = planned.at(at)
+    if (reached === undefined) return at
+    if (!settled && !isFinished(reached)) return at
+
+    announceFile(reached)
+    at += FIRST_LINE
+  }
+
+  return at
+}
+
+function concurrencyFor(cores: number, asked: string | undefined): number {
+  const forThisMachine = Math.min(WIDEST_USEFUL, cores)
+  if (asked === undefined) return forThisMachine
+
+  const wanted = Number(asked)
+
+  return Number.isFinite(wanted) ? Math.max(ONE_AT_A_TIME, Math.trunc(wanted)) : forThisMachine
+}
+
+async function inPool<T>(items: readonly T[], width: number, step: (item: T) => Promise<void>): Promise<void> {
+  let next = NONE
+
+  async function take(): Promise<void> {
+    while (next < items.length) {
+      const mine = items.at(next)
+      next += FIRST_LINE
+      if (mine === undefined) return
+
+      /* eslint-disable-next-line no-await-in-loop -- this is the one place the rule asks for
+         the opposite of the requirement: a worker finishing one item before taking the next
+         is what holds the pool to its width */
+      await step(mine)
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(width, items.length) }, async () => {
+      await take()
+    }),
+  )
+}
+
+async function judgeAll(planned: readonly FileSweep[], timeoutMs: number, width: number): Promise<void> {
+  let announced = NONE
+
+  await inPool(pendingIn(planned), width, async ({ sweep, index }) => {
+    const mutant = sweep.mutants.at(index)
+    if (mutant !== undefined) sweep.answers.set(index, await judge(mutant, timeoutMs))
+    announced = announceFinished(planned, announced, false)
   })
+
+  announceFinished(planned, announced, true)
 }
 
 function linesFor(label: string, mark: string, held: readonly Outcome[], total: number): string[] {
@@ -411,11 +499,12 @@ export async function check(cases: Case[], timeoutMs = DEFAULT_TIMEOUT_MS): Prom
 export async function sweep(files: string[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Outcome[]> {
   if (files.length === NONE) throw new Error('name at least one file to mutate')
 
-  const outcomes: Outcome[] = []
-  await serially(files, async (file) => {
-    await sweepFile(file, timeoutMs, outcomes)
-  })
+  const planned = await sweepsFor(files)
+  await judgeAll(planned, timeoutMs, concurrencyFor(cpus().length, process.env.MUTATE_CONCURRENCY))
 
+  const outcomes = planned.flatMap(({ mutants, answers }) =>
+    mutants.map((_unused, index) => answers.get(index)).filter((answered) => answered !== undefined),
+  )
   if (outcomes.length === NONE) throw new Error('no mutants were produced, so nothing was measured')
 
   return outcomes
@@ -441,7 +530,7 @@ async function casesFrom(path: string): Promise<Case[]> {
   return cases
 }
 
-export const TestOnly = { fateOf, lineHolding, mirrorArgsFor, summaryOf }
+export const TestOnly = { concurrencyFor, fateOf, lineHolding, mirrorArgsFor, summaryOf }
 
 if (import.meta.main) {
   for (const interrupt of INTERRUPTS) {

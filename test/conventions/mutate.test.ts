@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import { judge, mutantsFor, run, TestOnly, type Sandbox } from '../../tools/mutate.ts'
 
-const { fateOf, lineHolding, mirrorArgsFor, summaryOf } = TestOnly
+const { concurrencyFor, fateOf, lineHolding, mirrorArgsFor, summaryOf } = TestOnly
 
 const CHILD_PID = 4321
 const WHOLE_GROUP = -CHILD_PID
@@ -317,5 +317,38 @@ describe('reporting a claim that has expired', () => {
     const outcomes = [{ mutant: A_MUTANT, fate: 'killed' as const }]
 
     expect(summaryOf(outcomes).join('\n')).not.toContain('expired')
+  })
+})
+
+describe('how many mutants a sweep judges at once', () => {
+  const PLENTY = 32
+  const NOTHING_ASKED = undefined
+
+  it('judges several at once on a machine with cores to spare', () => {
+    expect(concurrencyFor(PLENTY, NOTHING_ASKED)).toBeGreaterThan(1)
+  })
+
+  it('asks for no more than the cores there are, so a small machine is not oversubscribed', () => {
+    expect(concurrencyFor(2, NOTHING_ASKED)).toBe(2)
+  })
+
+  it('stops climbing past the point where more stopped buying wall time', () => {
+    expect(concurrencyFor(PLENTY, NOTHING_ASKED)).toBe(concurrencyFor(PLENTY * 4, NOTHING_ASKED))
+  })
+
+  it('judges one at a time where there is only one core', () => {
+    expect(concurrencyFor(1, NOTHING_ASKED)).toBe(1)
+  })
+
+  it('takes the width the caller asked for, which is how the ceiling gets measured again', () => {
+    expect(concurrencyFor(PLENTY, '24')).toBe(24)
+  })
+
+  it('refuses a width below one, which would judge nothing at all', () => {
+    expect(concurrencyFor(PLENTY, '0')).toBe(1)
+  })
+
+  it('ignores a width that is not a number', () => {
+    expect(concurrencyFor(2, 'wide')).toBe(2)
   })
 })
