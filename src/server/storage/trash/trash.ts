@@ -175,4 +175,4 @@ export async function emptyTrash(root: string): Promise<number> {
   return held.length
 }
 
-export const TestOnly = { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME }
+export const TestOnly = { newestFirstThenIdForStableTies, TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME }

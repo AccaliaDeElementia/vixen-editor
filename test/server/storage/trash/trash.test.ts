@@ -18,7 +18,7 @@ import { isRecord } from '../../../../src/shared/guards.ts'
 import { someone } from '../../actors.ts'
 import { anonymousActor, localActor } from '../../../../src/server/platform/actor.ts'
 
-const { TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
+const { newestFirstThenIdForStableTies, TRASH_DIRECTORY, TRASH_META_NAME, TRASH_PAYLOAD_NAME } = TestOnly
 
 let root = ''
 let store: StoreLayer = createFsDocumentStore('', repairLinks)
@@ -516,5 +516,27 @@ describe('emptying the trash', () => {
     await fs.symlink(outside, trashPath('escaping'))
 
     expect(await store.emptyTrash(someone)).toBe(1)
+  })
+})
+
+describe('the order two trashed entries are listed in', () => {
+  const OLDER = { id: 'aaa', originalPath: 'a.md', deletedAt: '2026-01-01T00:00:00.000Z', kind: 'document' as const }
+  const NEWER = { id: 'bbb', originalPath: 'b.md', deletedAt: '2026-06-01T00:00:00.000Z', kind: 'document' as const }
+  const DELETED_BY = { deletedBy: 'someone' }
+
+  function compare(first: typeof OLDER, second: typeof OLDER): number {
+    return newestFirstThenIdForStableTies({ ...first, ...DELETED_BY }, { ...second, ...DELETED_BY })
+  }
+
+  it('puts the newer one first even where the ids would say the opposite', () => {
+    expect(compare(OLDER, NEWER)).toBeGreaterThan(0)
+  })
+
+  it('puts the newer one first the other way round too, so the sign is not an accident', () => {
+    expect(compare(NEWER, OLDER)).toBeLessThan(0)
+  })
+
+  it('breaks a tie on the id, so a burst of deletes keeps one order', () => {
+    expect(compare({ ...NEWER, id: 'zzz' }, { ...NEWER, id: 'aaa' })).toBeGreaterThan(0)
   })
 })
