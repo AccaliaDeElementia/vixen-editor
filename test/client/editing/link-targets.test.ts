@@ -93,3 +93,21 @@ describe('what the caret cannot open', () => {
     expect(targetAt('[a](../escape.md)', 6)).toBeNull()
   })
 })
+
+describe('where a link begins and ends for the caret', () => {
+  const DOC = 'see [it](other.md) here'
+  const OPENS_AT = DOC.indexOf('[')
+  const CLOSES_AT = DOC.indexOf(')') + 1
+
+  it('finds the link with the caret at the very start of its markup', () => {
+    expect(targetAt(DOC, OPENS_AT)).toBe('other.md')
+  })
+
+  it('finds the link with the caret at the very end of its markup', () => {
+    expect(targetAt(DOC, CLOSES_AT)).toBe('other.md')
+  })
+
+  it('finds nothing with the caret before the link begins', () => {
+    expect(targetAt(DOC, OPENS_AT - 1)).toBeNull()
+  })
+})

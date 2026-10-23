@@ -111,6 +111,8 @@ function computeImages(state: EditorState): DecorationSet {
     )
   }
 
+  /* mutation-ignore false -- the tree walk yields these in document order, so sorting never
+     changes them; it stays so a walk that stopped doing so would sort rather than throw. */
   return Decoration.set(ranges, true)
 }
 
@@ -133,4 +135,4 @@ const vixenImageField = StateField.define<DecorationSet>({
 
 export const vixenImages: Extension = [brokenImages, vixenImageField]
 
-export const TestOnly = { altOf }
+export const TestOnly = { altOf, vixenImageField }

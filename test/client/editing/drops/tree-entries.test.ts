@@ -137,3 +137,31 @@ describe('dropping onto an editor that holds no document', () => {
     expect(inserted).toStrictEqual([])
   })
 })
+
+describe('when the drop listener runs', () => {
+  it('runs before anything the editor itself bound, so the entry wins the drop', () => {
+    const order: string[] = []
+    const element = document.createElement('div')
+    const inner = document.createElement('span')
+    element.append(inner)
+    document.body.append(element)
+    element.addEventListener('drop', () => {
+      order.push('editor')
+    })
+
+    bindEntryDrops(element, () => 7, {
+      holder: () => 'journal/notes.md',
+      insert: () => {
+        order.push('entry')
+      },
+    })
+    const event = cast<DragEvent>(new Event('drop', { bubbles: true, cancelable: true }))
+    Object.defineProperty(event, 'dataTransfer', {
+      value: transferWith({ [DRAG_MIME]: 'a.md', [DRAG_KIND_MIME]: 'document' }),
+      configurable: true,
+    })
+    inner.dispatchEvent(event)
+
+    expect(order).toStrictEqual(['entry', 'editor'])
+  })
+})

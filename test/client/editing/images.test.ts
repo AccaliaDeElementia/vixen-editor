@@ -10,7 +10,7 @@ import { TestOnly } from '../../../src/client/editing/images.ts'
 
 import { trackView } from '../editor-fixtures.ts'
 
-const { altOf } = TestOnly
+const { altOf, vixenImageField } = TestOnly
 
 const IMAGE_SELECTOR = 'img.cm-vixen-image'
 
@@ -200,5 +200,42 @@ describe('an image that will not load', () => {
     caretTo(view, 0)
 
     expect(rendered(view)).toHaveLength(0)
+  })
+})
+
+describe('an image sharing its line with prose', () => {
+  const ELSEWHERE = 'prose on another line'
+
+  it('is left as source when something sits before it on the line', () => {
+    const view = editing(`text ![a](a.png)\n\n${ELSEWHERE}`)
+    caretTo(view, view.state.doc.length)
+
+    expect(lineShows(view)).toStrictEqual(THE_SOURCE)
+  })
+
+  it('is left as source when something sits after it on the line', () => {
+    const view = editing(`![a](a.png) text\n\n${ELSEWHERE}`)
+    caretTo(view, view.state.doc.length)
+
+    expect(lineShows(view)).toStrictEqual(THE_SOURCE)
+  })
+
+  it('is drawn when the line holds nothing else, so the check above is not passing vacuously', () => {
+    const view = editing(`![a](a.png)\n\n${ELSEWHERE}`)
+    caretTo(view, view.state.doc.length)
+
+    expect(lineShows(view)).toStrictEqual(THE_IMAGE)
+  })
+})
+
+describe('what a redraw costs', () => {
+  it('keeps the decorations it already built when nothing relevant changed', () => {
+    const view = editing('![a](a.png)\n\nprose\n\nmore prose')
+    caretTo(view, view.state.doc.length)
+    const before = view.state.field(vixenImageField)
+
+    view.dispatch({ selection: { anchor: view.state.doc.length - 1 } })
+
+    expect(view.state.field(vixenImageField)).toBe(before)
   })
 })
