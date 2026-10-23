@@ -648,6 +648,17 @@ caught by `test-browser/rendering.spec.ts`, not by any unit test.
 Measuring the archive first is what lets an oversized request fail with a
 status code instead of a truncated download.
 
+**The page is dark and says so twice.** `<meta name="color-scheme" content="dark">`
+is the standard signal, and it is what makes native scrollbars, form controls and
+the pre-paint canvas match rather than flash white. It was not enough on its own:
+Dark Reader darkened the editor anyway, which dimmed the caret to near
+invisibility against an already dark background. `<meta name="darkreader-lock">`
+is that extension's documented opt-out and turns it off for the page.
+
+**The lock is only honest while there is one theme.** This app ships Bootswatch
+Darkly and reads no `prefers-color-scheme`, so a second darkening is always
+wrong. Add a light theme and the lock has to go with it.
+
 **The server refuses to start without a client to serve.** `startServer` checks
 that the public directory is a directory before it builds the app, and throws
 naming the path if it is not. Without it there is no stylesheet and no script,
