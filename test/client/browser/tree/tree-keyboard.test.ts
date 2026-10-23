@@ -237,3 +237,30 @@ describe('opening a folder on a double click', () => {
     expect(visited).toStrictEqual([`/doc/${FOLDER}/`])
   })
 })
+
+describe('whether a key was handled, which is what stops the browser acting on it too', () => {
+  it('is handled when the arrow opens a folder that was shut', () => {
+    const keys = keyboard(SHUT_TREE)
+
+    expect(keys.handleKey(KEYS.expandRow, folder(FOLDER))).toBe(true)
+  })
+
+  it('is handled when the arrow shuts a folder that was open', () => {
+    opened = new Set([FOLDER])
+    const keys = keyboard(OPEN_TREE)
+
+    expect(keys.handleKey(KEYS.collapseRow, folder(FOLDER))).toBe(true)
+  })
+
+  it('is handled when the key opens a document', () => {
+    const keys = keyboard(SHUT_TREE)
+
+    expect(keys.handleKey(KEYS.openRow, document_(LOOSE))).toBe(true)
+  })
+
+  it('is handled when the key toggles a folder rather than opening it', () => {
+    const keys = keyboard(SHUT_TREE)
+
+    expect(keys.handleKey(KEYS.openRow, folder(FOLDER))).toBe(true)
+  })
+})

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { TreeNode } from '../../../../src/client/browser/tree/tree-model.ts'
 import { renderTree } from '../../../../src/client/browser/tree/tree-view.ts'
 
-import { mountTree, pathsShown, render, rowFor, rows, treeElement } from './render-fixtures.ts'
+import { mountTree, pathsShown, render, rowFor, rows, SAMPLE, treeElement } from './render-fixtures.ts'
 
 function iconOf(entryPath: string): string {
   return rowFor(entryPath).querySelector('.tree__icon')?.textContent ?? ''
@@ -212,5 +212,21 @@ describe('a row whose name is too long to show', () => {
     render()
 
     expect(rowFor('journal').title).toBe('journal')
+  })
+})
+
+describe('which rows report themselves as expandable', () => {
+  function visibleFor(entryPath: string): boolean | undefined {
+    const visible = renderTree(treeElement(), { nodes: SAMPLE, open: new Set(), selected: null })
+
+    return visible.find((row) => row.path === entryPath)?.expandable
+  }
+
+  it('marks a folder expandable, which is what an arrow key acts on', () => {
+    expect(visibleFor('journal')).toBe(true)
+  })
+
+  it('marks a document as not expandable, so an arrow key leaves it to the browser', () => {
+    expect(visibleFor('notes.md')).toBe(false)
   })
 })
