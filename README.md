@@ -52,6 +52,14 @@ The container runs as a non-root user, and `/data/docs` is created with that
 user's ownership so a bind mount is writable without elevating anything. A
 health check polls `/api/health`.
 
+**Where documents persist is yours to declare, not the image's.** The image
+names no volume of its own, so mounting a parent works as well as mounting
+`DOCS_ROOT` itself: `-v books:/data` with `DOCS_ROOT=/data/docs` keeps them in
+`books`. An image declaring `VOLUME /data/docs` would instead force an anonymous
+volume at exactly that path onto every container — Docker matches a mount
+destination exactly, so mounting the parent does not suppress it. It would
+shadow whatever you mounted above, and go away when the container is replaced.
+
 **A single process is the supported deployment.** Two containers sharing one
 volume will not corrupt documents — every write lands whole or not at all — but
 the lock that serialises concurrent saves is in-process, so running two gains
