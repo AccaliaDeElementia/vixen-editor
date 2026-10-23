@@ -134,3 +134,22 @@ describe('a drag that has already finished', () => {
     expect(settle).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('a drag the browser took away', () => {
+  it('settles it, so the handle does not stay held', () => {
+    send('pointerdown', STARTED_AT)
+
+    send('pointercancel', MOVED_TO)
+
+    expect(settle).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops following the pointer afterwards, because the drag is over', () => {
+    send('pointerdown', STARTED_AT)
+    send('pointercancel', MOVED_TO)
+
+    send('pointermove', LET_GO_AT)
+
+    expect(show).toHaveBeenCalledTimes(0)
+  })
+})

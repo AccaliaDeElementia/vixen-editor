@@ -121,3 +121,21 @@ describe('agreeing with the editor about how markdown looks', () => {
     expect(classesIn('[a link](x.md)', 'markdown')).toContain(editorClassFor(tags.link))
   })
 })
+
+describe('the nodes a highlighted snippet is built from', () => {
+  function nodesIn(code: string, info: string): string[] {
+    return [...highlightCode(code, languageFor(info)).childNodes].map((node) => node.textContent ?? '')
+  }
+
+  it('builds none that hold nothing, so no empty node lands between two tokens', () => {
+    expect(nodesIn('a.b', 'js').filter((text) => text === '')).toStrictEqual([])
+  })
+
+  it('builds nodes at all, so the check above is not passing on an empty list', () => {
+    expect(nodesIn('a.b', 'js').length).toBeGreaterThan(0)
+  })
+
+  it('keeps every character of the snippet, split across those nodes', () => {
+    expect(nodesIn('const a = 1', 'js').join('')).toBe('const a = 1')
+  })
+})

@@ -150,6 +150,10 @@ describe('task lists', () => {
     expect(render('- [ ] todo').querySelector('input')?.getAttribute('type')).toBe('checkbox')
   })
 
+  it('leaves an unticked task unchecked, which is the whole of what the marker says', () => {
+    expect(render('- [ ] todo').querySelector('input')?.hasAttribute('checked')).toBe(false)
+  })
+
   it('renders a ticked task as checked', () => {
     expect(render('- [x] done').querySelector('input')?.hasAttribute('checked')).toBe(true)
   })

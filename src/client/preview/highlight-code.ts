@@ -104,7 +104,7 @@ export function highlightCode(code: string, language: Language | null): Document
     fragment.append(token(code.slice(from, to), classes))
     at = to
   })
-  fragment.append(token(code.slice(at), ''))
+  if (at < code.length) fragment.append(token(code.slice(at), ''))
 
   return fragment
 }

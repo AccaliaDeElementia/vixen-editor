@@ -7,9 +7,11 @@ import {
   docUrlFor,
   documentIdFromPath,
   folderIndexAlternateFromPath,
+  isPreviewView,
   TestOnly as docPathTestOnly,
   pathAfterMove,
   titleFor,
+  viewFromSearch,
 } from '../../../src/client/platform/doc-path.ts'
 
 describe('documentIdFromPath', () => {
@@ -165,5 +167,39 @@ describe('folderIndexAlternateFromPath', () => {
 
   it('offers nothing for a url that already names a document', () => {
     expect(folderIndexAlternateFromPath('/doc/journal/a.md')).toBeNull()
+  })
+})
+
+describe('the url a view is addressed by', () => {
+  it('names no view for the editor, which is what a bare document url means', () => {
+    expect(docUrlFor('notes.md', 'editor')).toBe('/doc/notes.md')
+  })
+
+  it('names the view in the query for anything else', () => {
+    expect(docUrlFor('notes.md', 'markup')).toBe('/doc/notes.md?view=preview')
+  })
+})
+
+describe('isPreviewView', () => {
+  it('holds for a view that previews the document', () => {
+    expect(isPreviewView('markup')).toBe(true)
+  })
+
+  it('does not hold for the editor, which is not a preview of anything', () => {
+    expect(isPreviewView('editor')).toBe(false)
+  })
+})
+
+describe('viewFromSearch', () => {
+  it('reads the view the query names', () => {
+    expect(viewFromSearch('?view=preview')).toBe('markup')
+  })
+
+  it('falls back to the editor when the query names none', () => {
+    expect(viewFromSearch('')).toBe('editor')
+  })
+
+  it('falls back to the editor when the query names one nothing answers to', () => {
+    expect(viewFromSearch('?view=hologram')).toBe('editor')
   })
 })

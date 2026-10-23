@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { linkFor, linkTo } from '../../../src/client/platform/entry-links.ts'
+import { entryFor, linkFor, linkTo } from '../../../src/client/platform/entry-links.ts'
 
 describe('the link a tree path becomes', () => {
   it('embeds an image, the same as dragging it', () => {
@@ -45,5 +45,15 @@ describe('the link a dragged entry becomes', () => {
 
   it('encodes a folder name before adding its slash', () => {
     expect(linkFor({ path: 'my folder', kind: 'folder' }, 'notes.md')).toBe('[my folder](my%20folder/)')
+  })
+})
+
+describe('the entry a stored path stands for', () => {
+  it('reads an image as an image, so it is embedded rather than linked', () => {
+    expect(entryFor('journal/p.png').kind).toBe('image')
+  })
+
+  it('reads anything else as a document', () => {
+    expect(entryFor('journal/a.md').kind).toBe('document')
   })
 })
