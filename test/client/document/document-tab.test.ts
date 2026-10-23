@@ -4,6 +4,7 @@ import type { EditorState } from '@codemirror/state'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createDocumentTab, TestOnly, type DocumentTab } from '../../../src/client/document/document-tab.ts'
+import { DocumentRequestError } from '../../../src/client/document/document-client.ts'
 import { createCaretMemory } from '../../../src/client/document/caret-memory.ts'
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import type { StatusBar } from '../../../src/client/workspace/panes/status-bar.ts'
@@ -38,6 +39,7 @@ let opened: DocumentTab[] = []
 let reloaded: string[] = []
 let errors: string[] = []
 let announced: string[] = []
+let visited: string[] = []
 let store: Recorded = recorded()
 
 function tab({ session = {}, dialogs = {}, showing = true }: Driving = {}): DocumentTab {
@@ -62,7 +64,9 @@ function tab({ session = {}, dialogs = {}, showing = true }: Driving = {}): Docu
     }),
     caretMemory: createCaretMemory(),
     documentId: () => made.holding(),
-    openUrl: () => undefined,
+    openUrl: (url: string) => {
+      visited.push(url)
+    },
     announce: (text: string) => {
       announced.push(text)
     },
@@ -94,6 +98,7 @@ beforeEach(() => {
   reloaded = []
   errors = []
   announced = []
+  visited = []
   store = recorded()
 })
 
@@ -581,5 +586,124 @@ describe('a document that changed on disk', () => {
     await made.recheck()
 
     expect(errors).toStrictEqual([`${FIRST} changed on disk — your unsaved changes can no longer be saved as they are`])
+  })
+})
+
+describe('opening the link the caret sits in', () => {
+  function pressOpenLink(made: DocumentTab): boolean {
+    const event = new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true })
+    made.view.contentDOM.dispatchEvent(event)
+
+    return event.defaultPrevented
+  }
+
+  function withCaretInALink(): DocumentTab {
+    const made = tab()
+    made.open(FIRST, 'see [it](other.md) here')
+    made.view.dispatch({ selection: { anchor: 'see [it]('.length + 1 } })
+
+    return made
+  }
+
+  it('opens the document the link names', () => {
+    const made = withCaretInALink()
+
+    pressOpenLink(made)
+
+    expect(visited).toStrictEqual(['/doc/journal/other.md'])
+  })
+
+  it('settles the gesture there, so no later binding also acts on it', () => {
+    const made = withCaretInALink()
+
+    pressOpenLink(made)
+
+    expect(text(made)).toBe('see [it](other.md) here')
+  })
+
+  it('leaves the gesture to the binding behind it when the caret is in no link', () => {
+    const made = tab()
+    made.open(FIRST, 'just prose')
+    made.view.dispatch({ selection: { anchor: A_CARET } })
+
+    pressOpenLink(made)
+
+    expect(text(made)).toBe('just prose\n')
+  })
+
+  it('opens nothing when the caret is in ordinary prose', () => {
+    const made = tab()
+    made.open(FIRST, 'just prose, no link at all')
+    made.view.dispatch({ selection: { anchor: A_CARET } })
+
+    pressOpenLink(made)
+
+    expect(visited).toStrictEqual([])
+  })
+})
+
+describe('what a save announces', () => {
+  function pressSaveOn(made: DocumentTab): void {
+    made.view.contentDOM.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }),
+    )
+  }
+
+  it('says it saved once the document is clean again', async () => {
+    const made = tab()
+    made.open(FIRST, 'before')
+    made.view.dispatch({ changes: { from: 0, insert: 'typed ' } })
+
+    pressSaveOn(made)
+    await made.flush()
+
+    expect(announced).toContain(`Saved ${FIRST}`)
+  })
+
+  it('says nothing about saving when the write was refused', async () => {
+    const refusing = { save: () => Promise.reject(new DocumentRequestError(412, 'changed since it was loaded')) }
+    const made = tab({ session: refusing })
+    made.open(FIRST, 'before')
+    made.view.dispatch({ changes: { from: 0, insert: 'typed ' } })
+
+    pressSaveOn(made)
+    await made.flush().catch(() => undefined)
+
+    expect(announced).not.toContain(`Saved ${FIRST}`)
+  })
+})
+
+describe('a save the store refused', () => {
+  let rereads = 0
+
+  function refusedWith(error: Error): Partial<Session> {
+    return {
+      save: () => Promise.reject(error),
+      reread: async () => {
+        rereads += 1
+
+        return await Promise.resolve(null)
+      },
+    }
+  }
+
+  async function typedAndSaved(session: Partial<Session>): Promise<void> {
+    rereads = 0
+    const made = tab({ session })
+    made.open(FIRST, 'before')
+    made.view.dispatch({ changes: { from: 0, insert: 'typed ' } })
+    await made.flush().catch(() => undefined)
+  }
+
+  it('rereads the document when the refusal was a conflict, which is what finds the newer version', async () => {
+    await typedAndSaved(refusedWith(new DocumentRequestError(412, 'changed since it was loaded')))
+
+    expect(rereads).toBe(1)
+  })
+
+  it('rereads nothing when the refusal was anything else, because nothing else means it moved on', async () => {
+    await typedAndSaved(refusedWith(new Error('offline')))
+
+    expect(rereads).toBe(0)
   })
 })
