@@ -92,6 +92,13 @@ Judging one file also makes a survivor cheap. Under the fall-through a survivor
 cost a whole extra suite run; now it costs what any other mutant costs, so the
 census takes the same time whether it finds nothing or finds hundreds.
 
+**A mutant counts as killed when the run fails, which is not the same as a test
+failing.** The verdict is the exit code, so an unhandled rejection kills a
+mutant even though every assertion passed. `pane-workspace.ts:171` is the
+example: mutate it and vitest reports `Tests 32 passed / Errors 1 error` and
+exits non-zero. Looking for the assertion that caught such a mutant will find
+none — the suite caught it by refusing to end quietly.
+
 **The post-test sweep judges changed lines, not whole files.** Measured over
 fourteen commits, whole-file judging charged 83 mutants for a commit that
 introduced 7 mutants' worth of new behaviour, and 23 for one that introduced
