@@ -21,6 +21,7 @@ const MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const DEFAULT_TIMEOUT_MS = 600_000
+const VITEST = 'node_modules/vitest/vitest.mjs'
 const ONE_AT_A_TIME = 1
 const WIDEST_USEFUL = 8
 const SOURCE_ROOT = 'src/'
@@ -285,7 +286,7 @@ export function describeMutant({ file, line, from, to }: Mutant): string {
 function mirrorArgsFor(mutant: Mutant): string[] {
   const named = mutant.file.replace(SOURCE_ROOT, TEST_ROOT).slice(NOTHING_DROPPED, -SOURCE_EXTENSION.length)
 
-  return ['vitest', 'run', named, '--silent', '--bail=1', '--passWithNoTests']
+  return [VITEST, 'run', named, '--silent', '--bail=1', '--passWithNoTests']
 }
 
 export async function judge(
@@ -295,7 +296,7 @@ export async function judge(
 ): Promise<Outcome> {
   const settings = { ...spawning, env: envFor(mutant) }
 
-  return { mutant, fate: fateOf(await run('npx', mirrorArgsFor(mutant), timeoutMs, settings)) }
+  return { mutant, fate: fateOf(await run(process.execPath, mirrorArgsFor(mutant), timeoutMs, settings)) }
 }
 
 function fateOf({ failed, timedOut }: Ran): Fate {

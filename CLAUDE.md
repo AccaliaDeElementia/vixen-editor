@@ -657,6 +657,9 @@ that**: some are only enforceable by review.
   only where happy-dom is _incorrect_, never where it is merely awkward, and it
   carries a test that fails if the environment is wrong.
   → [TESTING](TESTING.md#testing-0b4d12)
+- **Assert on values the test chose, never on ones the system invented.** Where
+  an ordering depends on a generated value, drive the comparator directly with
+  values you control. → [TESTING](TESTING.md#testing-5d9c41)
 - **Resilience to another client's changes is tested deliberately**, in a chaos
   spec under `test-browser/`, never left to the browser suite's own cross-talk
   to find. → [TESTING](TESTING.md#testing-3b7e1c)

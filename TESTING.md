@@ -494,6 +494,31 @@ examined first. It is there to hold the count at zero, not because every
 alternative has been proved. A change with no clean solution without it is
 grounds to relitigate the ban, not to work around it.
 
+<a id="testing-5d9c41"></a>
+
+### Assert on values you chose, never on ones the system invented
+
+**Where an ordering depends on a value the system generated, test the comparator
+directly with values you control** — not the listing it produces. The same holds
+for identity: assert on an id the test supplied, never on one a store minted.
+
+A test that reads an order out of generated values still passes, because the
+code and the test agree by construction. What it stops doing is **failing when
+the code is wrong**, and that shows up as a mutation survivor that comes and
+goes.
+
+`trash.ts` sorts newest first and breaks ties by id. The mutant that swaps those
+two branches differs from the original only when id order contradicts time
+order — and both tests trashed real documents, taking whatever `randomUUID`
+gave them. So the mutant was killed by the census of 2026-10-21 and survived the
+one of 2026-10-23 with the file untouched in between. Pinning the comparator
+with ids chosen to contradict the times killed it on four runs out of four.
+
+**The tell is that the test never names the value it depends on.** Timestamps
+had already been noticed in that file — it carries a `redate` helper and a
+comment saying two deletes in one millisecond would tie — while the ids beside
+them went unremarked.
+
 <a id="testing-748822"></a>
 
 ### No timer outlives the test that started it
