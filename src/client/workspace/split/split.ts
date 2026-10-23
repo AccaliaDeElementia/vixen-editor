@@ -24,7 +24,6 @@ const NONE_OF_THE_AXIS = 0
 const ALL_OF_THE_AXIS = 100
 const MIN_PANE_WIDTH_PX = 280
 const MIN_PANE_HEIGHT_PX = 160
-const BOTH_PANES = 2
 const WHOLE = 1
 
 const PANES_SELECTOR = '[data-part="panes"]'
@@ -71,12 +70,10 @@ function floorFor(orientation: SplitOrientation): number {
 }
 
 function clampFraction(fraction: number, axisPx: number, orientation: SplitOrientation): number {
-  const floor = floorFor(orientation)
-  if (axisPx < floor * BOTH_PANES) return EVEN_SPLIT
+  const smallest = Math.min(floorFor(orientation) / axisPx, EVEN_SPLIT)
+  const wanted = Number.isNaN(fraction) ? EVEN_SPLIT : fraction
 
-  const smallest = floor / axisPx
-
-  return Math.min(Math.max(fraction, smallest), WHOLE - smallest)
+  return Math.min(Math.max(wanted, smallest), WHOLE - smallest)
 }
 
 function secondPaneOf(panes: HTMLElement): HTMLElement | null {

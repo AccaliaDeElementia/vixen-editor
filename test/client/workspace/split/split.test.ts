@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   applySplit,
+  openSplit,
   readSplit,
+  secondPaneIn,
   setSplitFraction,
   toggleSplit,
   TestOnly,
@@ -361,5 +363,66 @@ describe('the divider between the panes', () => {
     setSplitFraction(root, 0.3, WIDE)
 
     expect(root.querySelector('[data-part="split-resizer"]')?.getAttribute('aria-valuetext')).toBe('30 percent')
+  })
+})
+
+describe('a share the storage cannot be trusted for', () => {
+  it('falls back to an even split when the stored share is not finite', () => {
+    localStorage.setItem('vixen-editor:split', JSON.stringify({ orientation: 'beside', shares: { beside: null } }))
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
+  })
+
+  it('falls back to an even split when the stored share overflowed to infinity', () => {
+    localStorage.setItem('vixen-editor:split', '{"orientation":"beside","shares":{"beside":1e999}}')
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
+  })
+
+  it('keeps a stored share that is a real number', () => {
+    localStorage.setItem('vixen-editor:split', JSON.stringify({ orientation: 'beside', shares: { beside: 0.3 } }))
+
+    expect(readSplit().fraction).toBe(0.3)
+  })
+})
+
+describe('opening a split', () => {
+  it('opens one in the orientation asked for when none is open', () => {
+    openSplit(page(), 'below', TALL)
+
+    expect(readSplit().orientation).toBe('below')
+  })
+
+  it('leaves the orientation alone when a split is already open', () => {
+    const root = page()
+    openSplit(root, 'below', TALL)
+
+    openSplit(root, 'beside', WIDE)
+
+    expect(readSplit().orientation).toBe('below')
+  })
+})
+
+describe('finding the second pane', () => {
+  it('finds it once a split is open', () => {
+    const root = page()
+    openSplit(root, 'beside', WIDE)
+
+    expect(secondPaneIn(root)).not.toBeNull()
+  })
+
+  it('finds nothing where there are no panes at all', () => {
+    expect(secondPaneIn(document.createElement('div'))).toBeNull()
+  })
+})
+
+describe('a split fraction that is not a number', () => {
+  it('settles on an even split, rather than leaving the panes with no width', () => {
+    const root = page()
+    openSplit(root, 'beside', WIDE)
+
+    setSplitFraction(root, Number.NaN, WIDE)
+
+    expect(readSplit().fraction).toBe(EVEN_SPLIT)
   })
 })

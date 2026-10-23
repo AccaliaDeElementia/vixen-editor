@@ -206,3 +206,17 @@ describe('moving between the editor panes', () => {
     expect(answered).toStrictEqual([])
   })
 })
+
+describe('keys that look close but are not the gesture', () => {
+  it('moves nothing when Shift is held with a key no tab gesture names', () => {
+    press({ key: 'a', shiftKey: true, altKey: true })
+
+    expect(answered).toStrictEqual([])
+  })
+
+  it('jumps to the first tab, which is the lowest number the range takes', () => {
+    press({ key: '1', altKey: true })
+
+    expect(answered).toStrictEqual(['jump 1'])
+  })
+})

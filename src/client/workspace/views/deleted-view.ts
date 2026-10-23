@@ -61,6 +61,11 @@ function partsOf(root: ParentNode): Parts | null {
   return { contents, what, actions, restore, purge, blocked }
 }
 
+interface Shown {
+  node: TrashNode
+  placeTaken: boolean
+}
+
 function describe(entry: TrashNode): string {
   const when = new Date(entry.deletedAt).toLocaleString()
   const subject = entry.kind === 'folder' ? 'The folder' : 'The file'
@@ -81,14 +86,13 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
   if (parts === null) return INERT
 
   const { contents, what, actions, restore, purge, blocked } = parts
-  let entry: TrashNode | null = null
+  let shown: Shown | null = null
   let chosenIn: RestoreTree | null = null
-  let placeTaken = false
 
   function chosenRoots(): readonly string[] {
     if (chosenIn !== null) return chosenIn.roots()
 
-    return placeTaken ? [] : [STORE_ROOT]
+    return shown !== null && !shown.placeTaken ? [STORE_ROOT] : []
   }
 
   function offerRestore(): void {
@@ -191,16 +195,14 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
   }
 
   function forgetEntry(): void {
-    entry = null
+    shown = null
     chosenIn = null
-    placeTaken = false
     contents.hidden = true
     contents.replaceChildren()
   }
 
   function showEntry(found: TrashNode, occupied: boolean): void {
-    entry = found
-    placeTaken = occupied
+    shown = { node: found, placeTaken: occupied }
     what.textContent = describe(found)
     actions.hidden = false
     offerRestore()
@@ -239,11 +241,11 @@ export function createDeletedView(options: DeletedViewOptions): DeletedView {
   }
 
   restore.addEventListener('click', () => {
-    if (entry !== null) void restoreEntry(entry)
+    if (shown !== null) void restoreEntry(shown.node)
   })
 
   purge.addEventListener('click', () => {
-    if (entry !== null) void purgeEntry(entry)
+    if (shown !== null) void purgeEntry(shown.node)
   })
 
   return {
