@@ -50,7 +50,6 @@ export interface Runtime {
 
 const defaultRuntime: Runtime = {
   loadEnvFile: () => {
-    /* mutation-ignore false -- tooling configuration, with no app logic around it. */
     loadDotenv({ quiet: true })
   },
   serve,

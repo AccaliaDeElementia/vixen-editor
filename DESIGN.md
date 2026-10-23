@@ -783,6 +783,16 @@ defect, because the reason is the same for each and `stdout` was measured silent
 already, so guarding it cost nothing. The guard passes each write through rather
 than swallowing it — finding the source is the fix, muting the stream is not.
 
+**It watches the `console` methods too, and that is not the same thing.** Vitest
+replaces the global `console` with its own, wired to the reporter rather than to
+the process streams, so a `console.error` never reaches `process.stderr.write`
+and the stream guard cannot see it. Measured: a direct stream write is caught
+where a `console.error` beside it is not. Lint forbids `console.*` in `src/`, so
+the gap was only ever reachable by a **dependency** — which is exactly where it
+was found. Widening it cost nothing: the whole suite stayed green, and it
+retired the `mutation-ignore` on `loadDotenv({ quiet: true })`, whose mutant the
+widened guard now kills.
+
 The refusal itself came from the page fixture carrying the application's entry
 point. `renderPage` now drops it: the fixture is the page's markup, not its boot
 sequence, and `src/client/main.ts` is the one module no unit test drives.
