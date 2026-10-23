@@ -9,6 +9,7 @@ import {
   MIN_EXPLORER_PX,
   setExplorerWidth,
   askForPanel,
+  closeExplorerWhenCramped,
   TestOnly,
 } from '../../../../src/client/chrome/explorer.ts'
 import { writePreferences } from '../../../../src/client/platform/preferences.ts'
@@ -294,5 +295,90 @@ describe('applyExplorerWidth', () => {
     expect(() => {
       applyExplorerWidth(document.body, 300, VIEWPORT)
     }).not.toThrow()
+  })
+})
+
+describe('closing the explorer because the viewport is cramped', () => {
+  function crampedApp(): void {
+    app().dataset.explorerCramped = 'true'
+  }
+
+  it('reports that it closed it, so the caller knows the gesture was taken', () => {
+    crampedApp()
+
+    expect(closeExplorerWhenCramped(root)).toBe(true)
+  })
+
+  it('remembers the explorer as closed, which is what survives the next render', () => {
+    crampedApp()
+
+    closeExplorerWhenCramped(root)
+
+    expect(readExplorerState(VIEWPORT).open).toBe(false)
+  })
+
+  it('does nothing on a viewport with room for both, and says so', () => {
+    app().dataset.explorerCramped = 'false'
+
+    expect(closeExplorerWhenCramped(root)).toBe(false)
+  })
+
+  it('leaves the remembered state alone on a roomy viewport', () => {
+    app().dataset.explorerCramped = 'false'
+    writePreferences({ ...readExplorerState(VIEWPORT), open: true })
+
+    closeExplorerWhenCramped(root)
+
+    expect(readExplorerState(VIEWPORT).open).toBe(true)
+  })
+
+  it('says it did nothing when there is no app to close', () => {
+    expect(closeExplorerWhenCramped(document.createElement('div'))).toBe(false)
+  })
+})
+
+describe('what the app remembers about the last viewport it drew for', () => {
+  const CRAMPED = 320
+  const ROOMY = 1400
+
+  it('closes an explorer that was open when the viewport becomes cramped', () => {
+    writePreferences({ ...readExplorerState(ROOMY), open: true })
+    applyExplorerState(root, ROOMY)
+
+    applyExplorerState(root, CRAMPED)
+
+    expect(app().dataset.explorer).toBe('closed')
+  })
+
+  it('leaves an explorer the reader opened while cramped open when it draws again', () => {
+    writePreferences({ ...readExplorerState(CRAMPED), open: false })
+    applyExplorerState(root, CRAMPED)
+    setExplorerOpen(true)
+
+    applyExplorerState(root, CRAMPED)
+
+    expect(app().dataset.explorer).toBe('open')
+  })
+})
+
+describe('which panel control reads as the one in use', () => {
+  function expandedOf(panel: string): string | null {
+    return root.querySelector(`[data-shows-panel="${panel}"]`)?.getAttribute('aria-expanded') ?? null
+  }
+
+  it('marks the control for the panel on show', () => {
+    askForPanel(root, 'trash')
+
+    applyExplorerState(root, VIEWPORT)
+
+    expect(expandedOf('trash')).toBe('true')
+  })
+
+  it('leaves the control for a panel that is not on show unmarked', () => {
+    askForPanel(root, 'trash')
+
+    applyExplorerState(root, VIEWPORT)
+
+    expect(expandedOf('files')).toBe('false')
   })
 })
