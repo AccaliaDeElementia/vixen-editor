@@ -107,3 +107,11 @@ describe('a trash entry row', () => {
     expect(deletedRow().querySelector('button')).toBeNull()
   })
 })
+
+describe('what a trashed row says it can do', () => {
+  it('reports it as not expandable, because a trashed entry opens on its own page', () => {
+    const visible = renderTrashPanel(list, { trash: [GLYPH_TRASH_ENTRY], selected: null })
+
+    expect(visible.at(0)?.expandable).toBe(false)
+  })
+})

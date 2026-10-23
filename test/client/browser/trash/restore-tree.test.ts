@@ -457,3 +457,21 @@ describe('a restore row naming itself on hover', () => {
     expect(rows().at(1)?.title).toBe(rows().at(1)?.getAttribute('aria-label'))
   })
 })
+
+describe('the glyph a row in the restore tree carries', () => {
+  function glyphOf(at: number): string {
+    return rows().at(at)?.querySelector('.restore-tree__label .icon')?.textContent ?? ''
+  }
+
+  it('shows a folder as an open folder, because its contents are listed below it', () => {
+    renderRestoreTree(into, entryOf([file('a.md')]), { onChanged: () => undefined, onRename: () => undefined })
+
+    expect(glyphOf(0)).toBe('folder_open')
+  })
+
+  it('shows a document with the glyph its kind carries', () => {
+    renderRestoreTree(into, entryOf([file('a.md')]), { onChanged: () => undefined, onRename: () => undefined })
+
+    expect(glyphOf(1)).not.toBe('folder_open')
+  })
+})
