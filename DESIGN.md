@@ -648,16 +648,20 @@ caught by `test-browser/rendering.spec.ts`, not by any unit test.
 Measuring the archive first is what lets an oversized request fail with a
 status code instead of a truncated download.
 
-**The page is dark and says so twice.** `<meta name="color-scheme" content="dark">`
-is the standard signal, and it is what makes native scrollbars, form controls and
-the pre-paint canvas match rather than flash white. It was not enough on its own:
-Dark Reader darkened the editor anyway, which dimmed the caret to near
-invisibility against an already dark background. `<meta name="darkreader-lock">`
-is that extension's documented opt-out and turns it off for the page.
+**The page declares both schemes and follows the device.**
+`<meta name="color-scheme" content="light dark">` is the standard signal, and it
+is what makes native scrollbars, form controls and the pre-paint canvas match
+rather than flash white. It was not enough on its own: Dark Reader darkened the
+editor anyway, which dimmed the caret to near invisibility against an already
+dark background. `<meta name="darkreader-lock">` is that extension's documented
+opt-out and turns it off for the page.
 
-**The lock is only honest while there is one theme.** This app ships Bootswatch
-Darkly and reads no `prefers-color-scheme`, so a second darkening is always
-wrong. Add a light theme and the lock has to go with it.
+**The lock is conditional, because a second darkening is only wrong on a page
+that is already dark.** `followColourScheme` inserts it unless the device asks
+for light, and keeps it in step as that preference changes, removing it when the
+layout tears down. The question it asks is `(prefers-color-scheme: light)`,
+phrased that way round so that a browser which cannot answer lands on dark
+beside one that answers "dark" — an unrecognised media query matches false.
 
 **The server refuses to start without a client to serve.** `startServer` checks
 that the public directory is a directory before it builds the app, and throws
@@ -670,6 +674,15 @@ every visitor a broken page.
 That check is also why `createApp` takes the public directory rather than
 defaulting it: a default belongs to the deployment, and a test that constructs
 an app without one depends on whether the repo happens to have been built.
+
+**The stylesheet and script are asked for by build id.** Both carry
+`?v=<build id>` — the same digest the page already renders as
+`meta[name="vixen-build"]`, taken over everything in `public/assets/` and the
+templates — so a rebuild cannot be answered from cache, and the two cannot be
+held out of step with each other. The out-of-date notification exists because a
+client can outlive its build; it could never have announced its own stylesheet.
+The icon font is deliberately left bare, because `_icons.scss` asks for it by
+the unversioned path and versioning the preload alone would fetch it twice.
 
 <a id="design-428132"></a>
 
@@ -1115,18 +1128,27 @@ decision anyone made on purpose.
   what will let a future SPA merge these same templates with data on the client
   rather than round-tripping for markup.
 - **Styles are SCSS**, authored in `src/styles/` and compiled by `sass` to
-  `public/assets/main.css` in `scripts/build.ts`. The theme is Bootswatch
-  Darkly; `_tokens.scss` keeps the upstream variable names so it can be diffed
-  against the original. The `cm-vixen-*` decoration class names are produced by
-  `src/client/editing/decorations.ts` and asserted by tests — restyle them, do
-  not rename them.
+  `public/assets/main.css` in `scripts/build.ts`. The themes are Bootswatch
+  Darkly and Flatly; `_tokens.scss` keeps the upstream variable names so each
+  can be diffed against the original. Every colour a stylesheet reads is a CSS
+  custom property, so the light scheme redefines them under one media query and
+  no call site knows there is more than one. The `cm-vixen-*` decoration class
+  names are produced by `src/client/editing/decorations.ts` and asserted by
+  tests — restyle them, do not rename them.
+- **A brand colour fills something; an ink colour is written on it.** Bootswatch
+  tunes its brand colours to carry white text on themselves, so most are too
+  faint as text on a page of their own scheme. `--ink-*` holds the same hues
+  moved far enough to carry it, and `test/conventions/` fails when an ink token
+  drops below the ratio the gate asks against a surface its own scheme puts
+  behind text. Fill with `--primary`, write with `--ink-primary`.
 - **Syntax colours are not CSS.** CodeMirror's `basicSetup` bundles
   `defaultHighlightStyle`, which is built for light backgrounds and renders
   markdown markers like `#` near-black — invisible on a dark surface, and not
   reliably overridable from a stylesheet because the generated class names
-  (`ͼ5`) are unstable. `src/client/editing/highlight.ts` supplies a
-  `HighlightStyle` on the Darkly ramp instead. Theme changes touching token
-  colours belong there, not in SCSS.
+  (`ͼ5`) are unstable. `src/client/editing/highlight.ts` supplies its own
+  `HighlightStyle` instead. **Its colours are token references rather than
+  literals**, so the scheme decides them and theme changes stay in
+  `_tokens.scss`; a test fails if a literal colour appears there.
 - **Code blocks are highlighted from grammars already in the bundle**, with the
   fence's info string respected rather than the language guessed. The named set
   is `c`, `cpp`, `css`, `diff`, `dockerfile`, `go`, `html`, `java`,

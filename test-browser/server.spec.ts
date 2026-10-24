@@ -73,7 +73,7 @@ test('serves the compiled stylesheet at the path the page asks for', async ({ re
   const href = /<link[^>]+rel="stylesheet"[^>]+href="(?<href>\/assets[^"]+)"/v.exec(page)?.groups?.href
 
   given(() => {
-    expect(href).toBe('/assets/main.css')
+    expect(href).toMatch(/^\/assets\/main\.css\?v=[0-9a-f]+$/v)
   })
 
   const stylesheet = await request.get(href ?? '')
@@ -89,7 +89,7 @@ test('serves the built client bundle at the path the page asks for', async ({ re
   const src = /<script[^>]+src="(?<src>[^"]+)"/v.exec(page)?.groups?.src
 
   given(() => {
-    expect(src).toBe('/assets/main.js')
+    expect(src).toMatch(/^\/assets\/main\.js\?v=[0-9a-f]+$/v)
   })
 
   const bundle = await request.get(src ?? '')
