@@ -39,6 +39,7 @@ function fakeView(innerWidth = VIEWPORT): Window {
   const listeners = new Map<string, EventListener>()
   return cast<Window>({
     innerWidth,
+    matchMedia: () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }),
     addEventListener: (type: string, listener: EventListener) => listeners.set(type, listener),
     dispatchEvent: (event: Event) => {
       listeners.get(event.type)?.(event)

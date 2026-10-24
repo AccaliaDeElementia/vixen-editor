@@ -1,75 +1,127 @@
-@use 'sass:color';
+// Bootswatch Darkly and Flatly, verbatim. Kept as the upstream names so each
+// scheme can be diffed against https://github.com/thomaspark/bootswatch dist/.
+$darkly-white: #ffffff;
+$darkly-gray-500: #adb5bd;
+$darkly-gray-700: #444444;
+$darkly-gray-800: #303030;
+$darkly-gray-900: #222222;
+$darkly-blue: #375a7f;
+$darkly-cyan: #3498db;
+$darkly-green: #00bc8c;
+$darkly-yellow: #f39c12;
+$darkly-red: #e74c3c;
 
-// Bootswatch Darkly, verbatim. Kept as the upstream names so the theme can be
-// diffed against https://github.com/thomaspark/bootswatch dist/darkly.
-$white: #ffffff;
-$gray-100: #f8f9fa;
-$gray-500: #adb5bd;
-$gray-700: #444444;
-$gray-800: #303030;
-$gray-900: #222222;
-$black: #000000;
+$flatly-white: #fff;
+$flatly-gray-100: #f8f9fa;
+$flatly-gray-200: #ecf0f1;
+$flatly-gray-300: #dee2e6;
+$flatly-gray-500: #b4bcc2;
+$flatly-gray-700: #7b8a8b;
+$flatly-gray-900: #212529;
+$flatly-blue: #2c3e50;
+$flatly-cyan: #3498db;
+$flatly-green: #18bc9c;
+$flatly-yellow: #f39c12;
+$flatly-red: #e74c3c;
 
-$blue: #375a7f;
-$cyan: #3498db;
-$green: #00bc8c;
-$yellow: #f39c12;
-$red: #e74c3c;
+// Bootswatch tunes its brand colours to carry white text on themselves, so
+// several are too faint as text on a page of their own scheme. These are the
+// same hues, moved far enough to carry it.
+$darkly-ink-blue: #88a9cc;
+$darkly-ink-cyan: #5faee3;
+$darkly-ink-red: #ef8b80;
 
-$body-bg: $gray-900;
-$body-color: $white;
-$primary: $blue;
-$secondary: $gray-700;
-$success: $green;
-$info: $cyan;
-$warning: $yellow;
-$danger: $red;
-$light: $gray-500;
-$dark: $gray-800;
+$flatly-ink-cyan: #1d6fa5;
+$flatly-ink-green: #0f7864;
+$flatly-ink-yellow: #925d07;
+$flatly-ink-red: #cd2a19;
+$flatly-ink-gray: #606d6e;
 
 // Every colour a stylesheet reads resolves at runtime, so a second scheme can
 // redefine these without any call site knowing there is more than one.
 :root {
-  --body-bg: #{$body-bg};
-  --body-color: #{$body-color};
-  --primary: #{$primary};
-  --secondary: #{$secondary};
-  --success: #{$success};
-  --info: #{$info};
-  --warning: #{$warning};
-  --danger: #{$danger};
-  --light: #{$light};
-  --dark: #{$dark};
+  --body-bg: #{$darkly-gray-900};
+  --body-color: #{$darkly-white};
+  --primary: #{$darkly-blue};
+  --success: #{$darkly-green};
+  --info: #{$darkly-cyan};
+  --warning: #{$darkly-yellow};
+  --danger: #{$darkly-red};
 
-  --surface: #{$gray-800};
-  --border: #{$gray-700};
-  --muted: #{$gray-500};
-  --selected: #{$gray-700};
+  --ink-primary: #{$darkly-ink-blue};
+  --ink-success: #{$darkly-green};
+  --ink-info: #{$darkly-ink-cyan};
+  --ink-warning: #{$darkly-yellow};
+  --ink-danger: #{$darkly-ink-red};
+  --ink-heading: #{$darkly-white};
 
-  --on-accent: #{$white};
-  --on-bright: #{$gray-900};
-  --line-active: #{color.adjust($gray-800, $lightness: 4%)};
-  --gutter-active: #{color.adjust($gray-900, $lightness: 4%)};
-  --selection: #{color.adjust($blue, $lightness: -10%)};
-  --heading-tint: #{rgba($blue, 0.28)};
-  --disabled: #{color.adjust($gray-500, $lightness: -25%)};
+  --surface: #{$darkly-gray-800};
+  --border: #{$darkly-gray-700};
+  --muted: #{$darkly-gray-500};
+  --selected: #{$darkly-gray-700};
+  --scrim: #{rgba(0, 0, 0, 0.6)};
+
+  --on-accent: #{$darkly-white};
+  --on-bright: #{$darkly-gray-900};
+  --line-active: #3a3a3a;
+  --gutter-active: #2c2c2c;
+  --selection: #28415b;
+  --heading-tint: #{rgba($darkly-blue, 0.28)};
+  --disabled: #697582;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --body-bg: #{$flatly-white};
+    --body-color: #{$flatly-gray-900};
+    --primary: #{$flatly-blue};
+    --success: #{$flatly-green};
+    --info: #{$flatly-cyan};
+    --warning: #{$flatly-yellow};
+    --danger: #{$flatly-red};
+
+    --ink-primary: #{$flatly-blue};
+    --ink-success: #{$flatly-ink-green};
+    --ink-info: #{$flatly-ink-cyan};
+    --ink-warning: #{$flatly-ink-yellow};
+    --ink-danger: #{$flatly-ink-red};
+    --ink-heading: #{$flatly-blue};
+
+    --surface: #{$flatly-gray-100};
+    --border: #{$flatly-gray-300};
+    --muted: #{$flatly-ink-gray};
+    --selected: #{$flatly-gray-200};
+    --scrim: #{rgba($flatly-white, 0.85)};
+
+    --on-accent: #{$flatly-white};
+    --on-bright: #{$flatly-gray-900};
+    --line-active: #{$flatly-gray-200};
+    --gutter-active: #{$flatly-gray-100};
+    --selection: #{rgba($flatly-cyan, 0.3)};
+    --heading-tint: #{rgba($flatly-blue, 0.12)};
+    --disabled: #{$flatly-gray-500};
+  }
 }
 
 $body-bg: var(--body-bg);
 $body-color: var(--body-color);
 $primary: var(--primary);
-$secondary: var(--secondary);
 $success: var(--success);
 $info: var(--info);
 $warning: var(--warning);
 $danger: var(--danger);
-$light: var(--light);
-$dark: var(--dark);
+
+$ink-primary: var(--ink-primary);
+$ink-success: var(--ink-success);
+$ink-info: var(--ink-info);
+$ink-warning: var(--ink-warning);
+$ink-danger: var(--ink-danger);
 
 $surface: var(--surface);
 $border: var(--border);
 $muted: var(--muted);
 $selected: var(--selected);
+$scrim: var(--scrim);
 
 $on-accent: var(--on-accent);
 $on-bright: var(--on-bright);

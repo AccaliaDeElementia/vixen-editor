@@ -13,7 +13,7 @@ function renderedHead(): string {
 }
 
 describe('what the page tells a browser about its colours', () => {
-  it('declares itself dark, so native controls and scrollbars match the theme', () => {
-    expect(renderedHead()).toContain('<meta name="color-scheme" content="dark">')
+  it('declares both schemes, so native controls and scrollbars follow the one in use', () => {
+    expect(renderedHead()).toContain('<meta name="color-scheme" content="light dark">')
   })
 })

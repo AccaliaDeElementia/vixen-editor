@@ -97,10 +97,10 @@
   }
 
   &--stale {
-    color: $warning;
+    color: $ink-warning;
 
     &:hover:not(:disabled) {
-      color: $warning;
+      color: $ink-warning;
     }
   }
 
@@ -115,7 +115,7 @@
   }
 
   &[aria-pressed='true'] {
-    color: $info;
+    color: $ink-info;
     background: $surface;
   }
 }
@@ -249,7 +249,7 @@
   }
 
   &[aria-pressed='true'] {
-    color: $info;
+    color: $ink-info;
   }
 
   &:focus-visible {
@@ -486,19 +486,19 @@
 }
 
 .icon--document {
-  color: $info;
+  color: $ink-info;
 }
 
 .icon--image {
-  color: $success;
+  color: $ink-success;
 }
 
 .icon--markup {
-  color: $warning;
+  color: $ink-warning;
 }
 
 .icon--source {
-  color: $danger;
+  color: $ink-danger;
 }
 
 .tree__empty-trash {
@@ -636,7 +636,7 @@
 .modal__error {
   margin: 0;
   min-height: 1.2em;
-  color: $danger;
+  color: $ink-danger;
   font-size: $font-size-sm;
 }
 
@@ -658,6 +658,7 @@
   &--primary {
     background: $primary;
     border-color: $primary;
+    color: $on-accent;
   }
 
   &--success {
@@ -689,7 +690,7 @@
 // both land in the same corner of the screen.
 .toast[data-severity='error'] {
   border-color: $danger;
-  color: $danger;
+  color: $ink-danger;
 }
 
 .view {
@@ -751,7 +752,7 @@
 }
 
 .restore-tree__tick {
-  color: $info;
+  color: $ink-info;
 }
 
 .restore-tree__rename {
@@ -766,7 +767,7 @@
 
 .restore-tree__row:hover .restore-tree__rename,
 .restore-tree__rename:focus-visible {
-  color: $info;
+  color: $ink-info;
   opacity: 1;
 }
 
@@ -807,6 +808,7 @@
 
   &:hover {
     background: $primary;
+    color: $on-accent;
   }
 
   &:focus-visible {
@@ -829,7 +831,7 @@
   gap: $space-sm;
   padding: 0.2em $space-xs;
   border-radius: $radius;
-  background: rgba(0, 0, 0, 0.6);
+  background: $scrim;
   color: $muted;
   font-size: $font-size-sm;
   pointer-events: none;

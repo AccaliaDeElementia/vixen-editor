@@ -18,7 +18,7 @@ import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../platform/help.ts'
 import { onInsertRequested } from '../platform/announce/insert-entry.ts'
-import { lockOutDarkening } from './colour-scheme.ts'
+import { followColourScheme } from './colour-scheme.ts'
 
 const HELP_SELECTOR = '#show-help'
 
@@ -119,7 +119,7 @@ export function initLayout(options: LayoutOptions = {}): Layout {
   const root = options.root ?? document
   const view = options.view ?? window
 
-  lockOutDarkening(options.head ?? document.head)
+  const offScheme = followColourScheme(view, options.head ?? document.head)
   applyExplorerState(root, view.innerWidth)
   const split = bindSplitControls(root)
   bindResizer(root, view)
@@ -132,6 +132,7 @@ export function initLayout(options: LayoutOptions = {}): Layout {
     teardownLayout: () => {
       offInsertRequested()
       offResize()
+      offScheme()
       split.release()
     },
   }

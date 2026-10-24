@@ -24,10 +24,10 @@ body {
 }
 
 a {
-  color: $primary;
+  color: $ink-primary;
 
   &:hover,
   &:focus {
-    color: $info;
+    color: $ink-info;
   }
 }

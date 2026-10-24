@@ -85,7 +85,7 @@
 }
 
 .cm-vixen-link {
-  color: $info;
+  color: $ink-info;
   text-decoration: underline;
   text-decoration-style: dotted;
   cursor: pointer;
@@ -98,6 +98,11 @@
   border-radius: $radius;
 }
 
+.cm-tooltip {
+  background: $surface;
+  border-color: $border;
+}
+
 .cm-vixen-link-tooltip {
   padding: 0.3em 0.6em;
   background: $surface;
@@ -107,7 +112,7 @@
 }
 
 .cm-vixen-link-tooltip__open {
-  color: $info;
+  color: $ink-info;
   text-decoration: underline;
   white-space: nowrap;
 }
@@ -155,7 +160,7 @@
   }
 
   a {
-    color: $info;
+    color: $ink-info;
   }
 
   code {

@@ -38,33 +38,31 @@ describe('vixenHighlightStyle', () => {
 
   it('styles markdown syntax markers, which the bundled light theme renders near-black', () => {
     // tags.processingInstruction covers the `#`, `*` and backtick markers.
-    expect(styleFor(tags.processingInstruction)).toContain('#adb5bd')
-  })
-
-  it('renders headings in white so they read against the dark surface', () => {
-    expect(styleFor(tags.heading)).toContain('#ffffff')
+    expect(styleFor(tags.processingInstruction)).toContain('var(--muted)')
   })
 
   it.each([
-    ['links', tags.link, '#3498db'],
-    ['inline code', tags.monospace, '#00bc8c'],
-    ['quotes', tags.quote, '#adb5bd'],
-    ['invalid syntax', tags.invalid, '#e74c3c'],
-    ['html tag names', tags.tagName, '#3498db'],
-    ['html attribute names', tags.attributeName, '#f39c12'],
-    ['strings and attribute values', tags.string, '#00bc8c'],
-    ['comments', tags.comment, '#adb5bd'],
-    ['punctuation', tags.punctuation, '#adb5bd'],
-    ['operators', tags.operator, '#adb5bd'],
-  ])('colours %s from the Darkly ramp', (_label, tag, expected) => {
+    ['headings', tags.heading, 'var(--ink-heading)'],
+    ['links', tags.link, 'var(--ink-info)'],
+    ['inline code', tags.monospace, 'var(--ink-success)'],
+    ['quotes', tags.quote, 'var(--muted)'],
+    ['thematic breaks', tags.contentSeparator, 'var(--ink-primary)'],
+    ['invalid syntax', tags.invalid, 'var(--ink-danger)'],
+    ['html tag names', tags.tagName, 'var(--ink-info)'],
+    ['html attribute names', tags.attributeName, 'var(--ink-warning)'],
+    ['strings and attribute values', tags.string, 'var(--ink-success)'],
+    ['comments', tags.comment, 'var(--muted)'],
+    ['punctuation', tags.punctuation, 'var(--muted)'],
+    ['operators', tags.operator, 'var(--muted)'],
+  ])('reads the colour of %s from a token, so the colour scheme decides it', (_label, tag, expected) => {
     expect(styleFor(tag)).toContain(expected)
   })
 
-  it('keeps every colour it defines off the dark background', () => {
-    const nearBlack = /#(?:0{3,6}|1[0-9a-f]|2[0-2])/v
+  it('names a token for every colour it sets, so no scheme is baked into the bundle', () => {
+    const literalColour = /(?<!-)\b(?:color|background):(?!\s*var\()/v
     const rules = vixenHighlightStyle.module?.getRules() ?? ''
 
-    expect(rules).not.toMatch(nearBlack)
+    expect(literalColour.exec(rules)).toBeNull()
   })
 })
 

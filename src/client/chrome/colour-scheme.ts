@@ -2,8 +2,9 @@
 
 const LOCK_NAME = 'darkreader-lock'
 const LOCK_SELECTOR = `meta[name="${LOCK_NAME}"]`
+const LIGHT_QUERY = '(prefers-color-scheme: light)'
 
-export function lockOutDarkening(into: ParentNode, dark = true): void {
+function lockOutDarkening(into: ParentNode, dark: boolean): void {
   const already = into.querySelector(LOCK_SELECTOR)
   if (!dark) {
     already?.remove()
@@ -15,4 +16,18 @@ export function lockOutDarkening(into: ParentNode, dark = true): void {
   const lock = document.createElement('meta')
   lock.name = LOCK_NAME
   into.append(lock)
+}
+
+export function followColourScheme(view: Window, head: ParentNode): () => void {
+  const light = view.matchMedia(LIGHT_QUERY)
+  const applyLock = (): void => {
+    lockOutDarkening(head, !light.matches)
+  }
+
+  applyLock()
+  light.addEventListener('change', applyLock)
+
+  return () => {
+    light.removeEventListener('change', applyLock)
+  }
 }

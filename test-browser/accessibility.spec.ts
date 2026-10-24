@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test'
 
 import { violationsOn } from './axe.ts'
 import { stringFieldOf } from './json.ts'
-import { openLayout, previewControl, storedDocument } from './fixtures.ts'
+import { documentWithLink, openLayout, previewControl, storedDocument } from './fixtures.ts'
 
 async function workspaceWith(page: Page, request: Page['request'], folder: string): Promise<void> {
   await request.post('/api/files/folders', { data: { path: folder } })
@@ -25,6 +25,17 @@ test('the document view has no accessibility violations', async ({ page, request
   await page.goto(`/doc/${folder}/notes.md`)
   await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
   await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
+
+  expect(await violationsOn(page)).toStrictEqual([])
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('an open link tooltip has no accessibility violations', async ({ page, request }) => {
+  const folder = `a11y-tip-${String(Date.now())}`
+  await page.goto(await documentWithLink(request, folder))
+  await page.locator('.cm-vixen-link').hover()
+  await givenAsync(expect(page.locator('.cm-vixen-link-tooltip')).toBeVisible({ timeout: 3000 }))
 
   expect(await violationsOn(page)).toStrictEqual([])
 
@@ -253,8 +264,17 @@ test('a ribbon control nobody has reached names itself nowhere, so the rail stay
 })
 
 test('the page tells a darkening extension it is already dark', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('/doc/')
   await givenAsync(expect(page.locator('#editor')).toBeVisible())
 
   await expect(page.locator('meta[name="darkreader-lock"]')).toHaveCount(1)
+})
+
+test('the page leaves a darkening extension to it when the device asks for light', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/doc/')
+  await givenAsync(expect(page.locator('#editor')).toBeVisible())
+
+  await expect(page.locator('meta[name="darkreader-lock"]')).toHaveCount(0)
 })
