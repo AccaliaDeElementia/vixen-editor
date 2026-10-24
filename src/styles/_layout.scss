@@ -1,4 +1,3 @@
-@use 'sass:color';
 @use 'tokens' as *;
 
 // Any class setting `display` outranks the UA sheet's [hidden] rule, so a
@@ -34,7 +33,7 @@
   gap: $space-xs;
   padding: $space-xs 0;
   width: $ribbon-width;
-  background: $gray-900;
+  background: $body-bg;
   border-right: 1px solid $border;
 }
 
@@ -50,7 +49,7 @@
   padding: 0.3em 0.6em;
   border: 1px solid $muted;
   border-radius: $radius;
-  background: $dark;
+  background: $surface;
   color: $body-color;
   font-family: $font-family-base;
   font-size: $font-size-sm;
@@ -111,7 +110,7 @@
   }
 
   &:disabled {
-    color: color.adjust($muted, $lightness: -25%);
+    color: $disabled;
     cursor: default;
   }
 
@@ -224,7 +223,7 @@
   gap: 0.15em;
   padding: $space-xs $space-sm;
   border-bottom: 1px solid $border;
-  background: $gray-900;
+  background: $body-bg;
 }
 
 .control {
@@ -396,7 +395,7 @@
 .toast {
   padding: 0.5em 0.9em;
   border-radius: $radius;
-  background: $gray-900;
+  background: $body-bg;
   border: 1px solid $border;
   color: $body-color;
   font-size: $font-size-sm;
@@ -445,7 +444,7 @@
   user-select: none;
 
   &:hover {
-    background: $gray-900;
+    background: $body-bg;
   }
 
   &:focus-visible {
@@ -515,7 +514,7 @@
 
 .tree__empty-trash[data-armed] {
   background: $danger;
-  color: $white;
+  color: $on-accent;
 }
 
 .tree__name {
@@ -552,7 +551,7 @@
 
   &:hover:not(:disabled) {
     color: $body-color;
-    background: $gray-900;
+    background: $body-bg;
   }
 
   &:focus-visible {
@@ -561,7 +560,7 @@
   }
 
   &:disabled {
-    color: color.adjust($muted, $lightness: -25%);
+    color: $disabled;
     cursor: default;
   }
 }
@@ -664,13 +663,13 @@
   &--success {
     background: $success;
     border-color: $success;
-    color: $gray-900;
+    color: $on-bright;
   }
 
   &--warning {
     background: $warning;
     border-color: $warning;
-    color: $gray-900;
+    color: $on-bright;
   }
 
   &:focus-visible {
@@ -942,7 +941,7 @@
   gap: $space-sm;
   padding: $space-xs $space-sm;
   border-bottom: 1px solid $border;
-  background: $gray-900;
+  background: $body-bg;
 }
 
 .image__path {
@@ -1036,7 +1035,7 @@
 .tabs {
   display: flex;
   align-items: stretch;
-  background: $gray-900;
+  background: $body-bg;
   border-bottom: 1px solid $border;
 }
 
@@ -1065,7 +1064,7 @@
   flex: 0 0 auto;
   padding: 0 $space-xs;
   border: 0;
-  background: $gray-900;
+  background: $body-bg;
   color: $muted;
   cursor: pointer;
 

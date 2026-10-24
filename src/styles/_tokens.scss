@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 // Bootswatch Darkly, verbatim. Kept as the upstream names so the theme can be
 // diffed against https://github.com/thomaspark/bootswatch dist/darkly.
 $white: #ffffff;
@@ -25,10 +27,57 @@ $danger: $red;
 $light: $gray-500;
 $dark: $gray-800;
 
-$surface: $gray-800;
-$border: $gray-700;
-$muted: $gray-500;
-$selected: $gray-700;
+// Every colour a stylesheet reads resolves at runtime, so a second scheme can
+// redefine these without any call site knowing there is more than one.
+:root {
+  --body-bg: #{$body-bg};
+  --body-color: #{$body-color};
+  --primary: #{$primary};
+  --secondary: #{$secondary};
+  --success: #{$success};
+  --info: #{$info};
+  --warning: #{$warning};
+  --danger: #{$danger};
+  --light: #{$light};
+  --dark: #{$dark};
+
+  --surface: #{$gray-800};
+  --border: #{$gray-700};
+  --muted: #{$gray-500};
+  --selected: #{$gray-700};
+
+  --on-accent: #{$white};
+  --on-bright: #{$gray-900};
+  --line-active: #{color.adjust($gray-800, $lightness: 4%)};
+  --gutter-active: #{color.adjust($gray-900, $lightness: 4%)};
+  --selection: #{color.adjust($blue, $lightness: -10%)};
+  --heading-tint: #{rgba($blue, 0.28)};
+  --disabled: #{color.adjust($gray-500, $lightness: -25%)};
+}
+
+$body-bg: var(--body-bg);
+$body-color: var(--body-color);
+$primary: var(--primary);
+$secondary: var(--secondary);
+$success: var(--success);
+$info: var(--info);
+$warning: var(--warning);
+$danger: var(--danger);
+$light: var(--light);
+$dark: var(--dark);
+
+$surface: var(--surface);
+$border: var(--border);
+$muted: var(--muted);
+$selected: var(--selected);
+
+$on-accent: var(--on-accent);
+$on-bright: var(--on-bright);
+$line-active: var(--line-active);
+$gutter-active: var(--gutter-active);
+$selection: var(--selection);
+$heading-tint: var(--heading-tint);
+$disabled: var(--disabled);
 
 $font-family-base:
   Lato,

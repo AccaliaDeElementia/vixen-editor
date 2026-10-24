@@ -16,8 +16,4 @@ describe('what the page tells a browser about its colours', () => {
   it('declares itself dark, so native controls and scrollbars match the theme', () => {
     expect(renderedHead()).toContain('<meta name="color-scheme" content="dark">')
   })
-
-  it('locks out an extension that would darken it a second time', () => {
-    expect(renderedHead()).toContain('<meta name="darkreader-lock">')
-  })
 })

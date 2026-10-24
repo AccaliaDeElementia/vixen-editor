@@ -251,3 +251,10 @@ test('a ribbon control nobody has reached names itself nowhere, so the rail stay
 
   expect(shown).toBe('')
 })
+
+test('the page tells a darkening extension it is already dark', async ({ page }) => {
+  await page.goto('/doc/')
+  await givenAsync(expect(page.locator('#editor')).toBeVisible())
+
+  await expect(page.locator('meta[name="darkreader-lock"]')).toHaveCount(1)
+})

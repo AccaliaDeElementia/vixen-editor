@@ -18,6 +18,7 @@ import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../platform/help.ts'
 import { onInsertRequested } from '../platform/announce/insert-entry.ts'
+import { lockOutDarkening } from './colour-scheme.ts'
 
 const HELP_SELECTOR = '#show-help'
 
@@ -26,6 +27,7 @@ const KEYBOARD_STEP_PX = 16
 interface LayoutOptions {
   root?: ParentNode
   view?: Window
+  head?: ParentNode
 }
 
 function widthFromPointer(explorer: Element, clientX: number): number {
@@ -117,6 +119,7 @@ export function initLayout(options: LayoutOptions = {}): Layout {
   const root = options.root ?? document
   const view = options.view ?? window
 
+  lockOutDarkening(options.head ?? document.head)
   applyExplorerState(root, view.innerWidth)
   const split = bindSplitControls(root)
   bindResizer(root, view)
