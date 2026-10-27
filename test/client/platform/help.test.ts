@@ -6,7 +6,9 @@ import { describe, expect, it } from 'vitest'
 
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 
-import { cheatsheet, HELP_SECTIONS, KEYS } from '../../../src/client/platform/help.ts'
+import { cheatsheet, HELP_SECTIONS, KEYS, TestOnly } from '../../../src/client/platform/help.ts'
+
+const { DOCUMENT_SECTIONS } = TestOnly
 
 const INHERITED_FROM_THE_EDITOR: readonly string[] = [
   'Alt-A',
@@ -100,13 +102,17 @@ function keysBoundInTheEditor(): string[] {
 }
 
 describe('the cheatsheet a new workspace starts with', () => {
-  it('has a section for every section the help dialog shows', () => {
+  it('has a section for every section the document is meant to carry', () => {
     const headings = cheatsheet()
       .split('\n')
       .filter((line) => line.startsWith('## '))
       .map((line) => line.slice('## '.length))
 
-    expect(headings).toStrictEqual(HELP_SECTIONS.map((section) => section.heading))
+    expect(headings).toStrictEqual(DOCUMENT_SECTIONS.map((section) => section.heading))
+  })
+
+  it('plants no link and no image in the first document someone writes', () => {
+    expect(cheatsheet()).not.toContain('](')
   })
 
   it.each(['| What | Keys |', '| --- | --- |'])(
@@ -116,10 +122,10 @@ describe('the cheatsheet a new workspace starts with', () => {
     },
   )
 
-  it('names every entry the dialog would list', () => {
+  it('names every entry the document is meant to carry', () => {
     const rendered = cheatsheet()
 
-    for (const section of HELP_SECTIONS) {
+    for (const section of DOCUMENT_SECTIONS) {
       for (const entry of section.entries) {
         expect(rendered).toContain(`| ${entry.does} | ${entry.how} |`)
       }

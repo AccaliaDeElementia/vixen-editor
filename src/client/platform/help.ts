@@ -134,9 +134,13 @@ interface Section {
   entries: readonly Entry[]
 }
 
-export const HELP_SECTIONS: readonly Section[] = [
+const DOCUMENT_SECTIONS: readonly Section[] = [
   { heading: 'Getting around', column: 'How', entries: GESTURES },
   { heading: 'Keyboard', column: 'Keys', entries: SHORTCUTS },
+]
+
+export const HELP_SECTIONS: readonly Section[] = [
+  ...DOCUMENT_SECTIONS,
   { heading: 'Markdown', column: 'Looks like', entries: MARKDOWN },
 ]
 
@@ -166,5 +170,7 @@ const PREAMBLE = [
 ].join('\n')
 
 export function cheatsheet(): string {
-  return [PREAMBLE, ...HELP_SECTIONS.map(asTable)].join('\n')
+  return [PREAMBLE, ...DOCUMENT_SECTIONS.map(asTable)].join('\n')
 }
+
+export const TestOnly = { DOCUMENT_SECTIONS }
