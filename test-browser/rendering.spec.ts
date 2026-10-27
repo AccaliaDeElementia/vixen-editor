@@ -100,3 +100,34 @@ test('links past the first parse of a long document decorate without being typed
 
   await request.delete(`/api/files/entries/${name}`)
 })
+
+test('every decoration the editor applies is one the stylesheet defines', async ({ page, request }) => {
+  const source = '# One\n\n## Two\n\n### Three\n\nTODO: a\n\nFIXME: b\n\nNOTE: c\n\n[a](b.md)\n'
+  await page.goto(await storedDocument(request, 'decorated.md', source))
+  await givenAsync(expect(page.locator('.cm-vixen-link')).toBeVisible())
+
+  const unstyled = await page.evaluate(() => {
+    const applied = new Set<string>()
+    for (const element of document.querySelectorAll('[class*="cm-vixen-"]')) {
+      for (const name of element.classList) if (name.startsWith('cm-vixen-')) applied.add(name)
+    }
+
+    const styled = new Set<string>()
+    for (const sheet of [...document.styleSheets]) {
+      const rules = ((): CSSRuleList | null => {
+        try {
+          return sheet.cssRules
+        } catch {
+          return null
+        }
+      })()
+      for (const rule of [...(rules ?? [])]) {
+        for (const match of rule.cssText.matchAll(/cm-vixen-[a-z0-9\-]+/gv)) styled.add(match[0])
+      }
+    }
+
+    return [...applied].filter((name) => !styled.has(name)).sort()
+  })
+
+  expect(unstyled).toStrictEqual([])
+})
