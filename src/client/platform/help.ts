@@ -8,6 +8,10 @@ interface Entry {
 
 export const KEYS = {
   save: 'Mod-s',
+  undo: 'Mod-z',
+  redo: 'Mod-Shift-z',
+  find: 'Mod-f',
+  findNext: 'Mod-g',
   openLink: 'Mod-Enter',
   bold: 'Mod-b',
   italic: 'Mod-i',
@@ -44,6 +48,13 @@ export const KEYS = {
 
 const SHORTCUTS: readonly Entry[] = [
   { does: 'Save the document', how: 'Ctrl/Cmd + S', keys: [KEYS.save] },
+  {
+    does: 'Undo, and redo what you undid',
+    how: 'Ctrl/Cmd + Z, and Ctrl/Cmd + Shift + Z',
+    keys: [KEYS.undo, KEYS.redo],
+  },
+  { does: 'Find and replace inside the document', how: 'Ctrl/Cmd + F', keys: [KEYS.find] },
+  { does: 'Go to the next thing Find matched', how: 'Ctrl/Cmd + G', keys: [KEYS.findNext] },
   { does: 'Open the link the caret is in', how: 'Ctrl/Cmd + Enter', keys: [KEYS.openLink] },
   { does: 'Dismiss a link tooltip', how: 'Escape', keys: [KEYS.dismissTooltip] },
   {

@@ -76,7 +76,7 @@ describe('every keyboard binding names its key through the help registry', () =>
   })
 
   it('finds the bindings that do exist, so the scan is not silently matching nothing', () => {
-    const binding = bindingSites.filter((source) => KEY_BINDING.test(source.contents))
+    const binding = bindingSites.filter((source) => [...source.contents.matchAll(KEY_BINDING)].length > 0)
 
     expect(binding.length).toBeGreaterThan(0)
   })
