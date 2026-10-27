@@ -10,21 +10,25 @@ import { sanitiseHtml, type SanitiseHtml } from './sanitise-html.ts'
 import { closesATag, holdsNothing, openedBy } from './inline-html.ts'
 import { decodeEntity } from './html-entities.ts'
 import { safeDestination } from '../platform/safe-destination.ts'
+import {
+  alignmentsOf,
+  cellsOf,
+  childNamed,
+  childrenOf,
+  FIRST_NUMBER,
+  isLoose,
+  startOf,
+  type Alignment,
+} from './markdown-shape.ts'
 
 const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 
 const PAST_MARKER = 1
 const TITLE_DELIMITER = 1
 const LINK_MARK = 'LinkMark'
-const LIST_MARK = 'ListMark'
 const PARAGRAPH = 'Paragraph'
-const ITEM_MARKERS = new Set([LIST_MARK, 'TaskMarker'])
-const BLANK_LINE = /\n[ \t]*\n/v
-const FIRST_NUMBER = 1
-const NEXT = 1
-const FIRST_ITEM = 0
-const PAST_FIRST_ITEM = 1
-const DECIMAL = 10
+const TABLE_HEADER = 'TableHeader'
+const TABLE_ROW = 'TableRow'
 const CLOSING_MARK = 1
 const PAST_CLOSING_MARK = 2
 const HTML_INFO = 'html'
@@ -76,21 +80,6 @@ const POSITIONED = new Set([
   'Paragraph',
   'Table',
 ])
-
-function childrenOf(node: SyntaxNode): SyntaxNode[] {
-  const children: SyntaxNode[] = []
-  const cursor = node.cursor()
-  if (!cursor.firstChild()) return children
-
-  do children.push(cursor.node)
-  while (cursor.nextSibling())
-
-  return children
-}
-
-function childNamed(node: SyntaxNode, name: string): SyntaxNode | null {
-  return childrenOf(node).find((child) => child.name === name) ?? null
-}
 
 function textFrom(source: string, from: number, to: number): Text {
   return document.createTextNode(source.slice(from, to))
@@ -261,35 +250,6 @@ function elementFor(tag: string, node: SyntaxNode, walk: Walk): HTMLElement {
   return element
 }
 
-function blocksIn(item: SyntaxNode): SyntaxNode[] {
-  return childrenOf(item).filter((child) => !ITEM_MARKERS.has(child.name))
-}
-
-function anyBlankLineBetween(nodes: readonly SyntaxNode[], source: string): boolean {
-  return nodes.some((node, index) => {
-    const next = nodes.at(index + NEXT)
-
-    return next !== undefined && BLANK_LINE.test(source.slice(node.to, next.from))
-  })
-}
-
-function isLoose(list: SyntaxNode, source: string): boolean {
-  const items = childrenOf(list)
-
-  return anyBlankLineBetween(items, source) || items.some((item) => anyBlankLineBetween(blocksIn(item), source))
-}
-
-function startOf(list: SyntaxNode, source: string): number {
-  const marks = childrenOf(list)
-    .slice(FIRST_ITEM, PAST_FIRST_ITEM)
-    .flatMap((item) => childrenOf(item).filter((child) => child.name === LIST_MARK))
-
-  return marks.reduce(
-    (_unused: number, mark) => Number.parseInt(source.slice(mark.from, mark.to), DECIMAL),
-    FIRST_NUMBER,
-  )
-}
-
 function appendItemChild(into: HTMLElement, child: SyntaxNode, walk: Walk, tight: boolean): void {
   if (tight && child.name === PARAGRAPH) {
     appendChildren(into, child, walk)
@@ -426,25 +386,45 @@ function renderTask(node: SyntaxNode, walk: Walk): Node {
   return fragment
 }
 
+function renderCell(tag: string, cell: SyntaxNode | undefined, alignment: Alignment, walk: Walk): HTMLElement {
+  const element = cell === undefined ? document.createElement(tag) : trimmed(elementFor(tag, cell, walk))
+  if (alignment !== null) element.setAttribute('align', alignment)
+
+  return element
+}
+
+function renderRow(row: SyntaxNode, tag: string, columns: readonly Alignment[], walk: Walk): HTMLElement {
+  const cells = cellsOf(row)
+  const element = document.createElement('tr')
+
+  for (const [column, alignment] of columns.entries()) {
+    element.append(renderCell(tag, cells.at(column), alignment, walk))
+  }
+
+  return element
+}
+
 function renderTable(node: SyntaxNode, walk: Walk): HTMLElement {
   const table = positioned('table', node)
+  const rows = childrenOf(node)
+  const alignments = alignmentsOf(node, walk.source)
+  const columns = rows
+    .filter((row) => row.name === TABLE_HEADER)
+    .flatMap((row) => cellsOf(row).map((_unused, column) => alignments.at(column) ?? null))
   const body = document.createElement('tbody')
 
-  for (const row of childrenOf(node)) {
-    if (row.name === 'TableHeader') {
-      const head = document.createElement('thead')
-      head.append(elementFor('tr', row, walk))
-      table.append(head)
-    } else if (row.name === 'TableRow') body.append(elementFor('tr', row, walk))
+  for (const row of rows.filter((row) => row.name === TABLE_HEADER)) {
+    const head = document.createElement('thead')
+    head.append(renderRow(row, 'th', columns, walk))
+    table.append(head)
+  }
+  for (const row of rows.filter((row) => row.name === TABLE_ROW)) {
+    body.append(renderRow(row, 'td', columns, walk))
   }
 
   if (body.hasChildNodes()) table.append(body)
 
   return table
-}
-
-function renderCell(node: SyntaxNode, walk: Walk): HTMLElement {
-  return trimmed(elementFor(node.parent?.name === 'TableHeader' ? 'th' : 'td', node, walk))
 }
 
 function renderRawBlock(node: SyntaxNode, walk: Walk): Node {
@@ -503,7 +483,6 @@ const RENDERERS: ReadonlyMap<string, Render> = new Map<string, Render>([
   ['ProcessingInstruction', renderRawInline],
   ['ProcessingInstructionBlock', renderRawBlock],
   ['Table', renderTable],
-  ['TableCell', renderCell],
   ['Task', renderTask],
 ])
 

@@ -177,6 +177,30 @@ const GFM: readonly Conformance[] = [
     renders: '<table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>',
   },
   {
+    construct: 'a table whose delimiter row aligns each column',
+    source: '| a | b | c |\n| :- | :-: | -: |\n| 1 | 2 | 3 |\n',
+    renders:
+      '<table><thead><tr><th align="left">a</th><th align="center">b</th><th align="right">c</th></tr></thead>' +
+      '<tbody><tr><td align="left">1</td><td align="center">2</td><td align="right">3</td></tr></tbody></table>',
+  },
+  {
+    construct: 'a table whose delimiter row has no outer pipes',
+    source: '| abc | defghi |\n:-: | ---:\nbar | baz\n',
+    renders:
+      '<table><thead><tr><th align="center">abc</th><th align="right">defghi</th></tr></thead>' +
+      '<tbody><tr><td align="center">bar</td><td align="right">baz</td></tr></tbody></table>',
+  },
+  {
+    construct: 'a table row with fewer cells than its header, which is padded',
+    source: '| a | b |\n| - | - |\n| 1 |\n',
+    renders: '<table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td></td></tr></tbody></table>',
+  },
+  {
+    construct: 'a table row with more cells than its header, whose excess is ignored',
+    source: '| a | b |\n| - | - |\n| 1 | 2 | 3 |\n',
+    renders: '<table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>',
+  },
+  {
     construct: 'inline markup inside a table cell',
     source: '| a |\n| - |\n| **b** `c` |\n',
     renders:
