@@ -79,6 +79,61 @@ const COMMONMARK: readonly Conformance[] = [
     renders: '<p><img src="/x.png" alt="a"></p>',
   },
   {
+    construct: 'a link whose title is in double quotes',
+    source: '[a](/x "T")\n',
+    renders: '<p><a href="/x" title="T">a</a></p>',
+  },
+  {
+    construct: 'a link whose title is in single quotes',
+    source: "[a](/x 'T')\n",
+    renders: '<p><a href="/x" title="T">a</a></p>',
+  },
+  {
+    construct: 'a link whose title is in parentheses',
+    source: '[a](/x (T))\n',
+    renders: '<p><a href="/x" title="T">a</a></p>',
+  },
+  {
+    construct: 'a titled link whose text is marked up, which the title must not disturb',
+    source: '[*a*](/x "T")\n',
+    renders: '<p><a href="/x" title="T"><em>a</em></a></p>',
+  },
+  {
+    construct: 'an image whose title sits beside its alt text',
+    source: '![a](/x.png "T")\n',
+    renders: '<p><img src="/x.png" alt="a" title="T"></p>',
+  },
+  {
+    construct: 'a reference link whose definition carries a title',
+    source: '[a][ref]\n\n[ref]: /x "T"\n',
+    renders: '<p><a href="/x" title="T">a</a></p>',
+  },
+  {
+    construct: 'a reference image whose definition carries a title',
+    source: '![a][ref]\n\n[ref]: /x.png "T"\n',
+    renders: '<p><img src="/x.png" alt="a" title="T"></p>',
+  },
+  {
+    construct: 'a link whose destination is padded with spaces inside the parentheses',
+    source: '[a]( /x )\n',
+    renders: '<p><a href="/x">a</a></p>',
+  },
+  {
+    construct: 'an image whose destination is padded, which must not reach the alt text',
+    source: '![a]( /x.png )\n',
+    renders: '<p><img src="/x.png" alt="a"></p>',
+  },
+  {
+    construct: 'a padded destination carrying a title as well',
+    source: '[a]( /x "T" )\n',
+    renders: '<p><a href="/x" title="T">a</a></p>',
+  },
+  {
+    construct: 'a link with no title, which gains no title attribute',
+    source: '[a](/x)\n',
+    renders: '<p><a href="/x">a</a></p>',
+  },
+  {
     construct: 'an autolink in angle brackets, whose text is its destination',
     source: '<https://example.com>\n',
     renders: '<p><a href="https://example.com">https://example.com</a></p>',

@@ -14,6 +14,10 @@ import { safeDestination } from '../platform/safe-destination.ts'
 const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 
 const PAST_MARKER = 1
+const TITLE_DELIMITER = 1
+const LINK_MARK = 'LinkMark'
+const CLOSING_MARK = 1
+const PAST_CLOSING_MARK = 2
 const HTML_INFO = 'html'
 const LABEL_CLOSES = ']'
 const RAW_HTML_CLASS = 'markup__html'
@@ -85,9 +89,14 @@ function textFrom(source: string, from: number, to: number): Text {
   return document.createTextNode(source.slice(from, to))
 }
 
+interface Target {
+  destination: string
+  title: string | null
+}
+
 interface Walk {
   source: string
-  references: ReadonlyMap<string, string>
+  references: ReadonlyMap<string, Target>
   sanitise: SanitiseHtml
 }
 
@@ -106,14 +115,19 @@ function definedLabelOf(source: string, reference: SyntaxNode): string {
   return text.slice(PAST_MARKER, text.indexOf(LABEL_CLOSES)).trim().toLowerCase()
 }
 
-function referencesIn(root: SyntaxNode, source: string): Map<string, string> {
-  const found = new Map<string, string>()
+function referencesIn(root: SyntaxNode, source: string): Map<string, Target> {
+  const found = new Map<string, Target>()
 
   for (const node of childrenOf(root)) {
     if (node.name !== 'LinkReference') continue
 
     for (const child of childrenOf(node)) {
-      if (child.name === 'URL') found.set(definedLabelOf(source, node), destinationText(source, child))
+      if (child.name === 'URL') {
+        found.set(definedLabelOf(source, node), {
+          destination: destinationText(source, child),
+          title: titleOf(node, source),
+        })
+      }
     }
   }
 
@@ -124,9 +138,23 @@ function destinationText(source: string, url: SyntaxNode): string {
   return decodeDestination(source.slice(url.from, url.to))
 }
 
-function destinationOf(node: SyntaxNode, walk: Walk): string | null {
+function titleOf(node: SyntaxNode, source: string): string | null {
+  const title = childNamed(node, 'LinkTitle')
+
+  return title === null ? null : source.slice(title.from + TITLE_DELIMITER, title.to - TITLE_DELIMITER)
+}
+
+function contentEndOf(node: SyntaxNode): number {
+  const marks = childrenOf(node).filter((child) => child.name === LINK_MARK)
+
+  return marks.slice(CLOSING_MARK, PAST_CLOSING_MARK).reduce((_unused: number, mark) => mark.from, node.to)
+}
+
+function targetOf(node: SyntaxNode, walk: Walk): Target | null {
   const url = childNamed(node, 'URL')
-  if (url !== null) return destinationText(walk.source, url)
+  if (url !== null) {
+    return { destination: destinationText(walk.source, url), title: titleOf(node, walk.source) }
+  }
 
   const label = childNamed(node, 'LinkLabel')
   const named = label === null ? '' : labelOf(walk.source, label)
@@ -135,9 +163,22 @@ function destinationOf(node: SyntaxNode, walk: Walk): string | null {
   return walk.references.get(wanted) ?? null
 }
 
-function textOfChildren(node: SyntaxNode, walk: Walk): string {
+function safeTargetOf(node: SyntaxNode, walk: Walk): Target | null {
+  const target = targetOf(node, walk)
+  if (target === null) return null
+
+  const safe = safeDestination(target.destination)
+
+  return safe === null ? null : { destination: safe, title: target.title }
+}
+
+function withTitle(element: HTMLElement, title: string | null): void {
+  if (title !== null) element.setAttribute('title', title)
+}
+
+function textOfChildren(node: SyntaxNode, walk: Walk, until?: number): string {
   const holder = document.createElement('span')
-  appendChildren(holder, node, walk)
+  appendChildren(holder, node, walk, until)
 
   return holder.textContent
 }
@@ -167,8 +208,8 @@ function appendInlineTag(open: ParentNode, nesting: ParentNode[], source: string
   return opened
 }
 
-function appendChildren(into: ParentNode, node: SyntaxNode, walk: Walk): void {
-  const { name, from: start, to: end } = node
+function appendChildren(into: ParentNode, node: SyntaxNode, walk: Walk, until = node.to): void {
+  const { name, from: start } = node
   const gapsAreContent = !BLOCK_CONTAINERS.has(name)
   const nesting: ParentNode[] = []
   let open: ParentNode = into
@@ -176,6 +217,9 @@ function appendChildren(into: ParentNode, node: SyntaxNode, walk: Walk): void {
 
   for (const child of childrenOf(node)) {
     const { from, to } = child
+    /* mutation-ignore > -- the child starting exactly at `until` is always the label's closing
+       mark, which renders to nothing, so taking it or leaving it yields the same label. */
+    if (from >= until) break
     if (gapsAreContent && from > at) open.append(textFrom(walk.source, at, from))
     at = to
 
@@ -188,7 +232,7 @@ function appendChildren(into: ParentNode, node: SyntaxNode, walk: Walk): void {
     if (rendered !== null) open.append(rendered)
   }
 
-  if (gapsAreContent && end > at) open.append(textFrom(walk.source, at, end))
+  if (gapsAreContent && until > at) open.append(textFrom(walk.source, at, until))
 }
 
 function positioned(tag: string, node: SyntaxNode): HTMLElement {
@@ -249,18 +293,19 @@ function renderCode(node: SyntaxNode, walk: Walk): HTMLElement {
 }
 
 function renderLink(node: SyntaxNode, walk: Walk): Node {
-  const destination = destinationOf(node, walk)
-  const safe = destination === null ? null : safeDestination(destination)
-  if (safe === null) {
+  const content = contentEndOf(node)
+  const target = safeTargetOf(node, walk)
+  if (target === null) {
     const fragment = document.createDocumentFragment()
-    appendChildren(fragment, node, walk)
+    appendChildren(fragment, node, walk, content)
 
     return fragment
   }
 
   const anchor = document.createElement('a')
-  anchor.setAttribute('href', safe)
-  appendChildren(anchor, node, walk)
+  anchor.setAttribute('href', target.destination)
+  withTitle(anchor, target.title)
+  appendChildren(anchor, node, walk, content)
 
   return anchor
 }
@@ -278,14 +323,14 @@ function renderAutolink(node: SyntaxNode, walk: Walk): Node {
 }
 
 function renderImage(node: SyntaxNode, walk: Walk): Node {
-  const destination = destinationOf(node, walk)
-  const safe = destination === null ? null : safeDestination(destination)
-  const alt = textOfChildren(node, walk)
-  if (safe === null) return document.createTextNode(alt)
+  const target = safeTargetOf(node, walk)
+  const alt = textOfChildren(node, walk, contentEndOf(node))
+  if (target === null) return document.createTextNode(alt)
 
   const image = document.createElement('img')
-  image.setAttribute('src', safe)
+  image.setAttribute('src', target.destination)
   image.setAttribute('alt', alt)
+  withTitle(image, target.title)
 
   return image
 }
