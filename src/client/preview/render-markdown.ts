@@ -465,10 +465,13 @@ function renderTable(node: SyntaxNode, walk: Walk): HTMLElement {
   return table
 }
 
-function renderRawBlock(node: SyntaxNode, walk: Walk): Node {
+function renderRawBlock(node: SyntaxNode, walk: Walk): Node | null {
+  const sanitised = walk.sanitise(walk.source.slice(node.from, node.to))
+  if (!sanitised.hasChildNodes()) return null
+
   const holder = positioned('div', node)
   holder.className = RAW_HTML_CLASS
-  holder.append(walk.sanitise(walk.source.slice(node.from, node.to)))
+  holder.append(sanitised)
 
   return holder
 }

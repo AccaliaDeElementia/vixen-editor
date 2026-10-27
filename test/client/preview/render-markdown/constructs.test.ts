@@ -332,6 +332,10 @@ describe('raw HTML in a block, which the sanitiser decides about', () => {
     expect(sanitisedInto('<div>hi</div>', 'em')?.textContent).toBe('allowed')
   })
 
+  it('leaves nothing behind when the sanitiser keeps none of the block', () => {
+    expect(render('<script>let x = 1</script>', () => document.createDocumentFragment()).innerHTML).toBe('')
+  })
+
   it('records where the block came from, so scrolling can find it', () => {
     expect(render('<div>hi</div>', sanitiserAllowing).querySelector('.markup__html')?.getAttribute('data-from')).toBe(
       '0',

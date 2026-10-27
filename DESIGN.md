@@ -570,6 +570,42 @@ who spells it, not what is validated. It exists so that storing under a chosen
 name is one request: upload-then-move is two writes that can half-fail, leaving
 a stray file under the wrong name.
 
+<a id="design-5a1f0c"></a>
+
+## HTML a document writes
+
+Markdown has no syntax for a fold, a keyboard key or a named anchor, so a
+document may write HTML for them. GFM filters nine named tags and renders
+everything else; this app allows a named set and drops everything else, because
+a deny-list renders whatever nobody thought of.
+
+**Three things are impossible by construction**: a document cannot load a
+stylesheet, embed a frame, or run a script. `style`, `link`, `iframe`, `script`,
+`object`, `embed` and `svg` are not on the tag list; `style`, `class` and every
+`on*` handler are not on the attribute list; and DOMPurify drops a `javascript:`
+or `data:` destination from the attributes that do carry a URL. Being tighter
+than strictly necessary is the accepted trade — a tag earns its place, rather
+than the filter having to justify leaving one out.
+
+**`id` is absent although `name` is allowed.** A named anchor is what the
+attribute is for, and it was asked for. `id` is refused because ARIA
+relationships, `<label for>` and fragment links resolve **by id or not at all** —
+so a document carrying `id="file-dialog-title"` can make a dialog announce the
+document's prose as its own title, and `id="editor"` can capture the skip link.
+Two previews of one document also put two copies of every id in the same page.
+Converting the client's own lookups to `data-part` would not help: the
+relationships above have no data-attribute equivalent, so the only way to keep
+them sound is to keep documents out of the id namespace.
+
+**What the sanitiser refuses inline is shown as its source, not dropped**, so
+someone who wrote markup that will not render sees what they wrote rather than
+nothing.
+
+**These claims are pinned in a browser rather than in a unit test.** DOMPurify
+needs a real DOM; under happy-dom it strips every element, so a unit test can
+only prove that the sanitiser is wired in at all. `test-browser/raw-html.spec.ts`
+is the audit, and it is the file to extend when the list changes.
+
 <a id="design-e8c160"></a>
 
 ## API errors

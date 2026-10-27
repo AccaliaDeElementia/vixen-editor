@@ -70,6 +70,7 @@ const ALLOWED_ATTR = [
   'dir',
   'href',
   'lang',
+  'name',
   'open',
   'rowspan',
   'src',
