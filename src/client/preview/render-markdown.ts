@@ -24,6 +24,13 @@ import {
 const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 
 const PAST_MARKER = 1
+const WWW_PREFIX = 'www.'
+const HTTP_SCHEME = 'http://'
+const MAILTO_SCHEME = 'mailto:'
+const AT = '@'
+const SPACE = ' '
+const ONE_SPACE = 1
+const NOTHING_WRITTEN = ''
 const TITLE_DELIMITER = 1
 const LINK_MARK = 'LinkMark'
 const PARAGRAPH = 'Paragraph'
@@ -53,7 +60,6 @@ const SIMPLE_ELEMENTS: ReadonlyMap<string, string> = new Map([
   ['Emphasis', 'em'],
   ['StrongEmphasis', 'strong'],
   ['Strikethrough', 'del'],
-  ['InlineCode', 'code'],
 ])
 
 const BLOCK_CONTAINERS = new Set([
@@ -346,16 +352,48 @@ function renderLink(node: SyntaxNode, walk: Walk): Node {
   return anchor
 }
 
-function renderAutolink(node: SyntaxNode, walk: Walk): Node {
-  const destination = decodeDestination(walk.source.slice(node.from + PAST_MARKER, node.to - PAST_MARKER))
+function anchorTo(destination: string, text: string): Node {
   const safe = safeDestination(destination)
-  if (safe === null) return document.createTextNode(destination)
+  if (safe === null) return document.createTextNode(text)
 
   const anchor = document.createElement('a')
   anchor.setAttribute('href', safe)
-  anchor.append(destination)
+  anchor.append(text)
 
   return anchor
+}
+
+function renderAutolink(node: SyntaxNode, walk: Walk): Node {
+  const destination = decodeDestination(walk.source.slice(node.from + PAST_MARKER, node.to - PAST_MARKER))
+
+  return anchorTo(destination, destination)
+}
+
+function schemeFor(written: string): string {
+  if (written.startsWith(WWW_PREFIX)) return `${HTTP_SCHEME}${written}`
+  if (written.includes(AT)) return `${MAILTO_SCHEME}${written}`
+
+  return written
+}
+
+function renderBareUrl(node: SyntaxNode, walk: Walk): Node {
+  const written = walk.source.slice(node.from, node.to)
+
+  return anchorTo(schemeFor(written), written)
+}
+
+function withoutPadding(code: string): string {
+  if (!code.startsWith(SPACE) || !code.endsWith(SPACE)) return code
+  if (code.trim() === NOTHING_WRITTEN) return code
+
+  return code.slice(ONE_SPACE, code.length - ONE_SPACE)
+}
+
+function renderInlineCode(node: SyntaxNode, walk: Walk): HTMLElement {
+  const element = elementFor('code', node, walk)
+  element.textContent = withoutPadding(element.textContent)
+
+  return element
 }
 
 function renderImage(node: SyntaxNode, walk: Walk): Node {
@@ -478,11 +516,13 @@ const RENDERERS: ReadonlyMap<string, Render> = new Map<string, Render>([
   ['HardBreak', renderBreak],
   ['HorizontalRule', renderRule],
   ['Image', renderImage],
+  ['InlineCode', renderInlineCode],
   ['Link', renderLink],
   ['OrderedList', renderOrderedList],
   ['ProcessingInstruction', renderRawInline],
   ['ProcessingInstructionBlock', renderRawBlock],
   ['Table', renderTable],
+  ['URL', renderBareUrl],
   ['Task', renderTask],
 ])
 

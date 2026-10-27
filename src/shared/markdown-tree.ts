@@ -1,11 +1,76 @@
 'use sanity'
 
 import type { Tree } from '@lezer/common'
-import { Strikethrough, Table, TaskList } from '@lezer/markdown'
+import { Autolink, Table, TaskList } from '@lezer/markdown'
+import type { DelimiterType, InlineContext, MarkdownConfig } from '@lezer/markdown'
+import { tags } from '@lezer/highlight'
 
 import { decodeDestination } from './link-syntax.ts'
 
-export const VIXEN_MARKDOWN_EXTENSIONS = [Table, TaskList, Strikethrough]
+const STRIKETHROUGH = 'Strikethrough'
+const STRIKETHROUGH_MARK = 'StrikethroughMark'
+
+const TILDE = 126
+const ONE_TILDE = 1
+const TWO_TILDES = 2
+const MORE_THAN_TWO_TILDES = 3
+const NEXT_CHARACTER = 1
+const NO_MATCH = -1
+
+const PUNCTUATION = /[\p{S}\p{P}]/v
+const WHITESPACE = /\s|^$/v
+
+const delimitersByRunLength = new Map<number, DelimiterType>()
+
+function delimiterForRunOf(length: number): DelimiterType {
+  const known = delimitersByRunLength.get(length)
+  if (known !== undefined) return known
+
+  const made: DelimiterType = { resolve: STRIKETHROUGH, mark: STRIKETHROUGH_MARK }
+  delimitersByRunLength.set(length, made)
+
+  return made
+}
+
+function runOfTildesAt(cx: InlineContext, pos: number): number {
+  if (cx.char(pos + NEXT_CHARACTER) !== TILDE) return ONE_TILDE
+  if (cx.char(pos + TWO_TILDES) === TILDE) return MORE_THAN_TWO_TILDES
+
+  return TWO_TILDES
+}
+
+function parseTildes(cx: InlineContext, next: number, pos: number): number {
+  if (next !== TILDE) return NO_MATCH
+
+  const run = runOfTildesAt(cx, pos)
+  if (run > TWO_TILDES) return NO_MATCH
+
+  const end = pos + run
+  const before = cx.slice(pos - NEXT_CHARACTER, pos)
+  const after = cx.slice(end, end + NEXT_CHARACTER)
+  const spaceBefore = WHITESPACE.test(before)
+  const spaceAfter = WHITESPACE.test(after)
+  const punctuationBefore = PUNCTUATION.test(before)
+  const punctuationAfter = PUNCTUATION.test(after)
+
+  return cx.addDelimiter(
+    delimiterForRunOf(run),
+    pos,
+    end,
+    !spaceAfter && (!punctuationAfter || spaceBefore || punctuationBefore),
+    !spaceBefore && (!punctuationBefore || spaceAfter || punctuationAfter),
+  )
+}
+
+const VixenStrikethrough: MarkdownConfig = {
+  defineNodes: [
+    { name: STRIKETHROUGH, style: { 'Strikethrough/...': tags.strikethrough } },
+    { name: STRIKETHROUGH_MARK, style: tags.processingInstruction },
+  ],
+  parseInline: [{ name: STRIKETHROUGH, parse: parseTildes, after: 'Emphasis' }],
+}
+
+export const VIXEN_MARKDOWN_EXTENSIONS = [Table, TaskList, VixenStrikethrough, Autolink]
 
 const DESTINATION_NODE = 'URL'
 const IMAGE_NODE = 'Image'

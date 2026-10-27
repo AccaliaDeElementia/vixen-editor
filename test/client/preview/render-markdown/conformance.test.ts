@@ -38,6 +38,21 @@ const COMMONMARK: readonly Conformance[] = [
   { construct: 'a hard break written as a backslash', source: 'one\\\ntwo\n', renders: '<p>one<br>two</p>' },
   { construct: 'a backslash escape, which holds its character', source: '\\*a\\* \\# b\n', renders: '<p>*a* # b</p>' },
   { construct: 'a named, numeric and unknown entity', source: '&amp; &copy; &#65;\n', renders: '<p>&amp; © A</p>' },
+  {
+    construct: 'a code span padded with one space on each side, which is stripped',
+    source: '`` ` ``\n',
+    renders: '<p><code>`</code></p>',
+  },
+  {
+    construct: 'a code span that is nothing but spaces, which keeps them',
+    source: '`  `\n',
+    renders: '<p><code>  </code></p>',
+  },
+  {
+    construct: 'a code span padded on one side only, which keeps its spaces',
+    source: '` a`\n',
+    renders: '<p><code> a</code></p>',
+  },
   { construct: 'a thematic break', source: '---\n', renders: '<hr>' },
   { construct: 'a blockquote', source: '> q\n', renders: '<blockquote><p>q</p></blockquote>' },
   {
@@ -227,8 +242,44 @@ const GFM: readonly Conformance[] = [
     source: '1. [ ] a\n',
     renders: '<ol><li><input type="checkbox" disabled=""> a</li></ol>',
   },
+  {
+    construct: 'a bare url, linked where it stands',
+    source: 'see https://example.com now\n',
+    renders: '<p>see <a href="https://example.com">https://example.com</a> now</p>',
+  },
+  {
+    construct: 'a www address, which is given a scheme it did not write',
+    source: 'www.commonmark.org\n',
+    renders: '<p><a href="http://www.commonmark.org">www.commonmark.org</a></p>',
+  },
+  {
+    construct: 'an email address, which is linked to mail rather than to the web',
+    source: 'foo@bar.baz\n',
+    renders: '<p><a href="mailto:foo@bar.baz">foo@bar.baz</a></p>',
+  },
+  {
+    construct: 'a bare url followed by a full stop, which stays out of the link',
+    source: 'see https://example.com. now\n',
+    renders: '<p>see <a href="https://example.com">https://example.com</a>. now</p>',
+  },
   { construct: 'strikethrough between double tildes', source: '~~x~~\n', renders: '<p><del>x</del></p>' },
   { construct: 'strikethrough inside a word', source: 'a~~b~~c\n', renders: '<p>a<del>b</del>c</p>' },
+  { construct: 'strikethrough between single tildes', source: '~x~\n', renders: '<p><del>x</del></p>' },
+  {
+    construct: 'both tilde forms in one line, as the spec writes them',
+    source: '~~Hi~~ Hello, ~there~ world!\n',
+    renders: '<p><del>Hi</del> Hello, <del>there</del> world!</p>',
+  },
+  {
+    construct: 'tildes that do not pair in length, which strike nothing',
+    source: '~a~~\n',
+    renders: '<p>~a~~</p>',
+  },
+  {
+    construct: 'tildes with a space inside them, which cannot close and so strike nothing',
+    source: 'a ~ b ~ c\n',
+    renders: '<p>a ~ b ~ c</p>',
+  },
 ]
 
 describe('what CommonMark asks the preview to render', () => {
