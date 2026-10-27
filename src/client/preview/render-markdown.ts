@@ -16,6 +16,15 @@ const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
 const PAST_MARKER = 1
 const TITLE_DELIMITER = 1
 const LINK_MARK = 'LinkMark'
+const LIST_MARK = 'ListMark'
+const PARAGRAPH = 'Paragraph'
+const ITEM_MARKERS = new Set([LIST_MARK, 'TaskMarker'])
+const BLANK_LINE = /\n[ \t]*\n/v
+const FIRST_NUMBER = 1
+const NEXT = 1
+const FIRST_ITEM = 0
+const PAST_FIRST_ITEM = 1
+const DECIMAL = 10
 const CLOSING_MARK = 1
 const PAST_CLOSING_MARK = 2
 const HTML_INFO = 'html'
@@ -37,9 +46,6 @@ const HEADINGS: ReadonlyMap<string, string> = new Map([
 const SIMPLE_ELEMENTS: ReadonlyMap<string, string> = new Map([
   ['Paragraph', 'p'],
   ['Blockquote', 'blockquote'],
-  ['BulletList', 'ul'],
-  ['OrderedList', 'ol'],
-  ['ListItem', 'li'],
   ['Emphasis', 'em'],
   ['StrongEmphasis', 'strong'],
   ['Strikethrough', 'del'],
@@ -61,6 +67,7 @@ const POSITIONED = new Set([
   ...HEADINGS.keys(),
   'Blockquote',
   'BulletList',
+  'ListItem',
   'CodeBlock',
   'FencedCode',
   'HTMLBlock',
@@ -243,11 +250,80 @@ function positioned(tag: string, node: SyntaxNode): HTMLElement {
   return element
 }
 
+function emptyElementFor(tag: string, node: SyntaxNode): HTMLElement {
+  return POSITIONED.has(node.name) ? positioned(tag, node) : document.createElement(tag)
+}
+
 function elementFor(tag: string, node: SyntaxNode, walk: Walk): HTMLElement {
-  const element = POSITIONED.has(node.name) ? positioned(tag, node) : document.createElement(tag)
+  const element = emptyElementFor(tag, node)
   appendChildren(element, node, walk)
 
   return element
+}
+
+function blocksIn(item: SyntaxNode): SyntaxNode[] {
+  return childrenOf(item).filter((child) => !ITEM_MARKERS.has(child.name))
+}
+
+function anyBlankLineBetween(nodes: readonly SyntaxNode[], source: string): boolean {
+  return nodes.some((node, index) => {
+    const next = nodes.at(index + NEXT)
+
+    return next !== undefined && BLANK_LINE.test(source.slice(node.to, next.from))
+  })
+}
+
+function isLoose(list: SyntaxNode, source: string): boolean {
+  const items = childrenOf(list)
+
+  return anyBlankLineBetween(items, source) || items.some((item) => anyBlankLineBetween(blocksIn(item), source))
+}
+
+function startOf(list: SyntaxNode, source: string): number {
+  const marks = childrenOf(list)
+    .slice(FIRST_ITEM, PAST_FIRST_ITEM)
+    .flatMap((item) => childrenOf(item).filter((child) => child.name === LIST_MARK))
+
+  return marks.reduce(
+    (_unused: number, mark) => Number.parseInt(source.slice(mark.from, mark.to), DECIMAL),
+    FIRST_NUMBER,
+  )
+}
+
+function appendItemChild(into: HTMLElement, child: SyntaxNode, walk: Walk, tight: boolean): void {
+  if (tight && child.name === PARAGRAPH) {
+    appendChildren(into, child, walk)
+
+    return
+  }
+
+  const rendered = renderNode(child, walk)
+  if (rendered !== null) into.append(rendered)
+}
+
+function renderList(tag: string, node: SyntaxNode, walk: Walk): HTMLElement {
+  const list = emptyElementFor(tag, node)
+  const tight = !isLoose(node, walk.source)
+
+  for (const item of childrenOf(node)) {
+    const element = emptyElementFor('li', item)
+    for (const child of childrenOf(item)) appendItemChild(element, child, walk, tight)
+    list.append(element)
+  }
+
+  return list
+}
+
+function renderBulletList(node: SyntaxNode, walk: Walk): Node {
+  return renderList('ul', node, walk)
+}
+
+function renderOrderedList(node: SyntaxNode, walk: Walk): Node {
+  const list = renderList('ol', node, walk)
+  const start = startOf(node, walk.source)
+  if (start !== FIRST_NUMBER) list.setAttribute('start', String(start))
+
+  return list
 }
 
 function trimmed(element: HTMLElement): HTMLElement {
@@ -411,6 +487,7 @@ const RENDERERS: ReadonlyMap<string, Render> = new Map<string, Render>([
   ...headingRenderers(),
   ...elementRenderers(),
   ['Autolink', renderAutolink],
+  ['BulletList', renderBulletList],
   ['CodeBlock', renderCode],
   ['Comment', renderRawInline],
   ['CommentBlock', renderRawBlock],
@@ -422,6 +499,7 @@ const RENDERERS: ReadonlyMap<string, Render> = new Map<string, Render>([
   ['HorizontalRule', renderRule],
   ['Image', renderImage],
   ['Link', renderLink],
+  ['OrderedList', renderOrderedList],
   ['ProcessingInstruction', renderRawInline],
   ['ProcessingInstructionBlock', renderRawBlock],
   ['Table', renderTable],

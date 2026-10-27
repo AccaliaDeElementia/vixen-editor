@@ -114,12 +114,12 @@ describe('block structure', () => {
     expect(asOneLine(textOf('> one\n> two', 'blockquote p'))).toBe('one two')
   })
 
-  it('renders a bullet list', () => {
-    expect(tagsIn('- one\n- two')).toStrictEqual(['ul', 'li', 'p', 'li', 'p'])
+  it('renders a bullet list, whose tight items need no paragraph of their own', () => {
+    expect(tagsIn('- one\n- two')).toStrictEqual(['ul', 'li', 'li'])
   })
 
   it('renders an ordered list', () => {
-    expect(tagsIn('1. one')).toStrictEqual(['ol', 'li', 'p'])
+    expect(tagsIn('1. one')).toStrictEqual(['ol', 'li'])
   })
 
   it('nests a list inside its parent item', () => {

@@ -46,6 +46,36 @@ const COMMONMARK: readonly Conformance[] = [
     renders: '<blockquote><p>a</p><blockquote><p>b</p></blockquote></blockquote>',
   },
   {
+    construct: 'a tight bullet list, whose items hold their text directly',
+    source: '- a\n- b\n',
+    renders: '<ul><li>a</li><li>b</li></ul>',
+  },
+  {
+    construct: 'a tight ordered list',
+    source: '1. a\n2. b\n',
+    renders: '<ol><li>a</li><li>b</li></ol>',
+  },
+  {
+    construct: 'a tight list nested inside a tight list',
+    source: '- a\n  - b\n',
+    renders: '<ul><li>a<ul><li>b</li></ul></li></ul>',
+  },
+  {
+    construct: 'a loose list inside a tight one, whose looseness does not spread outwards',
+    source: '- a\n  - b\n\n  - c\n',
+    renders: '<ul><li>a<ul><li><p>b</p></li><li><p>c</p></li></ul></li></ul>',
+  },
+  {
+    construct: 'an ordered list that starts somewhere other than one',
+    source: '3. three\n4. four\n',
+    renders: '<ol start="3"><li>three</li><li>four</li></ol>',
+  },
+  {
+    construct: 'an ordered list starting at one, which needs no start attribute',
+    source: '1. a\n',
+    renders: '<ol><li>a</li></ol>',
+  },
+  {
     construct: 'a loose bullet list, whose items hold paragraphs',
     source: '- a\n\n- b\n',
     renders: '<ul><li><p>a</p></li><li><p>b</p></li></ul>',

@@ -24,7 +24,7 @@ describe('the html a document is converted into', () => {
   })
 
   it('indents a block nested inside another, so the structure is readable', () => {
-    expect(htmlSourceOf('- one')).toBe('<ul>\n  <li>\n    <p>one</p>\n  </li>\n</ul>')
+    expect(htmlSourceOf('- one')).toBe('<ul>\n  <li>one</li>\n</ul>')
   })
 
   it('leaves out the positions the preview records for its own use', () => {

@@ -168,6 +168,6 @@ describe('clicking a rendered block', () => {
   })
 
   it('reports the innermost block when blocks are nested', () => {
-    expect(clickedOffsets('- outer\n\n  - inner', 'li li p')).toStrictEqual([13])
+    expect(clickedOffsets('- outer\n\n  - inner', 'li li')).toStrictEqual([11])
   })
 })
