@@ -98,6 +98,69 @@
   border-radius: $radius;
 }
 
+.cm-editor .cm-panels {
+  background: $surface;
+  color: $body-color;
+  border-top: 1px solid $border;
+  border-bottom: 1px solid $border;
+}
+
+.cm-editor .cm-panel.cm-search {
+  padding: $space-xs;
+  font-size: $font-size-sm;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    min-height: $target-min;
+  }
+
+  input[type='checkbox'] {
+    width: $target-min;
+    height: $target-min;
+    accent-color: $primary;
+  }
+
+  [name='close'] {
+    min-width: $target-min;
+    min-height: $target-min;
+    border: 0;
+    border-radius: $radius;
+    background: transparent;
+    color: $body-color;
+    font-size: 1.1em;
+    cursor: pointer;
+  }
+}
+
+.cm-editor .cm-textfield {
+  min-height: $target-min;
+  padding: 0.2em 0.5em;
+  border: 1px solid $border;
+  border-radius: $radius;
+  background: $body-bg;
+  color: $body-color;
+  font: inherit;
+}
+
+.cm-editor .cm-button {
+  min-height: $target-min;
+  min-width: $target-min;
+  padding: 0.2em 0.7em;
+  border: 1px solid $border;
+  border-radius: $radius;
+  background-color: transparent;
+  background-image: none;
+  color: $body-color;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $selected;
+  }
+}
+
 .cm-tooltip {
   background: $surface;
   border-color: $border;
