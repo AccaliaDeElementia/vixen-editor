@@ -3,3 +3,5 @@ dist
 coverage
 deploy
 *.log
+
+src/assets/markdown-cheatsheet.md

@@ -36,6 +36,8 @@ aside.explorer#explorer(aria-label='Sidebar')
     p.panel__empty(data-part='trash-empty' hidden)
       | Nothing has been deleted. What you delete is kept here until you empty the trash.
     ul.tree#trash-list(role='tree' aria-label='Deleted entries')
+  section.panel(data-panel='cheatsheet' aria-label='Markdown cheatsheet' hidden)
+    .panel__sheet(data-part='cheatsheet')
 button.explorer__resizer#explorer-resizer(
   type='button'
   role='separator'

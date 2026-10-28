@@ -905,7 +905,12 @@ const AREA_EDGES: Readonly<Record<string, readonly string[]>> = {
   ],
   'src/client/browser/trash': ['src/client/browser/tree', 'src/client/platform', 'src/client/platform/announce'],
   'src/client/browser/tree': ['src/client/platform'],
-  'src/client/chrome': ['src/client/platform', 'src/client/platform/announce', 'src/client/workspace/split'],
+  'src/client/chrome': [
+    'src/client/editing',
+    'src/client/platform',
+    'src/client/platform/announce',
+    'src/client/workspace/split',
+  ],
   'src/client/document': ['src/client/editing', 'src/client/platform', 'src/client/platform/announce'],
   'src/client/editing': ['src/client/browser', 'src/client/platform'],
   'src/client/platform': [],

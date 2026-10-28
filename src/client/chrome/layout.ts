@@ -11,12 +11,13 @@ import {
   setExplorerWidth,
   askForPanel,
 } from './explorer.ts'
-import { PANEL_NAMES } from '../platform/panels.ts'
+import { CHEATSHEET_PANEL, PANEL_NAMES } from '../platform/panels.ts'
 import { bindDragging } from '../platform/dragging.ts'
 import { bindSplitControls } from '../workspace/split/split-controls.ts'
 import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'
 import { HELP_SECTIONS, KEYS } from '../platform/help.ts'
+import { mountCheatsheet } from './cheatsheet.ts'
 import { onInsertRequested } from '../platform/announce/insert-entry.ts'
 import { followColourScheme } from './colour-scheme.ts'
 
@@ -28,6 +29,7 @@ interface LayoutOptions {
   root?: ParentNode
   view?: Window
   head?: ParentNode
+  fillCheatsheet?: (into: ParentNode) => void
 }
 
 function widthFromPointer(explorer: Element, clientX: number): number {
@@ -69,10 +71,11 @@ function keyboardWidth(key: string, currentPx: number, maxPx: number): number | 
   return null
 }
 
-function bindToggle(root: ParentNode, view: Window): void {
+function bindToggle(root: ParentNode, view: Window, fillCheatsheet: (into: ParentNode) => void): void {
   for (const name of PANEL_NAMES) {
     root.querySelector<HTMLElement>(`[data-shows-panel="${name}"]`)?.addEventListener('click', () => {
       askForPanel(root, name)
+      if (name === CHEATSHEET_PANEL) fillCheatsheet(root)
       applyExplorerState(root, view.innerWidth)
       announcePanelChanged(root)
     })
@@ -123,7 +126,14 @@ export function initLayout(options: LayoutOptions = {}): Layout {
   applyExplorerState(root, view.innerWidth)
   const split = bindSplitControls(root)
   bindResizer(root, view)
-  bindToggle(root, view)
+  bindToggle(
+    root,
+    view,
+    options.fillCheatsheet ??
+      ((into) => {
+        void mountCheatsheet(into)
+      }),
+  )
   bindHelp(root)
   const offInsertRequested = bindDrawerDismissal(root, view)
   const offResize = bindViewportResize(root, view, split.refresh)

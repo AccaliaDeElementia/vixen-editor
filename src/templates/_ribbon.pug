@@ -44,5 +44,15 @@ nav.ribbon(aria-label='Primary')
     aria-pressed='false'
   )
     span.icon(aria-hidden='true') horizontal_split
+  button.ribbon__button#show-cheatsheet(
+    type='button'
+    data-shows-panel='cheatsheet'
+    aria-label='Markdown cheatsheet'
+    title='Markdown cheatsheet'
+    aria-controls='explorer'
+    aria-expanded='false'
+    aria-pressed='false'
+  )
+    span.icon(aria-hidden='true') markdown
   button.ribbon__button#show-help(type='button' aria-label='Help' title='Help')
     span.icon(aria-hidden='true') help

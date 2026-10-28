@@ -143,6 +143,15 @@
   min-width: 0;
 }
 
+.panel__sheet {
+  flex: 1;
+  min-height: 0;
+
+  .cm-editor {
+    height: 100%;
+  }
+}
+
 .panel__empty {
   margin: 0;
   padding: $space-sm;

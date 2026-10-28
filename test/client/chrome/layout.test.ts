@@ -253,6 +253,54 @@ describe('keyboard resizing', () => {
   })
 })
 
+describe('the markdown cheatsheet button', () => {
+  function filling(): { into: ParentNode[]; fillCheatsheet: (into: ParentNode) => void } {
+    const seen: ParentNode[] = []
+
+    return {
+      into: seen,
+      fillCheatsheet: (into: ParentNode): void => {
+        seen.push(into)
+      },
+    }
+  }
+
+  it('shows the cheatsheet panel', () => {
+    initLayout({ root, view: fakeView(), ...filling() })
+
+    root.querySelector<HTMLElement>('#show-cheatsheet')?.click()
+
+    expect(app().dataset.panelShowing).toBe('cheatsheet')
+  })
+
+  it('fills the cheatsheet the first time it is asked for, rather than on every page', () => {
+    const recording = filling()
+    initLayout({ root, view: fakeView(), fillCheatsheet: recording.fillCheatsheet })
+
+    root.querySelector<HTMLElement>('#show-cheatsheet')?.click()
+
+    expect(recording.into).toStrictEqual([root])
+  })
+
+  it('reaches for the cheatsheet itself when nothing else is given to fill it', () => {
+    root.querySelector('[data-part="cheatsheet"]')?.remove()
+    initLayout({ root, view: fakeView() })
+
+    root.querySelector<HTMLElement>('#show-cheatsheet')?.click()
+
+    expect(app().dataset.panelShowing).toBe('cheatsheet')
+  })
+
+  it('leaves the cheatsheet alone when another panel is asked for', () => {
+    const recording = filling()
+    initLayout({ root, view: fakeView(), fillCheatsheet: recording.fillCheatsheet })
+
+    root.querySelector<HTMLElement>('#show-trash')?.click()
+
+    expect(recording.into).toStrictEqual([])
+  })
+})
+
 describe('the toggle button', () => {
   function clickToggle(): void {
     root.querySelector<HTMLElement>('#toggle-explorer')?.click()
