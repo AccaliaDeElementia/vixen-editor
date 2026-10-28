@@ -5,6 +5,7 @@ import { expect, test } from './store-server.ts'
 import type { Page } from '@playwright/test'
 
 import { stringFieldOf } from './json.ts'
+import { storedDocument } from './fixtures.ts'
 
 const MINIMUM = 24
 
@@ -45,6 +46,20 @@ test(`every pointer target in the workspace is at least ${MINIMUM} by ${MINIMUM}
   expect(await undersizedTargetsOn(page)).toStrictEqual([])
 
   await request.delete(`/api/files/entries/${folder}`)
+})
+
+test(`every pointer target in a pane squeezed to its narrowest is at least ${MINIMUM} by ${MINIMUM}`, async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await page.goto(await storedDocument(request, `sizep-${String(Date.now())}.md`))
+  await page.locator('[data-part="split-beside"]').click()
+  await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
+  await page.locator('[data-part="split-resizer"]').focus()
+  await page.keyboard.press('Home')
+
+  expect(await undersizedTargetsOn(page)).toStrictEqual([])
 })
 
 test(`every pointer target in an open dialog is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {

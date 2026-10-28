@@ -236,8 +236,10 @@
 
 .controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.15em;
+  row-gap: $space-xs;
   padding: $space-xs $space-sm;
   border-bottom: 1px solid $border;
   background: $body-bg;
@@ -245,6 +247,7 @@
 
 .control {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 2em;
