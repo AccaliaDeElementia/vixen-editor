@@ -117,31 +117,15 @@ const GESTURES: readonly Entry[] = [
   { does: 'Resize the file browser', how: 'Drag the divider, or focus it and use the arrow keys' },
 ]
 
-const MARKDOWN: readonly Entry[] = [
-  { does: 'Heading', how: '# Title, ## Section, ### Subsection' },
-  { does: 'Emphasis', how: '*italic*, **bold**' },
-  { does: 'Link', how: '[text](other.md)' },
-  { does: 'Image', how: '![alt](picture.png)' },
-  { does: 'List', how: '- item, or 1. item' },
-  { does: 'Quote', how: '> quoted' },
-  { does: 'Code', how: '`inline`, or a ``` fenced block' },
-  { does: 'Callout', how: 'TODO:, FIXME: or NOTE: at the start of a note' },
-]
-
 interface Section {
   heading: string
   column: string
   entries: readonly Entry[]
 }
 
-const DOCUMENT_SECTIONS: readonly Section[] = [
+export const HELP_SECTIONS: readonly Section[] = [
   { heading: 'Getting around', column: 'How', entries: GESTURES },
   { heading: 'Keyboard', column: 'Keys', entries: SHORTCUTS },
-]
-
-export const HELP_SECTIONS: readonly Section[] = [
-  ...DOCUMENT_SECTIONS,
-  { heading: 'Markdown', column: 'Looks like', entries: MARKDOWN },
 ]
 
 function asTable({ heading, column, entries }: Section): string {
@@ -170,7 +154,5 @@ const PREAMBLE = [
 ].join('\n')
 
 export function cheatsheet(): string {
-  return [PREAMBLE, ...DOCUMENT_SECTIONS.map(asTable)].join('\n')
+  return [PREAMBLE, ...HELP_SECTIONS.map(asTable)].join('\n')
 }
-
-export const TestOnly = { DOCUMENT_SECTIONS }

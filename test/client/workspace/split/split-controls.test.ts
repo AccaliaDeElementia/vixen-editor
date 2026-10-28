@@ -65,8 +65,8 @@ describe('splitting the workspace', () => {
   }
 
   function button(which: string): HTMLElement {
-    const element = root.querySelector<HTMLElement>(`#split-${which}`)
-    if (element === null) throw new Error(`missing #split-${which}`)
+    const element = root.querySelector<HTMLElement>(`[data-part="split-${which}"]`)
+    if (element === null) throw new Error(`missing split-${which} control`)
     return element
   }
 
@@ -298,7 +298,7 @@ describe('splitting above and below', () => {
   it('measures the drag down the page rather than across it', () => {
     const panes = measuredPanes()
     bindSplitControls(root)
-    root.querySelector<HTMLElement>('#split-below')?.click()
+    root.querySelector<HTMLElement>('[data-part="split-below"]')?.click()
 
     resizerFor().dispatchEvent(verticalPointer('pointerdown', 0))
     resizerFor().dispatchEvent(verticalPointer('pointermove', PANES_HEIGHT * 0.3))
@@ -307,21 +307,32 @@ describe('splitting above and below', () => {
   })
 })
 
-describe('splitting a page that has no panes', () => {
-  it('is left alone rather than failing', () => {
-    root.querySelector('[data-part="panes"]')?.remove()
+describe('the pane a split is offered from', () => {
+  const ONE_OFFER = 1
+
+  it('is the first one only, so a split workspace offers no second split', () => {
     bindSplitControls(root)
 
-    root.querySelector<HTMLElement>('#split-beside')?.click()
+    root.querySelector<HTMLElement>('[data-part="split-beside"]')?.click()
 
-    expect(root.querySelector('[data-part="panes"]')).toBeNull()
+    expect(root.querySelectorAll('[data-part="split-beside"]')).toHaveLength(ONE_OFFER)
+  })
+})
+
+describe('a page that has no panes', () => {
+  it('binds nothing rather than failing, the split controls having gone with them', () => {
+    root.querySelector('[data-part="panes"]')?.remove()
+
+    expect(() => {
+      bindSplitControls(root)
+    }).not.toThrow()
   })
 })
 
 describe('a divider dragged before anything has been laid out', () => {
   it('leaves the share alone rather than dividing by nothing', () => {
     bindSplitControls(root)
-    root.querySelector<HTMLElement>('#split-beside')?.click()
+    root.querySelector<HTMLElement>('[data-part="split-beside"]')?.click()
     const panes = root.querySelector<HTMLElement>('[data-part="panes"]')
 
     root.querySelector<HTMLElement>('[data-part="split-resizer"]')?.dispatchEvent(pointer('pointerdown', 0))
@@ -335,21 +346,21 @@ describe('a split control pressed while that split is the one on screen', () => 
   it('asks for the split to be dismissed rather than tearing it down itself', () => {
     const asked: string[] = []
     bindSplitControls(root)
-    root.querySelector<HTMLElement>('#split-beside')?.click()
+    root.querySelector<HTMLElement>('[data-part="split-beside"]')?.click()
     onSplitDismissRequested(root, () => {
       asked.push('asked')
     })
 
-    root.querySelector<HTMLElement>('#split-beside')?.click()
+    root.querySelector<HTMLElement>('[data-part="split-beside"]')?.click()
 
     expect(asked).toStrictEqual(['asked'])
   })
 
   it('leaves the second pane in place, because what becomes of its tabs is not the layout to decide', () => {
     bindSplitControls(root)
-    root.querySelector<HTMLElement>('#split-beside')?.click()
+    root.querySelector<HTMLElement>('[data-part="split-beside"]')?.click()
 
-    root.querySelector<HTMLElement>('#split-beside')?.click()
+    root.querySelector<HTMLElement>('[data-part="split-beside"]')?.click()
 
     expect(root.querySelectorAll('.pane')).toHaveLength(BOTH_PANES)
   })

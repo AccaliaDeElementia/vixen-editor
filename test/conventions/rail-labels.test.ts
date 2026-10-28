@@ -35,6 +35,7 @@ const page = renderedPage()
 const ribbon = controlsIn(page, 'ribbon__button')
 const toolbar = controlsIn(page, 'explorer__action')
 const editing = controlsIn(page, '"control"')
+const tabActions = controlsIn(page, 'tabs__action')
 
 describe('the controls in the ribbon', () => {
   it('each carry a title, so a pointer is told what the glyph means', () => {
@@ -43,6 +44,24 @@ describe('the controls in the ribbon', () => {
 
   it('each carry a name anything that cannot see them can read', () => {
     expect(lacking('aria-label', ribbon)).toStrictEqual([])
+  })
+})
+
+describe('the guidance controls in the ribbon', () => {
+  const GUIDANCE = ['stale-build', 'show-cheatsheet', 'show-shortcuts']
+
+  it('sit together at the end, apart from what a reader works with', () => {
+    expect(ribbon.map(identify).slice(-GUIDANCE.length)).toStrictEqual(GUIDANCE)
+  })
+})
+
+describe('the controls in the tab row', () => {
+  it('each carry a title, so a pointer is told what the glyph means', () => {
+    expect(lacking('title', tabActions)).toStrictEqual([])
+  })
+
+  it('each carry a name anything that cannot see them can read', () => {
+    expect(lacking('aria-label', tabActions)).toStrictEqual([])
   })
 })
 
@@ -67,8 +86,12 @@ describe('the controls in the editing bar', () => {
 })
 
 describe('where each control lives', () => {
-  it('puts the split controls in the ribbon, beside the other controls that act on the workspace', () => {
-    expect(ribbon.map(identify).filter((id) => id.startsWith('split-'))).toStrictEqual(['split-beside', 'split-below'])
+  it('puts the split controls in the tab row, beside the documents they divide', () => {
+    expect(partsIn(tabActions)).toStrictEqual(['split-beside', 'split-below'])
+  })
+
+  it('leaves the ribbon to the sidebar, so every glyph on it opens or closes a panel', () => {
+    expect(ribbon.map(identify).filter((id) => id.startsWith('split-'))).toStrictEqual([])
   })
 
   it('puts the preview controls in the editing bar, since they only mean anything with an editor open', () => {
@@ -81,7 +104,7 @@ describe('where each control lives', () => {
 
 describe('the scan itself', () => {
   it('finds controls in every bar, so an empty result cannot read as a pass', () => {
-    expect(Math.min(ribbon.length, toolbar.length, editing.length)).toBeGreaterThan(NONE)
+    expect(Math.min(ribbon.length, toolbar.length, editing.length, tabActions.length)).toBeGreaterThan(NONE)
   })
 
   it('names a control that carries nothing, rather than passing it over', () => {

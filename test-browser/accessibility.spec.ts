@@ -31,6 +31,14 @@ test('the document view has no accessibility violations', async ({ page, request
   await request.delete(`/api/files/entries/${folder}`)
 })
 
+test('a split workspace has no accessibility violations', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `a11y-split-${String(Date.now())}.md`))
+  await page.locator('[data-part="split-beside"]').click()
+  await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
+
+  expect(await violationsOn(page)).toStrictEqual([])
+})
+
 test('an open link tooltip has no accessibility violations', async ({ page, request }) => {
   const folder = `a11y-tip-${String(Date.now())}`
   await page.goto(await documentWithLink(request, folder))
@@ -105,7 +113,7 @@ test('the help dialog lists the gestures, and has no accessibility violations', 
   await workspaceWith(page, request, folder)
 
   await page.goto(`/doc/${folder}/notes.md`)
-  await page.locator('#show-help').click()
+  await page.locator('#show-shortcuts').click()
   await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
 
   await givenAsync(expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + S'))
@@ -221,7 +229,7 @@ test('the explorer divider says what its number means', async ({ page, request }
 
 test('the split divider says what its number means', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `arias-${String(Date.now())}.md`))
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
   await givenAsync(expect(page.locator('.pane')).toHaveCount(2))
 
   await expect(page.locator('[data-part="split-resizer"]')).toHaveAttribute('aria-valuetext', /percent$/v)

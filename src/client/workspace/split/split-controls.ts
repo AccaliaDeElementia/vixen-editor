@@ -16,8 +16,8 @@ import {
 const PANES_SELECTOR = '[data-part="panes"]'
 const SPLIT_RESIZER_SELECTOR = '[data-part="split-resizer"]'
 const SPLIT_BUTTONS: ReadonlyArray<readonly [string, SplitOrientation]> = [
-  ['#split-beside', 'beside'],
-  ['#split-below', 'below'],
+  ['[data-part="split-beside"]', 'beside'],
+  ['[data-part="split-below"]', 'below'],
 ]
 const SPLIT_STEP = 0.05
 const NO_SPLIT = 0
@@ -52,19 +52,23 @@ function reflectSplitButtons(root: ParentNode): void {
 }
 
 function bindSplitButtons(root: ParentNode): void {
+  const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
+  if (panes === null) return
+
   for (const [selector, orientation] of SPLIT_BUTTONS) {
-    root.querySelector<HTMLElement>(selector)?.addEventListener('click', () => {
-      if (readSplit().orientation === orientation) {
-        requestSplitDismissed(root)
+    for (const button of panes.querySelectorAll<HTMLElement>(selector)) {
+      button.addEventListener('click', () => {
+        if (readSplit().orientation === orientation) {
+          requestSplitDismissed(root)
 
-        return
-      }
+          return
+        }
 
-      const panes = root.querySelector<HTMLElement>(PANES_SELECTOR)
-      toggleSplit(root, orientation, panes === null ? NO_SPLIT : axisOf(panes))
-      reflectSplitButtons(root)
-      announceSplitChanged(root)
-    })
+        toggleSplit(root, orientation, axisOf(panes))
+        reflectSplitButtons(root)
+        announceSplitChanged(root)
+      })
+    }
   }
 }
 

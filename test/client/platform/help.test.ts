@@ -6,9 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 
-import { cheatsheet, HELP_SECTIONS, KEYS, TestOnly } from '../../../src/client/platform/help.ts'
-
-const { DOCUMENT_SECTIONS } = TestOnly
+import { cheatsheet, HELP_SECTIONS, KEYS } from '../../../src/client/platform/help.ts'
 
 const INHERITED_FROM_THE_EDITOR: readonly string[] = [
   'Alt-A',
@@ -101,14 +99,20 @@ function keysBoundInTheEditor(): string[] {
   return [...found].sort()
 }
 
+describe('what the help dialog takes on, and what it leaves to the cheatsheet', () => {
+  it('leaves markdown syntax to the panel, rather than teaching it in two places', () => {
+    expect(HELP_SECTIONS.map((section) => section.heading)).toStrictEqual(['Getting around', 'Keyboard'])
+  })
+})
+
 describe('the cheatsheet a new workspace starts with', () => {
-  it('has a section for every section the document is meant to carry', () => {
+  it('has a section for every section the help dialog shows', () => {
     const headings = cheatsheet()
       .split('\n')
       .filter((line) => line.startsWith('## '))
       .map((line) => line.slice('## '.length))
 
-    expect(headings).toStrictEqual(DOCUMENT_SECTIONS.map((section) => section.heading))
+    expect(headings).toStrictEqual(HELP_SECTIONS.map((section) => section.heading))
   })
 
   it('plants no link and no image in the first document someone writes', () => {
@@ -122,10 +126,10 @@ describe('the cheatsheet a new workspace starts with', () => {
     },
   )
 
-  it('names every entry the document is meant to carry', () => {
+  it('names every entry the dialog would list', () => {
     const rendered = cheatsheet()
 
-    for (const section of DOCUMENT_SECTIONS) {
+    for (const section of HELP_SECTIONS) {
       for (const entry of section.entries) {
         expect(rendered).toContain(`| ${entry.does} | ${entry.how} |`)
       }

@@ -12,6 +12,7 @@ import {
 } from '../../../src/client/chrome/explorer.ts'
 
 import { initLayout, TestOnly as indexTestOnly } from '../../../src/client/chrome/layout.ts'
+import { readPreferences, writePreferences } from '../../../src/client/platform/preferences.ts'
 import { requestInsert } from '../../../src/client/platform/announce/insert-entry.ts'
 
 import { renderPage } from '../templates.ts'
@@ -291,6 +292,23 @@ describe('the markdown cheatsheet button', () => {
     expect(app().dataset.panelShowing).toBe('cheatsheet')
   })
 
+  it('fills the cheatsheet on a page that starts with it showing, so a reload is not an empty panel', () => {
+    const recording = filling()
+    writePreferences({ ...readPreferences(), panel: 'cheatsheet' })
+
+    initLayout({ root, view: fakeView(), fillCheatsheet: recording.fillCheatsheet })
+
+    expect(recording.into).toStrictEqual([root])
+  })
+
+  it('leaves the cheatsheet unfilled on a page that starts on another panel', () => {
+    const recording = filling()
+
+    initLayout({ root, view: fakeView(), fillCheatsheet: recording.fillCheatsheet })
+
+    expect(recording.into).toStrictEqual([])
+  })
+
   it('leaves the cheatsheet alone when another panel is asked for', () => {
     const recording = filling()
     initLayout({ root, view: fakeView(), fillCheatsheet: recording.fillCheatsheet })
@@ -338,7 +356,7 @@ describe('the help button', () => {
   it('opens a dialog listing the gestures and shortcuts', () => {
     initLayout({ root, view: fakeView() })
 
-    root.querySelector<HTMLElement>('#show-help')?.click()
+    root.querySelector<HTMLElement>('#show-shortcuts')?.click()
 
     expect(root.querySelector('#file-dialog-title')?.textContent).toBe('Help')
   })
@@ -346,7 +364,7 @@ describe('the help button', () => {
   it('lists the gestures and shortcuts in that dialog', () => {
     initLayout({ root, view: fakeView() })
 
-    root.querySelector<HTMLElement>('#show-help')?.click()
+    root.querySelector<HTMLElement>('#show-shortcuts')?.click()
 
     expect([...root.querySelectorAll('#file-dialog-body h3')].map((h) => h.textContent)).toContain('Keyboard')
   })
@@ -354,7 +372,7 @@ describe('the help button', () => {
   it('offers a single way out', () => {
     initLayout({ root, view: fakeView() })
 
-    root.querySelector<HTMLElement>('#show-help')?.click()
+    root.querySelector<HTMLElement>('#show-shortcuts')?.click()
 
     expect(root.querySelector('#file-dialog-confirm')?.textContent).toBe('Close')
   })

@@ -27,7 +27,7 @@ test('a workspace starts with one pane', async ({ page, request }) => {
 test('splitting side by side gives each pane half the width', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `beside-${String(Date.now())}.md`))
 
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
 
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   const [first, second] = await widths(page)
@@ -37,7 +37,7 @@ test('splitting side by side gives each pane half the width', async ({ page, req
 test('splitting above and below gives each pane half the height', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `below-${String(Date.now())}.md`))
 
-  await page.locator('#split-below').click()
+  await page.locator('[data-part="split-below"]').click()
 
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   const [first, second] = await heights(page)
@@ -46,17 +46,17 @@ test('splitting above and below gives each pane half the height', async ({ page,
 
 test('pressing the same control again returns to one pane', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `unsplit-${String(Date.now())}.md`))
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
 
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
 
   await expect(page.locator(PANE)).toHaveCount(1)
 })
 
 test('dragging the divider moves the share, and the keyboard reaches it too', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `drag-${String(Date.now())}.md`))
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
 
   await page.locator(DIVIDER).focus()
@@ -68,12 +68,12 @@ test('dragging the divider moves the share, and the keyboard reaches it too', as
 
 test('a share set side by side leaves above and below even, because each keeps its own', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `carry-${String(Date.now())}.md`))
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   await page.locator(DIVIDER).focus()
   await page.keyboard.press('ArrowLeft')
 
-  await page.locator('#split-below').click()
+  await page.locator('[data-part="split-below"]').click()
 
   const [first, second] = await heights(page)
   expect(Math.abs((first ?? 0) - (second ?? 0))).toBeLessThan(EVEN_ENOUGH)
@@ -81,13 +81,13 @@ test('a share set side by side leaves above and below even, because each keeps i
 
 test('a share set side by side comes back when the reader returns to it', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `back-${String(Date.now())}.md`))
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   await page.locator(DIVIDER).focus()
   await page.keyboard.press('ArrowLeft')
-  await page.locator('#split-below').click()
+  await page.locator('[data-part="split-below"]').click()
 
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
 
   const [first, second] = await widths(page)
   expect(first ?? 0).toBeLessThan(second ?? 0)
@@ -111,13 +111,13 @@ test('a share survives a reload of a split that is still live, so a reader sets 
 
 test('a share goes back to even once the second pane has gone, however it went', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `even-${String(Date.now())}.md`))
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   await page.locator(DIVIDER).focus()
   await page.keyboard.press('ArrowLeft')
 
   await page.reload()
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
 
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
   const [first, second] = await widths(page)
@@ -137,9 +137,23 @@ test('closing the last tab in the second pane puts the workspace back to one pan
 test('a pane opened by the split control is wired up, not just drawn', async ({ page, request }) => {
   await page.goto(await storedDocument(request, `wired-${String(Date.now())}.md`))
 
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
 
   await expect(page.locator(PANE).nth(1).locator('[role="tablist"]')).toBeAttached()
+})
+
+test('the pane that carries the split controls is no taller than the one that does not', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `rows-${String(Date.now())}.md`))
+
+  await page.locator('[data-part="split-beside"]').click()
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+
+  const strips = await page
+    .locator(PANE)
+    .locator('[data-part="tabs"]')
+    .evaluateAll((found) => found.map((strip) => strip.getBoundingClientRect().height))
+
+  expect(strips[0]).toBe(strips[1])
 })
 
 test('the second pane strip comes back as tall as the first after a reload', async ({ page, request }) => {
@@ -169,7 +183,7 @@ async function dismissedWithTabsAside(page: Page, request: APIRequestContext, st
   await givenAsync(expect(page.locator(`.tree__row[data-path="${aside}"]`)).toBeVisible())
   await page.locator(`.tree__row[data-path="${aside}"]`).click({ modifiers: ['ControlOrMeta'] })
   await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
-  await page.locator('#split-beside').click()
+  await page.locator('[data-part="split-beside"]').click()
 
   return aside
 }

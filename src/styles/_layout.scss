@@ -37,6 +37,14 @@
   border-right: 1px solid $border;
 }
 
+.ribbon__tail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-xs;
+  margin-top: auto;
+}
+
 .ribbon__button {
   position: relative;
 }
@@ -1046,6 +1054,7 @@
 .tabs {
   display: flex;
   align-items: stretch;
+  min-height: $tab-row-height;
   background: $body-bg;
   border-bottom: 1px solid $border;
 }
@@ -1081,6 +1090,46 @@
 
   &:hover {
     color: $body-color;
+  }
+}
+
+.tabs__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.15em;
+  padding: 0 $space-xs;
+}
+
+.tabs__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2em;
+  height: 2em;
+  padding: 0;
+  border: 0;
+  border-radius: $radius;
+  background: transparent;
+  color: $muted;
+  cursor: pointer;
+
+  .icon {
+    font-size: 1.15em;
+  }
+
+  &:hover {
+    color: $body-color;
+    background: $surface;
+  }
+
+  &[aria-pressed='true'] {
+    color: $ink-info;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
   }
 }
 

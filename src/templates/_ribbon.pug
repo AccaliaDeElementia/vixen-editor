@@ -3,13 +3,6 @@ nav.ribbon(aria-label='Primary')
     span.icon(aria-hidden='true') arrow_back
   button.ribbon__button#nav-forward(type='button' aria-label='Forward' title='Forward' disabled aria-disabled='true')
     span.icon(aria-hidden='true') arrow_forward
-  button.ribbon__button.ribbon__button--stale#stale-build(
-    type='button'
-    aria-label='This page is out of date — the server is serving a newer version'
-    title='This page is out of date — the server is serving a newer version'
-    hidden
-  )
-    span.icon(aria-hidden='true') warning
   button.ribbon__button#toggle-explorer(
     type='button'
     data-shows-panel='files'
@@ -30,29 +23,27 @@ nav.ribbon(aria-label='Primary')
     aria-pressed='false'
   )
     span.icon(aria-hidden='true') delete
-  button.ribbon__button#split-beside(
-    type='button'
-    aria-label='Split the editor side by side'
-    title='Split the editor side by side'
-    aria-pressed='false'
-  )
-    span.icon(aria-hidden='true') vertical_split
-  button.ribbon__button#split-below(
-    type='button'
-    aria-label='Split the editor above and below'
-    title='Split the editor above and below'
-    aria-pressed='false'
-  )
-    span.icon(aria-hidden='true') horizontal_split
-  button.ribbon__button#show-cheatsheet(
-    type='button'
-    data-shows-panel='cheatsheet'
-    aria-label='Markdown cheatsheet'
-    title='Markdown cheatsheet'
-    aria-controls='explorer'
-    aria-expanded='false'
-    aria-pressed='false'
-  )
-    span.icon(aria-hidden='true') markdown
-  button.ribbon__button#show-help(type='button' aria-label='Help' title='Help')
-    span.icon(aria-hidden='true') help
+  .ribbon__tail
+    button.ribbon__button.ribbon__button--stale#stale-build(
+      type='button'
+      aria-label='This page is out of date — the server is serving a newer version'
+      title='This page is out of date — the server is serving a newer version'
+      hidden
+    )
+      span.icon(aria-hidden='true') warning
+    button.ribbon__button#show-cheatsheet(
+      type='button'
+      data-shows-panel='cheatsheet'
+      aria-label='Markdown cheatsheet'
+      title='Markdown cheatsheet'
+      aria-controls='explorer'
+      aria-expanded='false'
+      aria-pressed='false'
+    )
+      span.icon(aria-hidden='true') markdown
+    button.ribbon__button#show-shortcuts(
+      type='button'
+      aria-label='Keyboard shortcuts and gestures'
+      title='Keyboard shortcuts and gestures'
+    )
+      span.icon(aria-hidden='true') keyboard

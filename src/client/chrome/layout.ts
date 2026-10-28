@@ -11,7 +11,7 @@ import {
   setExplorerWidth,
   askForPanel,
 } from './explorer.ts'
-import { CHEATSHEET_PANEL, PANEL_NAMES } from '../platform/panels.ts'
+import { CHEATSHEET_PANEL, PANEL_NAMES, panelShowing } from '../platform/panels.ts'
 import { bindDragging } from '../platform/dragging.ts'
 import { bindSplitControls } from '../workspace/split/split-controls.ts'
 import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
@@ -21,7 +21,7 @@ import { mountCheatsheet } from './cheatsheet.ts'
 import { onInsertRequested } from '../platform/announce/insert-entry.ts'
 import { followColourScheme } from './colour-scheme.ts'
 
-const HELP_SELECTOR = '#show-help'
+const HELP_SELECTOR = '#show-shortcuts'
 
 const KEYBOARD_STEP_PX = 16
 
@@ -122,18 +122,18 @@ export function initLayout(options: LayoutOptions = {}): Layout {
   const root = options.root ?? document
   const view = options.view ?? window
 
+  const fillCheatsheet =
+    options.fillCheatsheet ??
+    ((into: ParentNode) => {
+      void mountCheatsheet(into)
+    })
+
   const offScheme = followColourScheme(view, options.head ?? document.head)
   applyExplorerState(root, view.innerWidth)
+  if (panelShowing(root) === CHEATSHEET_PANEL) fillCheatsheet(root)
   const split = bindSplitControls(root)
   bindResizer(root, view)
-  bindToggle(
-    root,
-    view,
-    options.fillCheatsheet ??
-      ((into) => {
-        void mountCheatsheet(into)
-      }),
-  )
+  bindToggle(root, view, fillCheatsheet)
   bindHelp(root)
   const offInsertRequested = bindDrawerDismissal(root, view)
   const offResize = bindViewportResize(root, view, split.refresh)

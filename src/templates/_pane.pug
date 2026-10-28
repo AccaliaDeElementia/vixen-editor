@@ -6,6 +6,24 @@ mixin pane(primary)
       .tabs__scroller(data-part='tabs-scroller' aria-label='Open documents')
       button.tabs__scroll.tabs__scroll--after(data-part='tabs-after' type='button' aria-label='Show the tabs to the right')
         span.icon(aria-hidden='true') chevron_right
+      if primary
+        .tabs__actions
+          button.tabs__action(
+            data-part='split-beside'
+            type='button'
+            aria-label='Split the editor side by side'
+            title='Split the editor side by side'
+            aria-pressed='false'
+          )
+            span.icon(aria-hidden='true') vertical_split
+          button.tabs__action(
+            data-part='split-below'
+            type='button'
+            aria-label='Split the editor above and below'
+            title='Split the editor above and below'
+            aria-pressed='false'
+          )
+            span.icon(aria-hidden='true') horizontal_split
     .controls(data-part='controls' role='toolbar' aria-label='Editing' hidden)
       button.control(
         data-part='format-bold'

@@ -47,6 +47,14 @@ test('the open cheatsheet has no accessibility violations', async ({ page, reque
   expect(await violationsOn(page)).toStrictEqual([])
 })
 
+test('the cheatsheet comes back with the panel after a reload', async ({ page, request }) => {
+  await openCheatsheet(page, await storedDocument(request, 'sheet-reload.md'))
+
+  await page.reload()
+
+  await expect(page.locator(SHEET)).toContainText('Writing markdown')
+})
+
 test('opening the cheatsheet leaves the file browser one click away', async ({ page, request }) => {
   await openCheatsheet(page, await storedDocument(request, 'sheet-back.md'))
 
