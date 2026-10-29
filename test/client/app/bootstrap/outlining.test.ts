@@ -19,6 +19,16 @@ import {
 
 import type { EditorView } from '@codemirror/view'
 
+const SECTIONS_PAST_THE_PARSE_BUDGET = 200
+const LONGER_THAN_THE_EDITOR_PARSES = Array.from(
+  { length: SECTIONS_PAST_THE_PARSE_BUDGET },
+  (_unused, index) => `## Heading ${String(index)}\n\n${'filler prose line\n'.repeat(12)}\n`,
+).join('')
+
+const A_SECOND_HEADING = '## beta'
+const TWO_HEADINGS_IN = `# alpha\n\n${A_SECOND_HEADING}\n`
+const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
+
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
 
@@ -54,6 +64,10 @@ function saidInstead(): string {
   const said = root.querySelector<HTMLElement>('[data-part="outline-empty"]')
 
   return said?.hidden === false ? said.textContent : ''
+}
+
+function pressRow(index: number): void {
+  root.querySelectorAll<HTMLElement>('[data-part="outline-list"] button')[index]?.click()
 }
 
 function typing(view: EditorView, inserted: string): void {
@@ -107,6 +121,39 @@ describe('the outline of the document in front', () => {
     typing(editor.view, '\n## unseen\n')
 
     expect(rowsShown()).toStrictEqual([])
+  })
+
+  it('puts the caret where the heading the reader chose begins', async () => {
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    showingTheOutline()
+
+    pressRow(1)
+
+    expect(editor.view.state.selection.main.head).toBe(SECOND_HEADING_STARTS_AT)
+  })
+
+  it('leaves the focus in the text, so the reader carries on typing where they landed', async () => {
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    showingTheOutline()
+    document.body.focus()
+    given(() => {
+      expect(editor.view.hasFocus).toBe(false)
+    })
+
+    pressRow(1)
+
+    expect(editor.view.hasFocus).toBe(true)
+  })
+
+  it('lists every heading, including the ones past what the editor has parsed for the screen', async () => {
+    const editor = await editing(LONGER_THAN_THE_EDITOR_PARSES)
+    await givenAsync(editor.settled())
+
+    showingTheOutline()
+
+    expect(rowsShown()).toHaveLength(SECTIONS_PAST_THE_PARSE_BUDGET)
   })
 
   it('says nothing is open once the reader closes the last tab', async () => {

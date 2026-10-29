@@ -1,9 +1,6 @@
 'use sanity'
 
-import { syntaxTree } from '@codemirror/language'
-import type { EditorState } from '@codemirror/state'
-
-import { headingsIn, type Heading } from '../../shared/markdown-tree.ts'
+import { headingsOf, type Heading } from '../../shared/markdown-tree.ts'
 
 const LIST_SELECTOR = '[data-part="outline-list"]'
 const EMPTY_SELECTOR = '[data-part="outline-empty"]'
@@ -14,27 +11,29 @@ const NO_HEADINGS = 'This document has no headings.'
 const TOP_LEVEL = 1
 const NONE = 0
 
-function rowFor({ level, text }: Heading): HTMLElement {
+function rowFor({ level, text, from }: Heading, chosen: (offset: number) => void): HTMLElement {
   const row = document.createElement('li')
-  row.className = 'outline__row'
-  row.style.setProperty('--depth', String(level - TOP_LEVEL))
-  row.textContent = text
+  const jump = document.createElement('button')
+  jump.type = 'button'
+  jump.className = 'outline__row'
+  jump.style.setProperty('--depth', String(level - TOP_LEVEL))
+  jump.textContent = text
+  jump.addEventListener('click', () => {
+    chosen(from)
+  })
+  row.append(jump)
 
   return row
 }
 
-function headingsOf(state: EditorState): readonly Heading[] {
-  return headingsIn(syntaxTree(state), state.doc.toString())
-}
-
-export function showOutline(into: ParentNode, state: EditorState | null): void {
+export function showOutline(into: ParentNode, markdown: string | null, chosen: (offset: number) => void): void {
   const list = into.querySelector<HTMLElement>(LIST_SELECTOR)
   const empty = into.querySelector<HTMLElement>(EMPTY_SELECTOR)
   if (list === null || empty === null) return
 
-  const headings = state === null ? [] : headingsOf(state)
+  const headings = markdown === null ? [] : headingsOf(markdown)
 
-  list.replaceChildren(...headings.map(rowFor))
-  empty.textContent = state === null ? NOTHING_OPEN : NO_HEADINGS
+  list.replaceChildren(...headings.map((heading) => rowFor(heading, chosen)))
+  empty.textContent = markdown === null ? NOTHING_OPEN : NO_HEADINGS
   empty.hidden = headings.length > NONE
 }

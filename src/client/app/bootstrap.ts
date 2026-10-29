@@ -159,10 +159,16 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { pane: primary, workspace, statusBar } = primaryWorkspace
   const tab = primaryWorkspace.editor()
 
+  function textInFront(): string | null {
+    return touched.held.path() === null ? null : touched.editor().view.state.doc.toString()
+  }
+
   function refreshOutline(): void {
     if (panelShowing(root) !== OUTLINE_PANEL) return
 
-    showOutline(root, touched.held.path() === null ? null : touched.editor().view.state)
+    showOutline(root, textInFront(), (offset: number) => {
+      touched.editor().putCaretAt(offset)
+    })
   }
 
   async function openPath(target: string, wanted: TabView): Promise<void> {

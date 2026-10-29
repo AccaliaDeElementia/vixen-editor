@@ -73,11 +73,15 @@ the workspace slides into the collapsed `0`-width track and the editor vanishes.
 
 ## The outline panel
 
-**The outline reads the editor's own syntax tree, rather than parsing the text
-again.** `showOutline` takes the state of the editor in front and runs
-`headingsIn` over `syntaxTree(state)` — the tree the decorations and the link
-lookups already use — so the list cannot disagree with what the editor believes
-the document is.
+**The outline parses the document itself, and must.** `syntaxTree(state)` is
+the tree CodeMirror has built _so far_: the parse is incremental and stops a
+little past what the viewport needs, so on a document of any length it covers a
+prefix and nothing after it. Decorations and link lookups live inside that
+prefix by construction; an outline does not, and the first version of this panel
+silently listed the headings above the fold and no others. `headingsOf` parses
+the text with the same extensions the editor is configured with, which costs
+about a millisecond for a document this editor is likely to hold and cannot be
+partial.
 
 **It redraws only while it is the panel on show.** `bootstrap` refreshes it when
 a document opens, when the text changes and when the sidebar changes panel, and
@@ -87,6 +91,13 @@ the file browser open pays nothing per keystroke.
 **A pane holding nothing says so.** "Nothing is open" and "This document has no
 headings" are different facts, and an empty panel cannot tell a reader which one
 they are looking at.
+
+**A row is a button, and it jumps the editor the outline is reading.** Pressing
+one calls `putCaretAt`, which clamps, scrolls the heading into view and takes
+the focus — so the reader lands in the text ready to type rather than looking at
+it from the sidebar. The jump goes to the pane the outline was rendered from,
+not through a lookup by path: the list and the caret cannot disagree about which
+editor they mean, because both read `touched`.
 
 <a id="design-e6bdab"></a>
 

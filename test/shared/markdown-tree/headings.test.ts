@@ -2,14 +2,10 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { parser } from '@lezer/markdown'
+import { headingsOf } from '../../../src/shared/markdown-tree.ts'
 
-import { headingsIn, VIXEN_MARKDOWN_EXTENSIONS } from '../../../src/shared/markdown-tree.ts'
-
-const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
-
-function found(markdown: string): ReturnType<typeof headingsIn> {
-  return headingsIn(markdownParser.parse(markdown), markdown)
+function found(markdown: string): ReturnType<typeof headingsOf> {
+  return headingsOf(markdown)
 }
 
 function textIn(markdown: string): string[] {

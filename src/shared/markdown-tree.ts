@@ -1,7 +1,7 @@
 'use sanity'
 
 import type { SyntaxNode, SyntaxNodeRef, Tree } from '@lezer/common'
-import { Autolink, Table, TaskList } from '@lezer/markdown'
+import { Autolink, parser, Table, TaskList } from '@lezer/markdown'
 import type { DelimiterType, InlineContext, MarkdownConfig } from '@lezer/markdown'
 import { tags } from '@lezer/highlight'
 
@@ -191,7 +191,7 @@ function textOf(markdown: string, tree: Tree, heading: SyntaxNodeRef): string {
   return `${read.text}${markdown.slice(read.from, heading.to)}`.replace(WHITESPACE_RUN, ' ').trim()
 }
 
-export function headingsIn(tree: Tree, markdown: string): Heading[] {
+function headingsIn(tree: Tree, markdown: string): Heading[] {
   const found: Heading[] = []
 
   tree.iterate({
@@ -204,4 +204,10 @@ export function headingsIn(tree: Tree, markdown: string): Heading[] {
   })
 
   return found
+}
+
+const markdownParser = parser.configure(VIXEN_MARKDOWN_EXTENSIONS)
+
+export function headingsOf(markdown: string): Heading[] {
+  return headingsIn(markdownParser.parse(markdown), markdown)
 }

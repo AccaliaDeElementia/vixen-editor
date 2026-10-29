@@ -170,11 +170,28 @@
 }
 
 .outline__row {
+  display: block;
+  width: 100%;
+  min-height: 24px;
   padding: 0.15em $space-sm 0.15em calc(#{$space-sm} + (var(--depth, 0) * #{$tree-indent-step}));
+  border: 0;
+  background: none;
   color: $body-color;
+  font: inherit;
+  text-align: left;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  cursor: pointer;
+
+  &:hover {
+    background: $body-bg;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
+  }
 }
 
 .panel__empty {

@@ -90,6 +90,14 @@ test(`every pointer target in the help dialog is at least ${MINIMUM} by ${MINIMU
   await request.delete(`/api/files/entries/${folder}`)
 })
 
+test(`every pointer target in the outline panel is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `sizeo-${String(Date.now())}.md`, '# One\n\n### Three deep\n'))
+  await page.locator('#show-outline').click()
+  await givenAsync(expect(page.locator('[data-part="outline-list"] button').first()).toBeVisible())
+
+  expect(await undersizedTargetsOn(page)).toStrictEqual([])
+})
+
 test(`every pointer target in the trash panel is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
   const folder = `sizet-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: folder } })

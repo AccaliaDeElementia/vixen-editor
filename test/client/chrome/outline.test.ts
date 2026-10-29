@@ -1,12 +1,8 @@
 'use sanity'
 
-import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import { showOutline } from '../../../src/client/chrome/outline.ts'
-
-import { trackView } from '../editor-fixtures.ts'
 
 const SIDEBAR = `
   <section class="panel" data-panel="outline">
@@ -15,13 +11,18 @@ const SIDEBAR = `
   </section>
 `
 
+const TWO_HEADINGS = 2
+const A_SECOND_HEADING = '## two'
+const TWO_HEADINGS_IN = `# one\n\n${A_SECOND_HEADING}\n`
+const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
+
 let root: HTMLElement = document.createElement('div')
+let chosen: number[] = []
 
-function holding(markdown: string): EditorView {
-  const parent = document.createElement('div')
-  document.body.append(parent)
-
-  return trackView(new EditorView({ parent, state: createEditorState({ doc: markdown }) }))
+function listing(markdown: string | null): void {
+  showOutline(root, markdown, (offset: number) => {
+    chosen.push(offset)
+  })
 }
 
 function rowsShown(): Array<string | null> {
@@ -29,9 +30,13 @@ function rowsShown(): Array<string | null> {
 }
 
 function depthsShown(): string[] {
-  return [...root.querySelectorAll<HTMLElement>('[data-part="outline-list"] li')].map((row) =>
+  return [...root.querySelectorAll<HTMLElement>('[data-part="outline-list"] button')].map((row) =>
     row.style.getPropertyValue('--depth'),
   )
+}
+
+function pressRow(index: number): void {
+  root.querySelectorAll<HTMLElement>('[data-part="outline-list"] button')[index]?.click()
 }
 
 function saidInstead(): string {
@@ -41,6 +46,7 @@ function saidInstead(): string {
 }
 
 beforeEach(() => {
+  chosen = []
   document.body.innerHTML = ''
   root = document.createElement('div')
   root.innerHTML = SIDEBAR
@@ -49,43 +55,65 @@ beforeEach(() => {
 
 describe('the headings the outline lists', () => {
   it('shows one row for each heading, in the order the document holds them', () => {
-    showOutline(root, holding('# one\n\n## two\n\n# three\n').state)
+    listing('# one\n\n## two\n\n# three\n')
 
     expect(rowsShown()).toStrictEqual(['one', 'two', 'three'])
   })
 
   it('indents a row by how deep under the top its heading sits', () => {
-    showOutline(root, holding('# top\n\n### deep\n').state)
+    listing('# top\n\n### deep\n')
 
     expect(depthsShown()).toStrictEqual(['0', '2'])
   })
 
   it('replaces what it listed before, rather than listing the document twice', () => {
-    showOutline(root, holding('# first\n').state)
+    listing('# first\n')
 
-    showOutline(root, holding('# second\n').state)
+    listing('# second\n')
 
     expect(rowsShown()).toStrictEqual(['second'])
   })
 })
 
+describe('pressing a heading in the outline', () => {
+  it('offers each heading as a button, because a row with nowhere to go is not a route into the document', () => {
+    listing(TWO_HEADINGS_IN)
+
+    expect(root.querySelectorAll('[data-part="outline-list"] button')).toHaveLength(TWO_HEADINGS)
+  })
+
+  it('gives back where that heading starts, which is where the caret belongs', () => {
+    listing(TWO_HEADINGS_IN)
+
+    pressRow(1)
+
+    expect(chosen).toStrictEqual([SECOND_HEADING_STARTS_AT])
+  })
+
+  it('asks nothing of a reader who presses nothing', () => {
+    listing('# one\n')
+
+    expect(chosen).toStrictEqual([])
+  })
+})
+
 describe('what the outline says when it has no heading to list', () => {
   it('says the document has none, rather than showing an empty list and no reason', () => {
-    showOutline(root, holding('prose with no heading\n').state)
+    listing('prose with no heading\n')
 
     expect(saidInstead()).toBe('This document has no headings.')
   })
 
   it('says nothing is open where no document is, which is a different thing', () => {
-    showOutline(root, null)
+    listing(null)
 
     expect(saidInstead()).toBe('Nothing is open.')
   })
 
   it('takes the message away once there is something to list', () => {
-    showOutline(root, null)
+    listing(null)
 
-    showOutline(root, holding('# back\n').state)
+    listing('# back\n')
 
     expect(saidInstead()).toBe('')
   })
@@ -96,14 +124,14 @@ describe('a page with no outline panel in it', () => {
     root.replaceChildren()
 
     expect(() => {
-      showOutline(root, null)
+      listing(null)
     }).not.toThrow()
   })
 
   it('leaves a panel missing half its parts alone, rather than filling the half that is there', () => {
     root.innerHTML = '<section data-panel="outline"><ul data-part="outline-list"></ul></section>'
 
-    showOutline(root, holding('# one\n').state)
+    listing('# one\n')
 
     expect(rowsShown()).toStrictEqual([])
   })
