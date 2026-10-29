@@ -112,6 +112,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
   const mount: Element = found
 
+  let finished = false
   let holding: string | null = options.holds
   const held: HeldDocument = {
     path: () => holding,
@@ -295,6 +296,8 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
 
     const at: TabAt = { path: reached, view: 'editor' }
     await options.releaseElsewhere(at)
+    if (finished) return
+
     editor().open(reached, initial)
     pane.open(at)
     workspace.show('document', shown)
@@ -318,6 +321,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     },
 
     teardownDocument: () => {
+      finished = true
       built?.teardownDocument()
       built = null
     },

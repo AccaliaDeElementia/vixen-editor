@@ -118,6 +118,24 @@ describe('a pane that was given nothing to hold', () => {
   })
 })
 
+describe('a pane torn down while a document was still loading', () => {
+  const NO_EDITOR = 0
+
+  function editorsMounted(): number {
+    return element.querySelectorAll('.cm-editor').length
+  }
+
+  it('builds none, because the pane the editor would live in has gone', async () => {
+    const pane = paneHolding(null)
+    const showing = pane.showDocument('notes.md')
+
+    pane.teardownDocument()
+    await showing
+
+    expect(editorsMounted()).toBe(NO_EDITOR)
+  })
+})
+
 describe('a pane that was given a document', () => {
   it('holds it, so the pane it belongs to can save it', () => {
     const pane = paneHolding('notes.md')

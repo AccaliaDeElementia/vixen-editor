@@ -119,6 +119,16 @@ describe('the pane the reader is working in', () => {
     expect(frontFlags()).toStrictEqual(['false', 'true'])
   })
 
+  it('closes the tab of the pane they clicked into, which is the point of following them', async () => {
+    const editor = await workingAside()
+    clickIntoTheEditorIn(0)
+    await givenAsync(editor.settled())
+
+    root.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'w', altKey: true }))
+
+    expect(tabsIn(0)).toStrictEqual(['editor:other.md'])
+  })
+
   it('follows the editor the reader clicks into, not only the tab they activate', async () => {
     await workingAside()
     given(() => {

@@ -87,6 +87,14 @@ whenever it shows a document: a `focusin` listener moved the front pane while
 the workspace was still being restored, and the document in the URL opened into
 the second pane instead of the first.
 
+**A pane that has been torn down builds no editor.** Opening a document is
+several awaits long, and collapsing the other pane onto this one can finish
+first — so the continuation would call `editor()`, which builds on demand, and
+leave a second `DocumentTab` that nothing owns: a live CodeMirror view, its
+autosave, and its freshness listeners on `window` and `document`, all outliving
+the pane. `teardownDocument` marks the workspace finished and the open stops
+there.
+
 <a id="design-7bd41e"></a>
 
 ## The outline panel
