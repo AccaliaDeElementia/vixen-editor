@@ -5,7 +5,8 @@ import { openSearchPanel } from '@codemirror/search'
 import type { EditorState, TransactionSpec } from '@codemirror/state'
 import type { Command, KeyBinding } from '@codemirror/view'
 
-import { KEYS } from '../platform/help.ts'
+import { chordsForControls, KEYS } from '../platform/help.ts'
+import { ariaKeysFor, nameOfChords, platformOf, type KeyPlatform } from '../platform/key-spelling.ts'
 import type { DocumentTab } from '../document/document-tab.ts'
 
 import { linkedAround, markedWith, prefixedWith } from './formatting.ts'
@@ -63,6 +64,20 @@ interface ControlBarOptions {
   previewing: () => PreviewControls
 }
 
+const NAMED = 'aria-label'
+const SHORTCUT = 'aria-keyshortcuts'
+
+function hintAtTheChords(host: ParentNode, platform: KeyPlatform): void {
+  for (const { part, chords } of chordsForControls()) {
+    const control = host.querySelector<HTMLElement>(`[data-part="${part}"]`)
+    const named = control?.getAttribute(NAMED) ?? null
+    if (control === null || named === null) continue
+
+    control.title = `${named} (${nameOfChords(chords, platform)})`
+    control.setAttribute(SHORTCUT, ariaKeysFor(chords, platform))
+  }
+}
+
 function onClick(host: ParentNode, part: string, run: () => void): void {
   host.querySelector<HTMLElement>(`[data-part="${part}"]`)?.addEventListener('click', run)
 }
@@ -85,7 +100,13 @@ export const formattingKeys: readonly KeyBinding[] = CHORDED.map(({ key, format 
   run: applying(format),
 }))
 
-export function bindControlBar(host: ParentNode, options: ControlBarOptions): void {
+export function bindControlBar(
+  host: ParentNode,
+  options: ControlBarOptions,
+  platform: KeyPlatform = platformOf(navigator),
+): void {
+  hintAtTheChords(host, platform)
+
   for (const { part, run } of RETURNING_TO_THE_TEXT) {
     onClick(host, part, () => {
       const { view } = options.editor()

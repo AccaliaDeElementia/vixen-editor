@@ -8,7 +8,7 @@ import { formattingKeys } from '../../../src/client/editing/control-bar.ts'
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import { vixenEditorSetup } from '../../../src/client/editing/editor-setup.ts'
 
-import { cheatsheet, helpSections, KEYS, TestOnly } from '../../../src/client/platform/help.ts'
+import { cheatsheet, chordsForControls, helpSections, KEYS, TestOnly } from '../../../src/client/platform/help.ts'
 import { spellingsFor, type Chord, type KeyPlatform } from '../../../src/client/platform/key-spelling.ts'
 
 const { SECTIONS, sectionsForAnyone } = TestOnly
@@ -153,5 +153,25 @@ describe('what the cheatsheet says about a tab that will not last', () => {
     const gestures = SECTIONS.flatMap((section) => section.entries.map((entry) => entry.does))
 
     expect(gestures).toContain('Keep a tab you are only looking at')
+  })
+})
+
+describe('the shortcuts the editing bar puts on its controls', () => {
+  it('names the controls the bar can annotate, and leaves the rows no control performs out', () => {
+    expect(chordsForControls().map(({ part }) => part)).toStrictEqual([
+      'edit-undo',
+      'edit-redo',
+      'edit-find',
+      'format-bold',
+      'format-italic',
+      'format-code',
+      'format-link',
+    ])
+  })
+
+  it('hands a control the chords the keyboard list already held for it, rather than a second copy', () => {
+    const redo = chordsForControls().find(({ part }) => part === 'edit-redo')
+
+    expect(redo?.chords).toStrictEqual([{ key: KEYS.redo, mac: KEYS.redoOnMac }, { linux: KEYS.redoOnLinux }])
   })
 })

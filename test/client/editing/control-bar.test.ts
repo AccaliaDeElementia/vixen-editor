@@ -5,6 +5,7 @@ import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { bindControlBar, formattingKeys, type PreviewControls } from '../../../src/client/editing/control-bar.ts'
+import type { KeyPlatform } from '../../../src/client/platform/key-spelling.ts'
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import { KEYS } from '../../../src/client/platform/help.ts'
 import type { DocumentTab } from '../../../src/client/document/document-tab.ts'
@@ -30,19 +31,30 @@ function editor(): EditorView {
   return trackView(new EditorView({ parent, state: createEditorState({ doc: WORD, extensions: [history()] }) }))
 }
 
-function bound(): void {
-  bindControlBar(host, {
-    editor: () => cast<DocumentTab>({ view }),
-    previewing: () =>
-      cast<PreviewControls>({
-        showMarkup: () => {
-          previewed.push('markup')
-        },
-        showSource: () => {
-          previewed.push('source')
-        },
-      }),
-  })
+function bound(platform?: KeyPlatform): void {
+  bindControlBar(
+    host,
+    {
+      editor: () => cast<DocumentTab>({ view }),
+      previewing: () =>
+        cast<PreviewControls>({
+          showMarkup: () => {
+            previewed.push('markup')
+          },
+          showSource: () => {
+            previewed.push('source')
+          },
+        }),
+    },
+    platform,
+  )
+}
+
+function controlIn(part: string): HTMLElement {
+  const control = host.querySelector<HTMLElement>(`[data-part="${part}"]`)
+  if (control === null) throw new Error(`missing ${part}`)
+
+  return control
 }
 
 function press(part: string): void {
@@ -212,5 +224,47 @@ describe('a pane whose control bar is not there', () => {
     host = document.createElement('div')
 
     expect(bound).not.toThrow()
+  })
+})
+
+describe('the shortcut a control says it has', () => {
+  it('titles it with the chord this reader presses, rather than with every platform at once', () => {
+    bound('win')
+
+    expect(controlIn('edit-undo').title).toBe('Undo (Ctrl + Z)')
+  })
+
+  it('spells the same chord again for a screen reader, which reads key names rather than prose', () => {
+    bound('win')
+
+    expect(controlIn('edit-undo').getAttribute('aria-keyshortcuts')).toBe('Control+Z')
+  })
+
+  it('names the redo Windows binds, which is not the one a Mac binds', () => {
+    bound('win')
+
+    expect(controlIn('edit-redo').getAttribute('aria-keyshortcuts')).toBe('Control+Y')
+  })
+
+  it('names the redo a Mac binds for a reader on one', () => {
+    bound('mac')
+
+    expect(controlIn('edit-redo').title).toBe('Redo (Cmd + Shift + Z)')
+  })
+
+  it('leaves a control the keymap gives no chord as the markup wrote it', () => {
+    bound('win')
+
+    expect(controlIn('format-heading').getAttribute('aria-keyshortcuts')).toBeNull()
+  })
+
+  it('leaves a control that names nothing untitled, rather than titling it with a bare chord', () => {
+    const unnamed = document.createElement('button')
+    unnamed.dataset.part = 'edit-undo'
+    host.replaceChildren(unnamed)
+
+    bound('win')
+
+    expect(unnamed.title).toBe('')
   })
 })

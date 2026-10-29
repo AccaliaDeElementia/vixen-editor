@@ -29,24 +29,21 @@ mixin pane(primary)
         data-part='edit-undo'
         type='button'
         aria-label='Undo'
-        title='Undo (Ctrl/Cmd + Z)'
-        aria-keyshortcuts='Control+Z Meta+Z'
+        title='Undo'
       )
         span.icon(aria-hidden='true') undo
       button.control(
         data-part='edit-redo'
         type='button'
         aria-label='Redo'
-        title='Redo (Ctrl/Cmd + Shift + Z)'
-        aria-keyshortcuts='Control+Shift+Z Meta+Shift+Z'
+        title='Redo'
       )
         span.icon(aria-hidden='true') redo
       button.control(
         data-part='edit-find'
         type='button'
         aria-label='Find and replace'
-        title='Find and replace (Ctrl/Cmd + F)'
-        aria-keyshortcuts='Control+F Meta+F'
+        title='Find and replace'
       )
         span.icon(aria-hidden='true') search
       span.control__divider(aria-hidden='true')
@@ -54,16 +51,14 @@ mixin pane(primary)
         data-part='format-bold'
         type='button'
         aria-label='Bold'
-        title='Bold (Ctrl/Cmd + B)'
-        aria-keyshortcuts='Control+B Meta+B'
+        title='Bold'
       )
         span.icon(aria-hidden='true') format_bold
       button.control(
         data-part='format-italic'
         type='button'
         aria-label='Italic'
-        title='Italic (Ctrl/Cmd + I)'
-        aria-keyshortcuts='Control+I Meta+I'
+        title='Italic'
       )
         span.icon(aria-hidden='true') format_italic
       button.control(data-part='format-strikethrough' type='button' aria-label='Strikethrough' title='Strikethrough')
@@ -72,16 +67,14 @@ mixin pane(primary)
         data-part='format-code'
         type='button'
         aria-label='Code'
-        title='Code (Ctrl/Cmd + E)'
-        aria-keyshortcuts='Control+E Meta+E'
+        title='Code'
       )
         span.icon(aria-hidden='true') code
       button.control(
         data-part='format-link'
         type='button'
         aria-label='Link'
-        title='Link (Ctrl/Cmd + K)'
-        aria-keyshortcuts='Control+K Meta+K'
+        title='Link'
       )
         span.icon(aria-hidden='true') link
       span.control__divider(aria-hidden='true')

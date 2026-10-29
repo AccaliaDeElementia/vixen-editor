@@ -11,6 +11,7 @@ interface Described {
 interface Chorded {
   does: string
   chords: readonly Chord[]
+  part?: string
 }
 
 type Entry = Described | Chorded
@@ -73,19 +74,20 @@ export const KEYS = {
 
 const SHORTCUTS: readonly Entry[] = [
   { does: 'Save the document', chords: [{ key: KEYS.save }] },
-  { does: 'Undo', chords: [{ key: KEYS.undo }] },
+  { does: 'Undo', chords: [{ key: KEYS.undo }], part: 'edit-undo' },
   {
     does: 'Redo what you undid',
     chords: [{ key: KEYS.redo, mac: KEYS.redoOnMac }, { linux: KEYS.redoOnLinux }],
+    part: 'edit-redo',
   },
-  { does: 'Find and replace inside the document', chords: [{ key: KEYS.find }] },
+  { does: 'Find and replace inside the document', chords: [{ key: KEYS.find }], part: 'edit-find' },
   { does: 'Go to the next thing Find matched', chords: [{ key: KEYS.findNext }] },
   { does: 'Open the link the caret is in', chords: [{ key: KEYS.openLink }] },
   { does: 'Dismiss a link tooltip', chords: [{ key: KEYS.dismissTooltip }] },
-  { does: 'Put bold around the selection', chords: [{ key: KEYS.bold }] },
-  { does: 'Put italics around the selection', chords: [{ key: KEYS.italic }] },
-  { does: 'Put code marks around the selection', chords: [{ key: KEYS.code }] },
-  { does: 'Make the selection a link', chords: [{ key: KEYS.link }] },
+  { does: 'Put bold around the selection', chords: [{ key: KEYS.bold }], part: 'format-bold' },
+  { does: 'Put italics around the selection', chords: [{ key: KEYS.italic }], part: 'format-italic' },
+  { does: 'Put code marks around the selection', chords: [{ key: KEYS.code }], part: 'format-code' },
+  { does: 'Make the selection a link', chords: [{ key: KEYS.link }], part: 'format-link' },
   {
     does: 'Fold the section under a heading',
     chords: [{ key: KEYS.foldSection, mac: KEYS.foldSectionOnMac }],
@@ -175,6 +177,17 @@ const SECTIONS: readonly Section[] = [
   { heading: 'Getting around', column: 'How', entries: GESTURES },
   { heading: 'Keyboard', column: 'Keys', entries: SHORTCUTS },
 ]
+
+interface ControlChords {
+  part: string
+  chords: readonly Chord[]
+}
+
+export function chordsForControls(): readonly ControlChords[] {
+  return SHORTCUTS.flatMap((entry) =>
+    'chords' in entry && entry.part !== undefined ? [{ part: entry.part, chords: entry.chords }] : [],
+  )
+}
 
 function describedFor(entry: Entry, platform: KeyPlatform): Described {
   return 'chords' in entry ? { does: entry.does, how: nameOfChords(entry.chords, platform) } : entry

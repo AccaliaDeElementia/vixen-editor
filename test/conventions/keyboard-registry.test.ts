@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url'
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { chordsForControls } from '../../src/client/platform/help.ts'
+import { createTemplateRenderer } from '../../src/server/templates.ts'
+
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const CLIENT = 'src/client'
@@ -16,6 +19,25 @@ const KEY_BINDING = /\bkey\s*(?::|===)\s*(?<bound>'[^']*'|"[^"]*"|\w+)/gv
 const REGISTRY_IMPORT = /^import\s+\{(?<names>[^\}]*)\}\s*from\s*'[^']*\/help\.ts'/gmv
 
 const KEY_ANNOTATION = 'string'
+
+const TAG = /<[^>]+>/gv
+const TITLE = /title="(?<said>[^"]*)"/gv
+const SPELLS_A_MODIFIER = /\b(?:Cmd|Ctrl|Control|Meta)\b/v
+const WRITTEN_BY_HAND = 'aria-keyshortcuts'
+
+const page = createTemplateRenderer('src/templates', false).render('editor', { title: 'Vixen Editor' })
+
+function tagsCarrying(attribute: string): string[] {
+  return [...page.matchAll(TAG)].map(([tag]) => tag).filter((tag) => tag.includes(attribute))
+}
+
+function titlesNamingAModifier(): string[] {
+  return [...page.matchAll(TITLE)].flatMap((match) => {
+    const said = match.groups?.said ?? ''
+
+    return SPELLS_A_MODIFIER.test(said) ? [said] : []
+  })
+}
 
 interface SourceFile {
   relativePath: string
@@ -81,5 +103,23 @@ describe('every keyboard binding names its key through the help registry', () =>
     const binding = bindingSites.filter((source) => [...source.contents.matchAll(KEY_BINDING)].length > 0)
 
     expect(binding.length).toBeGreaterThan(0)
+  })
+})
+
+describe('the markup spells no key, because the renderer spells them all', () => {
+  it('writes no shortcut attribute by hand, where one platform would always be wrong', () => {
+    expect(tagsCarrying(WRITTEN_BY_HAND)).toStrictEqual([])
+  })
+
+  it('names no modifier in a title either, for the same reason', () => {
+    expect(titlesNamingAModifier()).toStrictEqual([])
+  })
+
+  it('holds every control the help list annotates, so a renamed part is not quietly skipped', () => {
+    const missing = chordsForControls()
+      .map(({ part }) => part)
+      .filter((part) => !page.includes(`data-part="${part}"`))
+
+    expect(missing).toStrictEqual([])
   })
 })

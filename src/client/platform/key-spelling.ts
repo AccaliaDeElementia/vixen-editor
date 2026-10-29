@@ -37,13 +37,30 @@ const TYPED_WITH_SHIFT = /^\p{Uppercase_Letter}$/v
 const LAST_PART = -1
 const FIRST_PART = 0
 
+const CMD_PART = /^(?:cmd|meta|m)$/iv
+const CTRL_PART = /^(?:c|ctrl|control)$/iv
+const ALT_PART = /^a(?:lt)?$/iv
+const SHIFT_PART = /^s(?:hift)?$/iv
+
 const SHIFT = 'Shift'
-const MODIFIER_ORDER = ['Cmd', 'Ctrl/Cmd', 'Ctrl', 'Alt', SHIFT]
+const ALT = 'Alt'
+const CMD = 'Cmd'
+const CTRL = 'Ctrl'
+const EITHER_MODIFIER = 'Ctrl/Cmd'
+const META = 'Meta'
+const CONTROL = 'Control'
+const MODIFIER_ORDER = [CMD, EITHER_MODIFIER, CTRL, ALT, SHIFT]
+const ARIA_ORDER = [META, CONTROL, ALT, SHIFT]
 
 const SPACE = ' '
 const JOINER = ' + '
 const EITHER = ' or '
 const ALSO = ' and '
+const ARIA_JOINER = '+'
+const ARIA_EITHER = ' '
+
+const UNKNOWN_PLATFORM: KeyPlatform = 'key'
+const WHERE_UNKNOWN: readonly KeyPlatform[] = ['win', 'mac']
 
 interface Agent {
   platform: string
@@ -69,29 +86,71 @@ export function spellingsFor(chords: readonly Chord[], platform: KeyPlatform): s
 }
 
 function modifierNamed(part: string, platform: KeyPlatform): string {
-  if (/^(?:cmd|meta|m)$/iv.test(part)) return 'Cmd'
-  if (/^(?:c|ctrl|control)$/iv.test(part)) return 'Ctrl'
-  if (/^a(?:lt)?$/iv.test(part)) return 'Alt'
-  if (/^s(?:hift)?$/iv.test(part)) return 'Shift'
+  if (CMD_PART.test(part)) return CMD
+  if (CTRL_PART.test(part)) return CTRL
+  if (ALT_PART.test(part)) return ALT
+  if (SHIFT_PART.test(part)) return SHIFT
 
-  return platform === 'mac' ? 'Cmd' : platform === 'key' ? 'Ctrl/Cmd' : 'Ctrl'
+  return platform === 'mac' ? CMD : platform === UNKNOWN_PLATFORM ? EITHER_MODIFIER : CTRL
+}
+
+function ariaModifierNamed(part: string, platform: KeyPlatform): string {
+  if (CMD_PART.test(part)) return META
+  if (CTRL_PART.test(part)) return CONTROL
+  if (ALT_PART.test(part)) return ALT
+  if (SHIFT_PART.test(part)) return SHIFT
+
+  return platform === 'mac' ? META : CONTROL
+}
+
+function keyNamed(part: string): string {
+  if (part === SPACE) return 'Space'
+
+  return SINGLE_LETTER.test(part) ? part.toUpperCase() : part
 }
 
 function baseNamed(part: string): string {
-  if (part === SPACE) return 'Space'
   const arrow = ARROW.exec(part)?.groups?.direction
 
-  return arrow === undefined ? (SINGLE_LETTER.test(part) ? part.toUpperCase() : part) : `${arrow} arrow`
+  return arrow === undefined ? keyNamed(part) : `${arrow} arrow`
+}
+
+interface Vocabulary {
+  modifierNamed: (part: string, platform: KeyPlatform) => string
+  order: readonly string[]
+  baseNamed: (part: string) => string
+  joiner: string
+}
+
+const ON_SCREEN: Vocabulary = { modifierNamed, order: MODIFIER_ORDER, baseNamed, joiner: JOINER }
+const IN_ARIA: Vocabulary = {
+  modifierNamed: ariaModifierNamed,
+  order: ARIA_ORDER,
+  baseNamed: keyNamed,
+  joiner: ARIA_JOINER,
+}
+
+function spelledIn(vocabulary: Vocabulary, spelling: string, platform: KeyPlatform): string {
+  const parts = spelling.split(PARTS)
+  const base = parts.slice(LAST_PART)
+  const held = parts.slice(FIRST_PART, LAST_PART).map((part) => vocabulary.modifierNamed(part, platform))
+  const modifiers = [...held, ...base.flatMap((part) => (TYPED_WITH_SHIFT.test(part) ? [SHIFT] : []))]
+  const ordered = vocabulary.order.filter((name) => modifiers.includes(name))
+
+  return [...ordered, ...base.map(vocabulary.baseNamed)].join(vocabulary.joiner)
 }
 
 function nameOfKey(spelling: string, platform: KeyPlatform): string {
-  const parts = spelling.split(PARTS)
-  const base = parts.slice(LAST_PART)
-  const held = parts.slice(FIRST_PART, LAST_PART).map((part) => modifierNamed(part, platform))
-  const modifiers = [...held, ...base.flatMap((part) => (TYPED_WITH_SHIFT.test(part) ? [SHIFT] : []))]
-  const ordered = MODIFIER_ORDER.filter((name) => modifiers.includes(name))
+  return spelledIn(ON_SCREEN, spelling, platform)
+}
 
-  return [...ordered, ...base.map(baseNamed)].join(JOINER)
+export function ariaKeysFor(chords: readonly Chord[], platform: KeyPlatform): string {
+  const hosts = platform === UNKNOWN_PLATFORM ? WHERE_UNKNOWN : [platform]
+  const spelled = hosts.flatMap((host) =>
+    spellingsFor(chords, host).map((spelling) => spelledIn(IN_ARIA, spelling, host)),
+  )
+
+  return [...new Set(spelled)].join(ARIA_EITHER)
 }
 
 export function nameOfChords(chords: readonly Chord[], platform: KeyPlatform): string {

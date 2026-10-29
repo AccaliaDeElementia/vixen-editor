@@ -2,7 +2,13 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { neutralNameOf, platformOf, spellingsFor, TestOnly } from '../../../src/client/platform/key-spelling.ts'
+import {
+  ariaKeysFor,
+  neutralNameOf,
+  platformOf,
+  spellingsFor,
+  TestOnly,
+} from '../../../src/client/platform/key-spelling.ts'
 
 const { nameOfKey } = TestOnly
 
@@ -119,5 +125,29 @@ describe('what a chord is called where the reader is unknown', () => {
     expect(neutralNameOf([{ key: 'Ctrl-Shift-[', mac: 'Cmd-Alt-[' }])).toBe(
       'Cmd + Alt + [ on macOS, Ctrl + Shift + [ on Windows and Linux',
     )
+  })
+})
+
+describe('what a chord is called where a screen reader reads it', () => {
+  it.each([
+    ['save on Windows', [{ key: 'Mod-s' }], 'win', 'Control+S'],
+    ['save on a Mac', [{ key: 'Mod-s' }], 'mac', 'Meta+S'],
+    ['save where the platform is unknown', [{ key: 'Mod-s' }], 'key', 'Control+S Meta+S'],
+    ['redo on Windows', REDO, 'win', 'Control+Y'],
+    ['redo on a Mac', REDO, 'mac', 'Meta+Shift+Z'],
+    ['redo on Linux', REDO, 'linux', 'Control+Y Control+Shift+Z'],
+    ['redo where the platform is unknown', REDO, 'key', 'Control+Y Meta+Shift+Z'],
+    ['a chord typed with Shift', [{ key: 'Alt-A' }], 'win', 'Alt+Shift+A'],
+    [
+      'an arrow, which keeps the name the key event gives it',
+      [{ key: 'Mod-Alt-ArrowUp' }],
+      'win',
+      'Control+Alt+ArrowUp',
+    ],
+    ['a chord that names the Mac modifier itself', [{ mac: 'Cmd-Alt-[' }], 'mac', 'Meta+Alt+['],
+    ['the space bar', [{ key: ' ' }], 'win', 'Space'],
+    ['a chord no modifier changes, which is offered once', [{ key: 'Escape' }], 'key', 'Escape'],
+  ] as const)('spells %s as %s', (_label, chords, platform, expected) => {
+    expect(ariaKeysFor(chords, platform)).toBe(expected)
   })
 })

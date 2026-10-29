@@ -52,3 +52,18 @@ test('the help dialog names the redo this platform binds, which is not the same 
 
   await expect(against(page, 'Redo what you undid')).toHaveText(expected)
 })
+
+test('the editing bar names the redo this platform binds, rather than every platform at once', async ({
+  page,
+  request,
+}) => {
+  await page.goto(await storedDocument(request, `bar-redo-${String(Date.now())}.md`))
+
+  const expected = await page.evaluate(() => {
+    if (navigator.platform.includes('Mac')) return 'Meta+Shift+Z'
+
+    return /Linux|X11/v.test(navigator.platform) ? 'Control+Y Control+Shift+Z' : 'Control+Y'
+  })
+
+  await expect(page.locator('[data-part="edit-redo"]').first()).toHaveAttribute('aria-keyshortcuts', expected)
+})

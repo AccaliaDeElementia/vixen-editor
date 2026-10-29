@@ -149,6 +149,22 @@ key nothing describes, a key the editor no longer binds, and a key both lists
 claim. That last one is the reason the split is stated rather than assumed: two
 descriptions of one key drift, and nothing else would notice.
 
+**The editing bar says what it would press, and the markup does not.** A
+control's `title` and `aria-keyshortcuts` are written when the bar is bound,
+from the help row that names that control's `data-part`, so `Redo` reads
+`Ctrl + Y` on Windows and `Cmd + Shift + Z` on a Mac. The template used to spell
+both at once, which made it wrong wherever it was read;
+`test/conventions/keyboard-registry.test.ts` now fails on a template that names
+a modifier at all.
+
+**ARIA spells a chord in key names rather than in prose.**
+`aria-keyshortcuts` is read by assistive technology, so it wants `Control+Y`
+where the tooltip says `Ctrl + Y`, and `ArrowUp` where the tooltip says
+`Up arrow`. `key-spelling.ts` holds one parser and two vocabularies for that,
+which is how an upper-case base letter comes to add `Shift` to both. Where the
+platform is unknown the ARIA form offers the Windows and macOS chords together,
+separated by the space that attribute uses between alternatives.
+
 **A binding is identified by its whole chord, never by one spelling.** The same
 spelling means different things on different platforms — `Alt + Left` moves by
 word on macOS and over a syntax node everywhere else, because `defaultKeymap`
