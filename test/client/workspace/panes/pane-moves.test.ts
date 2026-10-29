@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { createPaneMoves } from '../../../../src/client/workspace/panes/pane-moves.ts'
+import { createPaneMoves, markPaneInFront } from '../../../../src/client/workspace/panes/pane-moves.ts'
 import type { PaneWorkspace } from '../../../../src/client/workspace/panes/pane-workspace.ts'
 import type { TabAt } from '../../../../src/client/workspace/tabs/open-tabs.ts'
 import { cast } from '../../../cast.ts'
@@ -128,14 +128,25 @@ describe('collapsing the aside onto the primary', () => {
 })
 
 describe('which pane is marked as the one in front', () => {
-  it('marks the pane in front, so the styling can follow focus', () => {
+  it('marks the one named and unmarks the rest, so the styling can follow the reader', () => {
     panesMarkup()
     const [first] = [...root.querySelectorAll<HTMLElement>('[data-part="pane"]')]
-    const front = cast<PaneWorkspace>({ element: first, pane: cast({ showing: () => null }) })
+    if (first === undefined) throw new Error('missing a pane to mark')
 
-    movesWith({ inFront: () => front, primary: front }).toPane('beside', false, false)
+    markPaneInFront(root, first)
 
     expect(frontFlags()).toStrictEqual(['true', 'false'])
+  })
+
+  it('moves the mark when another pane comes to the front', () => {
+    panesMarkup()
+    const [first, second] = [...root.querySelectorAll<HTMLElement>('[data-part="pane"]')]
+    if (first === undefined || second === undefined) throw new Error('missing a pane to mark')
+    markPaneInFront(root, first)
+
+    markPaneInFront(root, second)
+
+    expect(frontFlags()).toStrictEqual(['false', 'true'])
   })
 })
 

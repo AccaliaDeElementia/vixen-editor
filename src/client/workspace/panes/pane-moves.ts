@@ -32,13 +32,13 @@ interface PaneMoves {
   collapseOntoPrimary: (from: PaneWorkspace) => void
 }
 
-export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
-  function markPaneInFront(): void {
-    for (const candidate of options.root.querySelectorAll<HTMLElement>(PANE_SELECTOR)) {
-      candidate.dataset.infront = String(candidate === options.inFront().element)
-    }
+export function markPaneInFront(root: ParentNode, inFront: HTMLElement): void {
+  for (const candidate of root.querySelectorAll<HTMLElement>(PANE_SELECTOR)) {
+    candidate.dataset.infront = String(candidate === inFront)
   }
+}
 
+export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
   function acrossThePanes(): number {
     const panes = options.root.querySelector<HTMLElement>(PANES_SELECTOR)
 
@@ -50,7 +50,6 @@ export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
     options.forgetAside()
     options.goTo(options.primary)
     closeSplit(options.root, acrossThePanes())
-    markPaneInFront()
   }
 
   function heldBy(surface: PaneWorkspace, at: TabAt): boolean {
@@ -98,7 +97,6 @@ export function createPaneMoves(options: PaneMovesOptions): PaneMoves {
       }
 
       options.goTo(arriving)
-      markPaneInFront()
     },
   }
 }

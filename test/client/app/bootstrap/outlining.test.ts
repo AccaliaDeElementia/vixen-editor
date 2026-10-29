@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 import { announcePanelChanged } from '../../../../src/client/platform/announce/panel-changed.ts'
+import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
 import { FILES_PANEL, OUTLINE_PANEL, showPanel } from '../../../../src/client/platform/panels.ts'
 import { given, givenAsync } from '../../../conditions.ts'
 import {
@@ -32,8 +33,12 @@ const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
 
+const OPEN_DOCUMENT = 'notes.md'
+
 function fakeSession(content: string): Session {
-  return sessionRecording(record, { load: () => Promise.resolve({ content, stored: true }) })
+  return sessionRecording(record, {
+    load: (id: string) => Promise.resolve({ content: id === OPEN_DOCUMENT ? content : `# ${id}`, stored: true }),
+  })
 }
 
 async function editing(content: string): Promise<{ view: EditorView; settled: () => Promise<void> }> {
@@ -64,6 +69,12 @@ function saidInstead(): string {
   const said = root.querySelector<HTMLElement>('[data-part="outline-empty"]')
 
   return said?.hidden === false ? said.textContent : ''
+}
+
+function clickIntoTheEditorIn(pane: number): void {
+  const editors = root.querySelectorAll<HTMLElement>('[data-part="pane"] .cm-content')
+
+  editors[pane]?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
 }
 
 function pressRow(index: number): void {
@@ -154,6 +165,21 @@ describe('the outline of the document in front', () => {
     showingTheOutline()
 
     expect(rowsShown()).toHaveLength(SECTIONS_PAST_THE_PARSE_BUDGET)
+  })
+
+  it('follows the editor the reader clicks into, rather than staying with the pane they left', async () => {
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    requestOpenAside(root, 'aside.md')
+    await givenAsync(editor.settled())
+    showingTheOutline()
+    given(() => {
+      expect(rowsShown()).toStrictEqual(['aside.md'])
+    })
+
+    clickIntoTheEditorIn(0)
+
+    expect(rowsShown()).toStrictEqual(['alpha', 'beta'])
   })
 
   it('says nothing is open once the reader closes the last tab', async () => {

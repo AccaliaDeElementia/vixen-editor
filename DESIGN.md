@@ -69,6 +69,24 @@ coverage gate.
 explorer is hidden it leaves the grid flow entirely, and with auto-placement
 the workspace slides into the collapsed `0`-width track and the editor vanishes.
 
+<a id="design-2e7c94"></a>
+
+## The pane in front
+
+**One function moves it.** `goTo` in `bootstrap.ts` sets `touched`, marks the
+pane with `data-infront` and refreshes the outline. Activating a tab, the
+keyboard pane moves, opening beside, startup and the reader working in a pane
+all go through it, so the three things that follow the front pane cannot drift
+apart — and before they did: the marker was written only by the keyboard moves,
+so clicking a tab in the other pane left the underline on the pane the reader
+had left.
+
+**It follows a gesture, not focus.** `pointerdown` and `keydown` on a pane mean
+the reader is working there. Focus does not, because the app focuses an editor
+whenever it shows a document: a `focusin` listener moved the front pane while
+the workspace was still being restored, and the document in the URL opened into
+the second pane instead of the first.
+
 <a id="design-7bd41e"></a>
 
 ## The outline panel

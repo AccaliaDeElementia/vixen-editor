@@ -7,7 +7,7 @@ import type { Session } from '../../../../src/client/document/session.ts'
 import { cast } from '../../../cast.ts'
 import { page, recorded, sessionRecording, trackEditor, type Recorded } from '../../editor-fixtures.ts'
 import { dialogsDismissing, filesAnsweringEmpty } from '../../editor-fixtures.ts'
-import { givenAsync } from '../../../conditions.ts'
+import { given, givenAsync } from '../../../conditions.ts'
 import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
 
 let root: HTMLElement = document.createElement('div')
@@ -50,6 +50,16 @@ function stubbedNavigation(): { navigation: Navigation; go: (url: string) => Pro
   }
 }
 
+function frontFlags(): Array<string | undefined> {
+  return [...root.querySelectorAll<HTMLElement>('[data-part="pane"]')].map((pane) => pane.dataset.infront)
+}
+
+function clickIntoTheEditorIn(pane: number): void {
+  const editors = root.querySelectorAll<HTMLElement>('[data-part="pane"] .cm-content')
+
+  editors[pane]?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+}
+
 function tabsIn(pane: number): Array<string | undefined> {
   const { [pane]: strip } = root.querySelectorAll<HTMLElement>('[data-part="tabs"]')
 
@@ -82,6 +92,42 @@ describe('opening a document after a preview was shown', () => {
     await givenAsync(stub.go('/doc/other.md'))
 
     expect(tabsIn(0)).toStrictEqual(['editor:other.md'])
+  })
+})
+
+describe('the pane the reader is working in', () => {
+  async function workingAside(): Promise<{ settled: () => Promise<void> }> {
+    const editor = trackEditor(
+      await bootstrapOrReport({
+        root,
+        pathname: '/doc/notes.md',
+        session: fakeSession(),
+        files: filesAnsweringEmpty(),
+        dialogs: dialogsDismissing(),
+      }),
+    )
+    if (editor === null) throw new Error('the editor did not start')
+    requestOpenAside(root, 'other.md')
+    await givenAsync(editor.settled())
+
+    return editor
+  }
+
+  it('is marked from the start, so the strip says where a document will open before anything is pressed', async () => {
+    await workingAside()
+
+    expect(frontFlags()).toStrictEqual(['false', 'true'])
+  })
+
+  it('follows the editor the reader clicks into, not only the tab they activate', async () => {
+    await workingAside()
+    given(() => {
+      expect(frontFlags()).toStrictEqual(['false', 'true'])
+    })
+
+    clickIntoTheEditorIn(0)
+
+    expect(frontFlags()).toStrictEqual(['true', 'false'])
   })
 })
 

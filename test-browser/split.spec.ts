@@ -199,3 +199,14 @@ test('dismissing a pane that holds tabs brings them to the one that survives', a
 
   await expect(page.locator(PANE).first().locator(`[data-tab="editor:${aside}"]`)).toBeVisible()
 })
+
+test('clicking into the second pane marks it as the one in front', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `front-${String(Date.now())}.md`))
+  await page.locator('[data-part="split-beside"]').click()
+  await givenAsync(expect(page.locator(PANE)).toHaveCount(2))
+  await givenAsync(expect(page.locator(PANE).first()).toHaveAttribute('data-infront', 'true'))
+
+  await page.locator(PANE).last().click()
+
+  await expect(page.locator(PANE).last()).toHaveAttribute('data-infront', 'true')
+})

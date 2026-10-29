@@ -23,7 +23,7 @@ import { createPreviewing } from '../preview/previewing.ts'
 
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { bindTabKeys } from '../workspace/tabs/tab-keys.ts'
-import { createPaneMoves } from '../workspace/panes/pane-moves.ts'
+import { createPaneMoves, markPaneInFront } from '../workspace/panes/pane-moves.ts'
 import { createAside } from '../workspace/panes/aside.ts'
 import { createAcrossPanes } from '../workspace/panes/across-panes.ts'
 import { createCaretMemory } from '../document/caret-memory.ts'
@@ -57,6 +57,7 @@ import { bindHistoryButtons, refreshHistoryButtons } from '../chrome/history-but
 import { paneIn, wiringFor } from './wiring.ts'
 
 const BESIDE = 'beside'
+const READER_AT_WORK = ['pointerdown', 'keydown']
 const EVERYTHING_PENDING = 0
 
 type PaneSettings = Pick<
@@ -116,7 +117,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
 
   function paneWorkspaceWith(settings: PaneSettings): PaneWorkspace {
-    return createPaneWorkspace({
+    const built = createPaneWorkspace({
       root,
       session,
       files,
@@ -133,6 +134,14 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       caretMemory,
       ...settings,
     })
+
+    function comeToTheFront(): void {
+      if (built !== touched) goTo(built)
+    }
+
+    for (const gesture of READER_AT_WORK) settings.element.addEventListener(gesture, comeToTheFront)
+
+    return built
   }
 
   const primaryWorkspace = paneWorkspaceWith({
@@ -141,7 +150,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     holds: documentIdFromPath(pathname),
     listenForFocus: options.listenForFocus,
     onActivate: (at: TabAt) => {
-      touched = primaryWorkspace
+      goTo(primaryWorkspace)
       activate(at)
     },
     onCloseRequested: (at: TabAt) => {
@@ -161,6 +170,12 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   function textInFront(): string | null {
     return touched.held.path() === null ? null : touched.editor().view.state.doc.toString()
+  }
+
+  function goTo(surface: PaneWorkspace): void {
+    touched = surface
+    markPaneInFront(root, surface.element)
+    refreshOutline()
   }
 
   function refreshOutline(): void {
@@ -184,7 +199,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     const elsewhere = touched === primaryWorkspace ? aside.summon(BESIDE) : primaryWorkspace
     if (elsewhere === null) return
 
-    touched = elsewhere
+    goTo(elsewhere)
     pending.push(elsewhere.showDocument(entryPath))
   })
 
@@ -218,7 +233,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
         id: 'secondary',
         holds: null,
         onActivate: (at: TabAt) => {
-          touched = built
+          goTo(built)
           activate(at)
         },
         onCloseRequested: (at: TabAt) => {
@@ -300,9 +315,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     primary: primaryWorkspace,
     summon: aside.summon,
     inFront: () => touched,
-    goTo: (surface: PaneWorkspace) => {
-      touched = surface
-    },
+    goTo,
     forgetAside: aside.forget,
     aside: aside.current,
     settleOn: (at: TabAt, carryingFrom: PaneWorkspace | null) => {
@@ -379,7 +392,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const restored = aside.reconcile()
   if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
 
-  touched = panes.showingTheDocument(documentIdFromPath(pathname))
+  goTo(panes.showingTheDocument(documentIdFromPath(pathname)))
   for (const surface of panes.open()) {
     if (surface === touched) continue
     if (surface.pane.isEmpty()) surface.workspace.show('empty', STORE_ROOT)
