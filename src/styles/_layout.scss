@@ -999,6 +999,10 @@
   margin-bottom: $space-sm;
 }
 
+.modal__mode {
+  align-self: flex-start;
+}
+
 .modal__body {
   max-height: 60vh;
   overflow-y: auto;

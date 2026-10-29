@@ -23,6 +23,7 @@ const { readExplorerState } = explorerTestOnly
 
 const VIEWPORT = 1000
 const EXPLORER_LEFT = 64
+const HELP_TITLE = 'Keyboard shortcuts and gestures'
 
 let root: HTMLElement = document.createElement('div')
 
@@ -353,13 +354,21 @@ describe('the toggle button', () => {
   })
 })
 
+function headingsInHelp(): Array<string | null> {
+  return [...root.querySelectorAll('#file-dialog-body h3')].map((heading) => heading.textContent)
+}
+
 describe('the help button', () => {
-  it('opens a dialog listing the gestures and shortcuts', () => {
+  it('titles the dialog as the control that opens it does, rather than as help in general', () => {
     initLayout({ root, view: fakeView() })
+    const opener = root.querySelector<HTMLElement>('#show-shortcuts')
+    given(() => {
+      expect(opener?.getAttribute('aria-label')).toBe(HELP_TITLE)
+    })
 
-    root.querySelector<HTMLElement>('#show-shortcuts')?.click()
+    opener?.click()
 
-    expect(root.querySelector('#file-dialog-title')?.textContent).toBe('Help')
+    expect(root.querySelector('#file-dialog-title')?.textContent).toBe(HELP_TITLE)
   })
 
   it('lists the gestures and shortcuts in that dialog', () => {
@@ -376,6 +385,23 @@ describe('the help button', () => {
     root.querySelector<HTMLElement>('#show-shortcuts')?.click()
 
     expect(root.querySelector('#file-dialog-confirm')?.textContent).toBe('Close')
+  })
+
+  it('opens on the cheatsheet, which is the shorter of the two lists', () => {
+    initLayout({ root, view: fakeView() })
+
+    root.querySelector<HTMLElement>('#show-shortcuts')?.click()
+
+    expect(headingsInHelp()).not.toContain('More keys the editor binds')
+  })
+
+  it('offers the keys the cheatsheet leaves out, rather than hiding them from a reader who wants them', () => {
+    initLayout({ root, view: fakeView() })
+    root.querySelector<HTMLElement>('#show-shortcuts')?.click()
+
+    root.querySelector<HTMLElement>('#file-dialog-mode')?.click()
+
+    expect(headingsInHelp()).toContain('More keys the editor binds')
   })
 
   it('does nothing when the page has no help button', () => {

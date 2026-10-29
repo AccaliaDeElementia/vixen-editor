@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const CLIENT = 'src/client'
-const HELP_REGISTRY = 'src/client/platform/help.ts'
+const NAMES_KEYS_WITHOUT_BINDING_THEM = ['src/client/platform/help.ts', 'src/client/editing/editor-shortcuts.ts']
 const SOURCE_EXTENSION = '.ts'
 
 const KEY_BINDING = /\bkey\s*(?::|===)\s*(?<bound>'[^']*'|"[^"]*"|\w+)/gv
@@ -60,7 +60,9 @@ function boundOutsideRegistry({ relativePath, contents }: SourceFile): string[] 
 }
 
 beforeAll(async () => {
-  const paths = (await collect(CLIENT)).filter((relativePath) => relativePath !== HELP_REGISTRY).sort()
+  const paths = (await collect(CLIENT))
+    .filter((relativePath) => !NAMES_KEYS_WITHOUT_BINDING_THEM.includes(relativePath))
+    .sort()
 
   bindingSites = await Promise.all(
     paths.map(async (relativePath) => ({

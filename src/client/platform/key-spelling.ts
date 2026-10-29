@@ -32,15 +32,18 @@ const NAMED_PLATFORMS: ReadonlyArray<readonly [KeyPlatform, string]> = [
 const PARTS = /-(?!$)/v
 const ARROW = /^Arrow(?<direction>Up|Down|Left|Right)$/v
 const SINGLE_LETTER = /^\p{Letter}$/v
+const TYPED_WITH_SHIFT = /^\p{Uppercase_Letter}$/v
 
 const LAST_PART = -1
 const FIRST_PART = 0
 
-const MODIFIER_ORDER = ['Cmd', 'Ctrl/Cmd', 'Ctrl', 'Alt', 'Shift']
+const SHIFT = 'Shift'
+const MODIFIER_ORDER = ['Cmd', 'Ctrl/Cmd', 'Ctrl', 'Alt', SHIFT]
 
 const SPACE = ' '
 const JOINER = ' + '
 const EITHER = ' or '
+const ALSO = ' and '
 
 interface Agent {
   platform: string
@@ -61,7 +64,7 @@ export function platformOf(agent: Agent): KeyPlatform {
   return 'key'
 }
 
-function spellingsFor(chords: readonly Chord[], platform: KeyPlatform): string[] {
+export function spellingsFor(chords: readonly Chord[], platform: KeyPlatform): string[] {
   return chords.flatMap((chord) => chord[platform] ?? chord.key ?? [])
 }
 
@@ -83,10 +86,12 @@ function baseNamed(part: string): string {
 
 function nameOfKey(spelling: string, platform: KeyPlatform): string {
   const parts = spelling.split(PARTS)
-  const modifiers = parts.slice(FIRST_PART, LAST_PART).map((part) => modifierNamed(part, platform))
+  const base = parts.slice(LAST_PART)
+  const held = parts.slice(FIRST_PART, LAST_PART).map((part) => modifierNamed(part, platform))
+  const modifiers = [...held, ...base.flatMap((part) => (TYPED_WITH_SHIFT.test(part) ? [SHIFT] : []))]
   const ordered = MODIFIER_ORDER.filter((name) => modifiers.includes(name))
 
-  return [...ordered, ...parts.slice(LAST_PART).map(baseNamed)].join(JOINER)
+  return [...ordered, ...base.map(baseNamed)].join(JOINER)
 }
 
 export function nameOfChords(chords: readonly Chord[], platform: KeyPlatform): string {
@@ -95,12 +100,23 @@ export function nameOfChords(chords: readonly Chord[], platform: KeyPlatform): s
     .join(EITHER)
 }
 
+function platformsByName(chords: readonly Chord[]): Map<string, string[]> {
+  const grouped = new Map<string, string[]>()
+
+  for (const [platform, named] of NAMED_PLATFORMS) {
+    const spelled = nameOfChords(chords, platform)
+    grouped.set(spelled, [...(grouped.get(spelled) ?? []), named])
+  }
+
+  return grouped
+}
+
 export function neutralNameOf(chords: readonly Chord[]): string {
   const everywhere = spellingsFor(chords, 'key').join(EITHER)
   const alike = NAMED_PLATFORMS.every(([platform]) => spellingsFor(chords, platform).join(EITHER) === everywhere)
   if (alike) return nameOfChords(chords, 'key')
 
-  return NAMED_PLATFORMS.map(([platform, named]) => `${nameOfChords(chords, platform)} on ${named}`).join(', ')
+  return [...platformsByName(chords)].map(([spelled, named]) => `${spelled} on ${named.join(ALSO)}`).join(', ')
 }
 
-export const TestOnly = { PLATFORM_RULES, nameOfKey, spellingsFor }
+export const TestOnly = { PLATFORM_RULES, nameOfKey }

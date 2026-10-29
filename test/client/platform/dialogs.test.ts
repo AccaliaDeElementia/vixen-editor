@@ -7,6 +7,20 @@ import { createDialogs } from '../../../src/client/platform/dialogs.ts'
 import { renderDialog } from '../templates.ts'
 import { cast } from '../../cast.ts'
 
+const HELP_REQUEST = {
+  title: 'Help',
+  closeLabel: 'Close',
+  shown: { name: 'Cheatsheet', sections: [{ heading: 'Keyboard', entries: [{ does: 'Save', how: 'Ctrl/Cmd + S' }] }] },
+  alternate: {
+    name: 'All shortcuts',
+    sections: [{ heading: 'More keys', entries: [{ does: 'Fold', how: 'Alt + F' }] }],
+  },
+}
+
+function headingsShown(): Array<string | null> {
+  return [...document.querySelectorAll('#file-dialog-body h3')].map((heading) => heading.textContent)
+}
+
 function page(): void {
   document.body.innerHTML = renderDialog()
 }
@@ -285,7 +299,7 @@ describe('two parts of the app wanting the dialog at once', () => {
   }
 
   function helpFrom(dialogs: ReturnType<typeof createDialogs>): Promise<void> {
-    return dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: [] })
+    return dialogs.inform(HELP_REQUEST)
   }
 
   function titleShown(): string {
@@ -570,27 +584,20 @@ const REQUIRED_IDS = [
   'file-dialog-confirm',
   'file-dialog-choices',
   'file-dialog-body',
-]
-
-const HELP = [
-  { heading: 'Keyboard', entries: [{ does: 'Save', how: 'Ctrl/Cmd + S' }] },
-  { heading: 'Markdown', entries: [{ does: 'Heading', how: '# Title' }] },
+  'file-dialog-mode',
 ]
 
 describe('inform', () => {
-  it('lists every section it was given', () => {
+  it('lists the sections of the view it opens with', () => {
     const dialogs = createDialogs(document)
-    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    void dialogs.inform(HELP_REQUEST)
 
-    expect([...document.querySelectorAll('#file-dialog-body h3')].map((h) => h.textContent)).toStrictEqual([
-      'Keyboard',
-      'Markdown',
-    ])
+    expect(headingsShown()).toStrictEqual(['Keyboard'])
   })
 
   it('pairs each thing with how it is done', () => {
     const dialogs = createDialogs(document)
-    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    void dialogs.inform(HELP_REQUEST)
 
     expect({
       term: document.querySelector('#file-dialog-body dt')?.textContent,
@@ -600,35 +607,35 @@ describe('inform', () => {
 
   it('offers one way out, since there is nothing to decide', () => {
     const dialogs = createDialogs(document)
-    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    void dialogs.inform(HELP_REQUEST)
 
     expect(document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden).toBe(true)
   })
 
   it('hides the name field, because there is nothing to type', () => {
     const dialogs = createDialogs(document)
-    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    void dialogs.inform(HELP_REQUEST)
 
     expect(document.querySelector<HTMLElement>('#file-dialog-field')?.hidden).toBe(true)
   })
 
   it('shows the body it just filled, which the other dialogs keep hidden', () => {
     const dialogs = createDialogs(document)
-    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    void dialogs.inform(HELP_REQUEST)
 
     expect(document.querySelector<HTMLElement>('#file-dialog-body')?.hidden).toBe(false)
   })
 
   it('labels that way out as it was asked to', () => {
     const dialogs = createDialogs(document)
-    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    void dialogs.inform(HELP_REQUEST)
 
     expect(document.querySelector('#file-dialog-confirm')?.textContent).toBe('Close')
   })
 
   it('resolves when it is closed', async () => {
     const dialogs = createDialogs(document)
-    const shown = dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    const shown = dialogs.inform(HELP_REQUEST)
 
     click('#file-dialog-confirm')
 
@@ -637,7 +644,7 @@ describe('inform', () => {
 
   it('leaves the dialog fit for the next use', async () => {
     const dialogs = createDialogs(document)
-    const shown = dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP })
+    const shown = dialogs.inform(HELP_REQUEST)
 
     click('#file-dialog-confirm')
     await givenAsync(shown)
@@ -646,7 +653,64 @@ describe('inform', () => {
       sections: document.querySelectorAll('#file-dialog-body h3').length,
       bodyHidden: document.querySelector<HTMLElement>('#file-dialog-body')?.hidden,
       cancelHidden: document.querySelector<HTMLElement>('#file-dialog-cancel')?.hidden,
-    }).toStrictEqual({ sections: 0, bodyHidden: true, cancelHidden: false })
+      modeHidden: document.querySelector<HTMLElement>('#file-dialog-mode')?.hidden,
+    }).toStrictEqual({ sections: 0, bodyHidden: true, cancelHidden: false, modeHidden: true })
+  })
+
+  it('shows the button that switches view, which every other dialog keeps hidden', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform(HELP_REQUEST)
+
+    expect(document.querySelector<HTMLElement>('#file-dialog-mode')?.hidden).toBe(false)
+  })
+
+  it('offers the other view by name, so what the button leads to is readable before pressing it', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform(HELP_REQUEST)
+
+    expect(document.querySelector('#file-dialog-mode')?.textContent).toBe('All shortcuts')
+  })
+
+  it('shows the other view when that button is pressed', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform(HELP_REQUEST)
+
+    click('#file-dialog-mode')
+
+    expect(headingsShown()).toStrictEqual(['More keys'])
+  })
+
+  it('offers the way back, so the toggle is a toggle rather than a one-way door', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform(HELP_REQUEST)
+
+    click('#file-dialog-mode')
+
+    expect(document.querySelector('#file-dialog-mode')?.textContent).toBe('Cheatsheet')
+  })
+
+  it('goes back to the first view when that button is pressed again', () => {
+    const dialogs = createDialogs(document)
+    void dialogs.inform(HELP_REQUEST)
+    click('#file-dialog-mode')
+    given(() => {
+      expect(headingsShown()).toStrictEqual(['More keys'])
+    })
+
+    click('#file-dialog-mode')
+
+    expect(headingsShown()).toStrictEqual(['Keyboard'])
+  })
+
+  it('stops listening to that button once it is closed, so a stale view cannot come back', async () => {
+    const dialogs = createDialogs(document)
+    const shown = dialogs.inform(HELP_REQUEST)
+    click('#file-dialog-confirm')
+    await givenAsync(shown)
+
+    click('#file-dialog-mode')
+
+    expect(headingsShown()).toStrictEqual([])
   })
 })
 
@@ -688,9 +752,7 @@ describe('a page without the dialog markup', () => {
   it('shows no help rather than throwing', async () => {
     document.body.innerHTML = '<p>nothing here</p>'
 
-    await expect(
-      createDialogs(document).inform({ title: 'x', closeLabel: 'Close', sections: HELP }),
-    ).resolves.toBeUndefined()
+    await expect(createDialogs(document).inform(HELP_REQUEST)).resolves.toBeUndefined()
   })
 
   it('declines a choice rather than throwing', async () => {

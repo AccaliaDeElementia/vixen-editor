@@ -9,10 +9,9 @@ import { createEditorState } from '../../../src/client/editing/markdown-setup.ts
 import { vixenEditorSetup } from '../../../src/client/editing/editor-setup.ts'
 
 import { cheatsheet, helpSections, KEYS, TestOnly } from '../../../src/client/platform/help.ts'
-import { TestOnly as spelling, type Chord, type KeyPlatform } from '../../../src/client/platform/key-spelling.ts'
+import { spellingsFor, type Chord, type KeyPlatform } from '../../../src/client/platform/key-spelling.ts'
 
 const { SECTIONS, sectionsForAnyone } = TestOnly
-const { spellingsFor } = spelling
 
 const HOST: KeyPlatform = 'win'
 const EVERY_PLATFORM: readonly KeyPlatform[] = ['mac', 'win', 'linux']
@@ -28,95 +27,6 @@ function keysNamed(): Set<string> {
   )
 
   return new Set([...chorded.filter((spelled) => spelled !== undefined), ...described])
-}
-
-const INHERITED_FROM_THE_EDITOR: readonly string[] = [
-  'Alt-A',
-  'Alt-ArrowDown',
-  'Alt-ArrowLeft',
-  'Alt-ArrowRight',
-  'Alt-ArrowUp',
-  'Alt-Backspace',
-  'Alt-Delete',
-  'Alt-`',
-  'Alt-i',
-  'Alt-l',
-  'Alt-u',
-  'Backspace',
-  'Cmd-Alt-[',
-  'Cmd-Alt-]',
-  'Cmd-ArrowDown',
-  'Cmd-ArrowLeft',
-  'Cmd-ArrowRight',
-  'Cmd-ArrowUp',
-  'Ctrl-A',
-  'Ctrl-Alt-[',
-  'Ctrl-Alt-]',
-  'Ctrl-Alt-h',
-  'Ctrl-ArrowDown',
-  'Ctrl-ArrowLeft',
-  'Ctrl-ArrowRight',
-  'Ctrl-ArrowUp',
-  'Ctrl-Shift-[',
-  'Ctrl-Shift-]',
-  'Ctrl-Shift-z',
-  'Ctrl-Space',
-  'Ctrl-a',
-  'Ctrl-b',
-  'Ctrl-d',
-  'Ctrl-e',
-  'Ctrl-f',
-  'Ctrl-h',
-  'Ctrl-k',
-  'Ctrl-l',
-  'Ctrl-m',
-  'Ctrl-n',
-  'Ctrl-o',
-  'Ctrl-p',
-  'Ctrl-t',
-  'Ctrl-v',
-  'Delete',
-  'F3',
-  'Mod-/',
-  'Mod-Alt-ArrowDown',
-  'Mod-Alt-ArrowUp',
-  'Mod-Alt-\\',
-  'Mod-Alt-g',
-  'Mod-ArrowLeft',
-  'Mod-ArrowRight',
-  'Mod-Backspace',
-  'Mod-Delete',
-  'Mod-End',
-  'Mod-Home',
-  'Mod-Shift-l',
-  'Mod-Shift-u',
-  'Mod-[',
-  'Mod-]',
-  'Mod-a',
-  'Mod-d',
-  'Mod-u',
-  'Mod-y',
-  'PageDown',
-  'PageUp',
-  'Shift-Alt-ArrowDown',
-  'Shift-Alt-ArrowUp',
-  'Shift-Alt-m',
-  'Shift-Mod-\\',
-  'Shift-Mod-k',
-]
-
-function keysBoundInTheEditor(): string[] {
-  const found = new Set<string>()
-
-  for (const binding of createEditorState({ extensions: [vixenEditorSetup] })
-    .facet(keymap)
-    .flat()) {
-    for (const spelled of [binding.key, binding.mac, binding.win, binding.linux]) {
-      if (typeof spelled === 'string') found.add(spelled)
-    }
-  }
-
-  return [...found].sort()
 }
 
 function wholeApp(): EditorState {
@@ -243,19 +153,5 @@ describe('what the cheatsheet says about a tab that will not last', () => {
     const gestures = SECTIONS.flatMap((section) => section.entries.map((entry) => entry.does))
 
     expect(gestures).toContain('Keep a tab you are only looking at')
-  })
-})
-
-describe('every key the editor itself binds is accounted for', () => {
-  it('leaves no key bound by an extension that neither the cheatsheet nor the inherited list names', () => {
-    const named = new Set([...Object.values(KEYS), ...INHERITED_FROM_THE_EDITOR])
-
-    expect(keysBoundInTheEditor().filter((key) => !named.has(key))).toStrictEqual([])
-  })
-
-  it('calls no key inherited that the editor has stopped binding, so the list retires itself', () => {
-    const bound = new Set(keysBoundInTheEditor())
-
-    expect(INHERITED_FROM_THE_EDITOR.filter((key) => !bound.has(key))).toStrictEqual([])
   })
 })

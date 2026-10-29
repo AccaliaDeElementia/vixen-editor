@@ -41,10 +41,16 @@ interface HelpSection {
   entries: ReadonlyArray<{ does: string; how: string }>
 }
 
+interface HelpView {
+  name: string
+  sections: readonly HelpSection[]
+}
+
 interface InformRequest {
   title: string
   closeLabel: string
-  sections: readonly HelpSection[]
+  shown: HelpView
+  alternate: HelpView
 }
 
 export interface Dialogs {
@@ -70,6 +76,7 @@ interface FrameParts {
   confirm: HTMLElement
   choices: HTMLElement
   body: HTMLElement
+  mode: HTMLElement
 }
 
 type Parts = FieldParts & FrameParts
@@ -95,12 +102,13 @@ function framePartsOf(root: ParentNode): FrameParts | null {
   const confirm = root.querySelector<HTMLElement>('#file-dialog-confirm')
   const choices = root.querySelector<HTMLElement>('#file-dialog-choices')
   const body = root.querySelector<HTMLElement>('#file-dialog-body')
+  const mode = root.querySelector<HTMLElement>('#file-dialog-mode')
 
   if (dialog === null || title === null || body === null) return null
-  if (message === null || cancel === null) return null
+  if (message === null || cancel === null || mode === null) return null
   if (confirm === null || choices === null) return null
 
-  return { dialog, title, message, cancel, confirm, choices, body }
+  return { dialog, title, message, cancel, confirm, choices, body, mode }
 }
 
 function partsOf(root: ParentNode): Parts | null {
@@ -256,18 +264,39 @@ function sectionOf({ heading: title, entries }: HelpSection): HTMLElement {
 }
 
 async function informWith(parts: Parts, request: InformRequest): Promise<void> {
-  const { dialog, message, field, cancel, body } = parts
+  const { dialog, message, field, cancel, body, mode } = parts
+
+  let { shown: showing, alternate: waiting } = request
+
+  function show(): void {
+    const { sections } = showing
+    const { name } = waiting
+
+    body.replaceChildren(...sections.map(sectionOf))
+    mode.textContent = name
+  }
+
+  const swap = (): void => {
+    const wasShowing = showing
+    showing = waiting
+    waiting = wasShowing
+    show()
+  }
 
   reset(parts, request.title, request.closeLabel)
   message.textContent = ''
   field.hidden = true
   cancel.hidden = true
-  body.replaceChildren(...request.sections.map(sectionOf))
+  show()
+  mode.hidden = false
+  mode.addEventListener('click', swap)
   body.hidden = false
   dialog.showModal()
 
   await settled(dialog)
 
+  mode.removeEventListener('click', swap)
+  mode.hidden = true
   body.replaceChildren()
   body.hidden = true
   cancel.hidden = false

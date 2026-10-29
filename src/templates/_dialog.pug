@@ -22,6 +22,7 @@ dialog.modal#file-dialog(aria-labelledby='file-dialog-title')
       )
       span.modal__preview#file-dialog-preview(hidden aria-live='polite')
     p.modal__error#file-dialog-error(role='alert')
+    button.modal__button.modal__mode#file-dialog-mode(type='button' hidden aria-controls='file-dialog-body')
     .modal__body#file-dialog-body(hidden tabindex='0')
     .modal__choices#file-dialog-choices(hidden)
     .modal__actions

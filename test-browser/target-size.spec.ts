@@ -76,6 +76,20 @@ test(`every pointer target in an open dialog is at least ${MINIMUM} by ${MINIMUM
   await request.delete(`/api/files/entries/${folder}`)
 })
 
+test(`every pointer target in the help dialog is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
+  const folder = `sizeh-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+
+  await page.goto(`/doc/${folder}/`)
+  await page.locator('#show-shortcuts').click()
+  await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
+
+  expect(await undersizedTargetsOn(page)).toStrictEqual([])
+
+  await page.keyboard.press('Escape')
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
 test(`every pointer target in the trash panel is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
   const folder = `sizet-${String(Date.now())}`
   await request.post('/api/files/folders', { data: { path: folder } })

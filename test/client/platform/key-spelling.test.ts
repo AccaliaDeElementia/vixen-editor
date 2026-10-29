@@ -2,9 +2,9 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { neutralNameOf, platformOf, TestOnly } from '../../../src/client/platform/key-spelling.ts'
+import { neutralNameOf, platformOf, spellingsFor, TestOnly } from '../../../src/client/platform/key-spelling.ts'
 
-const { nameOfKey, spellingsFor } = TestOnly
+const { nameOfKey } = TestOnly
 
 const REDO = [{ key: 'Mod-y', mac: 'Mod-Shift-z' }, { linux: 'Ctrl-Shift-z' }]
 const DESKTOP_TOUCH = 0
@@ -91,6 +91,8 @@ describe('what a chord is called on screen', () => {
     ['F3', 'win', 'F3'],
     ['Mod-]', 'win', 'Ctrl + ]'],
     ['Cmd-Alt-[', 'mac', 'Cmd + Alt + ['],
+    ['Alt-A', 'win', 'Alt + Shift + A'],
+    ['Ctrl-A', 'mac', 'Ctrl + Shift + A'],
     ['Ctrl-Shift-z', 'linux', 'Ctrl + Shift + Z'],
     [' ', 'win', 'Space'],
   ] as const)('writes %s on %s as %s', (spelling, platform, expected) => {
@@ -111,5 +113,11 @@ describe('what a chord is called where the reader is unknown', () => {
 
   it('joins the spellings of one platform with or, since either will do', () => {
     expect(neutralNameOf([{ key: 'Mod-g' }, { key: 'F3' }])).toBe('Ctrl/Cmd + G or F3')
+  })
+
+  it('names two platforms together where they agree, rather than saying the same keys twice', () => {
+    expect(neutralNameOf([{ key: 'Ctrl-Shift-[', mac: 'Cmd-Alt-[' }])).toBe(
+      'Cmd + Alt + [ on macOS, Ctrl + Shift + [ on Windows and Linux',
+    )
   })
 })

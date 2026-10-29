@@ -24,6 +24,20 @@ test('the help dialog names the modifier the reader presses, rather than both', 
   await expect(against(page, 'Save the document')).toHaveText(`${held} + S`)
 })
 
+test('the help dialog keeps the longer list behind a toggle, rather than opening on it', async ({ page, request }) => {
+  await openedHelp(page, request, `curated-${String(Date.now())}.md`)
+
+  await expect(page.locator('#file-dialog-body')).not.toContainText('More keys the editor binds')
+})
+
+test('the toggle brings up the keys the cheatsheet leaves out', async ({ page, request }) => {
+  await openedHelp(page, request, `everything-${String(Date.now())}.md`)
+
+  await page.locator('#file-dialog-mode').click()
+
+  await expect(against(page, 'Go to a line by number')).toBeVisible()
+})
+
 test('the help dialog names the redo this platform binds, which is not the same everywhere', async ({
   page,
   request,

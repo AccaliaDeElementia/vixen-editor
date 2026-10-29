@@ -85,6 +85,10 @@ constant that did not come from `help.ts`, at any binding site under
 entries name the same set **in both directions**, so neither an unlisted
 binding nor an invented entry survives.
 
+Two files are exempt from that scan, because they **name keys without binding
+them**: `help.ts` itself, and `editor-shortcuts.ts`, which describes the keys
+the editor brings with it.
+
 **Gestures are not enforced, and that is the known gap.** Nothing in the code
 marks "double-click opens a row", so the gesture half of the list is
 hand-written and can fall behind. Add the entry by hand when adding a gesture.
@@ -127,8 +131,42 @@ press even where the belief is wrong.
 **The seeded document is written for anyone, so it names every platform.**
 `cheatsheet()` builds the first document in an empty store, and that document is
 a file on disk that another reader opens on another machine. It uses the dual
-`Ctrl/Cmd` form where the platforms press the same thing and spells them out
-separately where they do not; only the dialog is rendered for one reader.
+`Ctrl/Cmd` form where the platforms press the same thing, and groups the
+platforms that agree where they do not — `Cmd + Alt + [ on macOS, Ctrl + Shift +
+[ on Windows and Linux`. Only the dialog is rendered for one reader.
+
+**The help dialog carries two views, and the second one is everything.** The
+cheatsheet is a selection, so it answers "what can I do here"; it cannot also
+answer "what does this key do", because a hundred bindings in one list is not a
+cheatsheet. `editor-shortcuts.ts` holds the rest, and `layout.ts` hands the
+dialog both views so the reader toggles rather than chooses once.
+
+**Every key is described in exactly one place.** `EDITOR_KEYS` carries the keys
+the editor brings; the cheatsheet carries the keys this app chose, including the
+inherited ones it promotes. `test/client/editing/editor-shortcuts.test.ts`
+compares all three — the live keymap, the table, the cheatsheet — and fails on a
+key nothing describes, a key the editor no longer binds, and a key both lists
+claim. That last one is the reason the split is stated rather than assumed: two
+descriptions of one key drift, and nothing else would notice.
+
+**A binding is identified by its whole chord, never by one spelling.** The same
+spelling means different things on different platforms — `Alt + Left` moves by
+word on macOS and over a syntax node everywhere else, because `defaultKeymap`
+remaps both — so a table keyed by what the reader presses cannot be right on
+every platform at once. Keyed by `{ key, mac, win, linux }` it is one row per
+binding, rendered for whoever is reading.
+
+**An upper-case letter in a chord means Shift is held.** CodeMirror matches
+`Alt-A` only against an event whose key is `A`, which takes Shift on every
+layout, so the help spells it `Alt + Shift + A`. Without that, the two macOS
+rows for `Ctrl-A` and `Ctrl-a` both read `Ctrl + A` and one of them is a lie.
+
+**Precedence decides which list describes a key.** The app's own bindings go in
+at `Prec.high`, so where both bind the same chord the app wins: `Mod-Enter`
+opens a link rather than inserting a blank line, and `Mod-i` adds italics rather
+than selecting the enclosing node. The cheatsheet describes those, and the
+editor's meaning for them is not listed at all, because pressing the key will
+never produce it.
 
 <a id="design-4856aa"></a>
 

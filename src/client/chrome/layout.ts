@@ -16,6 +16,7 @@ import { bindDragging } from '../platform/dragging.ts'
 import { bindSplitControls } from '../workspace/split/split-controls.ts'
 import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'
+import { editorShortcuts } from '../editing/editor-shortcuts.ts'
 import { helpSections, KEYS } from '../platform/help.ts'
 import { platformOf } from '../platform/key-spelling.ts'
 import { mountCheatsheet } from './cheatsheet.ts'
@@ -90,10 +91,14 @@ function bindHelp(root: ParentNode, view: Window): void {
   const dialogs = createDialogs(root)
 
   help.addEventListener('click', () => {
+    const platform = platformOf(view.navigator)
+    const curated = helpSections(platform)
+
     void dialogs.inform({
-      title: 'Help',
+      title: 'Keyboard shortcuts and gestures',
       closeLabel: 'Close',
-      sections: helpSections(platformOf(view.navigator)),
+      shown: { name: 'Common shortcuts', sections: curated },
+      alternate: { name: 'All shortcuts', sections: [...curated, editorShortcuts(platform)] },
     })
   })
 }
