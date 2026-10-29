@@ -1,6 +1,6 @@
 'use sanity'
 
-import type { Tree } from '@lezer/common'
+import type { SyntaxNode, SyntaxNodeRef, Tree } from '@lezer/common'
 import { Autolink, Table, TaskList } from '@lezer/markdown'
 import type { DelimiterType, InlineContext, MarkdownConfig } from '@lezer/markdown'
 import { tags } from '@lezer/highlight'
@@ -125,3 +125,85 @@ export function destinationsIn(tree: Tree, markdown: string): LinkDestination[] 
 
   return found
 }
+
+const HEADING_NODE = /^(?:ATX|Setext)Heading(?<level>[1-6])$/v
+const WHITESPACE_RUN = /\s+/gv
+
+const MARK_SUFFIX = 'Mark'
+const LABEL_NODE = 'LinkLabel'
+const ESCAPE_NODE = 'Escape'
+
+const NOT_A_HEADING = 0
+const ESCAPED_CHARACTER = 1
+
+interface Cut {
+  from: number
+  to: number
+}
+
+interface Heading {
+  level: number
+  text: string
+  from: number
+}
+
+function levelOf(name: string): number {
+  const level = HEADING_NODE.exec(name)?.groups?.level
+
+  return level === undefined ? NOT_A_HEADING : Number(level)
+}
+
+function isLinkDestination(node: SyntaxNode): boolean {
+  const { parent: holder } = node
+
+  return holder !== null && LINKING_NODES.has(holder.name)
+}
+
+function cutFor(node: SyntaxNodeRef): Cut | null {
+  if (node.name.endsWith(MARK_SUFFIX) || node.name === LABEL_NODE) return { from: node.from, to: node.to }
+  if (node.name === ESCAPE_NODE) return { from: node.from, to: node.to - ESCAPED_CHARACTER }
+  if (node.name === DESTINATION_NODE && isLinkDestination(node.node)) return { from: node.from, to: node.to }
+
+  return null
+}
+
+function cutsIn(tree: Tree, heading: SyntaxNodeRef): Cut[] {
+  const cuts: Cut[] = []
+
+  tree.iterate({
+    from: heading.from,
+    to: heading.to,
+    enter: (node) => {
+      const cut = cutFor(node)
+      if (cut !== null) cuts.push(cut)
+    },
+  })
+
+  return cuts
+}
+
+function textOf(markdown: string, tree: Tree, heading: SyntaxNodeRef): string {
+  const read = cutsIn(tree, heading).reduce(
+    (taken, cut) => ({ text: taken.text + markdown.slice(taken.from, cut.from), from: cut.to }),
+    { text: '', from: heading.from },
+  )
+
+  return `${read.text}${markdown.slice(read.from, heading.to)}`.replace(WHITESPACE_RUN, ' ').trim()
+}
+
+function headingsIn(tree: Tree, markdown: string): Heading[] {
+  const found: Heading[] = []
+
+  tree.iterate({
+    enter: (node) => {
+      const level = levelOf(node.name)
+      if (level === NOT_A_HEADING) return
+
+      found.push({ level, text: textOf(markdown, tree, node), from: node.from })
+    },
+  })
+
+  return found
+}
+
+export const TestOnly = { headingsIn }
