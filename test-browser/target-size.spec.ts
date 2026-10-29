@@ -90,6 +90,14 @@ test(`every pointer target in the help dialog is at least ${MINIMUM} by ${MINIMU
   await request.delete(`/api/files/entries/${folder}`)
 })
 
+test(`every pointer target in the search panel is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `sizes-${String(Date.now())}.md`, '# One\n'))
+  await page.locator('#show-search').click()
+  await givenAsync(expect(page.locator('[data-part="search-field"]')).toBeVisible())
+
+  expect(await undersizedTargetsOn(page)).toStrictEqual([])
+})
+
 test(`every pointer target in the outline panel is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
   await page.goto(await storedDocument(request, `sizeo-${String(Date.now())}.md`, '# One\n\n### Three deep\n'))
   await page.locator('#show-outline').click()

@@ -7,9 +7,10 @@ export const PANEL_CONTROL_SELECTOR = '[data-shows-panel]'
 export const FILES_PANEL = 'files'
 export const TRASH_PANEL = 'trash'
 export const CHEATSHEET_PANEL = 'cheatsheet'
+export const SEARCH_PANEL = 'search'
 export const OUTLINE_PANEL = 'outline'
 
-export const PANEL_NAMES: readonly string[] = [FILES_PANEL, TRASH_PANEL, OUTLINE_PANEL, CHEATSHEET_PANEL]
+export const PANEL_NAMES: readonly string[] = [FILES_PANEL, TRASH_PANEL, SEARCH_PANEL, OUTLINE_PANEL, CHEATSHEET_PANEL]
 
 function panelsIn(root: ParentNode): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(PANEL_SELECTOR)]

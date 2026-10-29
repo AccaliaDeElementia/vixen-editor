@@ -7,7 +7,20 @@ import { STORE_ROOT } from '../../shared/store-path.ts'
 import { stringsIn } from '../platform/json.ts'
 import { isRecord } from '../../shared/guards.ts'
 
+export interface SearchHit {
+  path: string
+  line: number
+  offset: number
+  excerpt: string
+}
+
+interface SearchOutcome {
+  hits: SearchHit[]
+  capped: boolean
+}
+
 export interface FilesClient {
+  search: (query: string) => Promise<SearchOutcome>
   tree: () => Promise<TreeNode[]>
   trash: () => Promise<TrashNode[]>
   trashEntry: (entryId: string) => Promise<TrashEntryNode | null>
@@ -23,6 +36,25 @@ export interface FilesClient {
 }
 
 const NOTHING_PURGED = 0
+const NOTHING_FOUND: SearchOutcome = { hits: [], capped: false }
+
+function parseHit(value: unknown): SearchHit[] {
+  if (!isRecord(value)) return []
+
+  const { path, line, offset, excerpt } = value
+  if (typeof path !== 'string') return []
+  if (typeof excerpt !== 'string') return []
+  if (typeof line !== 'number') return []
+  if (typeof offset !== 'number') return []
+
+  return [{ path, line, offset, excerpt }]
+}
+
+function parseSearch(payload: unknown): SearchOutcome {
+  if (!isRecord(payload) || !Array.isArray(payload.hits)) return NOTHING_FOUND
+
+  return { hits: payload.hits.flatMap(parseHit), capped: payload.capped === true }
+}
 
 type RepairedPath = string
 
@@ -101,6 +133,10 @@ export function createFilesClient(
   }
 
   return {
+    async search(query: string): Promise<SearchOutcome> {
+      return parseSearch(await payloadOf(`${baseUrl}/search?q=${encodeURIComponent(query)}`))
+    },
+
     async tree(): Promise<TreeNode[]> {
       return parseTree(await payloadOf(`${baseUrl}/files`))
     },

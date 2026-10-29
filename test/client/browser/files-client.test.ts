@@ -29,6 +29,45 @@ beforeEach(() => {
   fetchMock = vi.fn()
 })
 
+describe('search', () => {
+  const A_HIT = { path: 'notes.md', line: 3, offset: 42, excerpt: 'the lantern went out' }
+
+  it('asks the server for what the reader typed, escaped for a URL', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ hits: [], capped: false }))
+
+    await client().search('a lantern & a door')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/search?q=a%20lantern%20%26%20a%20door',
+      expect.objectContaining({ method: 'GET' }),
+    )
+  })
+
+  it('returns the hits the server found', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ hits: [A_HIT], capped: true }))
+
+    await expect(client().search('lantern')).resolves.toStrictEqual({ hits: [A_HIT], capped: true })
+  })
+
+  it.each([
+    ['nothing of the right shape at all', 'nonsense'],
+    ['no path', { ...A_HIT, path: 42 }],
+    ['no excerpt to show', { ...A_HIT, excerpt: 42 }],
+    ['a line that is not a number', { ...A_HIT, line: 'three' }],
+    ['an offset the caret could not use', { ...A_HIT, offset: null }],
+  ])('drops a hit carrying %s, rather than passing a half-built one on', async (_label, broken) => {
+    fetchMock.mockResolvedValue(jsonResponse({ hits: [A_HIT, broken], capped: false }))
+
+    await expect(client().search('lantern')).resolves.toStrictEqual({ hits: [A_HIT], capped: false })
+  })
+
+  it('reads an answer that carries no hits at all as nothing found', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ nonsense: true }))
+
+    await expect(client().search('lantern')).resolves.toStrictEqual({ hits: [], capped: false })
+  })
+})
+
 describe('tree', () => {
   it('requests the file listing', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ tree: [] }))

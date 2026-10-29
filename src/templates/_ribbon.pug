@@ -23,6 +23,16 @@ nav.ribbon(aria-label='Primary')
     aria-pressed='false'
   )
     span.icon(aria-hidden='true') delete
+  button.ribbon__button#show-search(
+    type='button'
+    data-shows-panel='search'
+    aria-label='Search every document'
+    title='Search every document'
+    aria-controls='explorer'
+    aria-expanded='false'
+    aria-pressed='false'
+  )
+    span.icon(aria-hidden='true') search
   button.ribbon__button#show-outline(
     type='button'
     data-shows-panel='outline'

@@ -636,6 +636,16 @@ not this reader's error.
 carrying a newline finds nothing. The search field is one line, so this costs
 nothing today, and it is what keeps line, offset and excerpt a single pass.
 
+**The panel searches on submit, not on every keystroke.** A scan reads the
+whole store, so type-ahead would mean one of those per character typed for an
+answer the reader has not asked for yet. Enter, or the button beside the field,
+is the ask. The field takes the focus as soon as the panel comes up, so asking
+is still one gesture.
+
+**A row says where, then what**: `path:line` above the matching line. The reader
+is choosing between documents, so the path leads; the excerpt is what tells them
+which of several matches in that document they are looking at.
+
 <a id="design-e1ba9e"></a>
 
 ## Concurrency

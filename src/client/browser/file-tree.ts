@@ -13,6 +13,7 @@ import { bindActions, type ActionContext } from './actions.ts'
 import { createDialogs, type Dialogs } from '../platform/dialogs.ts'
 import { bindDragAndDrop } from './drag.ts'
 import { collectRuns } from './rebuild.ts'
+import { createSearchPanel } from './search-panel.ts'
 import { createTrashPanel } from './trash/trash-panel.ts'
 import { createTreeContents } from './tree-contents.ts'
 import { createDrawHold } from './draw-hold.ts'
@@ -286,6 +287,8 @@ async function runFileTree({
   }
   bindActions(context)
   trashPanel.bind()
+  const searchPanel = createSearchPanel({ root, client, toast, track: runs.track })
+  searchPanel.bind()
   const panels = onPanelChanged(root, () => {
     draw(contents.openFolders())
   })
@@ -334,6 +337,7 @@ async function runFileTree({
       offStoreChanged()
       offRevealRequested()
       panels.offPanelChanged()
+      searchPanel.release()
       for (const release of RELEASES) releasedOn.removeEventListener(release, drawHold.release)
       toast.dismissRaised()
     },

@@ -182,16 +182,25 @@ test('the real process serves the editor shell for a document url', async ({ req
 })
 
 test('searches the store across documents, naming where each hit is', async ({ request }) => {
-  const folder = `search-${String(Date.now())}`
+  const stamp = String(Date.now())
+  const folder = `search-${stamp}`
+  const wanted = `lantern-${stamp}`
   await request.post('/api/files/folders', { data: { path: folder } })
   await request.post('/api/files/documents', {
-    data: { path: `${folder}/notes.md`, content: '# Notes\n\nthe lantern went out\n' },
+    data: { path: `${folder}/notes.md`, content: `# Notes\n\nthe ${wanted} went out\n` },
   })
 
-  const res = await request.get(`/api/search?q=${encodeURIComponent('LANTERN')}`)
+  const res = await request.get(`/api/search?q=${encodeURIComponent(wanted.toUpperCase())}`)
 
   expect(await res.json()).toStrictEqual({
-    hits: [{ path: `${folder}/notes.md`, line: 3, offset: '# Notes\n\nthe '.length, excerpt: 'the lantern went out' }],
+    hits: [
+      {
+        path: `${folder}/notes.md`,
+        line: 3,
+        offset: '# Notes\n\nthe '.length,
+        excerpt: `the ${wanted} went out`,
+      },
+    ],
     capped: false,
   })
 

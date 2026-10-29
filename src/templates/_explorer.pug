@@ -36,6 +36,20 @@ aside.explorer#explorer(aria-label='Sidebar')
     p.panel__empty(data-part='trash-empty' hidden)
       | Nothing has been deleted. What you delete is kept here until you empty the trash.
     ul.tree#trash-list(role='tree' aria-label='Deleted entries')
+  section.panel(data-panel='search' aria-label='Search' hidden)
+    form.search(data-part='search-form')
+      input.search__field#search-everything(
+        type='search'
+        name='search'
+        autocomplete='off'
+        aria-label='Search every document'
+        placeholder='Search every document'
+        data-part='search-field'
+      )
+      button.explorer__action(type='submit' aria-label='Search' title='Search')
+        span.icon(aria-hidden='true') search
+    p.panel__empty(data-part='search-said' hidden)
+    ul.results(data-part='search-results' aria-label='Matches')
   section.panel(data-panel='outline' aria-label='Outline' hidden)
     p.panel__empty(data-part='outline-empty' hidden)
     ul.outline(data-part='outline-list' aria-label='Headings')
