@@ -61,3 +61,24 @@ test('the open search panel has no accessibility violations', async ({ page, req
 
   expect(await violationsOn(page)).toStrictEqual([])
 })
+
+test('the find control in the editing bar opens the panel, so a pointer reaches find too', async ({
+  page,
+  request,
+}) => {
+  await page.goto(await storedDocument(request, 'search-control.md', '# A heading\n\nsome prose\n'))
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+
+  await page.locator('[data-part="edit-find"]').click()
+
+  await expect(page.locator(PANEL)).toBeVisible()
+})
+
+test('the find control leaves the caret in the search field, ready to type', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, 'search-focus.md', '# A heading\n\nsome prose\n'))
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+
+  await page.locator('[data-part="edit-find"]').click()
+
+  await expect(page.locator(`${PANEL} .cm-textfield`).first()).toBeFocused()
+})

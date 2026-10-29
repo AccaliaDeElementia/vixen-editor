@@ -1,5 +1,6 @@
 'use sanity'
 
+import { history, undo } from '@codemirror/commands'
 import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -15,6 +16,8 @@ import { trackView } from '../editor-fixtures.ts'
 
 const WORD = 'word'
 const ALL_OF_IT = { anchor: 0, head: WORD.length }
+const TYPED = 'new '
+const ONE_PANEL = 1
 
 let host: HTMLElement = document.createElement('div')
 let view: EditorView = cast<EditorView>({})
@@ -24,7 +27,7 @@ function editor(): EditorView {
   const parent = document.createElement('div')
   document.body.append(parent)
 
-  return trackView(new EditorView({ parent, state: createEditorState({ doc: WORD }) }))
+  return trackView(new EditorView({ parent, state: createEditorState({ doc: WORD, extensions: [history()] }) }))
 }
 
 function bound(): void {
@@ -131,6 +134,58 @@ describe('pressing a formatting control', () => {
     press('format-bold')
 
     expect(view.hasFocus).toBe(true)
+  })
+})
+
+describe('pressing a history control', () => {
+  function typing(): void {
+    view.dispatch({ changes: { from: 0, insert: TYPED } })
+  }
+
+  it('takes back the last change, so a pointer reaches undo the way a chord does', () => {
+    bound()
+    typing()
+    given(() => {
+      expect(text()).toBe(`${TYPED}${WORD}`)
+    })
+
+    press('edit-undo')
+
+    expect(text()).toBe(WORD)
+  })
+
+  it('puts back what undo took away', () => {
+    bound()
+    typing()
+    undo(view)
+    given(() => {
+      expect(text()).toBe(WORD)
+    })
+
+    press('edit-redo')
+
+    expect(text()).toBe(`${TYPED}${WORD}`)
+  })
+})
+
+describe('pressing the find control', () => {
+  it('opens the search panel, so a pointer reaches find at all', () => {
+    bound()
+
+    press('edit-find')
+
+    expect(view.dom.querySelectorAll('.cm-search')).toHaveLength(ONE_PANEL)
+  })
+
+  it('leaves the focus to the panel it opened, rather than taking it back to the text', () => {
+    bound()
+
+    press('edit-find')
+
+    given(() => {
+      expect(view.dom.querySelectorAll('.cm-search')).toHaveLength(ONE_PANEL)
+    })
+    expect(view.hasFocus).toBe(false)
   })
 })
 

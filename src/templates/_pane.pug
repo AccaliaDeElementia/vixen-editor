@@ -26,6 +26,31 @@ mixin pane(primary)
             span.icon(aria-hidden='true') horizontal_split
     .controls(data-part='controls' role='toolbar' aria-label='Editing' hidden)
       button.control(
+        data-part='edit-undo'
+        type='button'
+        aria-label='Undo'
+        title='Undo (Ctrl/Cmd + Z)'
+        aria-keyshortcuts='Control+Z Meta+Z'
+      )
+        span.icon(aria-hidden='true') undo
+      button.control(
+        data-part='edit-redo'
+        type='button'
+        aria-label='Redo'
+        title='Redo (Ctrl/Cmd + Shift + Z)'
+        aria-keyshortcuts='Control+Shift+Z Meta+Shift+Z'
+      )
+        span.icon(aria-hidden='true') redo
+      button.control(
+        data-part='edit-find'
+        type='button'
+        aria-label='Find and replace'
+        title='Find and replace (Ctrl/Cmd + F)'
+        aria-keyshortcuts='Control+F Meta+F'
+      )
+        span.icon(aria-hidden='true') search
+      span.control__divider(aria-hidden='true')
+      button.control(
         data-part='format-bold'
         type='button'
         aria-label='Bold'

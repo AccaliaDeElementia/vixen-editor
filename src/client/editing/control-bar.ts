@@ -1,7 +1,9 @@
 'use sanity'
 
+import { redo, undo } from '@codemirror/commands'
+import { openSearchPanel } from '@codemirror/search'
 import type { EditorState, TransactionSpec } from '@codemirror/state'
-import type { EditorView, KeyBinding } from '@codemirror/view'
+import type { Command, KeyBinding } from '@codemirror/view'
 
 import { KEYS } from '../platform/help.ts'
 import type { DocumentTab } from '../document/document-tab.ts'
@@ -17,6 +19,11 @@ interface Control {
 
 interface ChordedControl extends Control {
   key: string
+}
+
+interface CommandControl {
+  part: string
+  run: Command
 }
 
 function around(marker: string): Formatting {
@@ -41,6 +48,11 @@ const POINTER_ONLY: readonly Control[] = [
   { part: 'format-quote', format: starting('> ') },
 ]
 
+const HISTORY: readonly CommandControl[] = [
+  { part: 'edit-undo', run: undo },
+  { part: 'edit-redo', run: redo },
+]
+
 export interface PreviewControls {
   showMarkup: () => void
   showSource: () => void
@@ -55,13 +67,18 @@ function onClick(host: ParentNode, part: string, run: () => void): void {
   host.querySelector<HTMLElement>(`[data-part="${part}"]`)?.addEventListener('click', run)
 }
 
-function applying(format: Formatting): (view: EditorView) => boolean {
-  return (view: EditorView) => {
+function applying(format: Formatting): Command {
+  return (view) => {
     view.dispatch(format(view.state))
 
     return true
   }
 }
+
+const RETURNING_TO_THE_TEXT: readonly CommandControl[] = [
+  ...[...CHORDED, ...POINTER_ONLY].map(({ part, format }) => ({ part, run: applying(format) })),
+  ...HISTORY,
+]
 
 export const formattingKeys: readonly KeyBinding[] = CHORDED.map(({ key, format }) => ({
   key,
@@ -69,13 +86,17 @@ export const formattingKeys: readonly KeyBinding[] = CHORDED.map(({ key, format 
 }))
 
 export function bindControlBar(host: ParentNode, options: ControlBarOptions): void {
-  for (const { part, format } of [...CHORDED, ...POINTER_ONLY]) {
+  for (const { part, run } of RETURNING_TO_THE_TEXT) {
     onClick(host, part, () => {
       const { view } = options.editor()
-      view.dispatch(format(view.state))
+      run(view)
       view.focus()
     })
   }
+
+  onClick(host, 'edit-find', () => {
+    openSearchPanel(options.editor().view)
+  })
 
   onClick(host, 'preview-markup', () => {
     options.previewing().showMarkup()

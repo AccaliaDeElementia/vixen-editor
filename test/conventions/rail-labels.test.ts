@@ -86,6 +86,12 @@ describe('the controls in the editing bar', () => {
 })
 
 describe('where each control lives', () => {
+  const REACHED_BY_KEY_ALONE = ['edit-undo', 'edit-redo', 'edit-find']
+
+  it('opens the editing bar with the controls that were reached by a key and nothing else', () => {
+    expect([...new Set(partsIn(editing))].slice(0, REACHED_BY_KEY_ALONE.length)).toStrictEqual(REACHED_BY_KEY_ALONE)
+  })
+
   it('puts the split controls in the tab row, beside the documents they divide', () => {
     expect(partsIn(tabActions)).toStrictEqual(['split-beside', 'split-below'])
   })
