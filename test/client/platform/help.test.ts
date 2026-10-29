@@ -1,12 +1,34 @@
 'use sanity'
 
+import type { EditorState } from '@codemirror/state'
 import { keymap } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
 
+import { formattingKeys } from '../../../src/client/editing/control-bar.ts'
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import { vixenEditorSetup } from '../../../src/client/editing/editor-setup.ts'
 
-import { cheatsheet, HELP_SECTIONS, KEYS } from '../../../src/client/platform/help.ts'
+import { cheatsheet, helpSections, KEYS, TestOnly } from '../../../src/client/platform/help.ts'
+import { TestOnly as spelling, type Chord, type KeyPlatform } from '../../../src/client/platform/key-spelling.ts'
+
+const { SECTIONS, sectionsForAnyone } = TestOnly
+const { spellingsFor } = spelling
+
+const HOST: KeyPlatform = 'win'
+const EVERY_PLATFORM: readonly KeyPlatform[] = ['mac', 'win', 'linux']
+
+function chordsIn(): Chord[] {
+  return SECTIONS.flatMap(({ entries }) => entries).flatMap((entry) => ('chords' in entry ? entry.chords : []))
+}
+
+function keysNamed(): Set<string> {
+  const chorded = chordsIn().flatMap((chord) => [chord.key, chord.mac, chord.win, chord.linux])
+  const described = SECTIONS.flatMap(({ entries }) => entries).flatMap((entry) =>
+    'chords' in entry ? [] : (entry.keys ?? []),
+  )
+
+  return new Set([...chorded.filter((spelled) => spelled !== undefined), ...described])
+}
 
 const INHERITED_FROM_THE_EDITOR: readonly string[] = [
   'Alt-A',
@@ -89,17 +111,34 @@ function keysBoundInTheEditor(): string[] {
   for (const binding of createEditorState({ extensions: [vixenEditorSetup] })
     .facet(keymap)
     .flat()) {
-    for (const spelling of [binding.key, binding.mac, binding.win, binding.linux]) {
-      if (typeof spelling === 'string') found.add(spelling)
+    for (const spelled of [binding.key, binding.mac, binding.win, binding.linux]) {
+      if (typeof spelled === 'string') found.add(spelled)
     }
   }
 
   return [...found].sort()
 }
 
+function wholeApp(): EditorState {
+  return createEditorState({
+    extensions: [vixenEditorSetup, keymap.of([...formattingKeys, { key: KEYS.save }, { key: KEYS.openLink }])],
+  })
+}
+
+function keysBoundOn(platform: KeyPlatform): Set<string> {
+  const found = new Set<string>()
+
+  for (const binding of wholeApp().facet(keymap).flat()) {
+    const spelled = binding[platform] ?? binding.key
+    if (typeof spelled === 'string') found.add(spelled)
+  }
+
+  return found
+}
+
 describe('what the help dialog takes on, and what it leaves to the cheatsheet', () => {
   it('leaves markdown syntax to the panel, rather than teaching it in two places', () => {
-    expect(HELP_SECTIONS.map((section) => section.heading)).toStrictEqual(['Getting around', 'Keyboard'])
+    expect(helpSections(HOST).map((section) => section.heading)).toStrictEqual(['Getting around', 'Keyboard'])
   })
 })
 
@@ -110,7 +149,7 @@ describe('the cheatsheet a new workspace starts with', () => {
       .filter((line) => line.startsWith('## '))
       .map((line) => line.slice('## '.length))
 
-    expect(headings).toStrictEqual(HELP_SECTIONS.map((section) => section.heading))
+    expect(headings).toStrictEqual(sectionsForAnyone().map((section) => section.heading))
   })
 
   it('plants no link and no image in the first document someone writes', () => {
@@ -127,7 +166,7 @@ describe('the cheatsheet a new workspace starts with', () => {
   it('names every entry the dialog would list', () => {
     const rendered = cheatsheet()
 
-    for (const section of HELP_SECTIONS) {
+    for (const section of sectionsForAnyone()) {
       for (const entry of section.entries) {
         expect(rendered).toContain(`| ${entry.does} | ${entry.how} |`)
       }
@@ -172,28 +211,24 @@ describe('what the first document says before the tables start', () => {
 })
 
 describe('the keys the help list claims, against the keys the app binds', () => {
-  function listed(): Set<string> {
-    return new Set(HELP_SECTIONS.flatMap((section) => section.entries).flatMap((entry) => entry.keys ?? []))
-  }
-
   it('lists every key a binding site can reach for', () => {
-    const missing = Object.entries(KEYS).filter(([, key]) => !listed().has(key))
+    const missing = Object.entries(KEYS).filter(([, key]) => !keysNamed().has(key))
 
     expect(missing).toStrictEqual([])
   })
 
   it('claims no key that no binding site can reach for', () => {
     const bound = new Set<string>(Object.values(KEYS))
-    const invented = [...listed()].filter((key) => !bound.has(key))
+    const invented = [...keysNamed()].filter((key) => !bound.has(key))
 
     expect(invented).toStrictEqual([])
   })
 
-  it('gives every keyboard entry the keys it is describing', () => {
-    const keyboard = HELP_SECTIONS.find((section) => section.heading === 'Keyboard')
-    const undescribed = (keyboard?.entries ?? []).filter((entry) => entry.keys === undefined)
+  it.each(EVERY_PLATFORM)("offers %s only chords the editor binds there, not another platform's", (platform) => {
+    const bound = keysBoundOn(platform)
+    const claimed = spellingsFor(chordsIn(), platform)
 
-    expect(undescribed).toStrictEqual([])
+    expect(claimed.filter((spelled) => !bound.has(spelled))).toStrictEqual([])
   })
 })
 
@@ -205,7 +240,7 @@ describe('what the cheatsheet says about a tab that will not last', () => {
   })
 
   it('says how to stop a tab being replaced, which is the answer to noticing it', () => {
-    const gestures = HELP_SECTIONS.flatMap((section) => section.entries.map((entry) => entry.does))
+    const gestures = SECTIONS.flatMap((section) => section.entries.map((entry) => entry.does))
 
     expect(gestures).toContain('Keep a tab you are only looking at')
   })

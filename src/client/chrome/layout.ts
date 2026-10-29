@@ -16,7 +16,8 @@ import { bindDragging } from '../platform/dragging.ts'
 import { bindSplitControls } from '../workspace/split/split-controls.ts'
 import { announcePanelChanged } from '../platform/announce/panel-changed.ts'
 import { createDialogs } from '../platform/dialogs.ts'
-import { HELP_SECTIONS, KEYS } from '../platform/help.ts'
+import { helpSections, KEYS } from '../platform/help.ts'
+import { platformOf } from '../platform/key-spelling.ts'
 import { mountCheatsheet } from './cheatsheet.ts'
 import { onInsertRequested } from '../platform/announce/insert-entry.ts'
 import { followColourScheme } from './colour-scheme.ts'
@@ -82,14 +83,18 @@ function bindToggle(root: ParentNode, view: Window, fillCheatsheet: (into: Paren
   }
 }
 
-function bindHelp(root: ParentNode): void {
+function bindHelp(root: ParentNode, view: Window): void {
   const help = root.querySelector<HTMLElement>(HELP_SELECTOR)
   if (help === null) return
 
   const dialogs = createDialogs(root)
 
   help.addEventListener('click', () => {
-    void dialogs.inform({ title: 'Help', closeLabel: 'Close', sections: HELP_SECTIONS })
+    void dialogs.inform({
+      title: 'Help',
+      closeLabel: 'Close',
+      sections: helpSections(platformOf(view.navigator)),
+    })
   })
 }
 
@@ -134,7 +139,7 @@ export function initLayout(options: LayoutOptions = {}): Layout {
   const split = bindSplitControls(root)
   bindResizer(root, view)
   bindToggle(root, view, fillCheatsheet)
-  bindHelp(root)
+  bindHelp(root, view)
   const offInsertRequested = bindDrawerDismissal(root, view)
   const offResize = bindViewportResize(root, view, split.refresh)
 

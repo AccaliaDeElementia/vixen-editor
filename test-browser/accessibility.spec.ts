@@ -116,8 +116,9 @@ test('the help dialog lists the gestures, and has no accessibility violations', 
   await page.locator('#show-shortcuts').click()
   await givenAsync(expect(page.locator('#file-dialog')).toBeVisible())
 
-  await givenAsync(expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + S'))
-  await givenAsync(expect(page.locator('#file-dialog-body')).toContainText('Ctrl/Cmd + Enter'))
+  const held = await page.evaluate(() => (navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl'))
+  await givenAsync(expect(page.locator('#file-dialog-body')).toContainText(`${held} + S`))
+  await givenAsync(expect(page.locator('#file-dialog-body')).toContainText(`${held} + Enter`))
   await givenAsync(expect(page.locator('#file-dialog-cancel')).toBeHidden())
 
   expect(await violationsOn(page)).toStrictEqual([])

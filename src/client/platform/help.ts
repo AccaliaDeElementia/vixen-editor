@@ -1,15 +1,26 @@
 'use sanity'
 
-interface Entry {
+import { nameOfChords, neutralNameOf, type Chord, type KeyPlatform } from './key-spelling.ts'
+
+interface Described {
   does: string
   how: string
   keys?: readonly string[]
 }
 
+interface Chorded {
+  does: string
+  chords: readonly Chord[]
+}
+
+type Entry = Described | Chorded
+
 export const KEYS = {
   save: 'Mod-s',
   undo: 'Mod-z',
-  redo: 'Mod-Shift-z',
+  redo: 'Mod-y',
+  redoOnMac: 'Mod-Shift-z',
+  redoOnLinux: 'Ctrl-Shift-z',
   find: 'Mod-f',
   findNext: 'Mod-g',
   openLink: 'Mod-Enter',
@@ -47,21 +58,20 @@ export const KEYS = {
 }
 
 const SHORTCUTS: readonly Entry[] = [
-  { does: 'Save the document', how: 'Ctrl/Cmd + S', keys: [KEYS.save] },
+  { does: 'Save the document', chords: [{ key: KEYS.save }] },
+  { does: 'Undo', chords: [{ key: KEYS.undo }] },
   {
-    does: 'Undo, and redo what you undid',
-    how: 'Ctrl/Cmd + Z, and Ctrl/Cmd + Shift + Z',
-    keys: [KEYS.undo, KEYS.redo],
+    does: 'Redo what you undid',
+    chords: [{ key: KEYS.redo, mac: KEYS.redoOnMac }, { linux: KEYS.redoOnLinux }],
   },
-  { does: 'Find and replace inside the document', how: 'Ctrl/Cmd + F', keys: [KEYS.find] },
-  { does: 'Go to the next thing Find matched', how: 'Ctrl/Cmd + G', keys: [KEYS.findNext] },
-  { does: 'Open the link the caret is in', how: 'Ctrl/Cmd + Enter', keys: [KEYS.openLink] },
-  { does: 'Dismiss a link tooltip', how: 'Escape', keys: [KEYS.dismissTooltip] },
-  {
-    does: 'Put bold, italic, code or a link around the selection',
-    how: 'Ctrl/Cmd + B, I, E and K',
-    keys: [KEYS.bold, KEYS.italic, KEYS.code, KEYS.link],
-  },
+  { does: 'Find and replace inside the document', chords: [{ key: KEYS.find }] },
+  { does: 'Go to the next thing Find matched', chords: [{ key: KEYS.findNext }] },
+  { does: 'Open the link the caret is in', chords: [{ key: KEYS.openLink }] },
+  { does: 'Dismiss a link tooltip', chords: [{ key: KEYS.dismissTooltip }] },
+  { does: 'Put bold around the selection', chords: [{ key: KEYS.bold }] },
+  { does: 'Put italics around the selection', chords: [{ key: KEYS.italic }] },
+  { does: 'Put code marks around the selection', chords: [{ key: KEYS.code }] },
+  { does: 'Make the selection a link', chords: [{ key: KEYS.link }] },
   {
     does: 'Move through the file browser',
     how: 'Arrow keys',
@@ -72,7 +82,11 @@ const SHORTCUTS: readonly Entry[] = [
   { does: 'Show the HTML the preview renders', how: 'Alt + Shift + P', keys: [KEYS.previewSource] },
   { does: 'Show the document rendered', how: 'Alt + P', keys: [KEYS.previewMarkup] },
   { does: 'Close the tab in front of you', how: 'Alt + W', keys: [KEYS.closeTab] },
-  { does: 'Move to the next or previous tab', how: 'Alt + ] and Alt + [', keys: [KEYS.nextTab, KEYS.previousTab] },
+  {
+    does: 'Move to the next or previous tab',
+    how: 'Alt + ] and Alt + [',
+    keys: [KEYS.nextTab, KEYS.previousTab],
+  },
   {
     does: 'Move a tab along its strip',
     how: 'Alt + Shift + ] and Alt + Shift + [',
@@ -123,12 +137,34 @@ interface Section {
   entries: readonly Entry[]
 }
 
-export const HELP_SECTIONS: readonly Section[] = [
+interface HelpSection {
+  heading: string
+  column: string
+  entries: readonly Described[]
+}
+
+const SECTIONS: readonly Section[] = [
   { heading: 'Getting around', column: 'How', entries: GESTURES },
   { heading: 'Keyboard', column: 'Keys', entries: SHORTCUTS },
 ]
 
-function asTable({ heading, column, entries }: Section): string {
+function describedFor(entry: Entry, platform: KeyPlatform): Described {
+  return 'chords' in entry ? { does: entry.does, how: nameOfChords(entry.chords, platform) } : entry
+}
+
+function describedForAnyone(entry: Entry): Described {
+  return 'chords' in entry ? { does: entry.does, how: neutralNameOf(entry.chords) } : entry
+}
+
+function readBy(describe: (entry: Entry) => Described): readonly HelpSection[] {
+  return SECTIONS.map(({ heading, column, entries }) => ({ heading, column, entries: entries.map(describe) }))
+}
+
+export function helpSections(platform: KeyPlatform): readonly HelpSection[] {
+  return readBy((entry) => describedFor(entry, platform))
+}
+
+function asTable({ heading, column, entries }: HelpSection): string {
   const rows = entries.map((entry) => `| ${entry.does} | ${entry.how} |`).join('\n')
 
   return `## ${heading}\n\n| What | ${column} |\n| --- | --- |\n${rows}\n`
@@ -154,5 +190,11 @@ const PREAMBLE = [
 ].join('\n')
 
 export function cheatsheet(): string {
-  return [PREAMBLE, ...HELP_SECTIONS.map(asTable)].join('\n')
+  return [PREAMBLE, ...sectionsForAnyone().map(asTable)].join('\n')
 }
+
+function sectionsForAnyone(): readonly HelpSection[] {
+  return readBy(describedForAnyone)
+}
+
+export const TestOnly = { SECTIONS, sectionsForAnyone }

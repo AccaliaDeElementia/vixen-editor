@@ -103,6 +103,33 @@ The bundle's fallback highlight style is left out for a different reason:
 `@codemirror/language` consults a fallback highlighter only when no other one is
 registered, so it could never have applied.
 
+**A help row either derives its spelling or declares one, never both.** A row
+that carries `chords` is rendered by `key-spelling.ts` for the reader's
+platform; a row that carries `how` is prose, for the gestures and the ranges no
+chord can state. The old shape had both on every row, and they drifted: the
+redo row said `Ctrl/Cmd + Shift + Z` while `historyKeymap` binds `Ctrl+Y` on
+Windows, `Cmd+Shift+Z` on macOS and either on Linux. Every row still names its
+registry constants, through `chords` or through `keys`, so the two-way check
+between `KEYS` and the help list survives the split.
+
+**The platform rule is a copy, and the copy is checked.** `browser` is not
+exported from `@codemirror/view`, so `key-spelling.ts` holds the same three
+patterns over `navigator.platform` and `test/conventions/key-platform.test.ts`
+reads them back out of that package. The Internet Explorer branch upstream
+carries is left out: it can only change the answer for a browser claiming both
+an Apple vendor and MSIE, which no supported browser does.
+
+**The job is to agree with CodeMirror, not with the operating system.**
+CodeMirror binds keys according to its own belief about the platform, so a
+help list that reproduces that belief tells the reader the truth about what to
+press even where the belief is wrong.
+
+**The seeded document is written for anyone, so it names every platform.**
+`cheatsheet()` builds the first document in an empty store, and that document is
+a file on disk that another reader opens on another machine. It uses the dual
+`Ctrl/Cmd` form where the platforms press the same thing and spells them out
+separately where they do not; only the dialog is rendered for one reader.
+
 <a id="design-4856aa"></a>
 
 ## URLs
