@@ -607,6 +607,35 @@ Neither interface is assignable to the other, because `Actor` is not a `string`
 in either direction — so the compiler refuses a layer handed to a route, and a
 store handed to a decorator, without any marker having to say so.
 
+<a id="design-bc1e42"></a>
+
+## Searching the store
+
+**`GET /api/search?q=` scans; there is no index.** `list` plus `read` needs no
+invalidation, no persistence and no rebuild path, and the cost is linear in what
+the store holds. Measured on this machine against documents of about 4 KB, with
+a query that matches nothing so every document is read in full: **45 ms for
+1,000 documents (4 MiB), 204 ms for 5,000 (21 MiB), 414 ms for 10,000
+(42 MiB)** — roughly 10 ms per MiB. A query that matches early fills the cap
+and returns in single-digit milliseconds whatever the store holds. These are
+warm-cache numbers; a cold disk is slower. **An index earns its keep past about
+10,000 documents**, and not before.
+
+**A hit names where it is, not what it is.** `path`, `line` counted from one,
+`offset` into the document for the caret, and an `excerpt` — the matching line,
+or a window around the match when the line is longer than will read. The offset
+is what lets a result open its document at the hit rather than at the top.
+
+**The scan stops at 200 hits and says so.** `capped` is the signal that there
+are more; without it a reader cannot tell a short answer from a complete one.
+A document that cannot be read — deleted between the listing and the read — is
+passed over rather than failing the search, because another client's delete is
+not this reader's error.
+
+**A match is found within a line.** The scan matches per line, so a query
+carrying a newline finds nothing. The search field is one line, so this costs
+nothing today, and it is what keeps line, offset and excerpt a single pass.
+
 <a id="design-e1ba9e"></a>
 
 ## Concurrency

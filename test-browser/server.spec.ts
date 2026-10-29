@@ -180,3 +180,20 @@ test('the real process serves the editor shell for a document url', async ({ req
 
   expect(await res.text()).toContain('id="editor"')
 })
+
+test('searches the store across documents, naming where each hit is', async ({ request }) => {
+  const folder = `search-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', {
+    data: { path: `${folder}/notes.md`, content: '# Notes\n\nthe lantern went out\n' },
+  })
+
+  const res = await request.get(`/api/search?q=${encodeURIComponent('LANTERN')}`)
+
+  expect(await res.json()).toStrictEqual({
+    hits: [{ path: `${folder}/notes.md`, line: 3, offset: '# Notes\n\nthe '.length, excerpt: 'the lantern went out' }],
+    capped: false,
+  })
+
+  await request.delete(`/api/files/entries/${folder}`)
+})

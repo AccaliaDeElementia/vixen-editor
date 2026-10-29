@@ -13,6 +13,7 @@ import { createLogger } from './platform/logging.ts'
 import { documentRoutes } from './routes/documents.ts'
 import { eventRoutes } from './routes/events.ts'
 import { fileRoutes } from './routes/files.ts'
+import { searchRoutes } from './routes/search.ts'
 import { trashRoutes } from './routes/trash.ts'
 import type { StoreLayer } from './storage/fs-store.ts'
 import { API_PREFIX } from '../shared/api.ts'
@@ -51,6 +52,7 @@ export function buildApp({
   app.get(`${API_PREFIX}/health`, (c) => c.json({ status: 'ok' }))
   app.route(`${API_PREFIX}/documents`, documentRoutes(announcing))
   app.route(`${API_PREFIX}/files`, fileRoutes(announcing, limits))
+  app.route(`${API_PREFIX}/search`, searchRoutes(announcing))
   app.route(`${API_PREFIX}/trash`, trashRoutes(announcing))
   app.route(`${API_PREFIX}/events`, eventRoutes({ changes, buildId, heartbeatMs }))
 

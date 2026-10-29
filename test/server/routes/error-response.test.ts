@@ -19,6 +19,7 @@ import {
 } from '../../../src/server/storage/primitives/store-errors.ts'
 import {
   invalidBody,
+  invalidQuery,
   payloadTooLarge,
   preconditionRequired,
   toErrorResponse,
@@ -64,6 +65,13 @@ describe('refusing a request outright', () => {
     expect(await refusing(invalidBody)).toStrictEqual({
       status: 400,
       body: { error: 'Invalid request body', code: 'BAD_REQUEST' },
+    })
+  })
+
+  it('reports a search that asked for nothing, which would otherwise match the whole store', async () => {
+    expect(await refusing(invalidQuery)).toStrictEqual({
+      status: 400,
+      body: { error: 'Nothing to search for', code: 'BAD_REQUEST' },
     })
   })
 
