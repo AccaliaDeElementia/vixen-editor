@@ -2,7 +2,6 @@
 
 import { Prec, type EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
-import { basicSetup } from 'codemirror'
 
 import { docUrlFor } from '../platform/doc-path.ts'
 import { errorMessage } from '../platform/error-message.ts'
@@ -26,6 +25,7 @@ import { describeRefusal } from './leaving.ts'
 import { bindLinkClicks } from '../editing/link-clicks.ts'
 import { linkTargetAt } from '../editing/link-targets.ts'
 import { createEditorState } from '../editing/markdown-setup.ts'
+import { vixenEditorSetup } from '../editing/editor-setup.ts'
 import { createMaterialised } from './materialised.ts'
 import { createMergeControl } from './merging.ts'
 import type { Session } from './session.ts'
@@ -160,7 +160,7 @@ export function createDocumentTab(options: DocumentTabOptions): DocumentTab {
       doc,
       selection: { anchor: startsAt },
       extensions: [
-        basicSetup,
+        vixenEditorSetup,
         holder.unset,
         merging.inactive,
         EditorView.lineWrapping,

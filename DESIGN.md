@@ -89,6 +89,20 @@ binding nor an invented entry survives.
 marks "double-click opens a row", so the gesture half of the list is
 hand-written and can fall behind. Add the entry by hand when adding a gesture.
 
+**The editor's extension list is written out rather than borrowed.**
+`src/client/editing/editor-setup.ts` holds what `basicSetup` holds, without
+`lintKeymap`: nothing in this app raises a diagnostic, so `F8` and
+`Ctrl/Cmd + Shift + M` were bound to commands that could never answer, and the
+rule above would have obliged the cheatsheet to carry them. The `codemirror`
+package stays a dev dependency for one reason — `test/client/editing/editor-setup.test.ts`
+compares the two lists in both directions, so a key the bundle gains or drops
+arrives as a gate failure and a decision, not as an undocumented binding.
+
+The bundle's fallback highlight style is left out for a different reason:
+`createEditorState` always installs the project's own style, and
+`@codemirror/language` consults a fallback highlighter only when no other one is
+registered, so it could never have applied.
+
 <a id="design-4856aa"></a>
 
 ## URLs

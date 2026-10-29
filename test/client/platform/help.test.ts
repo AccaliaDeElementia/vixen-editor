@@ -1,10 +1,10 @@
 'use sanity'
 
 import { keymap } from '@codemirror/view'
-import { basicSetup } from 'codemirror'
 import { describe, expect, it } from 'vitest'
 
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
+import { vixenEditorSetup } from '../../../src/client/editing/editor-setup.ts'
 
 import { cheatsheet, HELP_SECTIONS, KEYS } from '../../../src/client/platform/help.ts'
 
@@ -55,7 +55,6 @@ const INHERITED_FROM_THE_EDITOR: readonly string[] = [
   'Ctrl-v',
   'Delete',
   'F3',
-  'F8',
   'Mod-/',
   'Mod-Alt-ArrowDown',
   'Mod-Alt-ArrowUp',
@@ -68,7 +67,6 @@ const INHERITED_FROM_THE_EDITOR: readonly string[] = [
   'Mod-End',
   'Mod-Home',
   'Mod-Shift-l',
-  'Mod-Shift-m',
   'Mod-Shift-u',
   'Mod-[',
   'Mod-]',
@@ -88,7 +86,7 @@ const INHERITED_FROM_THE_EDITOR: readonly string[] = [
 function keysBoundInTheEditor(): string[] {
   const found = new Set<string>()
 
-  for (const binding of createEditorState({ extensions: [basicSetup] })
+  for (const binding of createEditorState({ extensions: [vixenEditorSetup] })
     .facet(keymap)
     .flat()) {
     for (const spelling of [binding.key, binding.mac, binding.win, binding.linux]) {
