@@ -23,6 +23,16 @@ nav.ribbon(aria-label='Primary')
     aria-pressed='false'
   )
     span.icon(aria-hidden='true') delete
+  button.ribbon__button#show-outline(
+    type='button'
+    data-shows-panel='outline'
+    aria-label='Show the outline'
+    title='Show the outline'
+    aria-controls='explorer'
+    aria-expanded='false'
+    aria-pressed='false'
+  )
+    span.icon(aria-hidden='true') toc
   .ribbon__tail
     button.ribbon__button.ribbon__button--stale#stale-build(
       type='button'

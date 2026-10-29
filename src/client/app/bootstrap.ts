@@ -39,6 +39,7 @@ import {
   type PaneWorkspaceOptions,
 } from '../workspace/panes/pane-workspace.ts'
 import { createStaleBuild } from '../chrome/stale-build.ts'
+import { showOutline } from '../chrome/outline.ts'
 import { watchBuild } from '../chrome/build-watch.ts'
 import type { Session } from '../document/session.ts'
 import { guardUnload } from '../document/unload.ts'
@@ -46,6 +47,8 @@ import { linkTo } from '../platform/entry-links.ts'
 import { onInsertRequested } from '../platform/announce/insert-entry.ts'
 import { onKeepRequested } from '../platform/announce/keep-request.ts'
 import { onOpenAsideRequested } from '../platform/announce/open-aside.ts'
+import { onPanelChanged } from '../platform/announce/panel-changed.ts'
+import { OUTLINE_PANEL, panelShowing } from '../platform/panels.ts'
 import { onSplitChanged, onSplitDismissRequested } from '../platform/announce/split-changed.ts'
 import { onTrashEmptied } from '../platform/announce/trash-emptied.ts'
 import { announceStoreChanged } from '../platform/announce/store-changed.ts'
@@ -125,6 +128,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       reopen,
       announce: setStatus,
       onShowing: openDocument.commit,
+      onContentChanged: refreshOutline,
       contentOf: (entryPath: string) => panes.contentOf(entryPath),
       caretMemory,
       ...settings,
@@ -155,9 +159,16 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { pane: primary, workspace, statusBar } = primaryWorkspace
   const tab = primaryWorkspace.editor()
 
+  function refreshOutline(): void {
+    if (panelShowing(root) !== OUTLINE_PANEL) return
+
+    showOutline(root, touched.held.path() === null ? null : touched.editor().view.state)
+  }
+
   async function openPath(target: string, wanted: TabView): Promise<void> {
     await touched.openPath(target)
     previewing.showNamedByUrl(wanted)
+    refreshOutline()
   }
   const { view } = tab
   let touched: PaneWorkspace = primaryWorkspace
@@ -357,6 +368,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   })
 
   const emptied = onTrashEmptied(root, surfaces.closeTrashTabs)
+  const panelChanges = onPanelChanged(root, refreshOutline)
 
   const restored = aside.reconcile()
   if (restored?.pane.isEmpty() === true) paneMoves.dismissAside()
@@ -379,6 +391,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     offOpenAsideRequested()
     splitChanges.offSplitChanged()
     emptied.offTrashEmptied()
+    panelChanges.offPanelChanged()
     dismissals.offSplitDismissRequested()
     previews.stop()
     toast.dismissRaised()

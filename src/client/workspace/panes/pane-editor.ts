@@ -25,6 +25,7 @@ interface PaneEditorOptions {
   onStored: () => void
   caretMemory: CaretMemory
   showingDocument: () => boolean
+  onContentChanged: () => void
   listenForFocus?: FocusListener | undefined
 }
 
@@ -50,9 +51,11 @@ export function createPaneEditor(options: PaneEditorOptions): DocumentTab {
       const holder = documentId()
       if (holder !== null) pane.keepWhenOpened({ path: holder, view: 'editor' })
       previews.refreshWith(holder, content)
+      options.onContentChanged()
     },
     onReloaded: (content: string) => {
       previews.refreshWith(documentId(), content)
+      options.onContentChanged()
     },
     onCaretMoved: (offset: number) => {
       previews.revealOffset(documentId(), offset)

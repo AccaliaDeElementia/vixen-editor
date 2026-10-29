@@ -141,7 +141,7 @@ interface Cut {
   to: number
 }
 
-interface Heading {
+export interface Heading {
   level: number
   text: string
   from: number
@@ -191,7 +191,7 @@ function textOf(markdown: string, tree: Tree, heading: SyntaxNodeRef): string {
   return `${read.text}${markdown.slice(read.from, heading.to)}`.replace(WHITESPACE_RUN, ' ').trim()
 }
 
-function headingsIn(tree: Tree, markdown: string): Heading[] {
+export function headingsIn(tree: Tree, markdown: string): Heading[] {
   const found: Heading[] = []
 
   tree.iterate({
@@ -205,5 +205,3 @@ function headingsIn(tree: Tree, markdown: string): Heading[] {
 
   return found
 }
-
-export const TestOnly = { headingsIn }

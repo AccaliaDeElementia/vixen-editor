@@ -160,6 +160,23 @@
   }
 }
 
+.outline {
+  flex: 1;
+  margin: 0;
+  padding: $space-xs 0;
+  overflow: auto;
+  list-style: none;
+  font-size: $font-size-sm;
+}
+
+.outline__row {
+  padding: 0.15em $space-sm 0.15em calc(#{$space-sm} + (var(--depth, 0) * #{$tree-indent-step}));
+  color: $body-color;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .panel__empty {
   margin: 0;
   padding: $space-sm;

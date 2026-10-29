@@ -32,6 +32,7 @@ let refreshed: Refreshed[] = []
 let revealed: Revealed[] = []
 let kept: TabAt[] = []
 let opened: DocumentTab[] = []
+let told = 0
 
 function paneEditor(holds: string | null = OPEN_DOCUMENT): DocumentTab {
   const mount = document.createElement('div')
@@ -67,6 +68,9 @@ function paneEditor(holds: string | null = OPEN_DOCUMENT): DocumentTab {
     announce: () => undefined,
     onStored: () => undefined,
     showingDocument: () => true,
+    onContentChanged: () => {
+      told += 1
+    },
   })
 
   opened.push(tab)
@@ -80,6 +84,7 @@ beforeEach(() => {
   revealed = []
   kept = []
   opened = []
+  told = 0
 })
 
 afterEach(() => {
@@ -121,6 +126,28 @@ describe('typing into a pane', () => {
     tab.insertAt('x', null)
 
     expect(refreshed.at(-1)).toStrictEqual({ holder: null, content: 'x' })
+  })
+})
+
+describe('what a pane tells the rest of the app about its text', () => {
+  const ONCE = 1
+
+  it('says the text changed when the reader types, so a panel reading it can redraw', () => {
+    const tab = paneEditor()
+    told = 0
+
+    tab.insertAt('# typed', null)
+
+    expect(told).toBe(ONCE)
+  })
+
+  it('says the same when the document is loaded under them, which changes the text just as much', () => {
+    const tab = paneEditor()
+    told = 0
+
+    tab.load('# from the store')
+
+    expect(told).toBe(ONCE)
   })
 })
 

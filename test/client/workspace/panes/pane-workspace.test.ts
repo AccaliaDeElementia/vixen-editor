@@ -69,6 +69,7 @@ function paneHolding(holds: string | null, overrides: PaneOverrides = {}): Retur
     onCloseRequested: () => undefined,
     onTabArrived: () => undefined,
     onShowing: () => undefined,
+    onContentChanged: () => undefined,
     contentOf,
     caretMemory: createCaretMemory(),
     releaseElsewhere: () => Promise.resolve(),

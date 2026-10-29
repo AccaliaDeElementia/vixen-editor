@@ -68,6 +68,7 @@ export interface PaneWorkspaceOptions {
   onCloseRequested: (at: TabAt) => void
   onTabArrived: (identity: string, toIndex: number) => void
   onShowing: (entryPath: string) => void
+  onContentChanged: () => void
   contentOf: (entryPath: string) => string | null
   caretMemory: CaretMemory
   releaseElsewhere: (at: TabAt) => Promise<void>
@@ -151,6 +152,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
       onStored: tellTheBrowser,
       caretMemory: options.caretMemory,
       showingDocument: () => workspace.showing() === 'document',
+      onContentChanged: options.onContentChanged,
       listenForFocus: options.listenForFocus,
     })
 

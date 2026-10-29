@@ -69,6 +69,25 @@ coverage gate.
 explorer is hidden it leaves the grid flow entirely, and with auto-placement
 the workspace slides into the collapsed `0`-width track and the editor vanishes.
 
+<a id="design-7bd41e"></a>
+
+## The outline panel
+
+**The outline reads the editor's own syntax tree, rather than parsing the text
+again.** `showOutline` takes the state of the editor in front and runs
+`headingsIn` over `syntaxTree(state)` — the tree the decorations and the link
+lookups already use — so the list cannot disagree with what the editor believes
+the document is.
+
+**It redraws only while it is the panel on show.** `bootstrap` refreshes it when
+a document opens, when the text changes and when the sidebar changes panel, and
+each of those returns at once unless the outline is showing, so a reader with
+the file browser open pays nothing per keystroke.
+
+**A pane holding nothing says so.** "Nothing is open" and "This document has no
+headings" are different facts, and an empty panel cannot tell a reader which one
+they are looking at.
+
 <a id="design-e6bdab"></a>
 
 ## Keyboard
