@@ -1113,7 +1113,7 @@ function anchorLinks(): string[] {
   )
 }
 
-const NAMED_BUT_DELIBERATELY_UNUSED = ['innerHTML', 'sendBeacon', 'sessionStorage']
+const NAMED_BUT_DELIBERATELY_UNUSED = ['sendBeacon', 'sessionStorage']
 const SOME_IDENTIFIERS_ARE_NAMED = 4
 
 function identifiersNamedInTests(): string[] {

@@ -40,7 +40,7 @@ const CLOSING_MARK = 1
 const PAST_CLOSING_MARK = 2
 const HTML_INFO = 'html'
 const LABEL_CLOSES = ']'
-const RAW_HTML_CLASS = 'markup__html'
+export const RAW_HTML_CLASS = 'markup__html'
 const INLINE_TAG = 'HTMLTag'
 
 const HEADINGS: ReadonlyMap<string, string> = new Map([

@@ -654,6 +654,26 @@ open and a second request to place the caret, which races: the caret would
 arrive before the document it belongs to. `at` is read once, on open, and the
 next tab activation rewrites the URL without it.
 
+<a id="design-9b2d7c"></a>
+
+## Export
+
+**An export is the preview with this editor's plumbing taken out.** The renderer
+marks every block with `data-from` and `data-to` so a click in the preview can
+reach the text, names the language on a code block, and wraps each token in a
+span whose class the editor's stylesheet colours. None of that means anything
+outside this app: without the stylesheet the spans are inert markup, so the
+export drops them and emits the code as it was written. What is left carries no
+`class` attribute at all, which is what makes it paste cleanly into another
+document — and a test says so, so a new plumbing class cannot leave with it.
+
+**An image keeps the source the document wrote.** `![alt](picture.png)` is
+relative to the document, and the export leaves it that way: it is a fragment of
+the store rather than a self-contained file, so it is right beside the document
+it came from and broken once it moves. Rewriting to an absolute URL would tie
+the file to this server's name, and embedding the bytes would turn a note with a
+photo in it into a megabyte of base64.
+
 <a id="design-e1ba9e"></a>
 
 ## Concurrency
