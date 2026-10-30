@@ -9,7 +9,12 @@ interface PrintingOptions {
   textInFront: () => string | null
 }
 
-export function bindPrinting(options: PrintingOptions): () => void {
+interface Printing {
+  print: () => void
+  stopPrinting: () => void
+}
+
+export function bindPrinting(options: PrintingOptions): Printing {
   const { root } = options
 
   function sheet(): HTMLElement | null {
@@ -37,8 +42,14 @@ export function bindPrinting(options: PrintingOptions): () => void {
   window.addEventListener('beforeprint', fill)
   window.addEventListener('afterprint', empty)
 
-  return () => {
-    window.removeEventListener('beforeprint', fill)
-    window.removeEventListener('afterprint', empty)
+  return {
+    print: () => {
+      window.print()
+    },
+
+    stopPrinting: () => {
+      window.removeEventListener('beforeprint', fill)
+      window.removeEventListener('afterprint', empty)
+    },
   }
 }

@@ -1,6 +1,6 @@
 'use sanity'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bindPrinting } from '../../../src/client/preview/printing.ts'
 
@@ -10,8 +10,11 @@ let root: HTMLElement = document.createElement('div')
 let standing: Array<() => void> = []
 let open: string | null = A_DOCUMENT
 
-function printingFrom(): void {
-  standing.push(bindPrinting({ root, textInFront: () => open }))
+function printingFrom(): ReturnType<typeof bindPrinting> {
+  const printing = bindPrinting({ root, textInFront: () => open })
+  standing.push(printing.stopPrinting)
+
+  return printing
 }
 
 function aboutToPrint(): void {
@@ -37,6 +40,7 @@ beforeEach(() => {
 
 afterEach(() => {
   for (const release of standing.splice(0)) release()
+  vi.unstubAllGlobals()
 })
 
 describe('what the page holds when the browser is about to print', () => {
@@ -74,6 +78,19 @@ describe('what the page holds when the browser is about to print', () => {
     aboutToPrint()
 
     expect(sheetHolds()).toBe('<h1>Printed</h1><p>with prose</p>')
+  })
+})
+
+describe('asking the browser to print', () => {
+  it('asks it outright, because a reader with no keyboard has no other way to', () => {
+    const asked: string[] = []
+    vi.stubGlobal('print', () => {
+      asked.push('printed')
+    })
+
+    printingFrom().print()
+
+    expect(asked).toStrictEqual(['printed'])
   })
 })
 

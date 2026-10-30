@@ -29,8 +29,6 @@ export function exportedFragment(markdown: string, sanitise?: SanitiseHtml): Doc
   return fragment
 }
 
-function exportedHtml(markdown: string, sanitise?: SanitiseHtml): string {
+export function exportedHtml(markdown: string, sanitise?: SanitiseHtml): string {
   return strippedOf(markdown, sanitise).innerHTML
 }
-
-export const TestOnly = { exportedHtml }

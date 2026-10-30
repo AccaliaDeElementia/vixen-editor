@@ -87,6 +87,15 @@ whenever it shows a document: a `focusin` listener moved the front pane while
 the workspace was still being restored, and the document in the URL opened into
 the second pane instead of the first.
 
+**A pane answers for what it is displaying, not for what its editor holds.** The
+two differ: a pane showing a preview of one document can hold another in the
+editor behind it, and a restored preview tab holds nothing at all. `displayed()`
+is the one accessor for the question, and the outline, the print sheet and the
+saved copy all ask it — so each of them follows the reader's eye rather than the
+tab the editor last opened. Where another pane has that document open, its live
+text wins over the preview's copy, which is what keeps an outline current while
+the other pane is typed into.
+
 **A pane that has been torn down builds no editor.** Opening a document is
 several awaits long, and collapsing the other pane onto this one can finish
 first — so the continuation would call `editor()`, which builds on demand, and
@@ -667,13 +676,37 @@ export drops them and emits the code as it was written. What is left carries no
 `class` attribute at all, which is what makes it paste cleanly into another
 document — and a test says so, so a new plumbing class cannot leave with it.
 
+**A saved copy is a whole document, and carries no stylesheet.** `save-html.ts`
+wraps the export in a doctype, a charset and a title taken from the document's
+own name — enough for a browser opening the file from disk to render it, and
+nothing more. There is deliberately no `<style>`: the point of the saved file is
+that it pastes into another document as that document, picking up whatever
+styling is already there.
+
+**The title is built through the DOM rather than escaped by hand.** A document
+can be named `<script>.md`, so the name reaches the file as text in a `<title>`
+element whose `outerHTML` is taken — the platform does the escaping, and there
+is no hand-rolled escaper to get wrong.
+
 **Printing renders the document, rather than printing what is on screen.** The
 editor is virtualised — CodeMirror draws the lines it needs and no more — so a
 printed editor would carry whatever happened to be scrolled into view. On
 `beforeprint` the page fills a sheet outside the application with the export of
-the document in front, and empties it on `afterprint`, so nothing of it is left
-in the page between prints. That also means it prints the document the reader is
-working in even while they are looking at a preview of it.
+what the pane in front is displaying, and empties it on `afterprint`, so nothing
+of it is left in the page between prints.
+
+**The print rules are the last thing in the stylesheet, which is why
+`_base.scss` exists.** Sass requires every `@use` at the top of a file, so
+whatever `main.scss` writes itself is emitted after every partial it uses — and
+`html, body { overflow: hidden }` written there beat `@media print` at equal
+specificity, clipping the printed document to the one screenful the window had
+shown. The base rules moved into a partial of their own so that the print
+partial can come last and win.
+
+**Print is reachable by pointer as well as by `Ctrl/Cmd + P`.** The browser owns
+that chord and the page does not bind it; the cheatsheet cites it, and the
+editing bar carries a print control, because a reader on a touchscreen has no
+chord to press.
 
 **Print is black on white whatever the screen was.** The print rules set the
 colours literally rather than through the tokens, because the tokens follow the

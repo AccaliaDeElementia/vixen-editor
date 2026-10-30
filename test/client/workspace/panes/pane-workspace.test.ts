@@ -61,7 +61,12 @@ function paneHolding(holds: string | null, overrides: PaneOverrides = {}): Retur
     dialogs: dialogsDismissing(),
     toast: { ...createToast(root), ...complaining },
     previews: createPreviews(() => undefined),
-    previewControls: () => ({ showMarkup: () => undefined, showSource: () => undefined }),
+    documentControls: () => ({
+      showMarkup: () => undefined,
+      showSource: () => undefined,
+      saveHtml: () => undefined,
+      print: () => undefined,
+    }),
     openUrl: () => undefined,
     reopen: () => undefined,
     announce: () => undefined,
@@ -115,6 +120,40 @@ describe('a pane that was given nothing to hold', () => {
 
   it('answers that nothing was lost, because it never had an editor to save', async () => {
     expect(await paneHolding(null).flush()).toBe(true)
+  })
+})
+
+describe('what a pane is displaying', () => {
+  it('is the document its editor holds while it shows one', () => {
+    const pane = paneHolding('notes.md')
+    pane.editor().load(SOMETHING_STORED)
+    pane.workspace.show('document', 'notes.md')
+
+    expect(pane.displayed()).toStrictEqual({ entryPath: 'notes.md', markdown: SOMETHING_STORED })
+  })
+
+  it('is nothing at all when the pane holds no document', () => {
+    const pane = paneHolding(null)
+    pane.workspace.show('document', '')
+
+    expect(pane.displayed()).toBeNull()
+  })
+
+  it('is the document a preview is of, not the one its editor happens to hold', async () => {
+    const pane = paneHolding('notes.md')
+
+    await pane.showTab({ path: 'other.md', view: 'markup' })
+
+    expect(pane.displayed()).toStrictEqual({ entryPath: 'other.md', markdown: SOMETHING_STORED })
+  })
+
+  it('is nothing once the pane shows something no document is behind', async () => {
+    const pane = paneHolding('notes.md')
+    await pane.showTab({ path: 'other.md', view: 'markup' })
+
+    pane.workspace.show('image', 'picture.png')
+
+    expect(pane.displayed()).toBeNull()
   })
 })
 

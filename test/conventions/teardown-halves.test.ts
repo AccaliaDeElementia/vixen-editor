@@ -30,7 +30,7 @@ const PER_DOCUMENT = [
 const PER_APPLICATION = [
   'changes.disconnect',
   'navigator.stopIntercepting',
-  'stopPrinting',
+  'printing.stopPrinting',
   'unbindTabKeys',
   'unguardUnload',
 ]

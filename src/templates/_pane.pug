@@ -92,6 +92,10 @@ mixin pane(primary)
           title='Show the document rendered'
         )
           span.icon(aria-hidden='true') preview
+        button.control(data-part='print-document' type='button' aria-label='Print the document' title='Print the document')
+          span.icon(aria-hidden='true') print
+        button.control(data-part='save-html' type='button' aria-label='Save a copy as HTML' title='Save a copy as HTML')
+          span.icon(aria-hidden='true') download
         button.control(
           data-part='preview-source'
           type='button'

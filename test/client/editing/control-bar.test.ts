@@ -4,7 +4,7 @@ import { history, undo } from '@codemirror/commands'
 import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { bindControlBar, formattingKeys, type PreviewControls } from '../../../src/client/editing/control-bar.ts'
+import { bindControlBar, formattingKeys, type DocumentControls } from '../../../src/client/editing/control-bar.ts'
 import type { KeyPlatform } from '../../../src/client/platform/key-spelling.ts'
 import { createEditorState } from '../../../src/client/editing/markdown-setup.ts'
 import { KEYS } from '../../../src/client/platform/help.ts'
@@ -36,13 +36,19 @@ function bound(platform?: KeyPlatform): void {
     host,
     {
       editor: () => cast<DocumentTab>({ view }),
-      previewing: () =>
-        cast<PreviewControls>({
+      documentControls: () =>
+        cast<DocumentControls>({
           showMarkup: () => {
             previewed.push('markup')
           },
           showSource: () => {
             previewed.push('source')
+          },
+          saveHtml: () => {
+            previewed.push('saved')
+          },
+          print: () => {
+            previewed.push('printed')
           },
         }),
     },
@@ -198,6 +204,26 @@ describe('pressing the find control', () => {
       expect(view.dom.querySelectorAll('.cm-search')).toHaveLength(ONE_PANEL)
     })
     expect(view.hasFocus).toBe(false)
+  })
+})
+
+describe('pressing the print control', () => {
+  it('asks the browser to print, which a touch-only reader has no other way to reach', () => {
+    bound()
+
+    press('print-document')
+
+    expect(previewed).toStrictEqual(['printed'])
+  })
+})
+
+describe('pressing the save control', () => {
+  it('asks for a copy of the document, which is the only route a pointer has to one', () => {
+    bound()
+
+    press('save-html')
+
+    expect(previewed).toStrictEqual(['saved'])
   })
 })
 

@@ -10,6 +10,7 @@ import {
   isStorePath,
   relativeDestination,
   resolveDestination,
+  stemOf,
 } from '../../src/shared/link-paths.ts'
 
 describe('isStorePath', () => {
@@ -81,6 +82,17 @@ describe('resolveDestination', () => {
 })
 
 const NAMES = ['', 'a', 'b', 'a/b', 'a/c', 'a/b/c', 'x/y', 'a/b/c/d', 'b/a']
+
+describe('the name a saved copy takes from a document', () => {
+  it.each([
+    ['notes.md', 'notes'],
+    ['folder/notes.md', 'notes'],
+    ['folder/notes.with.dots.md', 'notes.with.dots'],
+    ['folder/README', 'README'],
+  ])('reads %s as %s', (entryPath, expected) => {
+    expect(stemOf(entryPath)).toBe(expected)
+  })
+})
 
 describe('relativeDestination', () => {
   it.each([

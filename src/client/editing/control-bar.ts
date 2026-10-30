@@ -54,14 +54,16 @@ const HISTORY: readonly CommandControl[] = [
   { part: 'edit-redo', run: redo },
 ]
 
-export interface PreviewControls {
+export interface DocumentControls {
   showMarkup: () => void
   showSource: () => void
+  saveHtml: () => void
+  print: () => void
 }
 
 interface ControlBarOptions {
   editor: () => DocumentTab
-  previewing: () => PreviewControls
+  documentControls: () => DocumentControls
 }
 
 const NAMED = 'aria-label'
@@ -120,9 +122,17 @@ export function bindControlBar(
   })
 
   onClick(host, 'preview-markup', () => {
-    options.previewing().showMarkup()
+    options.documentControls().showMarkup()
   })
   onClick(host, 'preview-source', () => {
-    options.previewing().showSource()
+    options.documentControls().showSource()
+  })
+
+  onClick(host, 'save-html', () => {
+    options.documentControls().saveHtml()
+  })
+
+  onClick(host, 'print-document', () => {
+    options.documentControls().print()
   })
 }

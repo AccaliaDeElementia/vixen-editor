@@ -51,3 +51,16 @@ test('choosing a heading in the outline takes the reader to it', async ({ page, 
 
   await expect(page.locator('.cm-line', { hasText: LAST_HEADING })).toBeInViewport()
 })
+
+test('the outline follows a preview to the document it shows', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  await page.goto(await storedDocument(request, `previewed-${stamp}.md`, WITH_HEADINGS))
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('[data-part="preview-markup"]').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h1')).toBeVisible())
+
+  await page.locator('.pane').last().click()
+  await page.locator('#show-outline').click()
+
+  await expect(page.locator('[data-part="outline-list"] li')).toHaveText(['Title', 'A section'])
+})

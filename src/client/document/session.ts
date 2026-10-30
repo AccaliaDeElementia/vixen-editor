@@ -1,6 +1,6 @@
 'use sanity'
 
-import { basenameOf } from '../../shared/link-paths.ts'
+import { stemOf } from '../../shared/link-paths.ts'
 
 import { DocumentRequestError, WHILE_LEAVING, type DocumentClient } from './document-client.ts'
 
@@ -24,8 +24,7 @@ function isAbsent(error: unknown): boolean {
 }
 
 function defaultTemplate(id: string): string {
-  const name = basenameOf(id).replace(/\.[^.\/]+$/v, '')
-  return `# ${name}\n\nTODO: start writing.\n`
+  return `# ${stemOf(id)}\n\nTODO: start writing.\n`
 }
 
 export function createSession(client: DocumentClient, template: (id: string) => string = defaultTemplate): Session {

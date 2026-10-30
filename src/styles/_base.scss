@@ -1,0 +1,30 @@
+@use 'tokens' as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: $body-bg;
+  color: $body-color;
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+}
+
+a {
+  color: $ink-primary;
+
+  &:hover,
+  &:focus {
+    color: $ink-info;
+  }
+}

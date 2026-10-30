@@ -15,8 +15,14 @@ export function directoryOf(entryPath: string): string {
   return cut === NOT_FOUND ? STORE_ROOT : entryPath.slice(SEQUENCE_START, cut)
 }
 
+const AN_EXTENSION = /\.[^.\/]+$/v
+
 export function basenameOf(entryPath: string): string {
   return entryPath.slice(entryPath.lastIndexOf('/') + PAST_SEPARATOR)
+}
+
+export function stemOf(entryPath: string): string {
+  return basenameOf(entryPath).replace(AN_EXTENSION, '')
 }
 
 export function relativeDestination(fromDirectory: string, target: string): string {

@@ -22,6 +22,7 @@ import type { TabAt } from '../workspace/tabs/open-tabs.ts'
 import { createPreviews } from '../preview/previews.ts'
 import { createPreviewing } from '../preview/previewing.ts'
 import { bindPrinting } from '../preview/printing.ts'
+import { saveAsHtml } from '../preview/save-html.ts'
 
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { bindTabKeys } from '../workspace/tabs/tab-keys.ts'
@@ -90,6 +91,7 @@ interface BootstrapOptions {
   session?: Session
   navigate?: (url: string) => void
   listenForUnload?: (handler: (event: BeforeUnloadEvent) => void) => () => void
+  saveFile?: ((file: File) => void) | undefined
   files?: FilesClient
   reopen?: () => void
   openChanges?: (url: string) => EventSource
@@ -126,7 +128,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       dialogs,
       toast,
       previews,
-      previewControls: () => previewing,
+      documentControls: () => ({ ...previewing, saveHtml: saveInFrontAsHtml, print: printing.print }),
       openUrl,
       reopen,
       announce: setStatus,
@@ -170,8 +172,22 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { pane: primary, workspace, statusBar } = primaryWorkspace
   const tab = primaryWorkspace.editor()
 
+  function showingInFront(): { entryPath: string; markdown: string } | null {
+    const shown = touched.displayed()
+    if (shown === null) return null
+
+    return { entryPath: shown.entryPath, markdown: panes.contentOf(shown.entryPath) ?? shown.markdown }
+  }
+
   function textInFront(): string | null {
-    return touched.held.path() === null ? null : touched.editor().view.state.doc.toString()
+    return showingInFront()?.markdown ?? null
+  }
+
+  function saveInFrontAsHtml(): void {
+    const showing = showingInFront()
+    if (showing === null) return
+
+    saveAsHtml(showing, options.saveFile)
   }
 
   function goTo(surface: PaneWorkspace): void {
@@ -449,10 +465,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  const stopPrinting = bindPrinting({ root, textInFront })
+  const printing = bindPrinting({ root, textInFront })
 
   function teardownApplication(): void {
-    stopPrinting()
+    printing.stopPrinting()
     unbindTabKeys()
     unguardUnload()
     navigator.stopIntercepting()

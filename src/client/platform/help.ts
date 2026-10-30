@@ -18,6 +18,7 @@ type Entry = Described | Chorded
 
 export const KEYS = {
   save: 'Mod-s',
+  print: 'Mod-p',
   undo: 'Mod-z',
   redo: 'Mod-y',
   redoOnMac: 'Mod-Shift-z',
@@ -74,6 +75,7 @@ export const KEYS = {
 
 const SHORTCUTS: readonly Entry[] = [
   { does: 'Save the document', chords: [{ key: KEYS.save }] },
+  { does: 'Print the document', how: 'Ctrl/Cmd + P', keys: [KEYS.print] },
   { does: 'Undo', chords: [{ key: KEYS.undo }], part: 'edit-undo' },
   {
     does: 'Redo what you undid',
@@ -158,6 +160,7 @@ const GESTURES: readonly Entry[] = [
   { does: 'Move a file or folder', how: 'Drag the row onto a folder' },
   { does: 'Add an image or file', how: 'Drop it onto the document, or use Upload' },
   { does: 'See an image in place', how: 'Put it alone on its own line' },
+  { does: 'Save a copy of the document as HTML', how: 'The download button at the end of the editing bar' },
   { does: 'Resize the file browser', how: 'Drag the divider, or focus it and use the arrow keys' },
 ]
 

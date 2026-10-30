@@ -2,9 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { TestOnly } from '../../../src/client/preview/exported-html.ts'
-
-const { exportedHtml } = TestOnly
+import { exportedHtml } from '../../../src/client/preview/exported-html.ts'
 
 function keepingWhatWasWritten(raw: string): DocumentFragment {
   const held = document.createElement('template')

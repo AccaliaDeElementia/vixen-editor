@@ -6,6 +6,8 @@ import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 import { announcePanelChanged } from '../../../../src/client/platform/announce/panel-changed.ts'
 import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
+import { toggleSplit } from '../../../../src/client/workspace/split/split.ts'
+import { writeKeptTabs } from '../../../../src/client/workspace/tabs/kept-tabs.ts'
 import { FILES_PANEL, OUTLINE_PANEL, showPanel } from '../../../../src/client/platform/panels.ts'
 import { given, givenAsync } from '../../../conditions.ts'
 import {
@@ -29,6 +31,8 @@ const LONGER_THAN_THE_EDITOR_PARSES = Array.from(
 const A_SECOND_HEADING = '## beta'
 const TWO_HEADINGS_IN = `# alpha\n\n${A_SECOND_HEADING}\n`
 const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
+const PREVIEW_OF_ASIDE = { path: 'aside.md', view: 'markup' } as const
+const WIDE_ENOUGH = 1200
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -69,6 +73,12 @@ function saidInstead(): string {
   const said = root.querySelector<HTMLElement>('[data-part="outline-empty"]')
 
   return said?.hidden === false ? said.textContent : ''
+}
+
+function clickIntoThePane(index: number): void {
+  const panes = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
+
+  panes[index]?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
 }
 
 function clickIntoTheEditorIn(pane: number): void {
@@ -180,6 +190,30 @@ describe('the outline of the document in front', () => {
     clickIntoTheEditorIn(0)
 
     expect(rowsShown()).toStrictEqual(['alpha', 'beta'])
+  })
+
+  it('follows a preview to the document it shows, rather than to the editor beside it', async () => {
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
+    await givenAsync(editor.settled())
+
+    clickIntoThePane(1)
+    showingTheOutline()
+
+    expect(rowsShown()).toStrictEqual(['alpha', 'beta'])
+  })
+
+  it('reads a restored preview of a document no editor holds, which nothing else can answer for', async () => {
+    writeKeptTabs('secondary', [PREVIEW_OF_ASIDE], PREVIEW_OF_ASIDE)
+    toggleSplit(root, 'beside', WIDE_ENOUGH)
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+
+    clickIntoThePane(1)
+    showingTheOutline()
+
+    expect(rowsShown()).toStrictEqual(['aside.md'])
   })
 
   it('says nothing is open once the reader closes the last tab', async () => {
