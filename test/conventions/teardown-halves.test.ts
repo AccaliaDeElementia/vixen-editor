@@ -27,7 +27,13 @@ const PER_DOCUMENT = [
   'toast.dismissRaised',
 ]
 
-const PER_APPLICATION = ['changes.disconnect', 'navigator.stopIntercepting', 'unbindTabKeys', 'unguardUnload']
+const PER_APPLICATION = [
+  'changes.disconnect',
+  'navigator.stopIntercepting',
+  'stopPrinting',
+  'unbindTabKeys',
+  'unguardUnload',
+]
 
 async function halves(): Promise<Map<string, string[]>> {
   const source = await fs.readFile(path.join(REPO_ROOT, BOOTSTRAP), 'utf8')

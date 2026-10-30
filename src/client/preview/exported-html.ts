@@ -10,7 +10,7 @@ function unwrap(element: Element): void {
   element.replaceWith(...element.childNodes)
 }
 
-function exportedHtml(markdown: string, sanitise?: SanitiseHtml): string {
+function strippedOf(markdown: string, sanitise?: SanitiseHtml): HTMLElement {
   const host = document.createElement('div')
   host.append(sanitise === undefined ? renderMarkdown(markdown) : renderMarkdown(markdown, sanitise))
 
@@ -19,7 +19,18 @@ function exportedHtml(markdown: string, sanitise?: SanitiseHtml): string {
     for (const attribute of PLUMBING) element.removeAttribute(attribute)
   }
 
-  return host.innerHTML
+  return host
+}
+
+export function exportedFragment(markdown: string, sanitise?: SanitiseHtml): DocumentFragment {
+  const fragment = document.createDocumentFragment()
+  fragment.append(...strippedOf(markdown, sanitise).childNodes)
+
+  return fragment
+}
+
+function exportedHtml(markdown: string, sanitise?: SanitiseHtml): string {
+  return strippedOf(markdown, sanitise).innerHTML
 }
 
 export const TestOnly = { exportedHtml }

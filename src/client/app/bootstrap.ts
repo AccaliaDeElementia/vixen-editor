@@ -21,6 +21,7 @@ import type { FilesClient } from '../browser/files-client.ts'
 import type { TabAt } from '../workspace/tabs/open-tabs.ts'
 import { createPreviews } from '../preview/previews.ts'
 import { createPreviewing } from '../preview/previewing.ts'
+import { bindPrinting } from '../preview/printing.ts'
 
 import { STORE_ROOT } from '../../shared/store-path.ts'
 import { bindTabKeys } from '../workspace/tabs/tab-keys.ts'
@@ -448,7 +449,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
+  const stopPrinting = bindPrinting({ root, textInFront })
+
   function teardownApplication(): void {
+    stopPrinting()
     unbindTabKeys()
     unguardUnload()
     navigator.stopIntercepting()

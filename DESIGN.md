@@ -667,6 +667,20 @@ export drops them and emits the code as it was written. What is left carries no
 `class` attribute at all, which is what makes it paste cleanly into another
 document — and a test says so, so a new plumbing class cannot leave with it.
 
+**Printing renders the document, rather than printing what is on screen.** The
+editor is virtualised — CodeMirror draws the lines it needs and no more — so a
+printed editor would carry whatever happened to be scrolled into view. On
+`beforeprint` the page fills a sheet outside the application with the export of
+the document in front, and empties it on `afterprint`, so nothing of it is left
+in the page between prints. That also means it prints the document the reader is
+working in even while they are looking at a preview of it.
+
+**Print is black on white whatever the screen was.** The print rules set the
+colours literally rather than through the tokens, because the tokens follow the
+device's colour scheme and a reader on a dark screen does not want a sheet of
+black paper. The screen's own chrome — the ribbon, the explorer, the panes, the
+dialog — is not hidden piece by piece: `.app` holds all of it and goes as one.
+
 **An image keeps the source the document wrote.** `![alt](picture.png)` is
 relative to the document, and the export leaves it that way: it is a fragment of
 the store rather than a self-contained file, so it is right beside the document

@@ -1,0 +1,49 @@
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  html,
+  body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+    color: #000;
+  }
+
+  .app,
+  .modal,
+  .skip-link {
+    display: none;
+  }
+
+  .print-sheet {
+    display: block;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    background: #fff;
+    color: #000;
+  }
+
+  .print-sheet a {
+    color: #000;
+    text-decoration: underline;
+  }
+
+  .print-sheet img {
+    max-width: 100%;
+  }
+
+  .print-sheet pre,
+  .print-sheet blockquote,
+  .print-sheet table {
+    break-inside: avoid;
+  }
+
+  .print-sheet h1,
+  .print-sheet h2,
+  .print-sheet h3 {
+    break-after: avoid;
+  }
+}
