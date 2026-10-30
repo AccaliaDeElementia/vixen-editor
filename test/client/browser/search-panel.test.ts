@@ -21,6 +21,7 @@ let asked: string[] = []
 let complaints: string[] = []
 let settling: Array<Promise<void>> = []
 let standing: Array<() => void> = []
+let opened: string[] = []
 
 interface Answering {
   hits?: Array<typeof A_HIT>
@@ -47,6 +48,9 @@ function panelAnswering({ hits = [], capped = false, refuse }: Answering = {}): 
     }),
     track: (work: Promise<void>) => {
       settling.push(work)
+    },
+    navigate: (url: string) => {
+      opened.push(url)
     },
   })
 
@@ -84,6 +88,7 @@ beforeEach(() => {
   complaints = []
   settling = []
   standing = []
+  opened = []
   document.body.innerHTML = ''
   root = document.createElement('div')
   root.innerHTML = `<div id="app">${renderSection('[data-panel="search"]')}</div>`
@@ -141,6 +146,29 @@ describe('searching every document from the sidebar', () => {
     await searchFor('lantern')
 
     expect(rowsShown()).toHaveLength(1)
+  })
+})
+
+describe('pressing a result', () => {
+  function pressRow(index: number): void {
+    root.querySelectorAll<HTMLElement>('[data-part="search-results"] button')[index]?.click()
+  }
+
+  it('offers each hit as a button, because a result with nowhere to go is not a result', async () => {
+    panelAnswering({ hits: [A_HIT, ANOTHER_HIT] })
+
+    await searchFor('lantern')
+
+    expect(root.querySelectorAll('[data-part="search-results"] button')).toHaveLength(2)
+  })
+
+  it('opens the document the hit is in, at the offset the hit is at', async () => {
+    panelAnswering({ hits: [A_HIT, ANOTHER_HIT] })
+    await searchFor('lantern')
+
+    pressRow(1)
+
+    expect(opened).toStrictEqual(['/doc/other.md?at=0'])
   })
 })
 

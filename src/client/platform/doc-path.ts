@@ -13,6 +13,10 @@ export type PreviewView = (typeof PREVIEW_VIEWS)[number]
 
 const DEFAULT_VIEW: TabView = 'editor'
 const VIEW_PARAMETER = 'view'
+const CARET_PARAMETER = 'at'
+const NO_CARET = null
+const NOTHING_NAMED = ''
+const AN_OFFSET = /^\d+$/v
 const VIEW_IN_URL: Readonly<Partial<Record<TabView, string>>> = { editor: 'edit', source: 'source', markup: 'preview' }
 const TITLE_SEGMENTS = 2
 const LAST_SEGMENT = -1
@@ -65,6 +69,16 @@ export function docUrlFor(entryPath: string, view: TabView = DEFAULT_VIEW): stri
   if (spelling === undefined || view === DEFAULT_VIEW) return at
 
   return `${at}?${VIEW_PARAMETER}=${spelling}`
+}
+
+export function docUrlAt(entryPath: string, offset: number): string {
+  return `${docUrlFor(entryPath)}?${CARET_PARAMETER}=${String(offset)}`
+}
+
+export function caretFromSearch(search: string): number | null {
+  const named = new URLSearchParams(search).get(CARET_PARAMETER) ?? NOTHING_NAMED
+
+  return AN_OFFSET.test(named) ? Number(named) : NO_CARET
 }
 
 export function isPreviewView(view: TabView): view is PreviewView {

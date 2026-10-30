@@ -119,6 +119,32 @@ describe('which view the workspace shows', () => {
   })
 })
 
+describe('a url that names where the caret should land', () => {
+  const A_DOCUMENT = '# notes\n\nthe lantern'
+  const PAST_THE_HEADING = A_DOCUMENT.indexOf('the lantern')
+
+  it('puts it there, so a search result opens where it matched', async () => {
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      search: `?at=${String(PAST_THE_HEADING)}`,
+      session: fakeSession({ load: () => Promise.resolve({ content: A_DOCUMENT, stored: true }) }),
+    })
+
+    expect(view.state.selection.main.head).toBe(PAST_THE_HEADING)
+  })
+
+  it('leaves the caret where the document was last left when the url names no offset', async () => {
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      session: fakeSession({ load: () => Promise.resolve({ content: A_DOCUMENT, stored: true }) }),
+    })
+
+    expect(view.state.selection.main.head).toBe(0)
+  })
+})
+
 describe('the page title', () => {
   it('names the open document', async () => {
     await openEditor({ root, pathname: '/doc/journal/a.md', session: fakeSession() })

@@ -189,9 +189,25 @@
 
 .result {
   display: flex;
+  width: 100%;
   flex-direction: column;
   gap: 0.1em;
+  min-height: 24px;
   padding: 0.25em $space-sm;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: $body-bg;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
+  }
 }
 
 .result__where {

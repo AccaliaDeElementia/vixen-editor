@@ -646,6 +646,14 @@ is still one gesture.
 is choosing between documents, so the path leads; the excerpt is what tells them
 which of several matches in that document they are looking at.
 
+**A result opens through the address bar, carrying the offset in it.**
+`/doc/<path>?at=<offset>` is what a row navigates to, so a hit opens the way a
+file browser row does — one history entry, the address bar honest, and the same
+URL reopens at the same place after a reload. The alternative was a request to
+open and a second request to place the caret, which races: the caret would
+arrive before the document it belongs to. `at` is read once, on open, and the
+next tab activation rewrites the URL without it.
+
 <a id="design-e1ba9e"></a>
 
 ## Concurrency

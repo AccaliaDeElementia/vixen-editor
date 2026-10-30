@@ -1,6 +1,7 @@
 'use sanity'
 
 import {
+  caretFromSearch,
   docUrlFor,
   documentIdFromPath,
   isPreviewView,
@@ -186,9 +187,10 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     })
   }
 
-  async function openPath(target: string, wanted: TabView): Promise<void> {
+  async function openPath(target: string, wanted: TabView, landsAt: number | null): Promise<void> {
     await touched.openPath(target)
     previewing.showNamedByUrl(wanted)
+    if (landsAt !== null) panes.caretInto(documentIdFromPath(target), landsAt)
     refreshOutline()
   }
   const { view } = tab
@@ -372,7 +374,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const navigator = interceptNavigation({
     navigation: options.navigation ?? globalThis.navigation,
     open: async (at: string, atSearch: string) => {
-      await openPath(at, viewFromSearch(atSearch))
+      await openPath(at, viewFromSearch(atSearch), caretFromSearch(atSearch))
     },
     mayLeave: () => tab.saveState() === 'clean',
     settle: tab.settleBeforeLeaving,
@@ -399,7 +401,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     else surfaces.settlePane(surface)
   }
 
-  await openPath(pathname, viewFromSearch(search))
+  await openPath(pathname, viewFromSearch(search), caretFromSearch(search))
   refreshHistoryButtons(root, navigator)
 
   function teardownDocument(): void {

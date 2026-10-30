@@ -287,7 +287,7 @@ async function runFileTree({
   }
   bindActions(context)
   trashPanel.bind()
-  const searchPanel = createSearchPanel({ root, client, toast, track: runs.track })
+  const searchPanel = createSearchPanel({ root, client, toast, track: runs.track, navigate })
   searchPanel.bind()
   const panels = onPanelChanged(root, () => {
     draw(contents.openFolders())

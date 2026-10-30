@@ -1,5 +1,6 @@
 'use sanity'
 
+import { docUrlAt } from '../platform/doc-path.ts'
 import { errorMessage } from '../platform/error-message.ts'
 import { onPanelChanged } from '../platform/announce/panel-changed.ts'
 import { panelShowing, SEARCH_PANEL } from '../platform/panels.ts'
@@ -25,6 +26,7 @@ interface SearchPanelOptions {
   client: FilesClient
   toast: Toast
   track: (work: Promise<void>) => void
+  navigate: (url: string) => void
 }
 
 interface SearchPanel {
@@ -38,9 +40,14 @@ function matchesIn(count: number): string {
   return `${String(count)} ${count === ONE_MATCH ? 'match' : 'matches'}`
 }
 
-function rowFor({ path, line, excerpt }: SearchHit): HTMLElement {
+function rowFor({ path, line, offset, excerpt }: SearchHit, open: (url: string) => void): HTMLElement {
   const row = document.createElement('li')
-  row.className = 'result'
+  const reach = document.createElement('button')
+  reach.type = 'button'
+  reach.className = 'result'
+  reach.addEventListener('click', () => {
+    open(docUrlAt(path, offset))
+  })
 
   const where = document.createElement('span')
   where.className = 'result__where'
@@ -50,7 +57,8 @@ function rowFor({ path, line, excerpt }: SearchHit): HTMLElement {
   said.className = 'result__excerpt'
   said.textContent = excerpt
 
-  row.append(where, said)
+  reach.append(where, said)
+  row.append(reach)
 
   return row
 }
@@ -79,7 +87,7 @@ export function createSearchPanel(options: SearchPanelOptions): SearchPanel {
     }
 
     const show = (hits: readonly SearchHit[], capped: boolean): void => {
-      results.replaceChildren(...hits.map(rowFor))
+      results.replaceChildren(...hits.map((hit) => rowFor(hit, options.navigate)))
       say(capped ? `${matchesIn(hits.length)}${AND_MORE}` : matchesIn(hits.length))
     }
 

@@ -3,7 +3,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  caretFromSearch,
   displayPathFromPath,
+  docUrlAt,
   docUrlFor,
   documentIdFromPath,
   folderIndexAlternateFromPath,
@@ -178,6 +180,33 @@ describe('the url a view is addressed by', () => {
   it('names the view in the query for anything else', () => {
     expect(docUrlFor('notes.md', 'markup')).toBe('/doc/notes.md?view=preview')
   })
+})
+
+describe('the url a hit in a search is addressed by', () => {
+  it('carries the offset the caret should land on', () => {
+    expect(docUrlAt('folder/notes.md', 42)).toBe('/doc/folder/notes.md?at=42')
+  })
+
+  it('escapes the path the way every other document url does', () => {
+    expect(docUrlAt('a folder/notes.md', 0)).toBe('/doc/a%20folder/notes.md?at=0')
+  })
+})
+
+describe('caretFromSearch', () => {
+  it.each([
+    ['?at=42', 42],
+    ['?at=0', 0],
+    ['?view=preview&at=7', 7],
+  ])('reads %s as an offset of %s', (search, expected) => {
+    expect(caretFromSearch(search)).toBe(expected)
+  })
+
+  it.each(['', '?view=preview', '?at=', '?at=nowhere', '?at=-3', '?at=1.5'])(
+    'reads %s as naming no offset at all',
+    (search) => {
+      expect(caretFromSearch(search)).toBeNull()
+    },
+  )
 })
 
 describe('isPreviewView', () => {
