@@ -40,7 +40,7 @@ export function createPreviews(putCaretAt: (entryPath: string, offset: number) =
       const intoTheDocument = (offset: number): void => {
         putCaretAt(at.path, offset)
       }
-      const body = at.view === 'source' ? createSourceView(host) : createMarkupView(host, intoTheDocument)
+      const body = at.view === 'source' ? createSourceView(host) : createMarkupView(host, intoTheDocument, at.path)
       body.show(content)
       rendered = { host, at, body }
     },

@@ -179,10 +179,6 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     return { entryPath: shown.entryPath, markdown: panes.contentOf(shown.entryPath) ?? shown.markdown }
   }
 
-  function textInFront(): string | null {
-    return showingInFront()?.markdown ?? null
-  }
-
   function saveInFrontAsHtml(): void {
     const showing = showingInFront()
     if (showing === null) return
@@ -199,7 +195,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   function refreshOutline(): void {
     if (panelShowing(root) !== OUTLINE_PANEL) return
 
-    showOutline(root, textInFront(), (offset: number) => {
+    showOutline(root, showingInFront()?.markdown ?? null, (offset: number) => {
       touched.editor().putCaretAt(offset)
     })
   }
@@ -465,7 +461,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     },
   })
 
-  const printing = bindPrinting({ root, textInFront })
+  const printing = bindPrinting({ root, showing: showingInFront })
 
   function teardownApplication(): void {
     printing.stopPrinting()

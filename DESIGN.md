@@ -714,6 +714,15 @@ device's colour scheme and a reader on a dark screen does not want a sheet of
 black paper. The screen's own chrome — the ribbon, the explorer, the panes, the
 dialog — is not hidden piece by piece: `.app` holds all of it and goes as one.
 
+**A rendered image is fetched from the store, not from the page it is shown
+in.** A document writes `![alt](../image.png)`, which is relative to the
+document inside the store — but the preview and the print sheet live at
+`/doc/<path>`, where the browser would resolve it against a page route and fetch
+HTML. `rawSourceFor` turns a destination into `/api/files/raw/<path>`, and the
+editor's image decorations, the preview and the print sheet all call it, so the
+three cannot disagree about where a picture lives. They did: the preview showed
+every relative image broken while the editor showed it fine.
+
 **An image keeps the source the document wrote.** `![alt](picture.png)` is
 relative to the document, and the export leaves it that way: it is a fragment of
 the store rather than a self-contained file, so it is right beside the document

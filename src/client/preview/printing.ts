@@ -1,12 +1,18 @@
 'use sanity'
 
 import { exportedFragment } from './exported-html.ts'
+import { pointImagesAtTheStore } from './image-sources.ts'
 
 const SHEET_SELECTOR = '[data-part="print-sheet"]'
 
+interface Printable {
+  entryPath: string
+  markdown: string
+}
+
 interface PrintingOptions {
   root: ParentNode
-  textInFront: () => string | null
+  showing: () => Printable | null
 }
 
 interface Printing {
@@ -25,14 +31,15 @@ export function bindPrinting(options: PrintingOptions): Printing {
     const into = sheet()
     if (into === null) return
 
-    const markdown = options.textInFront()
-    if (markdown === null) {
+    const showing = options.showing()
+    if (showing === null) {
       into.replaceChildren()
 
       return
     }
 
-    into.replaceChildren(exportedFragment(markdown))
+    into.replaceChildren(exportedFragment(showing.markdown))
+    pointImagesAtTheStore(into, showing.entryPath)
   }
 
   const empty = (): void => {

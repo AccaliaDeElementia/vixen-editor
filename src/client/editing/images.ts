@@ -6,9 +6,8 @@ import type { EditorState, Extension, Range, Transaction } from '@codemirror/sta
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view'
 import type { Text } from '@codemirror/state'
 
-import { rawUrlFor } from '../../shared/api.ts'
-import { directoryOf, isStorePath, resolveDestination } from '../../shared/link-paths.ts'
 import { destinationsIn } from '../../shared/markdown-tree.ts'
+import { rawSourceFor } from '../platform/raw-sources.ts'
 import { EMPTY } from '../../shared/sequences.ts'
 
 import { holderOf } from './holder.ts'
@@ -87,21 +86,18 @@ function altOf(markup: string): string {
 
 function computeImages(state: EditorState): DecorationSet {
   const ranges: Array<Range<Decoration>> = []
-  const directory = directoryOf(holderOf(state))
+  const holder = holderOf(state)
   const broken = state.field(brokenImages)
   const open = linesInReach(state)
   const text = state.doc.toString()
 
   for (const { value, markupFrom, markupTo, isImage } of destinationsIn(syntaxTree(state), text)) {
-    if (!isImage || !isStorePath(value)) continue
+    if (!isImage) continue
     if (!aloneOnItsLine(state.doc, markupFrom, markupTo)) continue
     if (open.has(state.doc.lineAt(markupFrom).number)) continue
 
-    const target = resolveDestination(directory, value)
-    if (target === null) continue
-
-    const src = rawUrlFor(target)
-    if (broken.has(src)) continue
+    const src = rawSourceFor(holder, value)
+    if (src === null || broken.has(src)) continue
 
     ranges.push(
       Decoration.replace({ widget: new ImageWidget(src, altOf(text.slice(markupFrom, markupTo))) }).range(

@@ -8,10 +8,10 @@ const A_DOCUMENT = '# Printed\n\nwith prose\n'
 
 let root: HTMLElement = document.createElement('div')
 let standing: Array<() => void> = []
-let open: string | null = A_DOCUMENT
+let open: { entryPath: string; markdown: string } | null = { entryPath: 'folder/notes.md', markdown: A_DOCUMENT }
 
 function printingFrom(): ReturnType<typeof bindPrinting> {
-  const printing = bindPrinting({ root, textInFront: () => open })
+  const printing = bindPrinting({ root, showing: () => open })
   standing.push(printing.stopPrinting)
 
   return printing
@@ -30,7 +30,7 @@ function sheetHolds(): string {
 }
 
 beforeEach(() => {
-  open = A_DOCUMENT
+  open = { entryPath: 'folder/notes.md', markdown: A_DOCUMENT }
   standing = []
   document.body.innerHTML = ''
   root = document.createElement('div')

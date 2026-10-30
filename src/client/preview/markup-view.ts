@@ -1,5 +1,6 @@
 'use sanity'
 
+import { pointImagesAtTheStore } from './image-sources.ts'
 import { renderMarkdown } from './render-markdown.ts'
 import { blockAt, positionedBlocksIn, type PreviewBody } from './preview-body.ts'
 
@@ -18,13 +19,18 @@ function answerClicksIn(body: HTMLElement, onBlockChosen: (offset: number) => vo
   }
 }
 
-export function createMarkupView(host: ParentNode, onBlockChosen: (offset: number) => void): PreviewBody {
+export function createMarkupView(
+  host: ParentNode,
+  onBlockChosen: (offset: number) => void,
+  holder: string,
+): PreviewBody {
   const body = host.querySelector<HTMLElement>(BODY_SELECTOR)
   if (body === null) return INERT
 
   return {
     show: (content: string) => {
       body.replaceChildren(renderMarkdown(content))
+      pointImagesAtTheStore(body, holder)
       answerClicksIn(body, onBlockChosen)
     },
 

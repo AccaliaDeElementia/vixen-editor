@@ -24,26 +24,42 @@ function body(): HTMLElement | null {
   return host.querySelector<HTMLElement>('[data-part="markup-body"]')
 }
 
+const HOLDER = 'Two Folder/Day 1.md'
+
 beforeEach(() => {
   document.body.innerHTML = ''
   host = page()
 })
 
+describe('an image the document points at', () => {
+  it('is fetched from the store, rather than from the page the preview sits in', () => {
+    createMarkupView(host, ignoringClicks, HOLDER).show('![moon](../moon.png)')
+
+    expect(body()?.querySelector('img')?.getAttribute('src')).toBe('/api/files/raw/moon.png')
+  })
+
+  it('is left alone where it points outside the store', () => {
+    createMarkupView(host, ignoringClicks, HOLDER).show('![moon](https://example.test/moon.png)')
+
+    expect(body()?.querySelector('img')?.getAttribute('src')).toBe('https://example.test/moon.png')
+  })
+})
+
 describe('showing a document rendered', () => {
   it('renders a heading as a heading rather than as its markup', () => {
-    createMarkupView(host, ignoringClicks).show('# A heading')
+    createMarkupView(host, ignoringClicks, HOLDER).show('# A heading')
 
     expect(body()?.querySelector('h1')?.textContent).toBe('A heading')
   })
 
   it('renders emphasis as emphasis', () => {
-    createMarkupView(host, ignoringClicks).show('a **bold** word')
+    createMarkupView(host, ignoringClicks, HOLDER).show('a **bold** word')
 
     expect(body()?.querySelector('strong')?.textContent).toBe('bold')
   })
 
   it('replaces what it rendered before rather than appending', () => {
-    const markup = createMarkupView(host, ignoringClicks)
+    const markup = createMarkupView(host, ignoringClicks, HOLDER)
     markup.show('# first')
 
     markup.show('# second')
@@ -52,7 +68,7 @@ describe('showing a document rendered', () => {
   })
 
   it('shows raw HTML as source rather than running it', () => {
-    createMarkupView(host, ignoringClicks).show('<img src=x onerror="window.pwned = 1">')
+    createMarkupView(host, ignoringClicks, HOLDER).show('<img src=x onerror="window.pwned = 1">')
 
     expect(body()?.querySelector('img')).toBeNull()
   })
@@ -63,7 +79,7 @@ describe('a pane with nowhere to render', () => {
     const bare = document.createElement('div')
     document.body.append(bare)
 
-    createMarkupView(bare, ignoringClicks).show('# ignored')
+    createMarkupView(bare, ignoringClicks, HOLDER).show('# ignored')
 
     expect(bare.childElementCount).toBe(0)
   })
@@ -73,14 +89,14 @@ describe('a pane with nowhere to render', () => {
     document.body.append(bare)
 
     expect(() => {
-      createMarkupView(bare, ignoringClicks).revealOffset(0)
+      createMarkupView(bare, ignoringClicks, HOLDER).revealOffset(0)
     }).not.toThrow()
   })
 })
 
 describe('following the caret', () => {
   function scrolledFrom(markdown: string, caret: number): string | undefined {
-    const markup = createMarkupView(host, ignoringClicks)
+    const markup = createMarkupView(host, ignoringClicks, HOLDER)
     markup.show(markdown)
 
     const reached: string[] = []
@@ -112,7 +128,7 @@ describe('following the caret', () => {
   })
 
   it('scrolls nothing when the caret sits before the first block', () => {
-    const markup = createMarkupView(host, ignoringClicks)
+    const markup = createMarkupView(host, ignoringClicks, HOLDER)
     markup.show('\n\n# one')
     const reached: string[] = []
     for (const block of host.querySelectorAll<HTMLElement>('[data-from]')) {
@@ -130,9 +146,13 @@ describe('following the caret', () => {
 describe('clicking a rendered block', () => {
   function clickedOffsets(markdown: string, selector: string): number[] {
     const reached: number[] = []
-    const markup = createMarkupView(host, (offset) => {
-      reached.push(offset)
-    })
+    const markup = createMarkupView(
+      host,
+      (offset) => {
+        reached.push(offset)
+      },
+      HOLDER,
+    )
     markup.show(markdown)
     host
       .querySelector<HTMLElement>(`[data-part="markup-body"] ${selector}`)
@@ -155,9 +175,13 @@ describe('clicking a rendered block', () => {
 
   it('reports nothing for a click that is in no block at all', () => {
     const reached: number[] = []
-    const markup = createMarkupView(host, (offset) => {
-      reached.push(offset)
-    })
+    const markup = createMarkupView(
+      host,
+      (offset) => {
+        reached.push(offset)
+      },
+      HOLDER,
+    )
     markup.show('# one')
 
     host

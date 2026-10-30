@@ -90,3 +90,62 @@ test('moving the caret away renders the image again', async ({ page, request }) 
 
   await request.delete(`/api/files/entries/${folder}`)
 })
+
+test('an image in the preview is fetched from the store, not from the page the preview sits in', async ({
+  page,
+  request,
+}) => {
+  const folder = `imgpreview-${String(Date.now())}`
+  const url = await documentShowing(request, folder, '# Shown\n\n![a cat](pic.png)\n')
+  await page.goto(url)
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+
+  await page.locator('[data-part="preview-markup"]').click()
+
+  await expect(page.locator('[data-part="markup-body"] img')).toHaveAttribute('src', `/api/files/raw/${folder}/pic.png`)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('an image in the preview really loads its bytes, rather than showing a broken frame', async ({
+  page,
+  request,
+}) => {
+  const folder = `imgbytes-${String(Date.now())}`
+  const url = await documentShowing(request, folder, '# Shown\n\n![a cat](pic.png)\n')
+  await page.goto(url)
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('[data-part="preview-markup"]').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] img')).toBeVisible())
+
+  const loaded = await page
+    .locator('[data-part="markup-body"] img')
+    .evaluate((image: HTMLImageElement) => image.naturalWidth)
+
+  expect(loaded).toBeGreaterThan(0)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})
+
+test('an image climbing out of its folder is found where the document says it is', async ({ page, request }) => {
+  const folder = `imgup-${String(Date.now())}`
+  await request.post('/api/files/uploads', {
+    multipart: {
+      path: '',
+      file: { name: `up-${folder}.png`, mimeType: 'image/png', buffer: DECODABLE_64PX_PNG_BYTES },
+    },
+  })
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/documents', {
+    data: { path: `${folder}/notes.md`, content: `# Up\n\n![a cat](../up-${folder}.png)\n` },
+  })
+
+  await page.goto(`/doc/${folder}/notes.md`)
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('[data-part="preview-markup"]').click()
+
+  await expect(page.locator('[data-part="markup-body"] img')).toHaveAttribute('src', `/api/files/raw/up-${folder}.png`)
+
+  await request.delete(`/api/files/entries/${folder}`)
+  await request.delete(`/api/files/entries/up-${folder}.png`)
+})

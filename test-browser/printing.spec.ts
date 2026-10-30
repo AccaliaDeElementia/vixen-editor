@@ -5,6 +5,7 @@ import { expect, test } from './store-server.ts'
 import type { Page } from '@playwright/test'
 
 import { storedDocument } from './fixtures.ts'
+import { DECODABLE_64PX_PNG_BYTES } from './png.ts'
 
 const SHEET = '[data-part="print-sheet"]'
 const A_DOCUMENT = '# Printed heading\n\nwith prose and a [link](other.md).\n'
@@ -96,4 +97,23 @@ test('the paper it would produce runs to more than one page', async ({ page, req
   const paper = await page.pdf()
 
   expect([...paper.toString('latin1').matchAll(/\/Type\s*\/Page[^s]/gv)].length).toBeGreaterThan(ONE_PAGE)
+})
+
+test('an image prints from the store, rather than from the page it was printed out of', async ({ page, request }) => {
+  const folder = `printimg-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/uploads', {
+    multipart: { path: folder, file: { name: 'pic.png', mimeType: 'image/png', buffer: DECODABLE_64PX_PNG_BYTES } },
+  })
+  await request.post('/api/files/documents', {
+    data: { path: `${folder}/notes.md`, content: '# Printed\n\n![a cat](pic.png)\n' },
+  })
+  await page.goto(`/doc/${folder}/notes.md`)
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+
+  await printing(page)
+
+  await expect(page.locator(`${SHEET} img`)).toHaveAttribute('src', `/api/files/raw/${folder}/pic.png`)
+
+  await request.delete(`/api/files/entries/${folder}`)
 })
