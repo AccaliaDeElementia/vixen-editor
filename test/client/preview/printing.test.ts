@@ -10,7 +10,12 @@ let root: HTMLElement = document.createElement('div')
 let standing: Array<() => void> = []
 type Open = Parameters<typeof bindPrinting>[0]['showing']
 
-let open: ReturnType<Open> = { kind: 'document', entryPath: 'folder/notes.md', markdown: A_DOCUMENT }
+let open: ReturnType<Open> = {
+  kind: 'document',
+  entryPath: 'folder/notes.md',
+  markdown: A_DOCUMENT,
+  shownAs: 'document',
+}
 
 function printingFrom(): ReturnType<typeof bindPrinting> {
   const printing = bindPrinting({ root, showing: () => open })
@@ -32,7 +37,7 @@ function sheetHolds(): string {
 }
 
 beforeEach(() => {
-  open = { kind: 'document', entryPath: 'folder/notes.md', markdown: A_DOCUMENT }
+  open = { kind: 'document', entryPath: 'folder/notes.md', markdown: A_DOCUMENT, shownAs: 'document' }
   standing = []
   document.body.innerHTML = ''
   root = document.createElement('div')
@@ -84,6 +89,17 @@ describe('what the page holds when the browser is about to print', () => {
 })
 
 describe('printing a view that holds something other than a document', () => {
+  it('prints the markup a reader is looking at, rather than the document it renders', () => {
+    open = { kind: 'document', entryPath: 'folder/notes.md', markdown: A_DOCUMENT, shownAs: 'source' }
+    printingFrom()
+
+    aboutToPrint()
+
+    expect(sheetHolds()).toBe(
+      '<pre class="print-sheet__source">&lt;h1&gt;Printed&lt;/h1&gt;\n&lt;p&gt;with prose&lt;/p&gt;</pre>',
+    )
+  })
+
   it('puts the image on the sheet, because blank paper is not what the reader asked for', () => {
     open = { kind: 'image', entryPath: 'folder/picture.png' }
     printingFrom()

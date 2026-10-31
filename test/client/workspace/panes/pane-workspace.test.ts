@@ -129,7 +129,12 @@ describe('what a pane is displaying', () => {
     pane.editor().load(SOMETHING_STORED)
     pane.workspace.show('document', 'notes.md')
 
-    expect(pane.displayed()).toStrictEqual({ kind: 'document', entryPath: 'notes.md', markdown: SOMETHING_STORED })
+    expect(pane.displayed()).toStrictEqual({
+      kind: 'document',
+      entryPath: 'notes.md',
+      markdown: SOMETHING_STORED,
+      shownAs: 'document',
+    })
   })
 
   it('is nothing at all when the pane holds no document', () => {
@@ -144,7 +149,25 @@ describe('what a pane is displaying', () => {
 
     await pane.showTab({ path: 'other.md', view: 'markup' })
 
-    expect(pane.displayed()).toStrictEqual({ kind: 'document', entryPath: 'other.md', markdown: SOMETHING_STORED })
+    expect(pane.displayed()).toStrictEqual({
+      kind: 'document',
+      entryPath: 'other.md',
+      markdown: SOMETHING_STORED,
+      shownAs: 'markup',
+    })
+  })
+
+  it('says the document is being shown as its markup, which is not how it would print rendered', async () => {
+    const pane = paneHolding('notes.md')
+
+    await pane.showTab({ path: 'other.md', view: 'source' })
+
+    expect(pane.displayed()).toStrictEqual({
+      kind: 'document',
+      entryPath: 'other.md',
+      markdown: SOMETHING_STORED,
+      shownAs: 'source',
+    })
   })
 
   it('is the image it shows, which has no document behind it at all', async () => {

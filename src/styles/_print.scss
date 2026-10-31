@@ -41,6 +41,12 @@
     break-inside: avoid;
   }
 
+  .print-sheet__source {
+    white-space: pre-wrap;
+    word-break: break-word;
+    break-inside: auto;
+  }
+
   .print-sheet h1,
   .print-sheet h2,
   .print-sheet h3 {

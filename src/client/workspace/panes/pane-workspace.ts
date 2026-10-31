@@ -84,6 +84,7 @@ export interface ShownDocument {
   kind: 'document'
   entryPath: string
   markdown: string
+  shownAs: WorkspaceView
 }
 
 interface ShownImage {
@@ -282,7 +283,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
   async function showPreview(entryPath: string, view: PreviewView): Promise<void> {
     const markdown = await textOf(entryPath)
 
-    shown = { view, what: { kind: 'document', entryPath, markdown } }
+    shown = { view, what: { kind: 'document', entryPath, markdown, shownAs: view } }
     previews.render(element, { path: entryPath, view }, markdown)
     workspace.show(view, entryPath)
     announce(`${PREVIEW_ANNOUNCEMENTS[view]} ${entryPath}`)
@@ -293,7 +294,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     if (showing === 'document') {
       return holding === null
         ? null
-        : { kind: 'document', entryPath: holding, markdown: editor().view.state.doc.toString() }
+        : { kind: 'document', entryPath: holding, markdown: editor().view.state.doc.toString(), shownAs: showing }
     }
 
     return shown?.view === showing ? shown.what : null

@@ -87,6 +87,13 @@ whenever it shows a document: a `focusin` listener moved the front pane while
 the workspace was still being restored, and the document in the URL opened into
 the second pane instead of the first.
 
+**Printing prints what the pane shows, including how it shows it.** A pane
+displaying the HTML view prints that markup as text rather than the document
+rendered — they are the same document and a reader asking for one does not want
+the other. The sheet takes the same blocks the HTML view is built from, so the
+paper and the screen cannot disagree, and the printed markup wraps and
+paginates where a code block stays whole.
+
 **A pane answers for what it is displaying, not for what its editor holds.** The
 two differ: a pane showing a preview of one document can hold another in the
 editor behind it, a restored preview tab holds nothing at all, and an image view

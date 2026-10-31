@@ -133,3 +133,27 @@ test('printing an image prints the image, rather than a blank sheet', async ({ p
 
   await request.delete(`/api/files/entries/${folder}`)
 })
+
+test('printing the html view prints that markup, not the document it renders', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `printmarkup-${String(Date.now())}.md`, A_DOCUMENT))
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('[data-part="preview-source"]').click()
+  await givenAsync(expect(page.locator('[data-part="source-body"]').last()).not.toBeEmpty())
+  await page.locator('.pane').last().click()
+
+  await printing(page)
+
+  await expect(page.locator(`${SHEET} pre`)).toContainText('<h1>Printed heading</h1>')
+})
+
+test('printing the rendered view still prints it rendered', async ({ page, request }) => {
+  await page.goto(await storedDocument(request, `printrendered-${String(Date.now())}.md`, A_DOCUMENT))
+  await givenAsync(expect(page.locator('.cm-content')).toBeVisible())
+  await page.locator('[data-part="preview-markup"]').click()
+  await givenAsync(expect(page.locator('[data-part="markup-body"] h1').last()).toBeVisible())
+  await page.locator('.pane').last().click()
+
+  await printing(page)
+
+  await expect(page.locator(`${SHEET} h1`)).toHaveText('Printed heading')
+})
