@@ -1,10 +1,11 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { bootstrapOrReport } from '../../../../src/client/app/bootstrap.ts'
 import type { Session } from '../../../../src/client/document/session.ts'
 import { announcePanelChanged } from '../../../../src/client/platform/announce/panel-changed.ts'
+import { TestOnly as outlineTiming } from '../../../../src/client/chrome/outline.ts'
 import { requestOpenAside } from '../../../../src/client/platform/announce/open-aside.ts'
 import { toggleSplit } from '../../../../src/client/workspace/split/split.ts'
 import { writeKeptTabs } from '../../../../src/client/workspace/tabs/kept-tabs.ts'
@@ -33,6 +34,8 @@ const TWO_HEADINGS_IN = `# alpha\n\n${A_SECOND_HEADING}\n`
 const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
 const PREVIEW_OF_ASIDE = { path: 'aside.md', view: 'markup' } as const
 const WIDE_ENOUGH = 1200
+const A_MOMENT = 1
+const { OUTLINE_SETTLES_MS } = outlineTiming
 
 let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
@@ -95,6 +98,10 @@ function typing(view: EditorView, inserted: string): void {
   view.dispatch({ changes: { from: view.state.doc.length, insert: inserted } })
 }
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 beforeEach(() => {
   localStorage.clear()
   record = recorded()
@@ -121,14 +128,28 @@ describe('the outline of the document in front', () => {
     expect(rowsShown()).toStrictEqual(['kept showing'])
   })
 
-  it('follows what the reader types, so a heading just written is in the list', async () => {
+  it('follows what the reader types, once the typing has settled', async () => {
     const editor = await editing('# alpha\n')
     await givenAsync(editor.settled())
     showingTheOutline()
+    vi.useFakeTimers()
 
     typing(editor.view, '\n## just written\n')
+    await vi.advanceTimersByTimeAsync(OUTLINE_SETTLES_MS)
 
     expect(rowsShown()).toStrictEqual(['alpha', 'just written'])
+  })
+
+  it('leaves the list as it was until the typing settles, rather than redrawing per keystroke', async () => {
+    const editor = await editing('# alpha\n')
+    await givenAsync(editor.settled())
+    showingTheOutline()
+    vi.useFakeTimers()
+
+    typing(editor.view, '\n## just written\n')
+    await vi.advanceTimersByTimeAsync(OUTLINE_SETTLES_MS - A_MOMENT)
+
+    expect(rowsShown()).toStrictEqual(['alpha'])
   })
 
   it('is left alone while another panel is showing, rather than redrawn on every keystroke', async () => {

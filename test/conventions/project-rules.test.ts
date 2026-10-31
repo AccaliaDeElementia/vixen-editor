@@ -191,6 +191,7 @@ describe('every source file belongs to exactly one typecheck project', () => {
 })
 
 const TIMER_OWNERS = [
+  'src/client/chrome/outline.ts',
   'src/client/document/autosave.ts',
   'src/client/preview/previews.ts',
   'src/client/platform/toast.ts',

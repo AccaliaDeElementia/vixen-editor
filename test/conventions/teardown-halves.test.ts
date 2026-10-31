@@ -19,6 +19,7 @@ const PER_DOCUMENT = [
   'offInsertRequested',
   'offKeepRequested',
   'offOpenAsideRequested',
+  'outline.stop',
   'panelChanges.offPanelChanged',
   'previews.stop',
   'splitChanges.offSplitChanged',

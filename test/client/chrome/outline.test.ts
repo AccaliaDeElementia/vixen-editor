@@ -1,28 +1,53 @@
 'use sanity'
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { showOutline } from '../../../src/client/chrome/outline.ts'
+import { createOutline, TestOnly } from '../../../src/client/chrome/outline.ts'
+import { FILES_PANEL, OUTLINE_PANEL, showPanel } from '../../../src/client/platform/panels.ts'
 
-const SIDEBAR = `
-  <section class="panel" data-panel="outline">
-    <p class="panel__empty" data-part="outline-empty" hidden></p>
-    <ul class="outline" data-part="outline-list"></ul>
-  </section>
-`
+import { given } from '../../conditions.ts'
+
+const { OUTLINE_SETTLES_MS } = TestOnly
 
 const TWO_HEADINGS = 2
 const A_SECOND_HEADING = '## two'
 const TWO_HEADINGS_IN = `# one\n\n${A_SECOND_HEADING}\n`
 const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
 
+const SIDEBAR = `
+  <div id="app">
+    <section class="panel" data-panel="files"></section>
+    <section class="panel" data-panel="outline">
+      <p class="panel__empty" data-part="outline-empty" hidden></p>
+      <ul class="outline" data-part="outline-list"></ul>
+    </section>
+  </div>
+`
+
 let root: HTMLElement = document.createElement('div')
 let chosen: number[] = []
+let held: string | null = TWO_HEADINGS_IN
+let standing: Array<() => void> = []
 
-function listing(markdown: string | null): void {
-  showOutline(root, markdown, (offset: number) => {
-    chosen.push(offset)
+function outlining(): ReturnType<typeof createOutline> {
+  const outline = createOutline({
+    root,
+    source: () => held,
+    chosen: (offset: number) => {
+      chosen.push(offset)
+    },
   })
+  standing.push(outline.stop)
+
+  return outline
+}
+
+function listing(markdown: string | null): ReturnType<typeof createOutline> {
+  held = markdown
+  const outline = outlining()
+  outline.show()
+
+  return outline
 }
 
 function rowsShown(): Array<string | null> {
@@ -47,10 +72,18 @@ function saidInstead(): string {
 
 beforeEach(() => {
   chosen = []
+  standing = []
+  held = TWO_HEADINGS_IN
   document.body.innerHTML = ''
   root = document.createElement('div')
   root.innerHTML = SIDEBAR
   document.body.append(root)
+  showPanel(root, OUTLINE_PANEL)
+})
+
+afterEach(() => {
+  for (const stop of standing.splice(0)) stop()
+  vi.useRealTimers()
 })
 
 describe('the headings the outline lists', () => {
@@ -67,11 +100,20 @@ describe('the headings the outline lists', () => {
   })
 
   it('replaces what it listed before, rather than listing the document twice', () => {
-    listing('# first\n')
+    const outline = listing('# first\n')
+    held = '# second\n'
 
-    listing('# second\n')
+    outline.show()
 
     expect(rowsShown()).toStrictEqual(['second'])
+  })
+
+  it('lists nothing while another panel is the one showing, because nobody is looking', () => {
+    showPanel(root, FILES_PANEL)
+
+    listing(TWO_HEADINGS_IN)
+
+    expect(rowsShown()).toStrictEqual([])
   })
 })
 
@@ -97,6 +139,86 @@ describe('pressing a heading in the outline', () => {
   })
 })
 
+describe('a document edited under the outline', () => {
+  it('keeps the rows it built when nothing about the headings changed, rather than building them again', () => {
+    const outline = listing(TWO_HEADINGS_IN)
+    const [first] = [...root.querySelectorAll('[data-part="outline-list"] li')]
+
+    outline.show()
+
+    expect([...root.querySelectorAll('[data-part="outline-list"] li')][0]).toBe(first)
+  })
+
+  it('moves where a row jumps to when the text above it grows', () => {
+    const outline = listing(TWO_HEADINGS_IN)
+    const grown = `# one\n\nsome prose\n\n${A_SECOND_HEADING}\n`
+    held = grown
+    outline.show()
+
+    pressRow(1)
+
+    expect(chosen).toStrictEqual([grown.indexOf(A_SECOND_HEADING)])
+  })
+
+  it('builds the rows again once a heading itself changes', () => {
+    const outline = listing(TWO_HEADINGS_IN)
+    held = '# one\n\n## renamed\n'
+
+    outline.show()
+
+    expect(rowsShown()).toStrictEqual(['one', 'renamed'])
+  })
+})
+
+describe('an outline asked to refresh while the reader is still typing', () => {
+  it('waits for the typing to settle, rather than parsing once a keystroke', async () => {
+    vi.useFakeTimers()
+    const outline = listing(TWO_HEADINGS_IN)
+    held = '# one\n\n## renamed\n'
+
+    outline.refreshSoon()
+    await vi.advanceTimersByTimeAsync(OUTLINE_SETTLES_MS - 1)
+
+    expect(rowsShown()).toStrictEqual(['one', 'two'])
+  })
+
+  it('redraws once the typing has settled', async () => {
+    vi.useFakeTimers()
+    const outline = listing(TWO_HEADINGS_IN)
+    held = '# one\n\n## renamed\n'
+
+    outline.refreshSoon()
+    await vi.advanceTimersByTimeAsync(OUTLINE_SETTLES_MS)
+
+    expect(rowsShown()).toStrictEqual(['one', 'renamed'])
+  })
+
+  it('draws once for a burst, not once for each keystroke in it', async () => {
+    vi.useFakeTimers()
+    const outline = listing(TWO_HEADINGS_IN)
+    held = '# one\n\n## renamed\n'
+
+    outline.refreshSoon()
+    await vi.advanceTimersByTimeAsync(OUTLINE_SETTLES_MS - 1)
+    outline.refreshSoon()
+    await vi.advanceTimersByTimeAsync(OUTLINE_SETTLES_MS - 1)
+
+    expect(rowsShown()).toStrictEqual(['one', 'two'])
+  })
+
+  it('draws nothing more once it has been stopped, because the editor it watched has gone', async () => {
+    vi.useFakeTimers()
+    const outline = listing(TWO_HEADINGS_IN)
+    held = '# one\n\n## renamed\n'
+    outline.refreshSoon()
+
+    outline.stop()
+    await vi.advanceTimersByTimeAsync(OUTLINE_SETTLES_MS)
+
+    expect(rowsShown()).toStrictEqual(['one', 'two'])
+  })
+})
+
 describe('what the outline says when it has no heading to list', () => {
   it('says the document has none, rather than showing an empty list and no reason', () => {
     listing('prose with no heading\n')
@@ -110,10 +232,23 @@ describe('what the outline says when it has no heading to list', () => {
     expect(saidInstead()).toBe('Nothing is open.')
   })
 
-  it('takes the message away once there is something to list', () => {
-    listing(null)
+  it('tells the two apart, rather than leaving the first message standing', () => {
+    const outline = listing(null)
+    given(() => {
+      expect(saidInstead()).toBe('Nothing is open.')
+    })
+    held = 'prose with no heading\n'
 
-    listing('# back\n')
+    outline.show()
+
+    expect(saidInstead()).toBe('This document has no headings.')
+  })
+
+  it('takes the message away once there is something to list', () => {
+    const outline = listing(null)
+    held = '# back\n'
+
+    outline.show()
 
     expect(saidInstead()).toBe('')
   })
@@ -121,7 +256,7 @@ describe('what the outline says when it has no heading to list', () => {
 
 describe('a page with no outline panel in it', () => {
   it('is left alone, rather than throwing on the way past', () => {
-    root.replaceChildren()
+    root.querySelector('[data-panel="outline"]')?.replaceChildren()
 
     expect(() => {
       listing(null)
@@ -129,7 +264,7 @@ describe('a page with no outline panel in it', () => {
   })
 
   it('leaves a panel missing half its parts alone, rather than filling the half that is there', () => {
-    root.innerHTML = '<section data-panel="outline"><ul data-part="outline-list"></ul></section>'
+    root.querySelector('[data-part="outline-empty"]')?.remove()
 
     listing('# one\n')
 

@@ -120,10 +120,18 @@ the text with the same extensions the editor is configured with, which costs
 about a millisecond for a document this editor is likely to hold and cannot be
 partial.
 
-**It redraws only while it is the panel on show.** `bootstrap` refreshes it when
-a document opens, when the text changes and when the sidebar changes panel, and
-each of those returns at once unless the outline is showing, so a reader with
-the file browser open pays nothing per keystroke.
+**It redraws only while it is the panel on show**, and only when something
+about the headings changed. `bootstrap` refreshes it when a document opens, when
+the text changes and when the sidebar changes panel; each returns at once unless
+the outline is the panel showing, and a refresh that produces the same headings
+at the same offsets leaves the rows alone.
+
+**An edit redraws it once the typing settles**, 200 ms after the last keystroke,
+the way a preview already does. Parsing a document and building a row per
+heading is not free: on a 74 KB document with 1201 headings it cost 22 ms of lag
+on **every** keystroke, measured — typing 25 characters took 550 ms with the
+panel open against 97 ms with it closed. Debounced, the same typing costs what
+it costs with the panel closed.
 
 **A pane holding nothing says so.** "Nothing is open" and "This document has no
 headings" are different facts, and an empty panel cannot tell a reader which one

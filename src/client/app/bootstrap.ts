@@ -44,7 +44,7 @@ import {
   type PaneWorkspaceOptions,
 } from '../workspace/panes/pane-workspace.ts'
 import { createStaleBuild } from '../chrome/stale-build.ts'
-import { showOutline } from '../chrome/outline.ts'
+import { createOutline } from '../chrome/outline.ts'
 import { watchBuild } from '../chrome/build-watch.ts'
 import type { Session } from '../document/session.ts'
 import { guardUnload } from '../document/unload.ts'
@@ -53,7 +53,6 @@ import { onInsertRequested } from '../platform/announce/insert-entry.ts'
 import { onKeepRequested } from '../platform/announce/keep-request.ts'
 import { onOpenAsideRequested } from '../platform/announce/open-aside.ts'
 import { onPanelChanged } from '../platform/announce/panel-changed.ts'
-import { OUTLINE_PANEL, panelShowing } from '../platform/panels.ts'
 import { onSplitChanged, onSplitDismissRequested } from '../platform/announce/split-changed.ts'
 import { onTrashEmptied } from '../platform/announce/trash-emptied.ts'
 import { announceStoreChanged } from '../platform/announce/store-changed.ts'
@@ -135,7 +134,9 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       reopen,
       announce: setStatus,
       onShowing: openDocument.commit,
-      onContentChanged: refreshOutline,
+      onContentChanged: () => {
+        outline.refreshSoon()
+      },
       contentOf: (entryPath: string) => panes.contentOf(entryPath),
       caretMemory,
       ...settings,
@@ -200,12 +201,16 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     refreshOutline()
   }
 
-  function refreshOutline(): void {
-    if (panelShowing(root) !== OUTLINE_PANEL) return
-
-    showOutline(root, documentInFront()?.markdown ?? null, (offset: number) => {
+  const outline = createOutline({
+    root,
+    source: () => documentInFront()?.markdown ?? null,
+    chosen: (offset: number) => {
       touched.editor().putCaretAt(offset)
-    })
+    },
+  })
+
+  function refreshOutline(): void {
+    outline.show()
   }
 
   async function openPath(target: string, wanted: TabView, landsAt: number | null): Promise<void> {
@@ -436,6 +441,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     panelChanges.offPanelChanged()
     dismissals.offSplitDismissRequested()
     previews.stop()
+    outline.stop()
     toast.dismissRaised()
     tab.teardownDocument()
     aside.forget()
