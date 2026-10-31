@@ -141,7 +141,7 @@ describe('collapsing onto a pane that was showing something no editor holds', ()
     requestOpenAside(root, 'photo.png')
     await givenAsync(editor.settled())
 
-    root.querySelector<HTMLElement>('[data-tab="editor:notes.md"] .tabs__close')?.click()
+    root.querySelector<HTMLElement>('[data-closes="editor:notes.md"]')?.click()
     await givenAsync(editor.settled())
 
     expect(root.querySelectorAll('[data-tab="image:photo.png"]')).toHaveLength(ONE_TAB)

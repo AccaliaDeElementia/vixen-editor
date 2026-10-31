@@ -59,7 +59,7 @@ async function reopenedAt(search: string): Promise<{ settled: () => Promise<void
 function tabsIn(pane: number): Array<string | undefined> {
   const { [pane]: host } = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
 
-  return [...(host?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])].map((tab) => tab.dataset.tab)
+  return [...(host?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])].map((tab) => tab.dataset.tab)
 }
 
 function shownIn(pane: number): Array<string | undefined> {
@@ -132,7 +132,7 @@ describe('a preview the pane lands on when the tab beside it closes', () => {
     await givenAsync(editor.settled())
     typedIntoTheFirstPane(' and typed')
 
-    root.querySelector<HTMLElement>('[data-tab="editor:other.md"] .tabs__close')?.click()
+    root.querySelector<HTMLElement>('[data-closes="editor:other.md"]')?.click()
     await givenAsync(editor.settled())
 
     expect(markupIn(1)).toContain('and typed')
@@ -279,7 +279,7 @@ describe('clicking the preview tab beside the editor it mirrors', () => {
 
     await clickedThePreviewTabIn(0, editor)
 
-    expect(root.querySelector('[data-tab="markup:notes.md"]')?.getAttribute('aria-selected')).toBe('true')
+    expect(root.querySelector('[data-tab="markup:notes.md"]')?.getAttribute('aria-current')).toBe('true')
   })
 
   it('paints what the editor beside it holds, not what some other pane is editing', async () => {

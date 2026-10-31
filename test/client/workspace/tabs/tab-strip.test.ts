@@ -37,7 +37,11 @@ function strip(): TabStrip {
 }
 
 function tabs(): HTMLElement[] {
-  return [...host.querySelectorAll<HTMLElement>('[role="tab"]')]
+  return [...host.querySelectorAll<HTMLElement>('[data-tab]')]
+}
+
+function closers(): HTMLElement[] {
+  return [...host.querySelectorAll<HTMLElement>('[data-closes]')]
 }
 
 beforeEach(() => {
@@ -56,10 +60,10 @@ beforeEach(() => {
 })
 
 describe('showing what is open', () => {
-  it('reads as a list of tabs to anything that cannot see it', () => {
+  it('reads as a toolbar, since a tablist may own nothing but tabs and every tab here carries a closer', () => {
     strip().show([{ ...EDITING }], EDITING)
 
-    expect(host.querySelector('[data-part="tabs-scroller"]')?.getAttribute('role')).toBe('tablist')
+    expect(host.querySelector('[data-part="tabs-scroller"]')?.getAttribute('role')).toBe('toolbar')
   })
 
   it('shows one tab for each open document', () => {
@@ -112,13 +116,19 @@ describe('which tab is the active one', () => {
   it('says so on the tab itself', () => {
     strip().show([{ ...EDITING }, { ...OTHER }], OTHER)
 
-    expect(tabs().map((tab) => tab.getAttribute('aria-selected'))).toStrictEqual(['false', 'true'])
+    expect(tabs().map((tab) => tab.getAttribute('aria-current'))).toStrictEqual([null, 'true'])
   })
 
   it('offers the tab key one stop, landing on the active tab', () => {
     strip().show([{ ...EDITING }, { ...OTHER }], OTHER)
 
     expect(tabs().map((tab) => tab.tabIndex)).toStrictEqual([-1, 0])
+  })
+
+  it('offers its closer the same stop, so the tab in front can be closed without a pointer', () => {
+    strip().show([{ ...EDITING }, { ...OTHER }], OTHER)
+
+    expect(closers().map((closer) => closer.tabIndex)).toStrictEqual([-1, 0])
   })
 })
 
@@ -132,7 +142,7 @@ describe('a tab is keyed by what it shows and how', () => {
   it('tells the two apart when choosing the active one', () => {
     strip().show([{ ...EDITING }, { ...PREVIEWING }], PREVIEWING)
 
-    expect(tabs().map((tab) => tab.getAttribute('aria-selected'))).toStrictEqual(['false', 'true'])
+    expect(tabs().map((tab) => tab.getAttribute('aria-current'))).toStrictEqual([null, 'true'])
   })
 })
 
@@ -232,13 +242,13 @@ describe('a tab that is still open when the strip is drawn again', () => {
     expect(tabFor(EDITING)).toBe(before)
   })
 
-  it('still shows which one is active after the redraw', () => {
+  it('stops saying it is the one in front once another tab takes over', () => {
     const showing = strip()
     showing.show([EDITING], EDITING)
 
     showing.show([EDITING, OTHER], OTHER)
 
-    expect(tabFor(EDITING)?.getAttribute('aria-selected')).toBe('false')
+    expect(tabFor(EDITING)?.getAttribute('aria-current')).toBeNull()
   })
 
   it('stops being marked as one the reader is only looking at', () => {
@@ -281,7 +291,7 @@ describe('a tab that is still open when the strip is drawn again', () => {
 
 describe('the control that closes a tab', () => {
   function closer(): HTMLElement | null {
-    return host.querySelector<HTMLElement>('.tabs__close')
+    return closers().at(0) ?? null
   }
 
   it('is offered on every tab', () => {
@@ -290,10 +300,10 @@ describe('the control that closes a tab', () => {
     expect(closer()).not.toBeNull()
   })
 
-  it('says which tab it belongs to, so a reader of the markup can tell', () => {
-    strip().show([EDITING], EDITING)
+  it('says which tab it belongs to, down to the view, so two views of one document are told apart', () => {
+    strip().show([PREVIEWING], PREVIEWING)
 
-    expect(closer()?.dataset.closes).toBe('journal/a.md')
+    expect(closer()?.dataset.closes).toBe('markup:journal/a.md')
   })
 
   it('asks for the tab to be closed', () => {
@@ -312,10 +322,46 @@ describe('the control that closes a tab', () => {
     expect(activated).toStrictEqual([])
   })
 
-  it('is hidden from assistive technology, because a control inside a tab is a nested control', () => {
+  it('is a control in its own right, rather than a glyph only a pointer can reach', () => {
     strip().show([EDITING], EDITING)
 
-    expect(closer()?.getAttribute('aria-hidden')).toBe('true')
+    expect(closer()?.tagName).toBe('BUTTON')
+  })
+
+  it('names the document it closes, since every closer in the strip looks alike', () => {
+    strip().show([PREVIEWING], PREVIEWING)
+
+    expect(closer()?.getAttribute('aria-label')).toBe('Close a.md, preview')
+  })
+
+  it('sits beside the tab rather than inside it, because a control inside a tab is a nested control', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(tabs().at(0)?.querySelector('[data-closes]')).toBeNull()
+  })
+
+  it('leaves its glyph unread, so the name on the control is the only thing announced', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(closer()?.querySelector('.icon')?.getAttribute('aria-hidden')).toBe('true')
+  })
+})
+
+describe('a tab and its closer together', () => {
+  function pair(): HTMLElement | null {
+    return host.querySelector<HTMLElement>('.tabs__pair')
+  }
+
+  it('are grouped, so arrowing along the strip crosses one document at a time', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(pair()?.getAttribute('role')).toBe('group')
+  })
+
+  it('leave the group unnamed, since both controls in it already name the document', () => {
+    strip().show([EDITING], EDITING)
+
+    expect(pair()?.hasAttribute('aria-label')).toBe(false)
   })
 })
 

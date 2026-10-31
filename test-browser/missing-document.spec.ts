@@ -27,7 +27,7 @@ test('a missing document offers to create it, and creating it opens the editor',
   await page.locator('[data-part="missing-create"]').click()
 
   await givenAsync(
-    expect(page.locator('[data-part="tabs"] [role="tab"][aria-selected="true"]')).toHaveAttribute('data-path', name),
+    expect(page.locator('[data-part="tabs"] [data-tab][aria-current="true"]')).toHaveAttribute('data-path', name),
   )
 
   await expect(page.locator('[data-part="editor"]')).toBeVisible()

@@ -19,7 +19,7 @@ test('the tab in front stays in front when another client changes the store', as
   await request.post('/api/files/documents', { data: { path: noise, content: '# elsewhere' } })
   await givenAsync(expect(page.locator(`.tree__row[data-path="${noise}"]`)).toBeVisible())
 
-  await expect(preview).toHaveAttribute('aria-selected', 'true')
+  await expect(preview).toHaveAttribute('aria-current', 'true')
 
   await request.delete(`/api/files/entries/${mine}`)
   await request.delete(`/api/files/entries/${noise}`)

@@ -25,7 +25,7 @@ function fakeSession(overrides: Partial<Session> = {}): Session {
 }
 
 function stripTabs(): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
+  return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [data-tab]')]
 }
 
 function paths(): Array<string | undefined> {
@@ -72,7 +72,7 @@ describe('the tabs a reload brings back', () => {
 
     expect(
       stripTabs()
-        .filter((tab) => tab.getAttribute('aria-selected') === 'true')
+        .filter((tab) => tab.getAttribute('aria-current') === 'true')
         .map((tab) => tab.dataset.path),
     ).toStrictEqual(['a.md'])
   })

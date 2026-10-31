@@ -9,6 +9,23 @@ import { storedDocument } from './fixtures.ts'
 
 const MINIMUM = 24
 
+const CONTROLS = [
+  'button',
+  'a[href]',
+  'input',
+  'summary',
+  '[role="treeitem"]',
+  '[role="separator"]',
+  '[role="button"]',
+  '[role="tab"]',
+  '[role="link"]',
+  '[role="menuitem"]',
+  '[role="option"]',
+  '[role="checkbox"]',
+  '[role="switch"]',
+  '[data-closes]',
+].join(', ')
+
 interface Target {
   what: string
   width: number
@@ -16,23 +33,23 @@ interface Target {
 }
 
 async function undersizedTargetsOn(page: Page): Promise<Target[]> {
-  return await page.evaluate((minimum) => {
-    const selector = 'button, a[href], [role="treeitem"], [role="separator"], input, summary'
+  return await page.evaluate(
+    ({ minimum, selector }) =>
+      [...document.querySelectorAll<HTMLElement>(selector)]
+        .filter((element) => element.offsetParent !== null && element.getAttribute('disabled') === null)
+        .map((element) => {
+          const box = element.getBoundingClientRect()
+          const label = element.getAttribute('aria-label') ?? element.id
 
-    return [...document.querySelectorAll<HTMLElement>(selector)]
-      .filter((element) => element.offsetParent !== null && element.getAttribute('disabled') === null)
-      .map((element) => {
-        const box = element.getBoundingClientRect()
-        const label = element.getAttribute('aria-label') ?? element.id
-
-        return {
-          what: `${element.tagName.toLowerCase()} ${label}`,
-          width: Math.round(box.width),
-          height: Math.round(box.height),
-        }
-      })
-      .filter((target) => target.width < minimum || target.height < minimum)
-  }, MINIMUM)
+          return {
+            what: `${element.tagName.toLowerCase()} ${label}`,
+            width: Math.round(box.width),
+            height: Math.round(box.height),
+          }
+        })
+        .filter((target) => target.width < minimum || target.height < minimum),
+    { minimum: MINIMUM, selector: CONTROLS },
+  )
 }
 
 test(`every pointer target in the workspace is at least ${MINIMUM} by ${MINIMUM}`, async ({ page, request }) => {
@@ -148,6 +165,23 @@ test(`every pointer target in a merge is at least ${MINIMUM} by ${MINIMUM}`, asy
   expect(await undersizedTargetsOn(page)).toStrictEqual([])
 
   await request.delete(`/api/files/entries/${name}`)
+})
+
+test('the sweep reports a control that is not a button, which is how a 13 px closer sat under it', async ({
+  page,
+  request,
+}) => {
+  await page.goto(await storedDocument(request, `sizew-${String(Date.now())}.md`))
+  await givenAsync(expect(page.locator('#file-tree')).toBeVisible())
+  await page.evaluate(() => {
+    const planted = document.createElement('span')
+    planted.id = 'planted-closer'
+    planted.dataset.closes = 'editor:planted.md'
+    planted.style.cssText = 'display:block;width:13px;height:13px'
+    document.querySelector('[data-part="tabs-scroller"]')?.append(planted)
+  })
+
+  expect(await undersizedTargetsOn(page)).toStrictEqual([{ what: 'span planted-closer', width: 13, height: 13 }])
 })
 
 test('the resize handle straddles the boundary rather than sitting inside the explorer', async ({ page, request }) => {

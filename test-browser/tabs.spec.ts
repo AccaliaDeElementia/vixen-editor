@@ -7,7 +7,7 @@ import type { Page } from '@playwright/test'
 
 import { previewControl, storedDocument, storedImage } from './fixtures.ts'
 
-const TAB_SELECTOR = '[data-part="tabs"] [role="tab"]'
+const TAB_SELECTOR = '[data-part="tabs"] [data-tab]'
 
 async function colourOf(page: Page, selector: string): Promise<string> {
   return await page.locator(selector).evaluate((element) => getComputedStyle(element).color)
@@ -51,6 +51,37 @@ test('a tab the reader only looked at does not come back after a reload', async 
 
   await request.delete(`/api/files/entries/${looked}`)
   await request.delete(`/api/files/entries/${other}`)
+})
+
+test('the tab in front is closed from the keyboard, without a pointer anywhere near it', async ({ page, request }) => {
+  const name = `keyclose-${String(Date.now())}.md`
+  await page.goto(await storedDocument(request, name))
+  await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${name}"]`)).toBeVisible())
+  await page.locator(`${TAB_SELECTOR}[data-path="${name}"]`).focus()
+  await page.keyboard.press('Tab')
+
+  await page.keyboard.press('Enter')
+
+  await expect(page.locator(`${TAB_SELECTOR}[data-path="${name}"]`)).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${name}`)
+})
+
+test('the stop after a tab is its own closer, rather than the next document along', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const first = `stopa-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: `stopb-${stamp}.md`, content: '# b' } })
+
+  await page.goto(await storedDocument(request, first))
+  await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${first}"]`)).toBeVisible())
+  await page.locator(`${TAB_SELECTOR}[data-path="${first}"]`).focus()
+
+  await page.keyboard.press('Tab')
+
+  await expect(page.locator(`[data-closes="editor:${first}"]`)).toBeFocused()
+
+  await request.delete(`/api/files/entries/${first}`)
+  await request.delete(`/api/files/entries/stopb-${stamp}.md`)
 })
 
 test('a document tab is the colour its file browser row is', async ({ page, request }) => {

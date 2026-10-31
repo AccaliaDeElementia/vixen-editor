@@ -129,7 +129,7 @@ test('both previews sit as separate tabs once the document is kept', async ({ pa
 
   await previewControl(page, 'source').click()
 
-  await expect(page.locator('.pane').last().locator('[role="tab"]')).toHaveCount(2)
+  await expect(page.locator('.pane').last().locator('[data-tab]')).toHaveCount(2)
 
   await request.delete(`/api/files/entries/${name}`)
 })
@@ -174,7 +174,7 @@ test('the cross on a tab closes it', async ({ page, request }) => {
   await previewControl(page, 'markup').click()
   await givenAsync(expect(page.locator(`[data-tab="markup:${name}"]`)).toBeVisible())
 
-  await page.locator(`[data-tab="markup:${name}"] .tabs__close`).click()
+  await page.locator(`[data-closes="markup:${name}"]`).click()
 
   await expect(page.locator(`[data-tab="markup:${name}"]`)).toHaveCount(0)
 
@@ -187,7 +187,7 @@ test('closing the last tab leaves an invitation rather than a document', async (
   await page.goto(`/doc/${name}`)
   await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
 
-  await page.locator(`[data-tab="editor:${name}"] .tabs__close`).click()
+  await page.locator(`[data-closes="editor:${name}"]`).click()
 
   await expect(page.locator('[data-part="view-empty"]').first()).toBeVisible()
 
@@ -348,7 +348,7 @@ test('Alt, Shift and a bracket move a tab along the strip', async ({ page, reque
 
   await page.keyboard.press('Alt+Shift+[')
 
-  await expect(page.locator('[role="tab"]').first()).toHaveAttribute('data-path', second)
+  await expect(page.locator('[data-tab]').first()).toHaveAttribute('data-path', second)
 
   await request.delete(`/api/files/entries/${first}`)
   await request.delete(`/api/files/entries/${second}`)
@@ -407,7 +407,7 @@ async function stripHolding(page: Page, count: number): Promise<void> {
     window.localStorage.setItem('vixen-editor:tabs:primary', held)
   }, JSON.stringify(tabs))
   await page.goto('/doc/')
-  await givenAsync(expect(page.locator('[role="tab"]')).toHaveCount(count + PLUS_THE_OPEN_DOCUMENT))
+  await givenAsync(expect(page.locator('[data-tab]')).toHaveCount(count + PLUS_THE_OPEN_DOCUMENT))
 }
 
 test('many tabs shrink to a floor and then the strip scrolls', async ({ page }) => {

@@ -331,7 +331,7 @@ describe('a second pane that was dismissed and summoned again', () => {
 
 describe('closing a tab', () => {
   function closerFor(tab: string): HTMLElement | null {
-    return root.querySelector<HTMLElement>(`[data-tab="${tab}"] .tabs__close`)
+    return root.querySelector<HTMLElement>(`[data-closes="${tab}"]`)
   }
 
   function visibleParts(): Array<string | undefined> {
@@ -426,7 +426,7 @@ describe('closing a tab whose work has not been saved', () => {
     })
     view.dispatch({ changes: { from: view.state.doc.length, insert: ' typed' } })
 
-    root.querySelector<HTMLElement>('[data-tab="editor:notes.md"] .tabs__close')?.click()
+    root.querySelector<HTMLElement>('[data-closes="editor:notes.md"]')?.click()
     await asked.promise
 
     expect(root.querySelector('[data-tab="editor:notes.md"]')).not.toBeNull()
@@ -440,7 +440,7 @@ describe('closing one of several tabs in a pane', () => {
     root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
     root.querySelector<HTMLElement>('[data-part="preview-source"]')?.click()
 
-    root.querySelector<HTMLElement>('[data-tab="source:notes.md"] .tabs__close')?.click()
+    root.querySelector<HTMLElement>('[data-closes="source:notes.md"]')?.click()
 
     expect(root.querySelectorAll<HTMLElement>('[data-part="view-empty"]')[1]?.hidden).toBe(true)
   })
@@ -460,7 +460,7 @@ describe('closing a tab whose unsaved work does save', () => {
     if (editor === null) throw new Error('the editor did not start')
     editor.view.dispatch({ changes: { from: editor.view.state.doc.length, insert: ' typed' } })
 
-    root.querySelector<HTMLElement>('[data-tab="editor:notes.md"] .tabs__close')?.click()
+    root.querySelector<HTMLElement>('[data-closes="editor:notes.md"]')?.click()
     await editor.settled()
 
     expect(root.querySelector('[data-tab="editor:notes.md"]')).toBeNull()
@@ -578,7 +578,7 @@ describe('dragging a tab to the other pane', () => {
     const first = stripIn(0)
     if (first !== null) dropOnto(first, 'hologram:notes.md')
 
-    expect(stripIn(0)?.querySelectorAll('[role="tab"]')).toHaveLength(1)
+    expect(stripIn(0)?.querySelectorAll('[data-tab]')).toHaveLength(1)
   })
 })
 
@@ -623,7 +623,7 @@ describe('moving between tabs from the keyboard', () => {
 
     press({ key: '{', altKey: true, shiftKey: true })
 
-    expect([...root.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.dataset.path)).toStrictEqual([
+    expect([...root.querySelectorAll<HTMLElement>('[data-tab]')].map((tab) => tab.dataset.path)).toStrictEqual([
       'notes.md',
       'first.md',
     ])

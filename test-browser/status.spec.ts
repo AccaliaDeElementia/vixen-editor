@@ -15,7 +15,7 @@ test('counts the words in the open document', async ({ page, request }) => {
   await page.goto(await storedDocument(request, 'status.md', '# one two three'))
 
   await givenAsync(
-    expect(page.locator('[data-part="tabs"] [role="tab"][aria-selected="true"]')).toHaveAttribute(
+    expect(page.locator('[data-part="tabs"] [data-tab][aria-current="true"]')).toHaveAttribute(
       'data-path',
       'status.md',
     ),

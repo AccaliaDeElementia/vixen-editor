@@ -17,7 +17,7 @@ function fakeSession(content: string): Session {
 }
 
 function closerFor(tab: string): HTMLElement | null {
-  return root.querySelector<HTMLElement>(`[data-tab="${tab}"] .tabs__close`)
+  return root.querySelector<HTMLElement>(`[data-closes="${tab}"]`)
 }
 
 beforeEach(() => {

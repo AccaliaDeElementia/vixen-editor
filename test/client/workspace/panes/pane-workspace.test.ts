@@ -275,7 +275,7 @@ describe('a pane whose document has left it', () => {
 
 describe('what a pane shows when it is not showing an editor', () => {
   function tabsShown(): Array<string | undefined> {
-    return [...element.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.dataset.tab)
+    return [...element.querySelectorAll<HTMLElement>('[data-tab]')].map((tab) => tab.dataset.tab)
   }
 
   it('gives an image a tab, so the reader has a handle on what they are looking at', async () => {

@@ -139,7 +139,7 @@ test('a pane opened by the split control is wired up, not just drawn', async ({ 
 
   await page.locator('[data-part="split-beside"]').click()
 
-  await expect(page.locator(PANE).nth(1).locator('[role="tablist"]')).toBeAttached()
+  await expect(page.locator(PANE).nth(1).locator('[data-part="tabs-scroller"]')).toBeAttached()
 })
 
 test('the pane that carries the split controls is no taller than the one that does not', async ({ page, request }) => {
@@ -168,7 +168,7 @@ test('the second pane strip comes back as tall as the first after a reload', asy
 
   await page.reload()
 
-  await givenAsync(expect(page.locator(PANE).nth(1).locator('[role="tablist"]')).toBeVisible())
+  await givenAsync(expect(page.locator(PANE).nth(1).locator('[data-part="tabs-scroller"]')).toBeVisible())
   const strips = await page
     .locator(PANE)
     .locator('[data-part="tabs"]')

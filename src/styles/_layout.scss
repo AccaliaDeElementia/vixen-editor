@@ -434,16 +434,31 @@
 }
 
 .tabs__close {
+  display: flex;
   flex: 0 0 auto;
-  font-family: 'Material Symbols Outlined';
-  font-size: $font-size-sm;
-  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  width: $target-min;
+  height: $target-min;
+  padding: 0;
+  border: 0;
+  border-radius: $radius;
+  background: transparent;
   color: $muted;
   cursor: pointer;
 
   &:hover {
     color: $body-color;
   }
+
+  &:focus-visible {
+    outline: 2px solid $info;
+    outline-offset: -2px;
+  }
+}
+
+.tabs__close-icon {
+  font-size: $font-size-sm;
 }
 
 .split-resizer {
@@ -1238,30 +1253,41 @@
   }
 }
 
-.tabs__tab {
+.tabs__pair {
   display: flex;
   align-items: center;
-  gap: 0.35em;
   flex: 0 1 auto;
   min-width: 8ch;
   max-width: 24ch;
-  padding: 0.35em $space-sm;
-  border: 0;
-  background: transparent;
+  padding-right: 0.35em;
+  overflow: hidden;
   color: $muted;
   font-size: $font-size-sm;
-  white-space: nowrap;
-  overflow: hidden;
-  cursor: pointer;
 
   &:hover {
     color: $body-color;
   }
 
-  &[aria-selected='true'] {
+  &:has([aria-current='true']) {
     background: $surface;
     color: $body-color;
   }
+}
+
+.tabs__tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.35em $space-sm;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
 
   &.tabs__tab--looking {
     font-style: italic;

@@ -16,12 +16,19 @@ const AT_THE_START = 0
 const TOWARDS_THE_START = -1
 const TOWARDS_THE_END = 1
 const TAB_CLASS = 'tabs__tab'
+const PAIR_CLASS = 'tabs__pair'
 const EPHEMERAL_CLASS = 'tabs__tab--looking'
 const CLOSE_CLASS = 'tabs__close'
+const CLOSE_ICON_CLASS = 'icon tabs__close-icon'
 const NAME_CLASS = 'tabs__name'
 const KIND_CLASS = 'tabs__kind'
 const NOTHING_DRAGGED = ''
 const CLOSE_GLYPH = 'close'
+const CLOSES = 'Close'
+const IN_FRONT = 'aria-current'
+const THE_ONE_IN_FRONT = 'true'
+const DESCRIPTION = 'aria-description'
+const NAMED = 'aria-label'
 const EPHEMERAL_DESCRIPTION = 'closes when you open something else'
 const WHILE_LOOKING = `— ${EPHEMERAL_DESCRIPTION}`
 const VIEW_DESCRIPTIONS: Readonly<Record<string, string>> = { source: 'HTML', markup: 'preview' }
@@ -56,6 +63,12 @@ interface ShownTab extends TabAt {
   ephemeral?: boolean
 }
 
+interface TabParts {
+  pair: HTMLElement
+  opener: HTMLElement
+  closer: HTMLElement
+}
+
 interface TabStripOptions {
   onActivate: (at: TabAt) => void
   onKeep: (at: TabAt) => void
@@ -85,6 +98,10 @@ export function tabNamed(at: TabAt): string {
   return sayingWhich(at.path, viewShownBy(at))
 }
 
+function shownAs(tab: ShownTab): string {
+  return sayingWhich(labelFor(tab), viewShownBy(tab))
+}
+
 function titleFor(tab: ShownTab, looking: boolean): string {
   const named = sayingWhich(tab.path, viewShownBy(tab))
 
@@ -107,9 +124,9 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
 
   const scroller: HTMLElement = found
 
-  scroller.setAttribute('role', 'tablist')
+  scroller.setAttribute('role', 'toolbar')
 
-  const drawn = new Map<string, HTMLElement>()
+  const drawn = new Map<string, TabParts>()
 
   function reflectReach(reaching: HTMLElement): void {
     const { scrollLeft, clientWidth, scrollWidth } = reaching
@@ -134,82 +151,95 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
   new ResizeObserver(reconsiderReach).observe(scroller)
 
   function closerFor(tab: ShownTab, at: TabAt): HTMLElement {
-    const { path } = at
-    const closer = document.createElement('span')
+    const closer = document.createElement('button')
+    closer.type = 'button'
     closer.className = CLOSE_CLASS
-    closer.setAttribute('aria-hidden', 'true')
-    closer.dataset.closes = path
-    closer.textContent = CLOSE_GLYPH
+    closer.dataset.closes = tabIdentity(tab)
+    closer.setAttribute(NAMED, `${CLOSES} ${shownAs(tab)}`)
+    closer.append(decorativeIcon(CLOSE_GLYPH, CLOSE_ICON_CLASS))
 
-    closer.addEventListener('click', (event: MouseEvent) => {
-      event.stopPropagation()
+    closer.addEventListener('click', () => {
       options.onClose(at)
     })
 
     return closer
   }
 
-  function newTab(tab: ShownTab): HTMLElement {
-    const element = document.createElement('button')
-    element.type = 'button'
-    element.className = TAB_CLASS
-    element.setAttribute('role', 'tab')
+  function openerFor(tab: ShownTab, at: TabAt): HTMLElement {
+    const opener = document.createElement('button')
+    opener.type = 'button'
+    opener.className = TAB_CLASS
 
-    const { path, view } = tab
-    element.dataset.tab = tabIdentity(tab)
-    element.dataset.path = path
-    element.dataset.view = view
+    const { path, view } = at
+    opener.dataset.tab = tabIdentity(tab)
+    opener.dataset.path = path
+    opener.dataset.view = view
     const name = document.createElement('span')
     name.className = NAME_CLASS
     name.textContent = labelFor(tab)
     const shows = viewShownBy(tab)
-    element.append(iconFor(view), name)
+    opener.append(iconFor(view), name)
 
     if (shows !== null) {
-      element.append(kindFor(shows))
-      element.setAttribute('aria-label', sayingWhich(labelFor(tab), shows))
+      opener.append(kindFor(shows))
+      opener.setAttribute(NAMED, shownAs(tab))
     }
 
-    element.addEventListener('click', () => {
-      options.onActivate({ path, view })
+    opener.addEventListener('click', () => {
+      options.onActivate(at)
     })
 
-    element.addEventListener('dblclick', () => {
-      options.onKeep({ path, view })
+    opener.addEventListener('dblclick', () => {
+      options.onKeep(at)
     })
 
-    element.draggable = true
+    opener.draggable = true
 
-    element.addEventListener('dragstart', (event: DragEvent) => {
+    opener.addEventListener('dragstart', (event: DragEvent) => {
       event.dataTransfer?.setData(DRAG_MIME, path)
       event.dataTransfer?.setData(DRAG_TAB_MIME, tabIdentity(tab))
     })
 
-    element.addEventListener('drop', (event: DragEvent) => {
-      event.stopPropagation()
-      takeDrop(event, [...scroller.children].indexOf(element))
-    })
-
-    element.append(closerFor(tab, { path, view }))
-
-    return element
+    return opener
   }
 
-  function tabFor(tab: ShownTab, active: boolean): HTMLElement {
-    const identity = tabIdentity(tab)
-    const element = drawn.get(identity) ?? newTab(tab)
-    drawn.set(identity, element)
+  function newPair(tab: ShownTab): TabParts {
+    const at: TabAt = { path: tab.path, view: tab.view }
+    const opener = openerFor(tab, at)
+    const closer = closerFor(tab, at)
 
-    element.setAttribute('aria-selected', String(active))
-    element.tabIndex = active ? REACHABLE : PASSED_OVER
+    const pair = document.createElement('span')
+    pair.className = PAIR_CLASS
+    pair.setAttribute('role', 'group')
+    pair.append(opener, closer)
+
+    pair.addEventListener('drop', (event: DragEvent) => {
+      event.stopPropagation()
+      takeDrop(event, [...scroller.children].indexOf(pair))
+    })
+
+    return { pair, opener, closer }
+  }
+
+  function pairFor(tab: ShownTab, active: boolean): HTMLElement {
+    const identity = tabIdentity(tab)
+    const parts = drawn.get(identity) ?? newPair(tab)
+    drawn.set(identity, parts)
+
+    const { pair, opener, closer } = parts
+    const reach = active ? REACHABLE : PASSED_OVER
+    opener.tabIndex = reach
+    closer.tabIndex = reach
+    if (active) opener.setAttribute(IN_FRONT, THE_ONE_IN_FRONT)
+    else opener.removeAttribute(IN_FRONT)
 
     const looking = tab.ephemeral === true
-    element.title = titleFor(tab, looking)
-    element.classList.toggle(EPHEMERAL_CLASS, looking)
-    if (looking) element.setAttribute('aria-description', EPHEMERAL_DESCRIPTION)
-    else element.removeAttribute('aria-description')
+    opener.title = titleFor(tab, looking)
+    opener.classList.toggle(EPHEMERAL_CLASS, looking)
+    if (looking) opener.setAttribute(DESCRIPTION, EPHEMERAL_DESCRIPTION)
+    else opener.removeAttribute(DESCRIPTION)
 
-    return element
+    return pair
   }
 
   function takeDrop(event: DragEvent, toIndex: number): void {
@@ -231,8 +261,8 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
   return {
     show(tabs: readonly ShownTab[], active: TabAt | null): void {
       const selected = active === null ? null : tabIdentity(active)
-      const wanted = tabs.map((tab) => tabFor(tab, tabIdentity(tab) === selected))
-      const open = new Set(wanted.map((element) => element.dataset.tab))
+      const wanted = tabs.map((tab) => pairFor(tab, tabIdentity(tab) === selected))
+      const open = new Set(tabs.map((tab) => tabIdentity(tab)))
 
       for (const identity of [...drawn.keys()]) if (!open.has(identity)) drawn.delete(identity)
       scroller.replaceChildren(...wanted)

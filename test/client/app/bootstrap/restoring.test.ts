@@ -50,7 +50,7 @@ async function reopened(): Promise<{ settled: () => Promise<void> }> {
 function tabsIn(pane: number): Array<string | undefined> {
   const { [pane]: strip } = root.querySelectorAll<HTMLElement>('[data-part="tabs"]')
 
-  return [...(strip?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])].map((tab) => tab.dataset.tab)
+  return [...(strip?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])].map((tab) => tab.dataset.tab)
 }
 
 beforeEach(() => {
@@ -99,7 +99,7 @@ describe('a split dismissed by the sidebar split button', () => {
     toggleSplit(root, 'beside', WIDE_ENOUGH)
     announceSplitChanged(root)
 
-    root.querySelector<HTMLElement>('[data-tab="editor:notes.md"] .tabs__close')?.click()
+    root.querySelector<HTMLElement>('[data-closes="editor:notes.md"]')?.click()
 
     expect(tabsIn(0)).toStrictEqual([])
   })
@@ -112,7 +112,7 @@ describe('a second pane summoned by the sidebar split button', () => {
     toggleSplit(root, 'beside', WIDE_ENOUGH)
     announceSplitChanged(root)
 
-    expect(root.querySelectorAll('[data-part="tabs"]')[1]?.querySelector('[role="tablist"]')).not.toBeNull()
+    expect(root.querySelectorAll('[data-part="tabs"]')[1]?.querySelector('[role="toolbar"]')).not.toBeNull()
   })
 })
 

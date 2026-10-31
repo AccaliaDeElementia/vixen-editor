@@ -60,7 +60,7 @@ function shownIn(pane: number): Array<string | undefined> {
 function tabsIn(pane: number): Array<string | undefined> {
   const { [pane]: strip } = root.querySelectorAll<HTMLElement>('[data-part="tabs"]')
 
-  return [...(strip?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])].map((tab) => tab.dataset.tab)
+  return [...(strip?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])].map((tab) => tab.dataset.tab)
 }
 
 beforeEach(() => {

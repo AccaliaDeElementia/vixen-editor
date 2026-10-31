@@ -32,10 +32,10 @@ test('a tab with a very long name keeps its close button inside the tab', async 
   await page.goto(await storedDocument(request, name))
   await givenAsync(expect(page.locator(`[data-tab="editor:${name}"]`)).toBeVisible())
 
-  const overhang = await page.locator(`[data-tab="editor:${name}"]`).evaluate((tab) => {
-    const closer = tab.querySelector('.tabs__close')
+  const overhang = await page.locator(`[data-closes="editor:${name}"]`).evaluate((closer) => {
+    const pair = closer.closest('.tabs__pair')
 
-    return closer === null ? Number.NaN : closer.getBoundingClientRect().right - tab.getBoundingClientRect().right
+    return pair === null ? Number.NaN : closer.getBoundingClientRect().right - pair.getBoundingClientRect().right
   })
 
   expect(overhang).toBeLessThanOrEqual(A_HAIR)

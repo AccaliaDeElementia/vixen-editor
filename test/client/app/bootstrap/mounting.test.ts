@@ -875,7 +875,7 @@ describe('the two halves of a teardown', () => {
 
 describe('the tab strip', () => {
   function stripTabs(): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [data-tab]')]
   }
 
   it('shows the open document as a tab', async () => {
@@ -969,7 +969,7 @@ function walkingTabs(): { navigation: Navigation; go: (url: string) => Promise<v
 
 describe('several tabs', () => {
   function stripTabs(): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [data-tab]')]
   }
 
   function paths(): Array<string | undefined> {
@@ -978,7 +978,7 @@ describe('several tabs', () => {
 
   function selected(): Array<string | undefined> {
     return stripTabs()
-      .filter((tab) => tab.getAttribute('aria-selected') === 'true')
+      .filter((tab) => tab.getAttribute('aria-current') === 'true')
       .map((tab) => tab.dataset.path)
   }
 
@@ -1110,7 +1110,7 @@ describe('a caret in the document the reader is leaving', () => {
 
 describe('keeping a tab the explorer asked for', () => {
   function stripTabs(): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [role="tab"]')]
+    return [...root.querySelectorAll<HTMLElement>('[data-part="tabs"] [data-tab]')]
   }
 
   function looking(): Array<boolean | undefined> {

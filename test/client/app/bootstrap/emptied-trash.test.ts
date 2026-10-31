@@ -43,7 +43,7 @@ async function reopened(): Promise<{ settled: () => Promise<void> }> {
 }
 
 function tabs(): Array<string | undefined> {
-  return [...root.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.dataset.tab)
+  return [...root.querySelectorAll<HTMLElement>('[data-tab]')].map((tab) => tab.dataset.tab)
 }
 
 beforeEach(() => {

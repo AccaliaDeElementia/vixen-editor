@@ -961,6 +961,37 @@ the views inside a wrapper without moving that layout left the editor with no
 height, so nothing scrolled and CodeMirror never parsed past its first chunk —
 caught by `test-browser/rendering.spec.ts`, not by any unit test.
 
+<a id="design-6e4c19"></a>
+
+### The tab strip is a toolbar rather than a tablist
+
+A tab carries a closer, and that single fact rules `role="tablist"` out. ARIA
+gives `tab` presentational children, so a control _inside_ a tab is a nested
+control; and a tablist may own nothing but tabs, so moving the closer alongside
+is no better. Both were measured against axe rather than reasoned about — the
+first reports `nested-interactive`, the second `aria-required-children`.
+
+So the scroller is a `role="toolbar"` holding one `role="group"` per open
+document: the document's own button, which carries `data-tab` and `aria-current`
+when it is the one in front, and a `Close <document>` button beside it. The
+closer takes the same stop as its tab, so the tab in front can be closed without
+a pointer.
+
+**The group is left unnamed deliberately.** Both controls in it already name the
+document, and a third naming would be heard on every move along the strip.
+
+**What this replaced was a 13 × 13 px `<span aria-hidden="true">` with a click
+handler** — unreachable by keyboard, invisible to a screen reader, and under the
+target floor the whole time. `test-browser/target-size.spec.ts` could not see it
+either, because that sweep looks for controls and a span is not one; it now
+looks for `[data-closes]` as well, and carries a test that plants a span of the
+old shape to prove it would be reported.
+
+**What would reopen it**: real tab panels. If the views below the strip ever
+gain `role="tabpanel"` with `aria-controls` pointing at them, a tablist earns
+its keep and the closer has to leave the strip — most likely becoming a key
+pressed on the focused tab.
+
 <a id="design-d41f7b"></a>
 
 ## Decisions that read as defects

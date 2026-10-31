@@ -56,7 +56,7 @@ function bufferIn(pane: number): string | undefined {
 }
 
 function selectedIn(pane: number): Array<string | undefined> {
-  return [...(stripIn(pane)?.querySelectorAll<HTMLElement>('[aria-selected="true"]') ?? [])].map(
+  return [...(stripIn(pane)?.querySelectorAll<HTMLElement>('[aria-current="true"]') ?? [])].map(
     (tab) => tab.dataset.tab,
   )
 }
@@ -139,7 +139,7 @@ describe('closing a tab in a pane that holds others', () => {
     if (first !== null) dropOnto(first, 'editor:other.md')
     await givenAsync(editor.settled())
 
-    stripIn(0)?.querySelector<HTMLElement>('[data-tab="editor:other.md"] .tabs__close')?.click()
+    stripIn(0)?.querySelector<HTMLElement>('[data-closes="editor:other.md"]')?.click()
     await givenAsync(editor.settled())
 
     expect(selectedIn(0)).toStrictEqual(['editor:notes.md'])

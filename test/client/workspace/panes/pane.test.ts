@@ -47,7 +47,7 @@ function pane(id: PaneId = 'primary', element = paneElement()): Pane {
 }
 
 function tabsIn(element: HTMLElement): Array<string | undefined> {
-  return [...element.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.dataset.tab)
+  return [...element.querySelectorAll<HTMLElement>('[data-tab]')].map((tab) => tab.dataset.tab)
 }
 
 beforeEach(() => {
