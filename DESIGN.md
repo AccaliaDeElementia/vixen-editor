@@ -944,6 +944,45 @@ the views inside a wrapper without moving that layout left the editor with no
 height, so nothing scrolled and CodeMirror never parsed past its first chunk —
 caught by `test-browser/rendering.spec.ts`, not by any unit test.
 
+<a id="design-d41f7b"></a>
+
+## Decisions that read as defects
+
+Three behaviours look like oversights to a reader meeting them for the first
+time, and the audit of 2026-10-30 raised all three. Each is deliberate. They sit
+together, with the assumption each rests on, because **a decision nobody wrote
+down is indistinguishable from a mistake** — which is how these came to be
+raised at all.
+
+**Reopening one takes evidence that its assumption stopped holding**, not a
+fresh opinion about the behaviour. Each says what that evidence would be.
+
+**An empty document is never stored.** Clearing a file leaves the stored text
+where it was: autosave reports `empty` and writes nothing, the API refuses a
+blank body with `422 EMPTY_CONTENT`, and closing the tab says `Empty documents
+are not stored` before offering to discard. _The assumption_: a blank buffer is
+far more often an accident — a select-all, a failed load, a stray keystroke —
+than an intention, and deleting a document is what the trash is for. _What would
+reopen it_: a reader reporting work lost to an emptying they meant, or a second
+route to clearing a document that makes this guard redundant.
+
+**Autosave waits 30 seconds idle, and at most two minutes.** A document being
+typed into is written at most every two minutes; one left alone is written 30
+seconds later. _The assumption_: the exposure is a crash or a power cut, because
+leaving the page saves through `keepalive` and closing a dirty tab saves first
+and only offers to discard when the server refused. A write is whole-file,
+revalidated against its ETag and relinked, so it is not free. _What would reopen
+it_: a crash-loss report, or a measurement showing that write path is cheap
+enough to run every few seconds against a store of realistic size.
+
+**Only markdown and images are listed.** A `.json` or a `.csv` beside the notes
+is invisible — not in the tree, not openable, not uploadable — though a folder
+move or a trash carries it along with everything else in that folder. _The
+assumption_: this is a markdown editor over a documents folder, not a file
+manager, and listing what it cannot open would promise editing it cannot do.
+_What would reopen it_: a store where the unlisted files outnumber the listed
+ones, or a reader losing track of a file because this app hid it.
+
 <a id="design-68c8d3"></a>
 
 ## Limits

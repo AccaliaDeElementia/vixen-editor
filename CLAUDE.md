@@ -696,6 +696,7 @@ that**: some are only enforceable by review.
 | serving files we did not author                   | [DESIGN.md](DESIGN.md#design-9477d0)    |
 | API error codes and what each carries             | [DESIGN.md](DESIGN.md#design-e8c160)    |
 | logging, and why `DEBUG` is re-applied            | [DESIGN.md](DESIGN.md#design-72c03f)    |
+| behaviour that reads as a defect and is not       | [DESIGN.md](DESIGN.md#design-d41f7b)    |
 | what each directory under `src/` means            | [DESIGN.md](DESIGN.md#design-d7fa84)    |
 | the toolchain, and what must not be "optimised"   | [DESIGN.md](DESIGN.md#design-15c5ed)    |
 | the commands, and what the gate actually runs     | [TESTING.md](TESTING.md#testing-36cd3f) |
