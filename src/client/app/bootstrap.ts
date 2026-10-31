@@ -38,7 +38,9 @@ import type { EditorView } from '@codemirror/view'
 import {
   createPaneWorkspace,
   MissingMountError,
+  type Displayed,
   type PaneWorkspace,
+  type ShownDocument,
   type PaneWorkspaceOptions,
 } from '../workspace/panes/pane-workspace.ts'
 import { createStaleBuild } from '../chrome/stale-build.ts'
@@ -172,15 +174,21 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const { pane: primary, workspace, statusBar } = primaryWorkspace
   const tab = primaryWorkspace.editor()
 
-  function showingInFront(): { entryPath: string; markdown: string } | null {
+  function showingInFront(): Displayed | null {
     const shown = touched.displayed()
-    if (shown === null) return null
+    if (shown?.kind !== 'document') return shown
 
-    return { entryPath: shown.entryPath, markdown: panes.contentOf(shown.entryPath) ?? shown.markdown }
+    return { ...shown, markdown: panes.contentOf(shown.entryPath) ?? shown.markdown }
+  }
+
+  function documentInFront(): ShownDocument | null {
+    const shown = showingInFront()
+
+    return shown?.kind === 'document' ? shown : null
   }
 
   function saveInFrontAsHtml(): void {
-    const showing = showingInFront()
+    const showing = documentInFront()
     if (showing === null) return
 
     saveAsHtml(showing, options.saveFile)
@@ -195,7 +203,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   function refreshOutline(): void {
     if (panelShowing(root) !== OUTLINE_PANEL) return
 
-    showOutline(root, showingInFront()?.markdown ?? null, (offset: number) => {
+    showOutline(root, documentInFront()?.markdown ?? null, (offset: number) => {
       touched.editor().putCaretAt(offset)
     })
   }

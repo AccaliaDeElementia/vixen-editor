@@ -24,7 +24,7 @@ import { createMissingView } from '../views/missing-view.ts'
 import { createPane, type Pane } from './pane.ts'
 import { tabNamed } from '../tabs/tab-strip.ts'
 import { createStatusBar, type StatusBar } from './status-bar.ts'
-import { createWorkspace, type Workspace } from '../views/workspace.ts'
+import { createWorkspace, type Workspace, type WorkspaceView } from '../views/workspace.ts'
 import type { Toast } from '../../platform/toast.ts'
 import type { CarriedDocument, DocumentTab, FocusListener } from '../../document/document-tab.ts'
 import { resolveIndex } from '../../document/folder-index.ts'
@@ -80,13 +80,22 @@ interface HeldDocument {
   commit: (entryPath: string) => void
 }
 
-interface ShownDocument {
+export interface ShownDocument {
+  kind: 'document'
   entryPath: string
   markdown: string
 }
 
-interface Previewed extends ShownDocument {
-  view: PreviewView
+interface ShownImage {
+  kind: 'image'
+  entryPath: string
+}
+
+export type Displayed = ShownDocument | ShownImage
+
+interface Shown {
+  view: WorkspaceView
+  what: Displayed
 }
 
 export interface PaneWorkspace {
@@ -94,7 +103,7 @@ export interface PaneWorkspace {
   statusBar: StatusBar
   pane: Pane
   held: HeldDocument
-  displayed: () => ShownDocument | null
+  displayed: () => Displayed | null
   editor: () => DocumentTab
   teardownDocument: () => void
   workspace: Workspace
@@ -123,7 +132,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
   const mount: Element = found
 
   let finished = false
-  let previewed: Previewed | null = null
+  let shown: Shown | null = null
   let holding: string | null = options.holds
   const held: HeldDocument = {
     path: () => holding,
@@ -236,6 +245,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
   }
 
   function showImage(entryPath: string): void {
+    shown = { view: 'image', what: { kind: 'image', entryPath } }
     showInstead({ path: entryPath, view: 'image' })
     imageView.offer(entryPath)
     announce(`Viewing ${entryPath}`)
@@ -272,19 +282,21 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
   async function showPreview(entryPath: string, view: PreviewView): Promise<void> {
     const markdown = await textOf(entryPath)
 
-    previewed = { entryPath, markdown, view }
+    shown = { view, what: { kind: 'document', entryPath, markdown } }
     previews.render(element, { path: entryPath, view }, markdown)
     workspace.show(view, entryPath)
     announce(`${PREVIEW_ANNOUNCEMENTS[view]} ${entryPath}`)
   }
 
-  function displayed(): ShownDocument | null {
+  function displayed(): Displayed | null {
     const showing = workspace.showing()
     if (showing === 'document') {
-      return holding === null ? null : { entryPath: holding, markdown: editor().view.state.doc.toString() }
+      return holding === null
+        ? null
+        : { kind: 'document', entryPath: holding, markdown: editor().view.state.doc.toString() }
     }
 
-    return previewed?.view === showing ? { entryPath: previewed.entryPath, markdown: previewed.markdown } : null
+    return shown?.view === showing ? shown.what : null
   }
 
   async function showDocumentAt(entryPath: string, shown: string, alternate: string | null): Promise<void> {

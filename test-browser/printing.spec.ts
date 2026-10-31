@@ -117,3 +117,19 @@ test('an image prints from the store, rather than from the page it was printed o
 
   await request.delete(`/api/files/entries/${folder}`)
 })
+
+test('printing an image prints the image, rather than a blank sheet', async ({ page, request }) => {
+  const folder = `printpic-${String(Date.now())}`
+  await request.post('/api/files/folders', { data: { path: folder } })
+  await request.post('/api/files/uploads', {
+    multipart: { path: folder, file: { name: 'pic.png', mimeType: 'image/png', buffer: DECODABLE_64PX_PNG_BYTES } },
+  })
+  await page.goto(`/doc/${folder}/pic.png`)
+  await givenAsync(expect(page.locator('[data-part="image-file"]')).toBeVisible())
+
+  await printing(page)
+
+  await expect(page.locator(`${SHEET} img`)).toHaveAttribute('src', `/api/files/raw/${folder}/pic.png`)
+
+  await request.delete(`/api/files/entries/${folder}`)
+})

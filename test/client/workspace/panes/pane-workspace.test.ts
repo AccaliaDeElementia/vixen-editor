@@ -129,7 +129,7 @@ describe('what a pane is displaying', () => {
     pane.editor().load(SOMETHING_STORED)
     pane.workspace.show('document', 'notes.md')
 
-    expect(pane.displayed()).toStrictEqual({ entryPath: 'notes.md', markdown: SOMETHING_STORED })
+    expect(pane.displayed()).toStrictEqual({ kind: 'document', entryPath: 'notes.md', markdown: SOMETHING_STORED })
   })
 
   it('is nothing at all when the pane holds no document', () => {
@@ -144,7 +144,16 @@ describe('what a pane is displaying', () => {
 
     await pane.showTab({ path: 'other.md', view: 'markup' })
 
-    expect(pane.displayed()).toStrictEqual({ entryPath: 'other.md', markdown: SOMETHING_STORED })
+    expect(pane.displayed()).toStrictEqual({ kind: 'document', entryPath: 'other.md', markdown: SOMETHING_STORED })
+  })
+
+  it('is the image it shows, which has no document behind it at all', async () => {
+    const pane = paneHolding('notes.md')
+    await pane.showTab({ path: 'folder/picture.png', view: 'image' })
+
+    element.querySelector('[data-part="image-file"]')?.dispatchEvent(new Event('load'))
+
+    expect(pane.displayed()).toStrictEqual({ kind: 'image', entryPath: 'folder/picture.png' })
   })
 
   it('is nothing once the pane shows something no document is behind', async () => {

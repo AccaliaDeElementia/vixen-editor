@@ -89,7 +89,9 @@ the second pane instead of the first.
 
 **A pane answers for what it is displaying, not for what its editor holds.** The
 two differ: a pane showing a preview of one document can hold another in the
-editor behind it, and a restored preview tab holds nothing at all. `displayed()`
+editor behind it, a restored preview tab holds nothing at all, and an image view
+holds no document in any sense — it answers with the picture instead, which is
+what makes printing one print the picture rather than blank paper. `displayed()`
 is the one accessor for the question, and the outline, the print sheet and the
 saved copy all ask it — so each of them follows the reader's eye rather than the
 tab the editor last opened. Where another pane has that document open, its live

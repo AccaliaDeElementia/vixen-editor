@@ -1,14 +1,24 @@
 'use sanity'
 
+import { rawUrlFor } from '../../shared/api.ts'
+
 import { exportedFragment } from './exported-html.ts'
 import { pointImagesAtTheStore } from './image-sources.ts'
 
 const SHEET_SELECTOR = '[data-part="print-sheet"]'
 
-interface Printable {
+interface PrintableDocument {
+  kind: 'document'
   entryPath: string
   markdown: string
 }
+
+interface PrintableImage {
+  kind: 'image'
+  entryPath: string
+}
+
+type Printable = PrintableDocument | PrintableImage
 
 interface PrintingOptions {
   root: ParentNode
@@ -18,6 +28,14 @@ interface PrintingOptions {
 interface Printing {
   print: () => void
   stopPrinting: () => void
+}
+
+function imageOf(entryPath: string): HTMLElement {
+  const image = document.createElement('img')
+  image.src = rawUrlFor(entryPath)
+  image.alt = entryPath
+
+  return image
 }
 
 export function bindPrinting(options: PrintingOptions): Printing {
@@ -34,6 +52,12 @@ export function bindPrinting(options: PrintingOptions): Printing {
     const showing = options.showing()
     if (showing === null) {
       into.replaceChildren()
+
+      return
+    }
+
+    if (showing.kind === 'image') {
+      into.replaceChildren(imageOf(showing.entryPath))
 
       return
     }
