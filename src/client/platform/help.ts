@@ -71,6 +71,10 @@ export const KEYS = {
   wider: 'ArrowRight',
   narrowest: 'Home',
   widest: 'End',
+  nextControl: 'ArrowRight',
+  previousControl: 'ArrowLeft',
+  firstControl: 'Home',
+  lastControl: 'End',
 }
 
 const SHORTCUTS: readonly Entry[] = [
@@ -139,6 +143,11 @@ const SHORTCUTS: readonly Entry[] = [
     does: 'Choose what comes back from the trash',
     how: 'Space on a row, and the right arrow to put one back elsewhere',
     keys: [KEYS.tickRow, KEYS.rowAction, KEYS.leaveRowAction],
+  },
+  {
+    does: 'Move along a toolbar — the file actions, the editing bar, or the tabs',
+    how: 'Arrow keys, Home and End',
+    keys: [KEYS.previousControl, KEYS.nextControl, KEYS.firstControl, KEYS.lastControl],
   },
   {
     does: 'Resize the file browser, or the split between editors',

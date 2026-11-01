@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { cast } from '../../../cast.ts'
 import { createTabStrip, type TabStrip } from '../../../../src/client/workspace/tabs/tab-strip.ts'
 import { ENTRY_GLYPHS } from '../../../../src/client/browser/tree/tree-rows.ts'
+import { KEYS } from '../../../../src/client/platform/help.ts'
 
 import { renderPane } from '../../templates.ts'
 
@@ -125,10 +126,21 @@ describe('which tab is the active one', () => {
     expect(tabs().map((tab) => tab.tabIndex)).toStrictEqual([-1, 0])
   })
 
-  it('offers its closer the same stop, so the tab in front can be closed without a pointer', () => {
+  it('passes over every closer, because the strip is one stop and an arrow reaches the rest of it', () => {
     strip().show([{ ...EDITING }, { ...OTHER }], OTHER)
 
-    expect(closers().map((closer) => closer.tabIndex)).toStrictEqual([-1, 0])
+    expect(closers().map((closer) => closer.tabIndex)).toStrictEqual([-1, -1])
+  })
+
+  it('reaches the closer of the tab in front with an arrow, so it is still a keystroke away', () => {
+    strip().show([{ ...EDITING }, { ...OTHER }], OTHER)
+    tabs().at(-1)?.focus()
+
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: KEYS.nextControl }),
+    )
+
+    expect(document.activeElement).toBe(closers().at(-1))
   })
 })
 

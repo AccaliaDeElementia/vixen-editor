@@ -58,7 +58,7 @@ test('the tab in front is closed from the keyboard, without a pointer anywhere n
   await page.goto(await storedDocument(request, name))
   await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${name}"]`)).toBeVisible())
   await page.locator(`${TAB_SELECTOR}[data-path="${name}"]`).focus()
-  await page.keyboard.press('Tab')
+  await page.keyboard.press('ArrowRight')
 
   await page.keyboard.press('Enter')
 
@@ -67,7 +67,7 @@ test('the tab in front is closed from the keyboard, without a pointer anywhere n
   await request.delete(`/api/files/entries/${name}`)
 })
 
-test('the stop after a tab is its own closer, rather than the next document along', async ({ page, request }) => {
+test('the arrow after a tab reaches its own closer, rather than the next document along', async ({ page, request }) => {
   const stamp = String(Date.now())
   const first = `stopa-${stamp}.md`
   await request.post('/api/files/documents', { data: { path: `stopb-${stamp}.md`, content: '# b' } })
@@ -76,12 +76,29 @@ test('the stop after a tab is its own closer, rather than the next document alon
   await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${first}"]`)).toBeVisible())
   await page.locator(`${TAB_SELECTOR}[data-path="${first}"]`).focus()
 
-  await page.keyboard.press('Tab')
+  await page.keyboard.press('ArrowRight')
 
   await expect(page.locator(`[data-closes="editor:${first}"]`)).toBeFocused()
 
   await request.delete(`/api/files/entries/${first}`)
   await request.delete(`/api/files/entries/stopb-${stamp}.md`)
+})
+
+test('the tab after a tab leaves the strip, because the whole strip is one stop', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const first = `oneStop-${stamp}.md`
+  await request.post('/api/files/documents', { data: { path: `oneStopB-${stamp}.md`, content: '# b' } })
+
+  await page.goto(await storedDocument(request, first))
+  await givenAsync(expect(page.locator(`${TAB_SELECTOR}[data-path="${first}"]`)).toBeVisible())
+  await page.locator(`${TAB_SELECTOR}[data-path="${first}"]`).focus()
+
+  await page.keyboard.press('Tab')
+
+  await expect(page.locator('[data-part="tabs-scroller"] :focus')).toHaveCount(0)
+
+  await request.delete(`/api/files/entries/${first}`)
+  await request.delete(`/api/files/entries/oneStopB-${stamp}.md`)
 })
 
 test('a document tab is the colour its file browser row is', async ({ page, request }) => {

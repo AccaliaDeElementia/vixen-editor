@@ -653,3 +653,31 @@ describe('the archive button', () => {
     }).not.toThrow()
   })
 })
+
+describe('the toolbars the file browser owns', () => {
+  function stopsIn(part: string): number {
+    const bar = root.querySelector<HTMLElement>(`[data-part="${part}"]`)
+
+    return [...(bar?.querySelectorAll<HTMLElement>('button') ?? [])].filter((control) => control.tabIndex === 0).length
+  }
+
+  it('leaves the file actions one tab stop, so reaching the tree is one key rather than eight', () => {
+    bound()
+
+    expect(stopsIn('file-actions')).toBe(1)
+  })
+
+  it('leaves the trash actions one tab stop too, because a toolbar promises the same keys everywhere', () => {
+    bound()
+
+    expect(stopsIn('trash-actions')).toBe(1)
+  })
+
+  it('leaves a page without those toolbars alone rather than failing', () => {
+    for (const bar of root.querySelectorAll('[role="toolbar"]')) bar.remove()
+
+    expect(() => {
+      bound()
+    }).not.toThrow()
+  })
+})

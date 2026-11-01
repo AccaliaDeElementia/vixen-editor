@@ -256,7 +256,7 @@ test('a ribbon control reached by keyboard names itself on screen, where a title
 
 test('a file browser control does the same, so the two rails behave alike', async ({ page }) => {
   await openLayout(page)
-  await givenAsync(page.locator('#new-document').press('Tab'))
+  await givenAsync(page.locator('#new-document').press('ArrowRight'))
   await givenAsync(expect(page.locator('#new-folder')).toBeFocused())
 
   const shown = await nameShownOn(page, '#new-folder')

@@ -6,10 +6,13 @@ import type { EditorState, TransactionSpec } from '@codemirror/state'
 import type { Command, KeyBinding } from '@codemirror/view'
 
 import { chordsForControls, KEYS } from '../platform/help.ts'
+import { rovingFocus } from '../platform/roving-focus.ts'
 import { ariaKeysFor, nameOfChords, platformOf, type KeyPlatform } from '../platform/key-spelling.ts'
 import type { DocumentTab } from '../document/document-tab.ts'
 
 import { linkedAround, markedWith, prefixedWith } from './formatting.ts'
+
+const CONTROLS_SELECTOR = '[data-part="controls"]'
 
 type Formatting = (state: EditorState) => TransactionSpec
 
@@ -108,6 +111,9 @@ export function bindControlBar(
   platform: KeyPlatform = platformOf(navigator),
 ): void {
   hintAtTheChords(host, platform)
+
+  const bar = host.querySelector<HTMLElement>(CONTROLS_SELECTOR)
+  if (bar !== null) rovingFocus(bar)
 
   for (const { part, run } of RETURNING_TO_THE_TEXT) {
     onClick(host, part, () => {

@@ -3,6 +3,7 @@
 import { basenameOf } from '../../../shared/link-paths.ts'
 import { DRAG_MIME, DRAG_TAB_MIME } from '../../platform/drag-payload.ts'
 import { decorativeIcon, ENTRY_GLYPHS } from '../../browser/tree/tree-rows.ts'
+import { rovingFocus } from '../../platform/roving-focus.ts'
 import type { TabView } from '../../platform/doc-path.ts'
 import { tabIdentity, type TabAt } from './open-tabs.ts'
 
@@ -125,6 +126,7 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
   const scroller: HTMLElement = found
 
   scroller.setAttribute('role', 'toolbar')
+  rovingFocus(scroller)
 
   const drawn = new Map<string, TabParts>()
 
@@ -227,9 +229,8 @@ export function createTabStrip(host: HTMLElement, options: TabStripOptions): Tab
     drawn.set(identity, parts)
 
     const { pair, opener, closer } = parts
-    const reach = active ? REACHABLE : PASSED_OVER
-    opener.tabIndex = reach
-    closer.tabIndex = reach
+    opener.tabIndex = active ? REACHABLE : PASSED_OVER
+    closer.tabIndex = PASSED_OVER
     if (active) opener.setAttribute(IN_FRONT, THE_ONE_IN_FRONT)
     else opener.removeAttribute(IN_FRONT)
 

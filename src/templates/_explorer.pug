@@ -1,6 +1,6 @@
 aside.explorer#explorer(aria-label='Sidebar')
   section.panel(data-panel='files' aria-label='File browser')
-    .explorer__toolbar(role='toolbar' aria-label='File actions')
+    .explorer__toolbar(data-part='file-actions' role='toolbar' aria-label='File actions')
       button.explorer__action#new-document(type='button' aria-label='New document' title='New document')
         span.icon(aria-hidden='true') note_add
       button.explorer__action#new-folder(type='button' aria-label='New folder' title='New folder')
@@ -30,7 +30,7 @@ aside.explorer#explorer(aria-label='Sidebar')
       input#import-input(type='file' accept='.zip,.tar.gz,.tgz' hidden aria-hidden='true' tabindex='-1')
     ul.tree#file-tree(role='tree' aria-label='Documents')
   section.panel(data-panel='trash' aria-label='Trash' hidden)
-    .explorer__toolbar(role='toolbar' aria-label='Trash actions')
+    .explorer__toolbar(data-part='trash-actions' role='toolbar' aria-label='Trash actions')
       button.explorer__action#empty-trash(type='button' aria-label='Empty the trash' title='Empty the trash')
         span.icon(aria-hidden='true') delete_sweep
     p.panel__empty(data-part='trash-empty' hidden)

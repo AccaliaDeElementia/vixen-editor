@@ -3,6 +3,7 @@
 import { settleBeforeDeleting } from '../platform/announce/deletion-pending.ts'
 import { announceEntryTrashed } from '../platform/announce/entry-trashed.ts'
 import { errorMessage } from '../platform/error-message.ts'
+import { rovingFocus } from '../platform/roving-focus.ts'
 import type { Toast } from '../platform/toast.ts'
 
 import type { Dialogs, NameResolver } from '../platform/dialogs.ts'
@@ -27,6 +28,8 @@ const ACTION_SELECTORS = {
   openSelected: '#open-selected',
   insert: '#insert-entry',
 } as const
+
+const ROVING_TOOLBARS = ['[data-part="file-actions"]', '[data-part="trash-actions"]']
 
 const CORRECTABLE_IN_DIALOG = ['ALREADY_EXISTS', 'INVALID_PATH', 'EMPTY_CONTENT'] as const
 
@@ -173,6 +176,11 @@ export function bindActions(context: ActionContext): void {
 
   function on(selector: string, handler: () => void): void {
     root.querySelector(selector)?.addEventListener('click', handler)
+  }
+
+  for (const selector of ROVING_TOOLBARS) {
+    const bar = root.querySelector<HTMLElement>(selector)
+    if (bar !== null) rovingFocus(bar)
   }
 
   function promptCreate({ title, label, nameFor, create }: CreateRequest): void {

@@ -190,6 +190,28 @@ Two files are exempt from that scan, because they **name keys without binding
 them**: `help.ts` itself, and `editor-shortcuts.ts`, which describes the keys
 the editor brings with it.
 
+**A toolbar is one tab stop, and its arrows reach the rest.** The role is a
+promise about keys, and four regions were making it without keeping it: the file
+actions, the trash actions, the editing bar and the tab strip. Pressing an arrow
+moved nothing, and Tab walked every control — eight to cross the file actions
+before reaching the tree, fifteen to cross the editing bar. `rovingFocus` in
+`platform/roving-focus.ts` binds `ArrowLeft`/`ArrowRight`, `Home` and `End` to a
+container and keeps exactly one of its buttons at `tabindex="0"`, following the
+focus as it moves. The arrows wrap, because a toolbar is a short ring rather
+than a line, and nothing is bound for activation: these are all real `<button>`
+elements, which answer `Enter` and `Space` already.
+
+**It marks every button but steps over the disabled ones.** Marking only the
+ones it can reach leaves a disabled control at the browser's default
+`tabindex="0"`, which is invisible until something enables it — `#insert-entry`
+becomes a second stop in the file actions the moment a file is selected.
+
+**The tab strip is one stop like the rest, so a closer is an arrow away rather
+than a tab away.** It arrived at a toolbar by a different road — see
+[the tab strip](#design-6e4c19) — and briefly gave its closer a stop of its own,
+because without arrows that was the only way to reach it. `Alt+W` still closes
+the tab in front without entering the strip at all.
+
 **Gestures are not enforced, and that is the known gap.** Nothing in the code
 marks "double-click opens a row", so the gesture half of the list is
 hand-written and can fall behind. Add the entry by hand when adding a gesture.
