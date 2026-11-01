@@ -11,6 +11,11 @@ const { PREVIEW_SETTLES_MS } = TestOnly
 
 const MARKUP = { path: 'notes.md', view: 'markup' } as const
 const SOURCE = { path: 'notes.md', view: 'source' } as const
+const ALPHA = { path: 'alpha.md', view: 'markup' } as const
+const BRAVO = { path: 'bravo.md', view: 'markup' } as const
+const TWO_BLOCKS = '# one\n\n# two'
+const A_SECOND_BLOCK = TWO_BLOCKS.indexOf('# two')
+const NOTHING_REACHED: string[] = []
 
 let host: HTMLElement = document.createElement('div')
 let stop: () => void = () => undefined
@@ -23,8 +28,12 @@ function page(): HTMLElement {
   return container
 }
 
+function shownIn(where: HTMLElement, part: string): string {
+  return where.querySelector<HTMLElement>(`[data-part="${part}"]`)?.textContent ?? ''
+}
+
 function shown(part: string): string {
-  return host.querySelector<HTMLElement>(`[data-part="${part}"]`)?.textContent ?? ''
+  return shownIn(host, part)
 }
 
 function sectionFor(part: string): HTMLElement | null {
@@ -218,5 +227,92 @@ describe('following the caret into the preview', () => {
 
   it('ignores a caret moved in a pane that holds no document at all', () => {
     expect(reachedBy(null, 7)).toStrictEqual([])
+  })
+})
+
+describe('a second pane showing a preview of its own', () => {
+  function reachedIn(where: HTMLElement): string[] {
+    const reached: string[] = []
+
+    for (const block of where.querySelectorAll<HTMLElement>('[data-from]')) {
+      block.scrollIntoView = () => {
+        reached.push(block.dataset.from ?? '')
+      }
+    }
+
+    return reached
+  }
+
+  it('is reached by a caret in the document it shows, rather than only the pane drawn last', () => {
+    const previews = previewing()
+    const elsewhere = page()
+    previews.render(host, ALPHA, TWO_BLOCKS)
+    previews.render(elsewhere, BRAVO, TWO_BLOCKS)
+    const reached = reachedIn(host)
+
+    previews.revealOffset(ALPHA.path, A_SECOND_BLOCK)
+
+    expect(reached).toStrictEqual([String(A_SECOND_BLOCK)])
+  })
+
+  it('leaves the other pane where it was, because the caret moved in neither of its blocks', () => {
+    const previews = previewing()
+    const elsewhere = page()
+    previews.render(host, ALPHA, TWO_BLOCKS)
+    previews.render(elsewhere, BRAVO, TWO_BLOCKS)
+    const reached = reachedIn(elsewhere)
+
+    previews.revealOffset(ALPHA.path, A_SECOND_BLOCK)
+
+    expect(reached).toStrictEqual(NOTHING_REACHED)
+  })
+
+  it('follows what the reader types, rather than only the pane drawn last', async () => {
+    const previews = previewing()
+    const elsewhere = page()
+    previews.render(host, ALPHA, '# before')
+    previews.render(elsewhere, BRAVO, '# other')
+
+    previews.refreshWith(ALPHA.path, '# after')
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(shown('markup-body')).toBe('after')
+  })
+
+  it('forgets a pane that has left the page, so a dismissed split cannot keep it alive', async () => {
+    const previews = previewing()
+    const dismissed = page()
+    previews.render(dismissed, ALPHA, '# before')
+    dismissed.remove()
+
+    previews.render(host, ALPHA, '# before')
+    previews.refreshWith(ALPHA.path, '# after')
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(shownIn(dismissed, 'markup-body')).toBe('before')
+  })
+
+  it('is forgotten on a refresh too, so nothing redraws a pane that is no longer on the page', async () => {
+    const previews = previewing()
+    const dismissed = page()
+    previews.render(dismissed, ALPHA, '# before')
+    dismissed.remove()
+
+    previews.refreshWith(ALPHA.path, '# after')
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect(shownIn(dismissed, 'markup-body')).toBe('before')
+  })
+
+  it('follows it alongside the other pane when both show the same document', async () => {
+    const previews = previewing()
+    const elsewhere = page()
+    previews.render(host, MARKUP, '# before')
+    previews.render(elsewhere, { ...MARKUP, view: 'source' }, '# before')
+
+    previews.refreshWith(MARKUP.path, '# after')
+    await vi.advanceTimersByTimeAsync(PREVIEW_SETTLES_MS)
+
+    expect([shown('markup-body'), shownIn(elsewhere, 'source-body')]).toStrictEqual(['after', '<h1>after</h1>'])
   })
 })
