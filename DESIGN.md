@@ -129,9 +129,18 @@ partial.
 
 **It redraws only while it is the panel on show**, and only when something
 about the headings changed. `bootstrap` refreshes it when a document opens, when
-the text changes and when the sidebar changes panel; each returns at once unless
-the outline is the panel showing, and a refresh that produces the same headings
-at the same offsets leaves the rows alone.
+the text changes, when the sidebar changes panel and when a pane finishes
+bringing a tab to the front; each returns at once unless the outline is the
+panel showing, and a refresh that produces the same headings at the same offsets
+leaves the rows alone.
+
+**That last one has to come from the pane, not from the click.** Bringing a tab
+to the front is several awaits long — a preview loads the document it renders —
+so a refresh fired where the tab is clicked runs while the pane still displays
+the tab the reader left, and the outline went on listing the headings of
+whatever that pane's editor held. `showTab` calls `onDisplayChanged` once it has
+caught up, which also reaches the changes no click goes through: closing the tab
+in front of a preview, and taking a tab from the other pane.
 
 **An edit redraws it once the typing settles**, 200 ms after the last keystroke,
 the way a preview already does. Parsing a document and building a row per
@@ -142,7 +151,10 @@ it costs with the panel closed.
 
 **A pane holding nothing says so.** "Nothing is open" and "This document has no
 headings" are different facts, and an empty panel cannot tell a reader which one
-they are looking at.
+they are looking at. A picture is the second of those: it is open and it has no
+headings, so the outline asks whether the pane displays anything at all before
+it asks for markdown — reading `displayed()` for markdown alone reported a
+picture as nothing open.
 
 **A row is a button, and it jumps the editor the outline is reading.** Pressing
 one calls `putCaretAt`, which clamps, scrolls the heading into view and takes

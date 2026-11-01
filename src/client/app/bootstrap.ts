@@ -63,6 +63,7 @@ import { paneIn, wiringFor } from './wiring.ts'
 const BESIDE = 'beside'
 const READER_AT_WORK = ['pointerdown', 'keydown']
 const EVERYTHING_PENDING = 0
+const NOTHING_TO_OUTLINE = ''
 
 type PaneSettings = Pick<
   PaneWorkspaceOptions,
@@ -137,6 +138,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
       onContentChanged: () => {
         outline.refreshSoon()
       },
+      onDisplayChanged: refreshOutline,
       contentOf: (entryPath: string) => panes.contentOf(entryPath),
       caretMemory,
       ...settings,
@@ -188,6 +190,13 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     return shown?.kind === 'document' ? shown : null
   }
 
+  function markdownInFront(): string | null {
+    const shown = showingInFront()
+    if (shown === null) return null
+
+    return shown.kind === 'document' ? shown.markdown : NOTHING_TO_OUTLINE
+  }
+
   function saveInFrontAsHtml(): void {
     const showing = documentInFront()
     if (showing === null) return
@@ -203,7 +212,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
 
   const outline = createOutline({
     root,
-    source: () => documentInFront()?.markdown ?? null,
+    source: markdownInFront,
     chosen: (offset: number) => {
       touched.editor().putCaretAt(offset)
     },

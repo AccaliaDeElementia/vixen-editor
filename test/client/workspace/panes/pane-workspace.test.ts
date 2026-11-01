@@ -21,6 +21,7 @@ import { DRAG_MIME } from '../../../../src/client/platform/drag-payload.ts'
 import { cheatsheet } from '../../../../src/client/platform/help.ts'
 
 const SOMETHING_STORED = '# stored'
+const LAST_TOLD = -1
 const WHENEVER = '2026-01-01T00:00:00.000Z'
 
 let root: HTMLElement = document.createElement('div')
@@ -47,10 +48,17 @@ interface PaneOverrides {
   session?: Partial<Session>
   toast?: Partial<Toast>
   contentOf?: (entryPath: string) => string | null
+  onDisplayChanged?: () => void
 }
 
 function paneHolding(holds: string | null, overrides: PaneOverrides = {}): ReturnType<typeof createPaneWorkspace> {
-  const { files: answering = {}, session = {}, toast: complaining = {}, contentOf = () => null } = overrides
+  const {
+    files: answering = {},
+    session = {},
+    toast: complaining = {},
+    contentOf = () => null,
+    onDisplayChanged = () => undefined,
+  } = overrides
   const built = createPaneWorkspace({
     root,
     element,
@@ -75,6 +83,7 @@ function paneHolding(holds: string | null, overrides: PaneOverrides = {}): Retur
     onTabArrived: () => undefined,
     onShowing: () => undefined,
     onContentChanged: () => undefined,
+    onDisplayChanged,
     contentOf,
     caretMemory: createCaretMemory(),
     releaseElsewhere: () => Promise.resolve(),
@@ -186,6 +195,48 @@ describe('what a pane is displaying', () => {
     pane.workspace.show('image', 'picture.png')
 
     expect(pane.displayed()).toBeNull()
+  })
+})
+
+describe('a pane told to bring a tab to the front', () => {
+  it('says so only once what it displays has caught up, so a follower does not read the tab it left', async () => {
+    let caughtUpTo: string | null = null
+    const pane = paneHolding('notes.md', {
+      onDisplayChanged: () => {
+        caughtUpTo = pane.displayed()?.entryPath ?? null
+      },
+    })
+
+    await pane.showTab({ path: 'other.md', view: 'markup' })
+
+    expect(caughtUpTo).toBe('other.md')
+  })
+
+  it('says so again when a picture arrives, because an image is displayed only once its bytes are', async () => {
+    const told: Array<string | null> = []
+    const pane = paneHolding('notes.md', {
+      onDisplayChanged: () => {
+        told.push(pane.displayed()?.entryPath ?? null)
+      },
+    })
+    await pane.showTab({ path: 'folder/picture.png', view: 'image' })
+
+    element.querySelector('[data-part="image-file"]')?.dispatchEvent(new Event('load'))
+
+    expect(told.at(LAST_TOLD)).toBe('folder/picture.png')
+  })
+
+  it('says so for a document too, because an editor coming to the front is the same change', async () => {
+    let told = 0
+    const pane = paneHolding('notes.md', {
+      onDisplayChanged: () => {
+        told += 1
+      },
+    })
+
+    await pane.showTab({ path: 'other.md', view: 'editor' })
+
+    expect(told).toBe(1)
   })
 })
 

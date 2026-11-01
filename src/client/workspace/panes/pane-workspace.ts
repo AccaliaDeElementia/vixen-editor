@@ -69,6 +69,7 @@ export interface PaneWorkspaceOptions {
   onTabArrived: (identity: string, toIndex: number) => void
   onShowing: (entryPath: string) => void
   onContentChanged: () => void
+  onDisplayChanged: () => void
   contentOf: (entryPath: string) => string | null
   caretMemory: CaretMemory
   releaseElsewhere: (at: TabAt) => Promise<void>
@@ -256,6 +257,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     host: element,
     reveal: (at) => {
       workspace.show('image', at)
+      options.onDisplayChanged()
     },
     onBroken: (entryPath) => {
       showMissing(entryPath, entryPath)
@@ -368,13 +370,10 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     },
 
     showTab: async (at: TabAt) => {
-      if (isPreviewView(at.view)) {
-        await showPreview(at.path, at.view)
+      if (isPreviewView(at.view)) await showPreview(at.path, at.view)
+      else await showDocumentAt(at.path, at.path, null)
 
-        return
-      }
-
-      await showDocumentAt(at.path, at.path, null)
+      options.onDisplayChanged()
     },
 
     release,

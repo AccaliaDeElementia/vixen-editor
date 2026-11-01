@@ -33,6 +33,7 @@ const A_SECOND_HEADING = '## beta'
 const TWO_HEADINGS_IN = `# alpha\n\n${A_SECOND_HEADING}\n`
 const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
 const PREVIEW_OF_ASIDE = { path: 'aside.md', view: 'markup' } as const
+const EDITING_OTHER = { path: 'other.md', view: 'editor' } as const
 const WIDE_ENOUGH = 1200
 const A_MOMENT = 1
 const { OUTLINE_SETTLES_MS } = outlineTiming
@@ -41,6 +42,7 @@ let root: HTMLElement = document.createElement('div')
 let record: Recorded = recorded()
 
 const OPEN_DOCUMENT = 'notes.md'
+const A_PICTURE = 'folder/picture.png'
 
 function fakeSession(content: string): Session {
   return sessionRecording(record, {
@@ -48,11 +50,11 @@ function fakeSession(content: string): Session {
   })
 }
 
-async function editing(content: string): Promise<{ view: EditorView; settled: () => Promise<void> }> {
+async function opening(pathname: string, content: string): Promise<{ view: EditorView; settled: () => Promise<void> }> {
   const editor = trackEditor(
     await bootstrapOrReport({
       root,
-      pathname: '/doc/notes.md',
+      pathname,
       session: fakeSession(content),
       files: filesAnsweringEmpty(),
       dialogs: dialogsDismissing(),
@@ -61,6 +63,14 @@ async function editing(content: string): Promise<{ view: EditorView; settled: ()
   if (editor === null) throw new Error('the editor did not start')
 
   return editor
+}
+
+async function editing(content: string): Promise<{ view: EditorView; settled: () => Promise<void> }> {
+  return await opening(`/doc/${OPEN_DOCUMENT}`, content)
+}
+
+function thePictureArrives(): void {
+  root.querySelector('[data-part="image-file"]')?.dispatchEvent(new Event('load'))
 }
 
 function showingTheOutline(): void {
@@ -88,6 +98,12 @@ function clickIntoTheEditorIn(pane: number): void {
   const editors = root.querySelectorAll<HTMLElement>('[data-part="pane"] .cm-content')
 
   editors[pane]?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+}
+
+function pressTabIn(pane: number, identity: string): void {
+  const panes = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
+
+  panes[pane]?.querySelector<HTMLElement>(`[data-tab="${identity}"]`)?.click()
 }
 
 function pressRow(index: number): void {
@@ -235,6 +251,33 @@ describe('the outline of the document in front', () => {
     showingTheOutline()
 
     expect(rowsShown()).toStrictEqual(['aside.md'])
+  })
+
+  it('follows a preview the reader brings back to the front, rather than the editor sharing its pane', async () => {
+    writeKeptTabs('secondary', [PREVIEW_OF_ASIDE, EDITING_OTHER], EDITING_OTHER)
+    toggleSplit(root, 'beside', WIDE_ENOUGH)
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    clickIntoThePane(1)
+    showingTheOutline()
+    given(() => {
+      expect(rowsShown()).toStrictEqual(['other.md'])
+    })
+
+    pressTabIn(1, 'markup:aside.md')
+    await givenAsync(editor.settled())
+
+    expect(rowsShown()).toStrictEqual(['aside.md'])
+  })
+
+  it('says a picture has no headings, rather than that nothing is open, because the picture is open', async () => {
+    const editor = await opening(`/doc/${A_PICTURE}`, TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    showingTheOutline()
+
+    thePictureArrives()
+
+    expect(saidInstead()).toBe('This document has no headings.')
   })
 
   it('says nothing is open once the reader closes the last tab', async () => {
