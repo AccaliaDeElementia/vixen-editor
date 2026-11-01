@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createStatusBar, TestOnly, type StatusBar } from '../../../../src/client/workspace/panes/status-bar.ts'
 
+import { given } from '../../../conditions.ts'
 import { renderSection } from '../../templates.ts'
 
 const { COUNTDOWN_ATTRIBUTE, COUNTDOWN_PROPERTY, COUNTDOWN_RUNS, SAVE_LABELS } = TestOnly
@@ -250,5 +251,22 @@ describe('a save that was attempted but refused', () => {
     status.showSaveState('clean', null)
 
     expect(textOf(root, '[data-part="save-label"]')).toBe('')
+  })
+})
+
+describe('a report that says what the last one said', () => {
+  it('leaves the text node alone, because replacing it announces the same thing again', () => {
+    const root = page()
+    const status = bar(root)
+    const label = root.querySelector('[data-part="save-label"]')
+    status.showSaveState('pending', Date.now() + 30_000)
+    const said = label?.firstChild
+    given(() => {
+      expect(said?.textContent).toBe(SAVE_LABELS.pending)
+    })
+
+    status.showSaveState('pending', Date.now() + 30_000)
+
+    expect(label?.firstChild).toBe(said)
   })
 })

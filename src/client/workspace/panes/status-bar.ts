@@ -62,6 +62,15 @@ export function createStatusBar(host: ParentNode): StatusBar {
     return label
   }
 
+  function say(text: string): void {
+    if (labelElement === null) return
+
+    const alreadySaid = labelElement.textContent === text
+    if (alreadySaid) return
+
+    labelElement.textContent = text
+  }
+
   function countDownTo(dueAt: number | null): void {
     if (countdownElement === null) return
 
@@ -81,14 +90,14 @@ export function createStatusBar(host: ParentNode): StatusBar {
     forgetSaveState(): void {
       written = false
       previous = null
-      if (labelElement !== null) labelElement.textContent = NOTHING_TO_SAY
+      say(NOTHING_TO_SAY)
     },
 
     showSaveState(state: SaveState, dueAt: number | null): void {
       written ||= previous === 'saving' && state === 'clean'
       previous = state
 
-      if (labelElement !== null) labelElement.textContent = labelFor(state)
+      say(labelFor(state))
 
       countDownTo(state === 'pending' ? dueAt : null)
     },
