@@ -11,6 +11,7 @@ import {
   documentIdFromPath,
   folderIndexAlternateFromPath,
   isPreviewView,
+  PREVIEW_VIEWS,
   type PreviewView,
 } from '../../platform/doc-path.ts'
 import type { TabAt } from '../tabs/open-tabs.ts'
@@ -106,6 +107,7 @@ export interface PaneWorkspace {
   pane: Pane
   held: HeldDocument
   displayed: () => Displayed | null
+  revealOffset: (offset: number) => void
   editor: () => DocumentTab
   teardownDocument: () => void
   workspace: Workspace
@@ -302,6 +304,16 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     return shown?.view === showing ? shown.what : null
   }
 
+  function shownAsPreview(seen: Displayed | null): seen is ShownDocument {
+    return seen?.kind === 'document' && PREVIEW_VIEWS.some((view) => view === seen.shownAs)
+  }
+
+  function revealOffset(offset: number): void {
+    const seen = displayed()
+    if (shownAsPreview(seen)) previews.revealOffset(seen.entryPath, offset)
+    else editor().putCaretAt(offset)
+  }
+
   async function showDocumentAt(entryPath: string, shown: string, alternate: string | null): Promise<void> {
     if (classifyFile(entryPath) === 'image') {
       await options.releaseElsewhere({ path: entryPath, view: 'image' })
@@ -350,6 +362,7 @@ export function createPaneWorkspace(options: PaneWorkspaceOptions): PaneWorkspac
     editor,
     workspace,
     displayed,
+    revealOffset,
 
     flush: async () => {
       if (built === null) return true

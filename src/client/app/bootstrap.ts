@@ -214,7 +214,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     root,
     source: markdownInFront,
     chosen: (offset: number) => {
-      touched.editor().putCaretAt(offset)
+      touched.revealOffset(offset)
     },
   })
 

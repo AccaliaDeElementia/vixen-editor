@@ -22,6 +22,10 @@ import { cheatsheet } from '../../../../src/client/platform/help.ts'
 
 const SOMETHING_STORED = '# stored'
 const LAST_TOLD = -1
+const A_SECOND_HEADING = '# two'
+const TWO_BLOCKS = `# one\n\n${A_SECOND_HEADING}`
+const A_SECOND_BLOCK = TWO_BLOCKS.indexOf(A_SECOND_HEADING)
+const WHERE_THE_WORD_STARTS = SOMETHING_STORED.indexOf('stored')
 const WHENEVER = '2026-01-01T00:00:00.000Z'
 
 let root: HTMLElement = document.createElement('div')
@@ -237,6 +241,39 @@ describe('a pane told to bring a tab to the front', () => {
     await pane.showTab({ path: 'other.md', view: 'editor' })
 
     expect(told).toBe(1)
+  })
+})
+
+describe('a pane asked to reveal an offset', () => {
+  function blocksReached(): string[] {
+    const reached: string[] = []
+
+    for (const block of element.querySelectorAll<HTMLElement>('[data-from]')) {
+      block.scrollIntoView = () => {
+        reached.push(block.dataset.from ?? '')
+      }
+    }
+
+    return reached
+  }
+
+  it('scrolls the preview it is showing, because a preview has nothing to put a caret in', async () => {
+    const pane = paneHolding('notes.md', { contentOf: () => TWO_BLOCKS })
+    await pane.showTab({ path: 'other.md', view: 'markup' })
+    const reached = blocksReached()
+
+    pane.revealOffset(A_SECOND_BLOCK)
+
+    expect(reached).toStrictEqual([String(A_SECOND_BLOCK)])
+  })
+
+  it('puts the caret in the editor when an editor is what it is showing', async () => {
+    const pane = paneHolding('notes.md')
+    await pane.showTab({ path: 'other.md', view: 'editor' })
+
+    pane.revealOffset(WHERE_THE_WORD_STARTS)
+
+    expect(pane.editor().view.state.selection.main.head).toBe(WHERE_THE_WORD_STARTS)
   })
 })
 

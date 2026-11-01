@@ -163,6 +163,13 @@ it from the sidebar. The jump goes to the pane the outline was rendered from,
 not through a lookup by path: the list and the caret cannot disagree about which
 editor they mean, because both read `touched`.
 
+**A row pressed over a preview scrolls the preview instead.** There is no text
+to land in, so the row calls `revealOffset` — the same call the caret already
+makes when the reader types beside it. Sending it to the editor was worse than
+doing nothing: `editor()` builds on demand, so a pane summoned only to carry a
+preview grew a CodeMirror behind it, autosave and freshness listeners included,
+that no reader could ever see.
+
 <a id="design-e6bdab"></a>
 
 ## Keyboard

@@ -36,6 +36,7 @@ const PREVIEW_OF_ASIDE = { path: 'aside.md', view: 'markup' } as const
 const EDITING_OTHER = { path: 'other.md', view: 'editor' } as const
 const WIDE_ENOUGH = 1200
 const A_MOMENT = 1
+const NO_EDITOR = 0
 const { OUTLINE_SETTLES_MS } = outlineTiming
 
 let root: HTMLElement = document.createElement('div')
@@ -104,6 +105,24 @@ function pressTabIn(pane: number, identity: string): void {
   const panes = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
 
   panes[pane]?.querySelector<HTMLElement>(`[data-tab="${identity}"]`)?.click()
+}
+
+function editorsIn(pane: number): number {
+  const panes = root.querySelectorAll<HTMLElement>('[data-part="pane"]')
+
+  return panes[pane]?.querySelectorAll('.cm-editor').length ?? NO_EDITOR
+}
+
+function blocksReachedIn(): string[] {
+  const reached: string[] = []
+
+  for (const block of root.querySelectorAll<HTMLElement>('[data-from]')) {
+    block.scrollIntoView = () => {
+      reached.push(block.dataset.from ?? '')
+    }
+  }
+
+  return reached
 }
 
 function pressRow(index: number): void {
@@ -278,6 +297,36 @@ describe('the outline of the document in front', () => {
     thePictureArrives()
 
     expect(saidInstead()).toBe('This document has no headings.')
+  })
+
+  it('scrolls the preview to the heading the reader chose, because a preview is read rather than typed in', async () => {
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
+    await givenAsync(editor.settled())
+    clickIntoThePane(1)
+    showingTheOutline()
+    const reached = blocksReachedIn()
+
+    pressRow(1)
+
+    expect(reached).toStrictEqual([String(SECOND_HEADING_STARTS_AT)])
+  })
+
+  it('builds no editor behind the preview, because nothing there is being typed into', async () => {
+    const editor = await editing(TWO_HEADINGS_IN)
+    await givenAsync(editor.settled())
+    root.querySelector<HTMLElement>('[data-part="preview-markup"]')?.click()
+    await givenAsync(editor.settled())
+    clickIntoThePane(1)
+    showingTheOutline()
+    given(() => {
+      expect(editorsIn(1)).toBe(NO_EDITOR)
+    })
+
+    pressRow(1)
+
+    expect(editorsIn(1)).toBe(NO_EDITOR)
   })
 
   it('says nothing is open once the reader closes the last tab', async () => {
