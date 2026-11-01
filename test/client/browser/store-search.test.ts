@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createSearchPanel } from '../../../src/client/browser/search-panel.ts'
+import { createStoreSearch } from '../../../src/client/browser/store-search.ts'
 import type { FilesClient } from '../../../src/client/browser/files-client.ts'
 import type { Toast } from '../../../src/client/platform/toast.ts'
 
@@ -38,7 +38,7 @@ function panelAnswering({ hits = [], capped = false, refuse }: Answering = {}): 
     },
   })
 
-  const panel = createSearchPanel({
+  const panel = createStoreSearch({
     root,
     client,
     toast: cast<Toast>({

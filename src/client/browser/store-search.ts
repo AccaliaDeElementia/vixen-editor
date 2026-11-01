@@ -21,7 +21,7 @@ const NOTHING_ASKED = ''
 const NOTHING_FOUND_COUNT = 0
 const ONE_MATCH = 1
 
-interface SearchPanelOptions {
+interface StoreSearchOptions {
   root: ParentNode
   client: FilesClient
   toast: Toast
@@ -29,7 +29,7 @@ interface SearchPanelOptions {
   navigate: (url: string) => void
 }
 
-interface SearchPanel {
+interface StoreSearch {
   bind: () => void
   release: () => void
 }
@@ -63,7 +63,7 @@ function rowFor({ path, line, offset, excerpt }: SearchHit, open: (url: string) 
   return row
 }
 
-export function createSearchPanel(options: SearchPanelOptions): SearchPanel {
+export function createStoreSearch(options: StoreSearchOptions): StoreSearch {
   const { root, client, toast } = options
 
   function field(): HTMLInputElement | null {
