@@ -46,6 +46,22 @@ function matchesIn(line: string, needle: string): number[] {
   return found
 }
 
+function offsetsAsWritten(line: string, folded: string): readonly number[] | null {
+  if (folded.length === line.length) return null
+
+  const asWritten: number[] = []
+  let at = LINE_START
+
+  for (const character of line) {
+    const { length: unitsWhenFolded } = character.toLowerCase()
+    const startsAt = at
+    asWritten.push(...Array.from({ length: unitsWhenFolded }, () => startsAt))
+    at += character.length
+  }
+
+  return asWritten
+}
+
 function excerptOf(line: string, at: number): string {
   if (line.length <= EXCERPT_MAX) return line
 
@@ -62,10 +78,19 @@ function hitsIn(path: string, text: string, needle: string, room: number): Searc
   let lineStart = LINE_START
 
   for (const [index, line] of text.split('\n').entries()) {
-    for (const at of matchesIn(line.toLowerCase(), needle)) {
+    const folded = line.toLowerCase()
+    const asWritten = offsetsAsWritten(line, folded)
+
+    for (const at of matchesIn(folded, needle)) {
       if (found.length === room) return found
 
-      found.push({ path, line: index + FIRST_LINE, offset: lineStart + at, excerpt: excerptOf(line, at) })
+      const writtenAt = asWritten?.[at] ?? at
+      found.push({
+        path,
+        line: index + FIRST_LINE,
+        offset: lineStart + writtenAt,
+        excerpt: excerptOf(line, writtenAt),
+      })
     }
 
     lineStart += line.length + NEWLINE

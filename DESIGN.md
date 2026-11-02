@@ -722,6 +722,28 @@ not this reader's error.
 carrying a newline finds nothing. The search field is one line, so this costs
 nothing today, and it is what keeps line, offset and excerpt a single pass.
 
+**Case is folded with `toLowerCase`, which is locale-independent by
+specification.** The same query answers the same way on every machine, whatever
+`LANG` is set to, and the server never asks the reader what language they read
+in — measured, not assumed: `'I'.toLowerCase()` is `i` under both
+`LANG=tr_TR.UTF-8` and `LANG=C`. The cost is that Turkish and Azeri dotless i,
+and the Lithuanian dotted vowels, do not fold the way a reader of those
+languages expects. **What would reopen it is a reader who reads in one of
+them**: the browser's locale would ride along on the request and the fold would
+become `toLocaleLowerCase`, at the price of one store answering one query
+differently depending on which browser asked.
+
+**A folded line is not always as long as the line it came from, and a hit
+carries offsets into the line as written.** Sweeping every code point in the BMP
+and the astral planes, one character grows when it is lowercased — `İ` becomes
+an `i` with a combining dot above — and none shrink. A line holding one used to
+report every later hit a character late, so the caret landed inside the word and
+the excerpt's window opened one character off. `offsetsAsWritten` maps back
+unit by unit, and builds nothing at all for a line whose fold came out the same
+length, which is why ordinary prose pays a fraction of a millisecond per
+megabyte for it. Folding per locale would need that map and more of it:
+Lithuanian turns one character into three.
+
 **The panel searches on submit, not on every keystroke.** A scan reads the
 whole store, so type-ahead would mean one of those per character typed for an
 answer the reader has not asked for yet. Enter, or the button beside the field,

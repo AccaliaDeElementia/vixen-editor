@@ -148,3 +148,46 @@ describe('the excerpt a hit carries', () => {
     expect([excerpt.startsWith('…'), excerpt.endsWith('…')]).toStrictEqual([true, false])
   })
 })
+
+describe('a line whose case folds to a different length', () => {
+  const FOLDS_TO_TWO_CHARACTERS = 'İ'
+  const LONGER_THAN_IT_IS = 2
+  const LONG_LINE = 'z'.repeat(EXCERPT_MAX)
+
+  it('relies on a character whose lowercase is longer than it is, which is what shifts the offsets', () => {
+    expect(FOLDS_TO_TWO_CHARACTERS.toLowerCase()).toHaveLength(LONGER_THAN_IT_IS)
+  })
+
+  it('gives the offset the document holds, not the one the folded copy holds', async () => {
+    const text = `${FOLDS_TO_TWO_CHARACTERS}stanbul wanted\n`
+    const { hits } = await searching({ 'notes.md': text }, 'wanted')
+
+    expect(hits.map((hit) => hit.offset)).toStrictEqual([text.indexOf('wanted')])
+  })
+
+  it('counts every match on the line from the text as written, not only the first', async () => {
+    const text = `${FOLDS_TO_TWO_CHARACTERS} wanted and wanted\n`
+    const { hits } = await searching({ 'notes.md': text }, 'wanted')
+
+    expect(hits.map((hit) => hit.offset)).toStrictEqual([text.indexOf('wanted'), text.lastIndexOf('wanted')])
+  })
+
+  it('cuts the excerpt from the line as written, so the lead before the match is the agreed one', async () => {
+    const { hits } = await searching({ 'notes.md': `${FOLDS_TO_TWO_CHARACTERS}${LONG_LINE}wanted` }, 'wanted')
+
+    expect(hits.map((hit) => hit.excerpt)).toStrictEqual([`…${'z'.repeat(EXCERPT_LEAD)}wanted`])
+  })
+
+  it('still folds it onto the letter the reader typed, which is what a case-blind search means', async () => {
+    const { hits } = await searching({ 'notes.md': `${FOLDS_TO_TWO_CHARACTERS}stanbul\n` }, 'i')
+
+    expect(hits.map((hit) => hit.excerpt)).toStrictEqual([`${FOLDS_TO_TWO_CHARACTERS}stanbul`])
+  })
+
+  it('leaves a line that folds to the same length exactly where it was', async () => {
+    const text = 'Istanbul wanted\n'
+    const { hits } = await searching({ 'notes.md': text }, 'wanted')
+
+    expect(hits.map((hit) => hit.offset)).toStrictEqual([text.indexOf('wanted')])
+  })
+})
