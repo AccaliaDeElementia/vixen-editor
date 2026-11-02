@@ -2,14 +2,18 @@
 
 import { headingsOf, type Heading } from '../../shared/markdown-tree.ts'
 import { OUTLINE_PANEL, panelShowing } from '../platform/panels.ts'
+import { readPreferences, writePreferences } from '../platform/preferences.ts'
 
 const LIST_SELECTOR = '[data-part="outline-list"]'
 const EMPTY_SELECTOR = '[data-part="outline-empty"]'
+const QUOTED_SELECTOR = '[data-part="outline-quoted"]'
 
 const OUTLINE_SETTLES_MS = 200
 
 const NOTHING_OPEN = 'Nothing is open.'
 const NO_HEADINGS = 'This document has no headings.'
+const ONLY_QUOTED_HEADINGS = 'Every heading here is inside a quote.'
+const NOTHING_TO_SAY = ''
 
 const TOP_LEVEL = 1
 const NONE = 0
@@ -42,6 +46,13 @@ function rowFor({ level, text, from }: Heading, chosen: (offset: number) => void
   return row
 }
 
+function emptyMessage(markdown: string | null, held: readonly Heading[], listed: readonly Heading[]): string {
+  if (markdown === null) return NOTHING_OPEN
+  if (listed.length > NONE) return NOTHING_TO_SAY
+
+  return held.length === NONE ? NO_HEADINGS : ONLY_QUOTED_HEADINGS
+}
+
 function signatureOf(said: string, headings: readonly Heading[]): string {
   const held = headings.map(({ level, text, from }) => `${String(level)} ${String(from)} ${text}`).join('\n')
 
@@ -67,8 +78,9 @@ export function createOutline(options: OutlineOptions): Outline {
     if (list === null || empty === null) return
 
     const markdown = options.source()
-    const headings = markdown === null ? [] : headingsOf(markdown)
-    const said = markdown === null ? NOTHING_OPEN : NO_HEADINGS
+    const held = markdown === null ? [] : headingsOf(markdown)
+    const headings = readPreferences().quotedHeadings ? held : held.filter((heading) => !heading.quoted)
+    const said = emptyMessage(markdown, held, headings)
     const signature = signatureOf(said, headings)
 
     if (signature === shown) return
@@ -78,6 +90,25 @@ export function createOutline(options: OutlineOptions): Outline {
     empty.textContent = said
     empty.hidden = headings.length > NONE
   }
+
+  function markQuotedAsked(toggle: Element, asked: boolean): void {
+    toggle.setAttribute('aria-pressed', String(asked))
+  }
+
+  function bindQuotedToggle(): void {
+    const toggle = root.querySelector<HTMLElement>(QUOTED_SELECTOR)
+    if (toggle === null) return
+
+    markQuotedAsked(toggle, readPreferences().quotedHeadings)
+    toggle.addEventListener('click', () => {
+      const asked = !readPreferences().quotedHeadings
+      writePreferences({ ...readPreferences(), quotedHeadings: asked })
+      markQuotedAsked(toggle, asked)
+      show()
+    })
+  }
+
+  bindQuotedToggle()
 
   return {
     show,

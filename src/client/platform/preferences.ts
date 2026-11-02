@@ -12,9 +12,16 @@ export interface ExplorerPreferences {
   open: boolean
   openFolders: string[]
   panel: string
+  quotedHeadings: boolean
 }
 
-const DEFAULT_PREFERENCES: ExplorerPreferences = { widthPx: null, open: true, openFolders: [], panel: FILES_PANEL }
+const DEFAULT_PREFERENCES: ExplorerPreferences = {
+  widthPx: null,
+  open: true,
+  openFolders: [],
+  panel: FILES_PANEL,
+  quotedHeadings: false,
+}
 
 const NO_WIDTH = 0
 
@@ -31,6 +38,7 @@ export function readPreferences(storage?: Storage | null): ExplorerPreferences {
     open: value.open,
     openFolders: stringsIn(value.openFolders),
     panel: typeof value.panel === 'string' ? value.panel : FILES_PANEL,
+    quotedHeadings: value.quotedHeadings === true,
   }
 }
 

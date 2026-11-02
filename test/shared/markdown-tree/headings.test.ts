@@ -16,6 +16,10 @@ function levelsIn(markdown: string): number[] {
   return found(markdown).map((heading) => heading.level)
 }
 
+function quotedIn(markdown: string): boolean[] {
+  return found(markdown).map((heading) => heading.quoted)
+}
+
 describe('the level a heading is written at', () => {
   it('counts the hashes an ATX heading opens with', () => {
     expect(levelsIn('# a\n\n### c\n')).toStrictEqual([1, 3])
@@ -118,5 +122,27 @@ describe('what counts as a heading', () => {
 
   it('finds none in a document that has none', () => {
     expect(textIn('just prose\n')).toStrictEqual([])
+  })
+})
+
+describe('whether a heading belongs to the document or to something it quotes', () => {
+  it('marks a heading written inside a quote', () => {
+    expect(quotedIn('> # theirs\n')).toStrictEqual([true])
+  })
+
+  it('leaves a heading of the document itself unmarked', () => {
+    expect(quotedIn('# mine\n')).toStrictEqual([false])
+  })
+
+  it('marks one the quote holds at a remove, because the quote is still what holds it', () => {
+    expect(quotedIn('> - # in a list in a quote\n')).toStrictEqual([true])
+  })
+
+  it('marks a setext heading in a quote, which carries its level on the next line', () => {
+    expect(quotedIn('> Title\n> =====\n')).toStrictEqual([true])
+  })
+
+  it('answers for each heading separately, so a document that quotes one keeps its own', () => {
+    expect(quotedIn('# mine\n\n> # theirs\n')).toStrictEqual([false, true])
   })
 })

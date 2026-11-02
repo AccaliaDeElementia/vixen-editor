@@ -132,6 +132,7 @@ const WHITESPACE_RUN = /\s+/gv
 const MARK_SUFFIX = 'Mark'
 const LABEL_NODE = 'LinkLabel'
 const ESCAPE_NODE = 'Escape'
+const QUOTE_NODE = 'Blockquote'
 
 const NOT_A_HEADING = 0
 const ESCAPED_CHARACTER = 1
@@ -145,12 +146,20 @@ export interface Heading {
   level: number
   text: string
   from: number
+  quoted: boolean
 }
 
 function levelOf(name: string): number {
   const level = HEADING_NODE.exec(name)?.groups?.level
 
   return level === undefined ? NOT_A_HEADING : Number(level)
+}
+
+function isQuoted(node: SyntaxNode): boolean {
+  const { parent: holder } = node
+  if (holder === null) return false
+
+  return holder.name === QUOTE_NODE || isQuoted(holder)
 }
 
 function isLinkDestination(node: SyntaxNode): boolean {
@@ -199,7 +208,7 @@ function headingsIn(tree: Tree, markdown: string): Heading[] {
       const level = levelOf(node.name)
       if (level === NOT_A_HEADING) return
 
-      found.push({ level, text: textOf(markdown, tree, node), from: node.from })
+      found.push({ level, text: textOf(markdown, tree, node), from: node.from, quoted: isQuoted(node.node) })
     },
   })
 

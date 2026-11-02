@@ -156,6 +156,25 @@ headings, so the outline asks whether the pane displays anything at all before
 it asks for markdown — reading `displayed()` for markdown alone reported a
 picture as nothing open.
 
+**A heading inside a quote belongs to the document being quoted, so the panel
+leaves it out.** The parse is untouched and must be: `headingsOf` marks each
+heading as quoted or not, and only the panel filters, so the preview still
+renders a quoted heading as a heading and the editor still folds its section.
+CommonMark decides what parses as a heading; it has no opinion on what a
+navigation panel lists, and this is the second question.
+
+**A control at the top of the panel asks for them anyway**, pressed or not, and
+the answer is remembered in the explorer preferences — the same place the
+sidebar's width, its open folders and the panel it was left showing live, so a
+reader answers once per machine rather than once per document. The assumption is
+that a reader navigating their own document is not navigating the one it quotes;
+what would reopen it is a reader who quotes more than they write.
+
+**"Every heading here is inside a quote" is a third message**, beside "Nothing
+is open" and "This document has no headings". Without it a document whose
+headings are all quoted is told it has none, which is false, and the control
+that would show them is sitting above the sentence saying so.
+
 **A row is a button, and it jumps the editor the outline is reading.** Pressing
 one calls `putCaretAt`, which clamps, scrolls the heading into view and takes
 the focus — so the reader lands in the text ready to type rather than looking at

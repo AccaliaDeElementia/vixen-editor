@@ -258,6 +258,15 @@
   }
 }
 
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.15em;
+  padding: $space-xs $space-sm;
+  border-bottom: 1px solid $border;
+}
+
 .panel__empty {
   margin: 0;
   padding: $space-sm;

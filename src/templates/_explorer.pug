@@ -51,6 +51,15 @@ aside.explorer#explorer(aria-label='Sidebar')
     p.panel__empty(data-part='search-said' hidden)
     ul.results(data-part='search-results' aria-label='Matches')
   section.panel(data-panel='outline' aria-label='Outline' hidden)
+    .panel__head
+      button.explorer__action(
+        data-part='outline-quoted'
+        type='button'
+        aria-pressed='false'
+        aria-label='Show headings inside quotes'
+        title='Show headings inside quotes'
+      )
+        span.icon(aria-hidden='true') format_quote
     p.panel__empty(data-part='outline-empty' hidden)
     ul.outline(data-part='outline-list' aria-label='Headings')
   section.panel(data-panel='cheatsheet' aria-label='Markdown cheatsheet' hidden)

@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createOutline, TestOnly } from '../../../src/client/chrome/outline.ts'
 import { FILES_PANEL, OUTLINE_PANEL, showPanel } from '../../../src/client/platform/panels.ts'
+import { readPreferences, writePreferences } from '../../../src/client/platform/preferences.ts'
 
 import { given } from '../../conditions.ts'
+import { renderSection } from '../templates.ts'
 
 const { OUTLINE_SETTLES_MS } = TestOnly
 
@@ -14,13 +16,15 @@ const A_SECOND_HEADING = '## two'
 const TWO_HEADINGS_IN = `# one\n\n${A_SECOND_HEADING}\n`
 const SECOND_HEADING_STARTS_AT = TWO_HEADINGS_IN.indexOf(A_SECOND_HEADING)
 
+const A_QUOTED_HEADING = '> # theirs'
+const QUOTING_ANOTHER_DOCUMENT = `# mine\n\n${A_QUOTED_HEADING}\n`
+
+const QUOTED_TOGGLE = '[data-part="outline-quoted"]'
+
 const SIDEBAR = `
   <div id="app">
     <section class="panel" data-panel="files"></section>
-    <section class="panel" data-panel="outline">
-      <p class="panel__empty" data-part="outline-empty" hidden></p>
-      <ul class="outline" data-part="outline-list"></ul>
-    </section>
+    ${renderSection('[data-panel="outline"]')}
   </div>
 `
 
@@ -64,6 +68,14 @@ function pressRow(index: number): void {
   root.querySelectorAll<HTMLElement>('[data-part="outline-list"] button')[index]?.click()
 }
 
+function pressQuoted(): void {
+  root.querySelector<HTMLElement>(QUOTED_TOGGLE)?.click()
+}
+
+function quotedIsPressed(): string | null {
+  return root.querySelector(QUOTED_TOGGLE)?.getAttribute('aria-pressed') ?? null
+}
+
 function saidInstead(): string {
   const said = root.querySelector<HTMLElement>('[data-part="outline-empty"]')
 
@@ -71,6 +83,7 @@ function saidInstead(): string {
 }
 
 beforeEach(() => {
+  localStorage.clear()
   chosen = []
   standing = []
   held = TWO_HEADINGS_IN
@@ -269,5 +282,79 @@ describe('a page with no outline panel in it', () => {
     listing('# one\n')
 
     expect(rowsShown()).toStrictEqual([])
+  })
+})
+
+describe('headings the document is quoting rather than writing', () => {
+  it('leaves one out, because it belongs to the document being quoted', () => {
+    listing(QUOTING_ANOTHER_DOCUMENT)
+
+    expect(rowsShown()).toStrictEqual(['mine'])
+  })
+
+  it('lists it once the reader asks for quoted headings', () => {
+    listing(QUOTING_ANOTHER_DOCUMENT)
+
+    pressQuoted()
+
+    expect(rowsShown()).toStrictEqual(['mine', 'theirs'])
+  })
+
+  it('leaves it out again when the reader asks a second time', () => {
+    listing(QUOTING_ANOTHER_DOCUMENT)
+    pressQuoted()
+    given(() => {
+      expect(rowsShown()).toStrictEqual(['mine', 'theirs'])
+    })
+
+    pressQuoted()
+
+    expect(rowsShown()).toStrictEqual(['mine'])
+  })
+
+  it('says where every heading went, rather than claiming the document has none', () => {
+    listing(`${A_QUOTED_HEADING}\n`)
+
+    expect(saidInstead()).toBe('Every heading here is inside a quote.')
+  })
+
+  it('remembers what the reader asked for, so they ask once rather than once a document', () => {
+    listing(QUOTING_ANOTHER_DOCUMENT)
+
+    pressQuoted()
+
+    expect(readPreferences().quotedHeadings).toBe(true)
+  })
+})
+
+describe('the control that asks for quoted headings', () => {
+  it('starts unpressed, which is the outline a reader starts with', () => {
+    outlining()
+
+    expect(quotedIsPressed()).toBe('false')
+  })
+
+  it('starts pressed when the reader asked for them on this machine before', () => {
+    writePreferences({ ...readPreferences(), quotedHeadings: true })
+
+    outlining()
+
+    expect(quotedIsPressed()).toBe('true')
+  })
+
+  it('says it is pressed once the reader presses it, because the icon alone says nothing', () => {
+    listing(QUOTING_ANOTHER_DOCUMENT)
+
+    pressQuoted()
+
+    expect(quotedIsPressed()).toBe('true')
+  })
+
+  it('leaves a panel with no such control alone, rather than throwing on the way past', () => {
+    root.querySelector(QUOTED_TOGGLE)?.remove()
+
+    expect(() => {
+      listing(QUOTING_ANOTHER_DOCUMENT)
+    }).not.toThrow()
   })
 })

@@ -170,6 +170,7 @@ const GESTURES: readonly Entry[] = [
   { does: 'Add an image or file', how: 'Drop it onto the document, or use Upload' },
   { does: 'See an image in place', how: 'Put it alone on its own line' },
   { does: 'Save a copy of the document as HTML', how: 'The download button at the end of the editing bar' },
+  { does: 'List the headings a document is quoting too', how: 'The quote button at the top of the outline' },
   { does: 'Resize the file browser', how: 'Drag the divider, or focus it and use the arrow keys' },
 ]
 
