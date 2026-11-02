@@ -12,6 +12,8 @@ import { cast } from '../../../cast.ts'
 
 const NOTHING = null
 const AN_OFFSET = 12
+const A_TARGET = { offset: AN_OFFSET, matched: null }
+const A_DOCUMENT = '# notes\n\nthe lantern went out'
 
 interface Holding {
   holds?: string | null
@@ -164,15 +166,25 @@ describe('reading what a pane has in its buffer', () => {
 
 describe('putting the caret where a preview was clicked', () => {
   it('reaches the editor holding that document', () => {
-    panesOf(surface('primary'), surface('aside', { holds: 'notes.md' })).caretInto('notes.md', AN_OFFSET)
+    panesOf(surface('primary'), surface('aside', { holds: 'notes.md' })).caretInto('notes.md', A_TARGET)
 
     expect(carets).toStrictEqual([{ into: 'aside', at: AN_OFFSET }])
   })
 
   it('does nothing when no editor holds it, rather than moving the wrong caret', () => {
-    panesOf(surface('primary'), NOTHING).caretInto('notes.md', AN_OFFSET)
+    panesOf(surface('primary'), NOTHING).caretInto('notes.md', A_TARGET)
 
     expect(carets).toStrictEqual([])
+  })
+})
+
+describe('putting the caret on what a search matched', () => {
+  it('lands on that text in the buffer, rather than on the offset the link carried', () => {
+    const aside = surface('aside', { holds: 'notes.md', content: A_DOCUMENT })
+
+    panesOf(surface('primary'), aside).caretInto('notes.md', { offset: 0, matched: 'lantern' })
+
+    expect(carets).toStrictEqual([{ into: 'aside', at: A_DOCUMENT.indexOf('lantern') }])
   })
 })
 

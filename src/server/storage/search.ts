@@ -1,5 +1,6 @@
 'use sanity'
 
+import { foldedMatchesIn } from '../../shared/case-folding.ts'
 import { serially } from '../../shared/serially.ts'
 import type { NameComparator } from './primitives/name-order.ts'
 
@@ -12,7 +13,6 @@ const FIRST_LINE = 1
 const NEWLINE = 1
 const NOTHING_LEFT = 0
 const LINE_START = 0
-const NOT_FOUND = -1
 
 interface SearchHit {
   path: string
@@ -36,32 +36,6 @@ interface SearchRequest {
   byName: NameComparator
 }
 
-function matchesIn(line: string, needle: string): number[] {
-  const found: number[] = []
-
-  for (let at = line.indexOf(needle); at !== NOT_FOUND; at = line.indexOf(needle, at + needle.length)) {
-    found.push(at)
-  }
-
-  return found
-}
-
-function offsetsAsWritten(line: string, folded: string): readonly number[] | null {
-  if (folded.length === line.length) return null
-
-  const asWritten: number[] = []
-  let at = LINE_START
-
-  for (const character of line) {
-    const { length: unitsWhenFolded } = character.toLowerCase()
-    const startsAt = at
-    asWritten.push(...Array.from({ length: unitsWhenFolded }, () => startsAt))
-    at += character.length
-  }
-
-  return asWritten
-}
-
 function excerptOf(line: string, at: number): string {
   if (line.length <= EXCERPT_MAX) return line
 
@@ -78,19 +52,10 @@ function hitsIn(path: string, text: string, needle: string, room: number): Searc
   let lineStart = LINE_START
 
   for (const [index, line] of text.split('\n').entries()) {
-    const folded = line.toLowerCase()
-    const asWritten = offsetsAsWritten(line, folded)
-
-    for (const at of matchesIn(folded, needle)) {
+    for (const at of foldedMatchesIn(line, needle)) {
       if (found.length === room) return found
 
-      const writtenAt = asWritten?.[at] ?? at
-      found.push({
-        path,
-        line: index + FIRST_LINE,
-        offset: lineStart + writtenAt,
-        excerpt: excerptOf(line, writtenAt),
-      })
+      found.push({ path, line: index + FIRST_LINE, offset: lineStart + at, excerpt: excerptOf(line, at) })
     }
 
     lineStart += line.length + NEWLINE
@@ -100,7 +65,6 @@ function hitsIn(path: string, text: string, needle: string, room: number): Searc
 }
 
 export async function searchStore(store: Scannable, { query, byName }: SearchRequest): Promise<SearchOutcome> {
-  const needle = query.toLowerCase()
   const hits: SearchHit[] = []
 
   await serially(await store.list(byName), async (path: string) => {
@@ -110,7 +74,7 @@ export async function searchStore(store: Scannable, { query, byName }: SearchReq
     const text = await store.read(path).catch(() => null)
     if (text === null) return
 
-    hits.push(...hitsIn(path, text, needle, room))
+    hits.push(...hitsIn(path, text, query, room))
   })
 
   return { hits, capped: hits.length === MOST_HITS }

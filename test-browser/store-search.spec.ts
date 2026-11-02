@@ -75,3 +75,25 @@ test('the result it opened is the document the address bar names', async ({ page
 
   await expect(page).toHaveURL(new RegExp(`/doc/${elsewhere}`, 'v'))
 })
+
+test('a link to a hit still finds it after the document has changed above it', async ({ page, request }) => {
+  const stamp = String(Date.now())
+  const wanted = `lantern-${stamp}`
+  await request.post('/api/files/documents', {
+    data: { path: `drifted-${stamp}.md`, content: `# Drifted\n\nthe ${wanted} went out\n` },
+  })
+  await page.goto(await storedDocument(request, `from-${stamp}.md`, '# From\n'))
+  await searched(page, wanted)
+  await page.locator('[data-part="search-results"] button').click()
+  await givenAsync(expect(page.locator('.cm-content')).toBeFocused())
+  await page.keyboard.press('ControlOrMeta+Home')
+  await page.keyboard.type('a line nobody had written yet\n\n')
+  await page.keyboard.press('ControlOrMeta+s')
+  await givenAsync(expect(page.locator('[data-part="save-label"]')).toHaveText('Saved'))
+  await page.reload()
+  await givenAsync(expect(page.locator('.cm-content')).toBeFocused())
+
+  await page.keyboard.type('X')
+
+  await expect(page.locator('.cm-content')).toContainText(`X${wanted}`)
+})

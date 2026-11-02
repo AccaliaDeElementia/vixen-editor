@@ -40,13 +40,13 @@ function matchesIn(count: number): string {
   return `${String(count)} ${count === ONE_MATCH ? 'match' : 'matches'}`
 }
 
-function rowFor({ path, line, offset, excerpt }: SearchHit, open: (url: string) => void): HTMLElement {
+function rowFor({ path, line, offset, excerpt }: SearchHit, matched: string, open: (url: string) => void): HTMLElement {
   const row = document.createElement('li')
   const reach = document.createElement('button')
   reach.type = 'button'
   reach.className = 'result'
   reach.addEventListener('click', () => {
-    open(docUrlAt(path, offset))
+    open(docUrlAt(path, offset, matched))
   })
 
   const where = document.createElement('span')
@@ -86,15 +86,15 @@ export function createStoreSearch(options: StoreSearchOptions): StoreSearch {
       said.hidden = false
     }
 
-    const show = (hits: readonly SearchHit[], capped: boolean): void => {
-      results.replaceChildren(...hits.map((hit) => rowFor(hit, options.navigate)))
+    const show = (hits: readonly SearchHit[], capped: boolean, matched: string): void => {
+      results.replaceChildren(...hits.map((hit) => rowFor(hit, matched, options.navigate)))
       say(capped ? `${matchesIn(hits.length)}${AND_MORE}` : matchesIn(hits.length))
     }
 
     const run = async (query: string): Promise<void> => {
       try {
         const { hits, capped } = await client.search(query)
-        show(hits, capped)
+        show(hits, capped, query)
       } catch (error) {
         toast.error(errorMessage(error))
       }

@@ -122,12 +122,35 @@ describe('which view the workspace shows', () => {
 describe('a url that names where the caret should land', () => {
   const A_DOCUMENT = '# notes\n\nthe lantern'
   const PAST_THE_HEADING = A_DOCUMENT.indexOf('the lantern')
+  const GREW_ABOVE_IT = '# notes\n\nanother line\n\nthe lantern'
 
   it('puts it there, so a search result opens where it matched', async () => {
     const view = await openEditor({
       root,
       pathname: '/doc/notes.md',
       search: `?at=${String(PAST_THE_HEADING)}`,
+      session: fakeSession({ load: () => Promise.resolve({ content: A_DOCUMENT, stored: true }) }),
+    })
+
+    expect(view.state.selection.main.head).toBe(PAST_THE_HEADING)
+  })
+
+  it('puts it on what the url says matched, wherever the document has since moved it to', async () => {
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      search: `?at=${String(PAST_THE_HEADING)}&is=lantern`,
+      session: fakeSession({ load: () => Promise.resolve({ content: GREW_ABOVE_IT, stored: true }) }),
+    })
+
+    expect(view.state.selection.main.head).toBe(GREW_ABOVE_IT.indexOf('lantern'))
+  })
+
+  it('puts it at the offset the url names once what matched has gone from the document', async () => {
+    const view = await openEditor({
+      root,
+      pathname: '/doc/notes.md',
+      search: `?at=${String(PAST_THE_HEADING)}&is=beacon`,
       session: fakeSession({ load: () => Promise.resolve({ content: A_DOCUMENT, stored: true }) }),
     })
 

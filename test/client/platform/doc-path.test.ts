@@ -184,21 +184,25 @@ describe('the url a view is addressed by', () => {
 
 describe('the url a hit in a search is addressed by', () => {
   it('carries the offset the caret should land on', () => {
-    expect(docUrlAt('folder/notes.md', 42)).toBe('/doc/folder/notes.md?at=42')
+    expect(docUrlAt('folder/notes.md', 42, 'lantern')).toBe('/doc/folder/notes.md?at=42&is=lantern')
+  })
+
+  it('carries what matched, so a link whose document has changed can look for it again', () => {
+    expect(docUrlAt('notes.md', 42, 'two words')).toBe('/doc/notes.md?at=42&is=two+words')
   })
 
   it('escapes the path the way every other document url does', () => {
-    expect(docUrlAt('a folder/notes.md', 0)).toBe('/doc/a%20folder/notes.md?at=0')
+    expect(docUrlAt('a folder/notes.md', 0, 'lantern')).toBe('/doc/a%20folder/notes.md?at=0&is=lantern')
   })
 })
 
 describe('caretFromSearch', () => {
   it.each([
-    ['?at=42', 42],
-    ['?at=0', 0],
-    ['?view=preview&at=7', 7],
+    ['?at=42&is=lantern', 42],
+    ['?at=0&is=lantern', 0],
+    ['?view=preview&at=7&is=lantern', 7],
   ])('reads %s as an offset of %s', (search, expected) => {
-    expect(caretFromSearch(search)).toBe(expected)
+    expect(caretFromSearch(search)?.offset).toBe(expected)
   })
 
   it.each(['', '?view=preview', '?at=', '?at=nowhere', '?at=-3', '?at=1.5'])(
@@ -207,6 +211,18 @@ describe('caretFromSearch', () => {
       expect(caretFromSearch(search)).toBeNull()
     },
   )
+
+  it('reads what the hit matched, so the caret can find it where it is now', () => {
+    expect(caretFromSearch('?at=42&is=two+words')?.matched).toBe('two words')
+  })
+
+  it('names no text for a link made before links carried any', () => {
+    expect(caretFromSearch('?at=42')?.matched).toBeNull()
+  })
+
+  it('names no text for a link carrying an empty one, which names nothing to look for', () => {
+    expect(caretFromSearch('?at=42&is=')?.matched).toBeNull()
+  })
 })
 
 describe('isPreviewView', () => {

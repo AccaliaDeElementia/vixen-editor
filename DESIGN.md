@@ -738,10 +738,10 @@ carries offsets into the line as written.** Sweeping every code point in the BMP
 and the astral planes, one character grows when it is lowercased — `İ` becomes
 an `i` with a combining dot above — and none shrink. A line holding one used to
 report every later hit a character late, so the caret landed inside the word and
-the excerpt's window opened one character off. `offsetsAsWritten` maps back
-unit by unit, and builds nothing at all for a line whose fold came out the same
-length, which is why ordinary prose pays a fraction of a millisecond per
-megabyte for it. Folding per locale would need that map and more of it:
+the excerpt's window opened one character off. `foldedMatchesIn` in
+`src/shared/case-folding.ts` maps back unit by unit, and builds nothing at all
+for a line whose fold came out the same length, which is why ordinary prose pays
+a fraction of a millisecond per megabyte for it. Folding per locale would need that map and more of it:
 Lithuanian turns one character into three.
 
 **The panel searches on submit, not on every keystroke.** A scan reads the
@@ -755,12 +755,28 @@ is choosing between documents, so the path leads; the excerpt is what tells them
 which of several matches in that document they are looking at.
 
 **A result opens through the address bar, carrying the offset in it.**
-`/doc/<path>?at=<offset>` is what a row navigates to, so a hit opens the way a
-file browser row does — one history entry, the address bar honest, and the same
-URL reopens at the same place after a reload. The alternative was a request to
-open and a second request to place the caret, which races: the caret would
-arrive before the document it belongs to. `at` is read once, on open, and the
-next tab activation rewrites the URL without it.
+`/doc/<path>?at=<offset>&is=<what matched>` is what a row navigates to, so a hit
+opens the way a file browser row does — one history entry, the address bar
+honest, and the same URL reopens at the same place after a reload. The
+alternative was a request to open and a second request to place the caret, which
+races: the caret would arrive before the document it belongs to. Both are read
+once, on open, and the next tab activation rewrites the URL without them.
+
+**`is` carries what matched, because an offset alone goes stale.** A document
+edited above the hit moves it, and `at` on its own then points wherever the old
+count now lands — inside a word, or in another paragraph entirely. `is` is the
+query as the reader typed it, so following the link looks for that text again
+and takes the occurrence **nearest** the offset, falling back to the offset
+itself once the text has gone. Nearest rather than first, because a word a
+document uses many times would otherwise send every link to its first use. The
+consequence worth stating is that the query lands in browser history, where
+before only an offset did; it is the reader's own search over their own store,
+and it is in the address bar already at the moment they press the result.
+
+**The way back in folds case through the same code the search did.** Both halves
+call `foldedMatchesIn`, so a link cannot fail to find a word the search that
+produced it matched, and the offsets each side answers with index the text as
+written.
 
 <a id="design-9b2d7c"></a>
 

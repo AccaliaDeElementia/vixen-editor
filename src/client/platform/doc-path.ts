@@ -14,7 +14,9 @@ export type PreviewView = (typeof PREVIEW_VIEWS)[number]
 const DEFAULT_VIEW: TabView = 'editor'
 const VIEW_PARAMETER = 'view'
 const CARET_PARAMETER = 'at'
+const MATCHED_PARAMETER = 'is'
 const NO_CARET = null
+const NO_TEXT = null
 const NOTHING_NAMED = ''
 const AN_OFFSET = /^\d+$/v
 const VIEW_IN_URL: Readonly<Partial<Record<TabView, string>>> = { editor: 'edit', source: 'source', markup: 'preview' }
@@ -71,14 +73,25 @@ export function docUrlFor(entryPath: string, view: TabView = DEFAULT_VIEW): stri
   return `${at}?${VIEW_PARAMETER}=${spelling}`
 }
 
-export function docUrlAt(entryPath: string, offset: number): string {
-  return `${docUrlFor(entryPath)}?${CARET_PARAMETER}=${String(offset)}`
+export interface CaretTarget {
+  offset: number
+  matched: string | null
 }
 
-export function caretFromSearch(search: string): number | null {
-  const named = new URLSearchParams(search).get(CARET_PARAMETER) ?? NOTHING_NAMED
+export function docUrlAt(entryPath: string, offset: number, matched: string): string {
+  const named = new URLSearchParams({ [CARET_PARAMETER]: String(offset), [MATCHED_PARAMETER]: matched })
 
-  return AN_OFFSET.test(named) ? Number(named) : NO_CARET
+  return `${docUrlFor(entryPath)}?${named.toString()}`
+}
+
+export function caretFromSearch(search: string): CaretTarget | null {
+  const asked = new URLSearchParams(search)
+  const named = asked.get(CARET_PARAMETER) ?? NOTHING_NAMED
+  if (!AN_OFFSET.test(named)) return NO_CARET
+
+  const matched = asked.get(MATCHED_PARAMETER) ?? NOTHING_NAMED
+
+  return { offset: Number(named), matched: matched === NOTHING_NAMED ? NO_TEXT : matched }
 }
 
 export function isPreviewView(view: TabView): view is PreviewView {

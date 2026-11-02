@@ -168,7 +168,16 @@ describe('pressing a result', () => {
 
     pressRow(1)
 
-    expect(opened).toStrictEqual(['/doc/other.md?at=0'])
+    expect(opened).toStrictEqual(['/doc/other.md?at=0&is=lantern'])
+  })
+
+  it('carries what the reader asked for, so the link can find it again once the document moves it', async () => {
+    panelAnswering({ hits: [A_HIT] })
+    await searchFor('Lantern')
+
+    pressRow(0)
+
+    expect(opened).toStrictEqual(['/doc/folder/notes.md?at=42&is=Lantern'])
   })
 })
 

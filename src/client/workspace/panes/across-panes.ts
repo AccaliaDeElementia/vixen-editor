@@ -1,9 +1,10 @@
 'use sanity'
 
 import { tabIdentity, type TabAt } from '../tabs/open-tabs.ts'
+import { landingFor } from '../../document/caret-landing.ts'
 import type { DocumentTab } from '../../document/document-tab.ts'
 import type { PaneWorkspace } from './pane-workspace.ts'
-import { isPreviewView } from '../../platform/doc-path.ts'
+import { isPreviewView, type CaretTarget } from '../../platform/doc-path.ts'
 
 interface AcrossPanesOptions {
   primary: PaneWorkspace
@@ -16,7 +17,7 @@ interface AcrossPanes {
   savedEverywhere: () => Promise<boolean>
   showingTheDocument: (entryPath: string) => PaneWorkspace
   contentOf: (entryPath: string) => string | null
-  caretInto: (entryPath: string, offset: number) => void
+  caretInto: (entryPath: string, target: CaretTarget) => void
   showWhereItIs: (at: TabAt) => boolean
 }
 
@@ -42,6 +43,10 @@ export function createAcrossPanes(options: AcrossPanesOptions): AcrossPanes {
     return showing.holding() === entryPath ? showing : null
   }
 
+  function contentOf(entryPath: string): string | null {
+    return editorHolding(entryPath)?.view.state.doc.toString() ?? null
+  }
+
   function holdsATabFor(surface: PaneWorkspace, entryPath: string): boolean {
     return surface.pane.held().some((at) => at.path === entryPath && !isPreviewView(at.view))
   }
@@ -49,14 +54,13 @@ export function createAcrossPanes(options: AcrossPanesOptions): AcrossPanes {
   return {
     open,
     savedEverywhere,
+    contentOf,
 
     showingTheDocument: (entryPath: string) =>
       open().find((surface) => holdsATabFor(surface, entryPath)) ?? options.primary,
 
-    contentOf: (entryPath: string) => editorHolding(entryPath)?.view.state.doc.toString() ?? null,
-
-    caretInto: (entryPath: string, offset: number) => {
-      editorHolding(entryPath)?.putCaretAt(offset)
+    caretInto: (entryPath: string, target: CaretTarget) => {
+      editorHolding(entryPath)?.putCaretAt(landingFor(contentOf(entryPath), target))
     },
 
     showWhereItIs: (at: TabAt) => {

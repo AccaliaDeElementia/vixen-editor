@@ -2,6 +2,7 @@
 
 import {
   caretFromSearch,
+  type CaretTarget,
   docUrlFor,
   documentIdFromPath,
   isPreviewView,
@@ -119,7 +120,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
   const dialogs = options.dialogs ?? createDialogs(root)
 
   const previews = createPreviews((entryPath: string, offset: number) => {
-    panes.caretInto(entryPath, offset)
+    panes.caretInto(entryPath, { offset, matched: null })
   })
 
   function paneWorkspaceWith(settings: PaneSettings): PaneWorkspace {
@@ -222,7 +223,7 @@ async function bootstrap(options: BootstrapOptions = {}): Promise<Editor> {
     outline.show()
   }
 
-  async function openPath(target: string, wanted: TabView, landsAt: number | null): Promise<void> {
+  async function openPath(target: string, wanted: TabView, landsAt: CaretTarget | null): Promise<void> {
     await touched.openPath(target)
     previewing.showNamedByUrl(wanted)
     if (landsAt !== null) panes.caretInto(documentIdFromPath(target), landsAt)
